@@ -16,9 +16,9 @@ Iterative checklist. Tick items as they land — this file is the *plan*.
 | 4 — Footer + editor UI language | ✅ done (en/fr at 195/195 key parity) |
 | 5 — Client test platform | ⬜ not started |
 | 6 — Audit debt | ⬜ mostly open, but 6.1/6.2/6.6 landed 2026-08-02, 6.7 landed 2026-08-03 (see below) |
-| 7 — Inspector functional; contracts catch up to the UI | ⬜ **current focus** — see below |
+| 7 — Inspector functional; contracts catch up to the UI | 🟡 **current focus** — 7.2/7.4/7.5 done, 7.1 partial; 7.3/7.6/7.7 next, 7.8/7.9 blocked |
 
-Suite: **500 tests, 2076 assertions, green.**
+Suite: **506 tests, 2157 assertions, green.**
 
 **2026-08-05 — repository reset.** The GitHub repo was deleted and recreated to remove AI
 co-author attribution that could not be stripped any other way (a closed PR's `refs/pull/1/head`
@@ -448,7 +448,14 @@ install/DX bugs nothing in this repo can catch.
 > Verbatim quotes below are marked. Anything not quoted and not obviously mechanical is flagged
 > **[interpretation]** — do not treat those as instructions received.
 
-- [ ] **7.1 Contracts declare what the UI offers**
+- [~] **7.1 Contracts declare what the UI offers** — landed 2026-08-05 for typography.textAlign/
+  textAlignVertical/letterSpacing and appearance.opacity, plus the `hb-supports` opt-in and
+  `SupportsStyle::css()` now prepended by `BlockViewData::blocksCss()` (nothing loaded it before —
+  the route existed, no view linked it, so the whole sheet was unreachable).
+  **Still open — needs a decision, not guessing:** `position`, `layout` and `effects` are NOT
+  declared. The reasoning that excluded `border` in 7.2 applies to position/layout (canvas and
+  container concerns, not text), and Effects has zero control hooks so declaring it would un-gate
+  a section that still writes nothing. Wire the Effects controls first, or drop the section.
   Both shipped contracts declare 7 groups (`align`, `color`, `typography`, `size`, `spacing`,
   `border`, `animation`) while the Style panel offers controls for `position`, `layout`,
   `effects`, `appearance` and `typography.textAlign`/`letterSpacing` as well. `SupportsStyle`
@@ -459,7 +466,7 @@ install/DX bugs nothing in this repo can catch.
   *AC:* every Style control that renders for a block writes to a path that block's contract
   declares AND that has a matching `style.variables` entry; nothing renders that writes nowhere.
 
-- [ ] **7.2 Text blocks must NOT support Stroke or border-radius**
+- [x] **7.2 Text blocks must NOT support Stroke or border-radius** — done 2026-08-05.
   Quote: *"text cant have things like borders which is offered by the stroke section or border
   raduis which is supported by the apperance section"* — and, when asked to confirm: *"they text
   should not support them."*
@@ -480,7 +487,10 @@ install/DX bugs nothing in this repo can catch.
   and make the canvas preview the selected state (`.hb-state-preview-<state>` already exists in the
   renderer's emitted CSS for exactly this).
 
-- [ ] **7.4 Alignment section vs Typography alignment**
+- [x] **7.4 Alignment section vs Typography alignment** — done 2026-08-05; the reading below was
+  confirmed correct in practice (two different properties, both real). Labels now read
+  "Text horizontal"/"Text vertical"; vertical uses start/center/end because it compiles through
+  `align-self` (`align-3`), not top/middle/bottom.
   Quote: *"there is the alignment section on its own, and for text, components, they have their own
   alignment within the typography section."*
   **[interpretation]** These are two different properties and both are legitimate: the standalone
@@ -493,7 +503,7 @@ install/DX bugs nothing in this repo can catch.
   `typography.textAlign`/`textAlignVertical` and leave the Alignment section on `align`, and make
   the labels say which is which.
 
-- [ ] **7.5 Typography font picker must use internet fonts, not a hardcoded list**
+- [x] **7.5 Typography font picker must use internet fonts, not a hardcoded list** — done 2026-08-05.
   Quote: *"the font type ui in the typography section still uses hard coded fonts instead of
   internet fonts just as done with the combobox in the styles tab on the left sidebar. fix that."*
   `live/block/style/typography.blade.php` renders a `ui/select` with 5 literal families
