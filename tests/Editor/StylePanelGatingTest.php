@@ -66,9 +66,9 @@ class StylePanelGatingTest extends TestCase
         $n = $this->blockCount();
         $this->assertGreaterThan(0, $n);
 
-        // Declared by BOTH contracts, so one instance per pre-rendered panel.
+        // Declared by BOTH contracts, so one instance per pre-rendered panel. color.text is
+        // absent by design — Fill is a layer stack that composites and writes once (§Fill).
         foreach ([
-            'color.text',
             'typography.fontFamily',
             'typography.fontWeight',
             'typography.fontSize',
@@ -685,6 +685,56 @@ class StylePanelGatingTest extends TestCase
             'if (input && input.value !== hbVarLabelOf(root, bound)) delete control.dataset.hbVarBound;',
             $html,
         );
+    }
+
+    public function test_a_colour_layer_has_one_trigger_per_affordance_not_two(): void
+    {
+        $html = $this->editorHtml();
+
+        // The row shipped a selection-all-fill button that opened the COLOUR PICKER, and the
+        // decorator then injected a second identical icon outside the field for the variable
+        // popup — two of the same glyph doing different things. The swatch now opens the picker
+        // and the icon opens the variable popup, so the decorator's "already has a var trigger"
+        // check skips the row and the duplicate disappears at its source.
+        $this->assertStringContainsString('class="hb-colorlayer__swatch"', $html);
+        $this->assertMatchesRegularExpression(
+            '/class="hb-colorlayer__swatch"[^>]*data-hb-style-color-trigger/s',
+            $html,
+            'the swatch must open the colour picker',
+        );
+        $this->assertMatchesRegularExpression(
+            '/class="hb-colorlayer__open"[^>]*data-hb-style-var-trigger/s',
+            $html,
+            'the inline icon must open the theme-variable popup',
+        );
+        // The old wiring, where the icon was the picker trigger.
+        $this->assertDoesNotMatchRegularExpression(
+            '/class="hb-colorlayer__open"[^>]*data-hb-style-color-trigger/s',
+            $html,
+        );
+    }
+
+    public function test_fill_and_stroke_composite_a_layer_stack(): void
+    {
+        $html = $this->editorHtml();
+
+        // Layers paint bottom-up, so the newest sits on top. CSS colour takes one value, so the
+        // stack is flattened with source-over alpha compositing.
+        $this->assertStringContainsString('function hbCompositeLayers(layers)', $html);
+        $this->assertStringContainsString('const outA = a + out.a * (1 - a);', $html);
+        $this->assertStringContainsString("const HB_LAYER_PATHS = { fill: 'color.text', stroke: 'border.color' };", $html);
+
+        // Both shapes are stored: the flattened colour the renderer already sanitizes, and the
+        // raw stack so reopening a block restores every layer rather than just the result.
+        $this->assertStringContainsString("path.split('.')[0] + '.layers'", $html);
+
+        // A per-row control hook would make each layer overwrite the same scalar, so the last row
+        // would always win and stacking could never work.
+        $this->assertStringNotContainsString('data-hb-control="color.text"', $html);
+        $this->assertStringNotContainsString('data-hb-control="border.color"', $html);
+
+        // Opacity has to be editable for stacking to mean anything — it was a static <span>.
+        $this->assertStringContainsString('data-hb-style-layer-opacity', $html);
     }
 
     public function test_state_section_is_never_contract_gated(): void

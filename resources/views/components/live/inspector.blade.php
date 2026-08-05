@@ -1525,6 +1525,85 @@
         window.hbEditor.previewState?.(id, root.dataset.hbStyleState);
     });
 
+    // ── Fill / Stroke colour layers, composited (2026-08-05) ─────────────────────────
+    // A section holds an ordered STACK of {color, opacity} layers, painted bottom-up in DOM
+    // order — the newest sits on top, matching how the add button reads. CSS `color` takes one
+    // value, so the stack is flattened here with source-over alpha compositing and the result is
+    // what the block's style variable receives.
+    //
+    // Both shapes are stored: `layers` is the editable stack (so reopening a block restores every
+    // layer, not just the flattened result) and the scalar path is the composited colour the
+    // renderer already knows how to sanitize. Nothing in the engine had to change for this.
+    function hbParseColour(value) {
+        const raw = String(value || '').trim().replace(/^#/, '');
+        const full = raw.length === 3 ? raw.split('').map((c) => c + c).join('') : raw;
+        if (!/^[0-9a-f]{6}$/i.test(full)) return null;
+        return [parseInt(full.slice(0, 2), 16), parseInt(full.slice(2, 4), 16), parseInt(full.slice(4, 6), 16)];
+    }
+
+    function hbCompositeLayers(layers) {
+        let out = null;
+        layers.forEach((layer) => {
+            const rgb = hbParseColour(layer.color);
+            if (!rgb) return;
+            let a = Number(layer.opacity);
+            a = Number.isFinite(a) ? Math.max(0, Math.min(100, a)) / 100 : 1;
+            if (!out) { out = { r: rgb[0], g: rgb[1], b: rgb[2], a }; return; }
+            // source-over: this layer paints ON TOP of everything beneath it.
+            const outA = a + out.a * (1 - a);
+            if (outA === 0) { out = { r: 0, g: 0, b: 0, a: 0 }; return; }
+            out = {
+                r: Math.round((rgb[0] * a + out.r * out.a * (1 - a)) / outA),
+                g: Math.round((rgb[1] * a + out.g * out.a * (1 - a)) / outA),
+                b: Math.round((rgb[2] * a + out.b * out.a * (1 - a)) / outA),
+                a: outA,
+            };
+        });
+        if (!out) return '';
+        const hex = (n) => n.toString(16).padStart(2, '0');
+        // Opaque results stay hex — shorter, and what a user expects to see round-tripped.
+        return out.a >= 1 ? `#${hex(out.r)}${hex(out.g)}${hex(out.b)}`
+            : `rgba(${out.r}, ${out.g}, ${out.b}, ${Math.round(out.a * 1000) / 1000})`;
+    }
+
+    function hbReadLayers(list) {
+        return Array.from(list?.querySelectorAll('.hb-colorlayer') || []).map((row) => ({
+            color: row.querySelector('.hb-colorlayer__hex')?.value || '',
+            opacity: row.querySelector('[data-hb-style-layer-opacity]')?.value ?? '100',
+        })).filter((layer) => layer.color !== '');
+    }
+
+    // `fill` -> the block's own colour; `stroke` -> its border colour.
+    const HB_LAYER_PATHS = { fill: 'color.text', stroke: 'border.color' };
+
+    function hbCommitLayers(root, group) {
+        if (!window.hbEditor) return;
+        const id = window.hbEditor.getSelectedId();
+        const path = HB_LAYER_PATHS[group];
+        if (!id || !path) return;
+        const list = root.querySelector(`[data-hb-style-layer-list="${group}"]`);
+        const layers = hbReadLayers(list);
+        window.hbEditor.setSupport(id, hbStatePath(root, path), hbCompositeLayers(layers));
+        // Sibling of the scalar, so the stack survives a reload while the renderer keeps reading
+        // the flattened value it already understands.
+        window.hbEditor.setSupport(id, hbStatePath(root, path.split('.')[0] + '.layers'), layers);
+    }
+
+    function hbLayerGroupOf(el) {
+        const list = el.closest('[data-hb-style-layer-list]');
+        return list ? list.getAttribute('data-hb-style-layer-list') : null;
+    }
+
+    // Any edit inside a layer row re-flattens its whole stack: a colour, an opacity, a removal,
+    // or a token binding all change the composite, not just their own row.
+    ['input', 'change'].forEach((type) => document.addEventListener(type, (event) => {
+        const row = event.target.closest('.hb-colorlayer');
+        if (!row) return;
+        const root = mountedStyleRoot(row);
+        const group = hbLayerGroupOf(row);
+        if (root && group) hbCommitLayers(root, group);
+    }));
+
     // ── Effects: compose one box-shadow from the editor's five fields (TODO 7.1) ──────
     // The model holds the composed CSS string, not five separate paths — that is the shape
     // BlockRenderer's `shadow` sanitizer validates (optional inset, 2-4 signed lengths, exactly
@@ -1957,7 +2036,10 @@
                 root.__hbStyleActiveColorLayer = null;
                 closeStylePopups(root);
             }
+            // Read the group BEFORE detaching — afterwards the row has no list to belong to.
+            const group = removed ? hbLayerGroupOf(removed) : null;
             removed?.remove();
+            if (group) hbCommitLayers(root, group);
             return;
         }
 
@@ -1969,6 +2051,8 @@
             if (list && template?.content) {
                 list.append(template.content.cloneNode(true));
                 document.dispatchEvent(new Event('hb:refresh'));
+                // A new layer changes the composite immediately, not only once it is edited.
+                hbCommitLayers(root, add.dataset.hbStyleAdd);
             }
             return;
         }

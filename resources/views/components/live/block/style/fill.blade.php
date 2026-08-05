@@ -5,9 +5,17 @@
             @include('heisenberg::components.ui.icon', ['name' => 'plus', 'size' => 16])
         </button>
     </x-slot:action>
+    {{-- The list is a STACK: layers paint bottom-up in DOM order, so the newest sits on top.
+         inspector.blade.php flattens it with source-over alpha compositing and writes the result
+         to supports.color.text (the block's own colour), keeping the raw stack alongside it at
+         supports.color.layers so reopening the block restores every layer rather than just the
+         flattened colour.
+
+         No data-hb-control on the template: a per-row hook would make each layer overwrite the
+         same scalar path, so the last row would win and stacking could never work. The stack
+         owns the write. --}}
     <div data-hb-style-layer-list="fill"></div>
     <template data-hb-style-layer-template="fill">
-        <x-live.block.color-layer color="#000000" opacity="100"
-            data-hb-control="color.text" data-hb-control-kind="supports" data-hb-control-type="text" />
+        <x-live.block.color-layer color="#000000" opacity="100" />
     </template>
 </x-ui.panel-section>

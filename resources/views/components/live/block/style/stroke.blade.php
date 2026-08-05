@@ -5,10 +5,11 @@
             @include('heisenberg::components.ui.icon', ['name' => 'plus', 'size' => 16])
         </button>
     </x-slot:action>
+    {{-- Same stack semantics as Fill (see style/fill.blade.php) — composited into
+         supports.border.color, with the raw stack kept at supports.border.layers. --}}
     <div data-hb-style-layer-list="stroke"></div>
     <template data-hb-style-layer-template="stroke">
-        <x-live.block.color-layer color="#000000" opacity="100"
-            data-hb-control="border.color" data-hb-control-kind="supports" data-hb-control-type="text" />
+        <x-live.block.color-layer color="#000000" opacity="100" />
     </template>
     <div class="hb-irow hb-style-stroke__metrics">
         <div class="hb-icol hb-style-stroke__position">

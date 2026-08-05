@@ -93,6 +93,8 @@ return [
         'post_discussion' => 'Discussion',
         'post_allow_comments' => 'Autoriser les commentaires',
         'post_page_layout' => 'Mise en page',
+        'layer_opacity' => 'Opacité du calque',
+        'pick_colour' => 'Choisir une couleur',
         'bind_theme_variable' => 'Lier à une variable de thème',
         'post_layout_padding_x' => 'X Padding',
         'post_layout_padding_y' => 'Y Padding',

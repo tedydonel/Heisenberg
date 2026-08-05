@@ -296,7 +296,10 @@ class EditorRendersTest extends TestCase
         $this->assertStringContainsString('data-hb-control="typography.fontFamily" data-hb-control-kind="supports" data-hb-control-type="combobox"', $html);
         $this->assertStringContainsString('data-hb-control="size.width" data-hb-control-kind="supports" data-hb-control-type="text"', $html);
         $this->assertStringContainsString('data-hb-control="spacing.padding.top" data-hb-control-kind="supports" data-hb-control-type="text"', $html);
-        $this->assertStringContainsString('data-hb-control="color.text" data-hb-control-kind="supports" data-hb-control-type="text"', $html);
+        // NOT color.text: Fill is a layer STACK, and a per-row hook would make every layer
+        // overwrite the same scalar so the last row always won. The stack composites and writes
+        // once — see style/fill.blade.php.
+        $this->assertStringContainsString('data-hb-style-layer-list="fill"', $html);
     }
 
     public function test_advanced_panel_controls_carry_attribute_binding_hooks(): void
