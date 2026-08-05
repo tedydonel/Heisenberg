@@ -286,11 +286,17 @@ class SupportsCapabilityFixtureTest extends TestCase
         // opt in, or every capability the sheet implements — opacity, letter-spacing,
         // text-align — stays unreachable no matter what the contract declares.
         //
-        // The structural half of the guard still stands. `hb-flex-layout` and the `hb-size-*`
-        // markers flip `display`/`width`/`height` outright and are container concerns; a text
-        // block must not carry them.
+        // The container half of the guard still stands: `hb-flex-layout` flips `display` to lay
+        // out CHILDREN, so it is meaningless on a block whose innerBlocks are disabled and must
+        // never appear on one — in style.className (unconditional) or style.classNames
+        // (conditional).
+        //
+        // The `hb-size-*` markers are NOT forbidden any more. They were, while every marker was
+        // unreachable by design; they now appear as conditional classNames driven by per-instance
+        // boolean attributes (fillWidth/hugWidth/clipContent — TODO 7.1), which is how a
+        // width:100% paragraph is expressed. They are opt-in per block instance, never blanket.
         $registry = new BlockRegistryService(new BlockContractValidator('heisenberg'));
-        $structural = ['hb-flex-layout', 'hb-size-fill-w', 'hb-size-fill-h', 'hb-size-hug-w', 'hb-size-hug-h', 'hb-size-clip'];
+        $structural = ['hb-flex-layout'];
 
         foreach ([
             'heisenberg/paragraph', 'heisenberg/heading',
@@ -310,6 +316,14 @@ class SupportsCapabilityFixtureTest extends TestCase
             foreach ($structural as $marker) {
                 $this->assertStringNotContainsString($marker, $classNames, "{$name} must not carry {$marker} in style.className");
                 $this->assertNotContains($marker, $conditionalClasses, "{$name} must not carry {$marker} in style.classNames");
+            }
+
+            // The size markers must stay CONDITIONAL — bound to an attribute predicate, never
+            // added unconditionally to style.className, which would make every instance of the
+            // block full-width or clipped.
+            foreach (['hb-size-fill-w', 'hb-size-hug-w', 'hb-size-clip'] as $marker) {
+                $this->assertStringNotContainsString($marker, $classNames, "{$marker} must be conditional, not blanket");
+                $this->assertContains($marker, $conditionalClasses, "{$marker} should be a classNames binding");
             }
         }
     }

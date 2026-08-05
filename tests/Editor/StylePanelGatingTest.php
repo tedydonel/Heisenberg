@@ -487,7 +487,10 @@ class StylePanelGatingTest extends TestCase
             $html,
         );
         $this->assertStringContainsString('data-hb-control-on="absolute"', $html);
-        $this->assertStringContainsString("? (el.getAttribute('data-hb-control-on') ?? 'true')", $html);
+        $this->assertStringContainsString(
+            "raw = (on === null && off === null) ? checked : (checked ? (on ?? 'true') : (off ?? ''));",
+            $html,
+        );
 
         // Off writes '' so the variable falls back to SupportsStyle's own default rather than
         // pinning an explicit `static` the user never chose.
@@ -536,6 +539,106 @@ class StylePanelGatingTest extends TestCase
         // render disagree.
         $this->assertStringContainsString("'  --hb-t-' + token.name + ': ' + token.value + ';'", $html);
         $this->assertStringContainsString("', sans-serif;'", $html);
+    }
+
+    public function test_fill_hug_clip_reach_the_rendered_block_as_classes(): void
+    {
+        $renderer = app(\Heisenberg\Services\BlockRenderer::class);
+
+        // These could NOT be supports. They are class-based capabilities in SupportsStyle —
+        // `hb-size-fill-w` sets width:100%, which a bare custom property cannot express — and
+        // classes come from style.classNames, whose predicates BlockRenderer::predicateMatches()
+        // resolves against `attributes` only, never `supports`. So an attribute is the only shape
+        // that reaches the class. This proves the whole route, not just that hooks exist.
+        $on = $renderer->renderBlock([
+            'id' => 'sz1',
+            'name' => 'heisenberg/paragraph',
+            'attributes' => ['content' => 'x', 'fillWidth' => true, 'clipContent' => true],
+            'supports' => [],
+            'innerBlocks' => [],
+        ], 'en');
+
+        $this->assertStringContainsString('hb-size-fill-w', $on);
+        $this->assertStringContainsString('hb-size-clip', $on);
+        // SupportsStyle's rules are `[data-block-id].hb-supports.hb-size-*`, so the opt-in class
+        // must be present too or the markers select nothing.
+        $this->assertStringContainsString('hb-supports', $on);
+        $this->assertStringContainsString('data-block-id="sz1"', $on);
+
+        // Unset means absent, not merely inert.
+        $off = $renderer->renderBlock([
+            'id' => 'sz2',
+            'name' => 'heisenberg/paragraph',
+            'attributes' => ['content' => 'x'],
+            'supports' => [],
+            'innerBlocks' => [],
+        ], 'en');
+
+        foreach (['hb-size-fill-w', 'hb-size-fill-h', 'hb-size-hug-w', 'hb-size-hug-h', 'hb-size-clip'] as $marker) {
+            $this->assertStringNotContainsString($marker, $off);
+        }
+    }
+
+    public function test_a_boolean_checkbox_writes_a_real_boolean_not_a_string(): void
+    {
+        $html = $this->editorHtml();
+
+        // classNames predicates compare with ===, so the string 'true' would never match and the
+        // class would never appear. The checkbox type only stringifies when on/off are declared.
+        $this->assertStringContainsString(
+            "raw = (on === null && off === null) ? checked : (checked ? (on ?? 'true') : (off ?? ''));",
+            $html,
+        );
+        $this->assertMatchesRegularExpression(
+            '/data-hb-control="fillWidth"[^>]*data-hb-control-kind="attributes"[^>]*data-hb-control-type="checkbox"/',
+            $html,
+        );
+        // No on/off attributes on the size boxes — that is what selects boolean mode.
+        $this->assertDoesNotMatchRegularExpression(
+            '/data-hb-control="fillWidth"[^>]*data-hb-control-on=/',
+            $html,
+        );
+    }
+
+    public function test_no_inert_control_renders_in_the_style_panel(): void
+    {
+        $html = $this->editorHtml();
+
+        // The completion criterion for TODO 7.1: a control that renders must write somewhere.
+        // Every remaining unhooked element in style/*.blade.php is either chrome (panel-section,
+        // icon) or a deliberate AGGREGATE — spacing's "all sides"/axis fields and Appearance's
+        // "all corners" field hold no model path of their own and commit through their group
+        // (§4.3). What must not appear is a control that looks editable and writes nothing.
+        //
+        // These are the known inert ones. They live in sections gated off for text blocks —
+        // Stroke and Appearance's corners need `border` (7.2); the Flex Layout grid needs a
+        // container (7.1) — so none of them should reach the page.
+        //
+        // Scripts are stripped first: the handlers for these controls still exist and reference
+        // the same markers as SELECTOR STRINGS. Matching raw HTML finds those and reports a
+        // rendered control that is not there.
+        $markup = preg_replace('#<script\b[^>]*>.*?</script>#is', '', $html);
+
+        $inert = [
+            'hb-agrid' => 'Flex Layout 3x3 alignment grid',
+            'hb-iradio' => 'Flex Layout space-between/around radios',
+            'stroke-sides' => 'Stroke per-side width fields',
+            'hb-style-stroke__position' => 'Stroke position select',
+            'appearance-corners' => 'Appearance corner-radius fields',
+        ];
+
+        foreach ($inert as $marker => $what) {
+            $this->assertStringNotContainsString(
+                $marker,
+                $markup,
+                "{$what} renders but writes nothing — it should be gated off or wired",
+            );
+        }
+
+        // Guard the guard: stripping must not have removed the panel itself, or this passes
+        // vacuously.
+        $this->assertStringContainsString('hb-blockstyle', $markup);
+        $this->assertStringContainsString('<span class="hb-section__title">Typography</span>', $markup);
     }
 
     public function test_state_section_is_never_contract_gated(): void

@@ -16,9 +16,9 @@ Iterative checklist. Tick items as they land — this file is the *plan*.
 | 4 — Footer + editor UI language | ✅ done (en/fr at 195/195 key parity) |
 | 5 — Client test platform | ⬜ not started |
 | 6 — Audit debt | ⬜ mostly open, but 6.1/6.2/6.6 landed 2026-08-02, 6.7 landed 2026-08-03 (see below) |
-| 7 — Inspector functional; contracts catch up to the UI | 🟡 7.2–7.8 done; 7.1 mostly done (remaining groups blocked on unwired controls, listed inline); 7.9 deferred by instruction |
+| 7 — Inspector functional; contracts catch up to the UI | ✅ 7.1–7.8 done; 7.9 deferred by instruction until more block contracts exist |
 
-Suite: **530 tests, 2249 assertions, green.**
+Suite: **533 tests, 2260 assertions, green.**
 
 **2026-08-05 — repository reset.** The GitHub repo was deleted and recreated to remove AI
 co-author attribution that could not be stripped any other way (a closed PR's `refs/pull/1/head`
@@ -448,27 +448,29 @@ install/DX bugs nothing in this repo can catch.
 > Verbatim quotes below are marked. Anything not quoted and not obviously mechanical is flagged
 > **[interpretation]** — do not treat those as instructions received.
 
-- [~] **7.1 Contracts declare what the UI offers** — largely landed 2026-08-05.
-  Declared, each only once its controls actually wrote something: `typography.textAlign`/
-  `textAlignVertical`/`letterSpacing`, `appearance.opacity`, `position.x`/`y`/`rotation`, and
-  `effects.shadow` (the effect editor's five fields now compose one box-shadow string, which is
-  the shape BlockRenderer's `shadow` sanitizer validates and the only thing CSS consumes).
-  Plus the `hb-supports` opt-in and `SupportsStyle::css()` prepended by `BlockViewData::blocksCss()`
-  — nothing loaded it before, so the whole sheet was unreachable regardless of what was declared.
-  **The rule applied throughout: wire the control first, then declare the group.** Declaring a
+- [x] **7.1 Contracts declare what the UI offers** — done 2026-08-05.
+  Held to one rule throughout: **wire the control first, then declare the group.** Declaring a
   group whose section writes nothing just recreates the defect this phase exists to remove.
-  **Remaining, and it is a STRUCTURAL blocker rather than unfinished wiring:** the Dimensions
-  fill/hug/clip checkboxes and the flex-container marker are CLASS-based capabilities in
-  `SupportsStyle` (`hb-size-fill-w`, `hb-size-clip`, `hb-flex-layout`), not variable-based —
-  a bare custom property cannot flip `display`/`width`. Classes come from
-  `style.classNames`, whose predicates `BlockRenderer::predicateMatches()` resolves against
-  **`attributes` only**, never `supports`. So these cannot be expressed as supports at all today.
-  Two ways forward, neither guessed at here:
-    (a) declare them as attributes (e.g. `fillWidth`, `clipContent`) with `classNames` predicates —
-        works with the engine as-is, and `dropCap` is existing precedent for a style-ish boolean
-        living in attributes;
-    (b) teach `predicateMatches()` to read `supports.` sources — cleaner model, engine change.
-  Also still open: Stroke's join/cap selects, moot while text has no `border` (7.2).
+  Landed: `typography.textAlign`/`textAlignVertical`/`letterSpacing`, `appearance.opacity`,
+  `position.x`/`y`/`rotation`/`mode`, `effects.shadow`, `align` (the Alignment bar), and
+  fill/hug/clip. Plus the `hb-supports` opt-in and `SupportsStyle::css()` prepended by
+  `BlockViewData::blocksCss()` — nothing loaded it before, so the sheet was unreachable no matter
+  what a contract declared.
+  **fill/hug/clip are ATTRIBUTES, not supports, and that is not a shortcut.** They are class-based
+  capabilities (`hb-size-fill-w` sets width:100%; a bare custom property cannot flip width or
+  display). Classes come from `style.classNames`, whose predicates
+  `BlockRenderer::predicateMatches()` resolves against **`attributes` only, never `supports`** —
+  so an attribute is the only shape that reaches the class. `dropCap` is the existing precedent.
+  Option (b), teaching `predicateMatches()` to read `supports.`, remains open as a cleaner model
+  if the engine is ever revisited.
+  *Completion criterion, now pinned by a test:* no control renders in Block.style that writes
+  nowhere. What remains unhooked is chrome (`panel-section`, `icon`) or a deliberate aggregate
+  (spacing's all-sides/axis fields, Appearance's all-corners) that commits through its group.
+  The genuinely inert controls — Stroke's join/cap, the Flex Layout grid — sit in sections gated
+  off for text blocks and reach no page.
+  **Not declared, deliberately:** `layout`. Flex Layout requires `innerBlocks.enabled` as well,
+  since a flex container lays out children and the control is incoherent on a block that cannot
+  have any. It appears automatically for a real container contract.
 
 - [x] **7.2 Text blocks must NOT support Stroke or border-radius** — done 2026-08-05.
   Quote: *"text cant have things like borders which is offered by the stroke section or border

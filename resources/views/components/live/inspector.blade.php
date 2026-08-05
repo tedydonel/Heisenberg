@@ -1075,12 +1075,14 @@
                 if (input) input.checked = !!value;
                 return;
             }
-            // ui/checkbox maps a boolean control onto a NON-boolean model value (e.g. the
-            // Absolute Position box writes 'absolute' or ''), so "checked" is defined as
-            // matching data-hb-control-on rather than plain truthiness.
+            // ui/checkbox drives two different model shapes. With data-hb-control-on it maps onto
+            // a NON-boolean value (the Absolute Position box writes 'absolute' or ''), so
+            // "checked" means equalling that string. Without it the model value is a plain
+            // boolean attribute (fill/hug/clip), so truthiness is the right test.
             if (type === 'checkbox') {
                 const input = el.querySelector('.hb-checkbox__input');
-                if (input) input.checked = String(value ?? '') === (el.getAttribute('data-hb-control-on') ?? 'true');
+                const on = el.getAttribute('data-hb-control-on');
+                if (input) input.checked = on === null ? !!value : String(value ?? '') === on;
                 return;
             }
             if (type === 'select') {
@@ -1225,12 +1227,14 @@
             raw = !!(input && input.checked);
         } else if (type === 'checkbox') {
             if (!isChange) return; // same input+change pairing as toggle
-            const input = el.querySelector('.hb-checkbox__input');
-            // Writes the configured on/off strings, not a boolean: the model value is a CSS
-            // keyword the sanitizer has to accept (`position-mode` etc.), and `false` is not one.
-            raw = input && input.checked
-                ? (el.getAttribute('data-hb-control-on') ?? 'true')
-                : (el.getAttribute('data-hb-control-off') ?? '');
+            const checked = !!el.querySelector('.hb-checkbox__input')?.checked;
+            const on = el.getAttribute('data-hb-control-on');
+            const off = el.getAttribute('data-hb-control-off');
+            // With on/off declared, write those strings — the model value is a CSS keyword the
+            // sanitizer has to accept (`position-mode` etc.) and `false` is not one. Without
+            // them it is a plain boolean attribute, and classNames predicates compare with
+            // ===, so an actual boolean is required rather than 'true'.
+            raw = (on === null && off === null) ? checked : (checked ? (on ?? 'true') : (off ?? ''));
         } else if (type === 'select') {
             if (event.target !== el) return; // the select's own custom 'change', dispatched on its root
             raw = el.dataset.value;
