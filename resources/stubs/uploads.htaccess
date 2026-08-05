@@ -1,0 +1,56 @@
+# Heisenberg media library — Apache hardening stub for storage/uploads
+# (and, once symlinked, public/uploads).
+#
+# docs/media-library-backend-blueprint.md — "Web-server hardening" section.
+#
+# Public media is served by the web server directly, with ZERO PHP in the
+# read path (blueprint §1, §12). Content-based MIME validation (Laravel's
+# `mimes:` rule) checks file *content*, not just the extension — but an
+# "image polyglot" (a file that is simultaneously a valid JPEG/GIF/PNG AND a
+# valid PHP script) can still pass that check. If this directory is ever
+# configured to execute PHP, uploading such a polyglot is a direct path to
+# remote code execution. This file's only job is to make that impossible:
+# script execution is disabled for every file under this directory, no
+# matter its name or extension.
+#
+# HOW TO USE:
+#   Copy this file to the ROOT of the `uploads` disk on the host, i.e.:
+#     storage/uploads/.htaccess     (and/or)
+#     public/uploads/.htaccess      (if serving through a copy rather than
+#                                     the storage:link symlink)
+#   This package does NOT copy it there automatically — see the doc section
+#   above for why (a package must not silently drop dotfiles into a host's
+#   public tree).
+#
+# Requires mod_php or PHP-FPM handled via a <FilesMatch>/AddHandler — pick
+# the block that matches how PHP is wired on the host. Both are included;
+# harmless if the other one doesn't apply.
+
+# --- mod_php (Apache running PHP as a module) ------------------------------
+<IfModule mod_php.c>
+    php_flag engine off
+</IfModule>
+<IfModule mod_php7.c>
+    php_flag engine off
+</IfModule>
+<IfModule mod_php8.c>
+    php_flag engine off
+</IfModule>
+
+# --- Handler-based PHP (mod_fcgid, PHP-FPM via handler, etc.) --------------
+<IfModule mod_mime.c>
+    RemoveHandler .php .php3 .php4 .php5 .php7 .phtml .pht
+    RemoveType .php .php3 .php4 .php5 .php7 .phtml .pht
+</IfModule>
+
+# Belt-and-suspenders: refuse to even serve these extensions from here,
+# regardless of how the server would otherwise have handled them.
+<FilesMatch "\.(php|php3|php4|php5|php7|phtml|pht|phar|cgi|pl|py|asp|aspx|jsp|sh)$">
+    <IfModule mod_authz_core.c>
+        Require all denied
+    </IfModule>
+    <IfModule !mod_authz_core.c>
+        Order allow,deny
+        Deny from all
+    </IfModule>
+</FilesMatch>

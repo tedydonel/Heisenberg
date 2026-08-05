@@ -1,0 +1,15 @@
+providers:
+  - Heisenberg\HeisenbergServiceProvider
+  - Livewire\LivewireServiceProvider
+
+env:
+  - APP_KEY="base64:aGhoaGhoaGhoaGhoaGhoaGhoaGhoaGhoaGhoaGhoaGg="
+  - DB_CONNECTION=sqlite
+  # A persistent file (not :memory:) so the dev server keeps media rows across
+  # requests — the Livewire media library needs real, surviving data to page.
+  # Run `php vendor/bin/testbench migrate --seed` once to build + seed it.
+  - DB_DATABASE=database/testbench.sqlite
+  # File sessions: CSRF verification and the preview-doc handoff need
+  # session state that survives between dev-server requests.
+  - SESSION_DRIVER=file
+  - CACHE_STORE=array

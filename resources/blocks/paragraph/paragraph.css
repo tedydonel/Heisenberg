@@ -1,0 +1,52 @@
+.hb-block-paragraph {
+    transition: color 140ms ease, background-color 140ms ease, border-color 140ms ease, box-shadow 140ms ease, transform 140ms ease;
+    color: var(--hb-paragraph-color);
+    background: var(--hb-paragraph-bg);
+    font-family: var(--hb-paragraph-ff, inherit);
+    font-weight: var(--hb-paragraph-fw, inherit);
+    font-size: var(--hb-paragraph-fs);
+    width: var(--hb-paragraph-w, auto);
+    height: var(--hb-paragraph-h, auto);
+    min-width: var(--hb-paragraph-minw, 0);
+    min-height: var(--hb-paragraph-minh, 0);
+    max-width: var(--hb-paragraph-maxw, none);
+    max-height: var(--hb-paragraph-maxh, none);
+    margin: var(--hb-paragraph-mt, 6px) var(--hb-paragraph-mr, 0) var(--hb-paragraph-mb, 6px) var(--hb-paragraph-ml, 0);
+    padding: var(--hb-paragraph-pt, 0) var(--hb-paragraph-pr, 0) var(--hb-paragraph-pb, 0) var(--hb-paragraph-pl, 0);
+    border-style: var(--hb-paragraph-bs, none);
+    border-width: var(--hb-paragraph-bw, 0);
+    border-color: var(--hb-paragraph-bc, transparent);
+    border-radius: var(--hb-paragraph-rtl, 0) var(--hb-paragraph-rtr, 0) var(--hb-paragraph-rbr, 0) var(--hb-paragraph-rbl, 0);
+}
+
+.hb-block-paragraph.has-drop-cap::first-letter {
+    float: left;
+    font-size: 3.2em;
+    line-height: 0.65;
+    padding: 0.1em 0.12em 0 0;
+}
+
+/* Device visibility — six breakpoint bands (Bootstrap-style ranges).
+   Published output hides the block for every enabled band. */
+@media (max-width: 575.98px) { .hb-block-paragraph.hb-hide-xs { display: none; } }
+@media (min-width: 576px) and (max-width: 767.98px) { .hb-block-paragraph.hb-hide-sm { display: none; } }
+@media (min-width: 768px) and (max-width: 991.98px) { .hb-block-paragraph.hb-hide-md { display: none; } }
+@media (min-width: 992px) and (max-width: 1199.98px) { .hb-block-paragraph.hb-hide-lg { display: none; } }
+@media (min-width: 1200px) and (max-width: 1399.98px) { .hb-block-paragraph.hb-hide-xl { display: none; } }
+@media (min-width: 1400px) { .hb-block-paragraph.hb-hide-xxl { display: none; } }
+
+/* Shared rich-text inline formats (toolbar: code / highlight). Scoped to
+   .hb-block so every text block picks them up; ships with the text CSS. */
+.hb-block code {
+    font-family: var(--font-mono, ui-monospace, monospace);
+    font-size: 0.88em;
+    background: var(--app-2, #f4f4f4);
+    padding: 1px 5px;
+    border-radius: 4px;
+}
+.hb-block mark {
+    background: var(--hl, #ffd166);
+    color: inherit;
+    padding: 0 2px;
+    border-radius: 2px;
+}

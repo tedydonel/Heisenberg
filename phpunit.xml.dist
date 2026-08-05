@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<phpunit xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:noNamespaceSchemaLocation="vendor/phpunit/phpunit/phpunit.xsd"
+         bootstrap="vendor/autoload.php"
+         colors="true"
+         cacheDirectory=".phpunit.cache"
+         failOnRisky="true"
+         failOnWarning="true">
+    <testsuites>
+        <testsuite name="Heisenberg Test Suite">
+            <directory>tests</directory>
+        </testsuite>
+    </testsuites>
+    <source>
+        <include>
+            <directory>src</directory>
+        </include>
+    </source>
+    <php>
+        <env name="APP_ENV" value="testing"/>
+        <!-- Default: in-memory SQLite, so `php vendor/bin/phpunit` passes on a
+             fresh checkout with no external services (§4.16 remediation — this
+             used to hard-pin MySQL, so BlockPersistenceTest errored in any
+             environment without a local server). The posts/blocks schema is
+             fully representable on SQLite (see TestCase::getEnvironmentSetUp()).
+             A host CI that wants MySQL coverage (blueprint Rule 11, for the
+             fuller future schema) copies this file to phpunit.xml (gitignored)
+             and overrides these four envs; BlockPersistenceTest skips gracefully
+             instead of erroring if that server isn't reachable. -->
+        <env name="DB_CONNECTION" value="sqlite"/>
+        <env name="DB_DATABASE" value=":memory:"/>
+    </php>
+</phpunit>

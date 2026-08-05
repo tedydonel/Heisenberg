@@ -1,0 +1,69 @@
+/* Block toolbar (Pencil Block Toolbar cPGss) — the floating action bar over a selected
+   block. Sits on --hb-editing; the white overlays/icons are toolbar mechanics (white on
+   the accent), the only non-token colours here, matching the .pen exactly. */
+.hb-tb { position: relative; display: inline-flex; align-items: center; gap: 4px; height: var(--hb-block-toolbar-h, 32px); padding: 0; background: var(--hb-editing, #3D68F5); font-family: var(--hb-font-sans, Rubik, sans-serif); }
+/* a popover anchored under a toolbar trigger (type switcher, etc.) */
+.hb-tb__pop { position: absolute; top: calc(100% + 6px); left: 0; z-index: 40; }
+.hb-tb__pop[hidden] { display: none; }
+/* every control fills the bar height (the .pen buttons/pills are height:fill_container) */
+.hb-tb__group { display: inline-flex; align-items: center; height: 100%; gap: 1px; }
+.hb-tb__group--handle { gap: 3px; padding: 0 2px; }
+.hb-tb__sep { width: 1px; height: 18px; flex: none; background: rgba(255, 255, 255, .24); }
+.hb-tb__btn { display: inline-flex; align-items: center; justify-content: center; width: 28px; height: 100%; padding: 0; border: 0; background: none; cursor: pointer; color: #fff; border-radius: 6px; }
+.hb-tb__btn:hover { background: rgba(255, 255, 255, .16); }
+.hb-tb__btn--on { background: rgba(255, 255, 255, .16); }
+.hb-tb__btn svg { width: 18px; height: 18px; }
+.hb-tb__btn--drag { width: 20px; }
+.hb-tb__btn--drag svg { width: 16px; height: 16px; }
+.hb-tb__cv { opacity: .8; flex: none; }
+/* filled pills (type switcher, AI) */
+.hb-tb__pill { display: inline-flex; align-items: center; gap: 6px; height: 100%; padding: 0 8px; border: 0; background: rgba(255, 255, 255, .12); color: #fff; border-radius: 6px; cursor: pointer; font-family: inherit; font-size: var(--hb-fs-sm, 12px); }
+.hb-tb__pill:hover { background: rgba(255, 255, 255, .2); }
+.hb-tb__pill svg { width: 14px; height: 14px; }
+.hb-tb__ai { display: inline-flex; align-items: center; gap: 5px; height: 100%; padding: 0 9px 0 8px; border: 0; background: rgba(255, 255, 255, .15); color: #fff; border-radius: 6px; cursor: pointer; font-family: inherit; font-size: var(--hb-fs-sm, 12px); font-weight: 600; }
+.hb-tb__ai:hover { background: rgba(255, 255, 255, .24); }
+.hb-tb__ai svg { width: 14px; height: 14px; }
+/* align: transparent button with a small trailing caret (.pen fill is transparent) */
+.hb-tb__align { display: inline-flex; align-items: center; gap: 3px; height: 100%; padding: 0 5px; border: 0; background: none; color: #fff; border-radius: 6px; cursor: pointer; }
+.hb-tb__align:hover { background: rgba(255, 255, 255, .16); }
+.hb-tb__align svg { width: 18px; height: 18px; }
+.hb-tb__align .hb-tb__cv svg { width: 10px; height: 10px; }
+/* text colour A + underline bar */
+.hb-tb__color { flex-direction: column; gap: 2px; }
+.hb-tb__color b { font-size: 13px; font-weight: 700; line-height: 1; color: #fff; }
+.hb-tb__color i { display: block; width: 14px; height: 3px; border-radius: 2px; background: var(--hb-tb-color, #FFD166); }
+/* the .pen toolbar + its controls are square — no border radius (declared last so it wins) */
+.hb-tb, .hb-tb__btn, .hb-tb__pill, .hb-tb__ai, .hb-tb__align { border-radius: 0; }
+
+/* block-type dropdown (type switcher) */
+.hb-typemenu { width: 220px; display: flex; flex-direction: column; overflow: hidden; }
+.hb-typemenu__search { display: flex; align-items: center; height: 34px; padding: 0 var(--hb-space-3, 12px); border-bottom: 1px solid var(--hb-border, #E4E4E4); }
+.hb-typemenu__search input { flex: 1 1 auto; min-width: 0; border: 0; outline: 0; background: none; font-family: inherit; font-size: var(--hb-fs-base, 13px); color: var(--hb-text-primary, #0A0A0A); }
+.hb-typemenu__search input::placeholder { color: var(--hb-text-muted, #9A9A9A); }
+.hb-typemenu__list { display: flex; flex-direction: column; gap: 1px; padding: 6px; max-height: 320px; overflow: auto; }
+.hb-typemenu__item { display: flex; align-items: center; gap: 10px; height: 32px; padding: 0 10px; border: 0; background: none; cursor: pointer; border-radius: 6px; text-align: left; }
+.hb-typemenu__item:hover, .hb-typemenu__item--on { background: var(--hb-bg-muted, #F4F4F4); }
+.hb-typemenu__item .ic { display: inline-flex; width: 18px; height: 18px; flex: none; color: var(--hb-text-secondary, #5A5A5A); }
+.hb-typemenu__item .lb { flex: 1 1 auto; min-width: 0; font-size: var(--hb-fs-base, 13px); color: var(--hb-text-primary, #0A0A0A); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.hb-typemenu__item .sc { font-size: var(--hb-fs-xs, 11px); color: var(--hb-text-muted, #9A9A9A); flex: none; }
+.hb-typemenu__item .ck { display: inline-flex; width: 14px; height: 14px; flex: none; color: transparent; }
+.hb-typemenu__item--on .ck { color: var(--hb-accent, #000); }
+.hb-typemenu__item[hidden] { display: none !important; }
+.hb-typemenu__item:disabled { cursor: default; }
+
+/* align popover — reuses the variable-menu's .hb-vmi row (32-pickers.css); only the icon slot
+   (a plain glyph, not a colour swatch) and the popover's own width are new here. */
+.hb-alignmenu { width: 160px; }
+.hb-vmi__ic { display: inline-flex; width: 16px; height: 16px; flex: none; color: var(--hb-text-secondary, #5A5A5A); }
+
+/* colour popover — swatches straight off config('heisenberg.tokens.color'); the row/swatch/check
+   styling is entirely the existing .hb-vmi pattern, so only the popover's own width is new. */
+.hb-colormenu { width: 200px; }
+
+/* link popover — built in script (no static container is authorized for this pass), positioned at
+   the current selection; shares the .hb-pop shell (32-pickers.css) for its bg/border/shadow. */
+.hb-tb-linkpop { position: fixed; z-index: 50; display: flex; align-items: center; gap: 6px; padding: 6px; width: 260px; }
+.hb-tb-linkpop input { flex: 1 1 auto; min-width: 0; height: 28px; padding: 0 8px; border: 1px solid var(--hb-border, #E4E4E4); border-radius: var(--hb-radius-md, 5px); background: var(--hb-bg, #fff); font-family: var(--hb-font-sans, Rubik, sans-serif); font-size: var(--hb-fs-sm, 12px); color: var(--hb-text-primary, #0A0A0A); }
+.hb-tb-linkpop input:focus { outline: none; border-color: var(--hb-border-focus, #000); }
+.hb-tb-linkpop button { flex: none; height: 28px; padding: 0 10px; border: 0; border-radius: var(--hb-radius-md, 5px); background: var(--hb-accent, #000); color: var(--hb-accent-fg, #fff); font-family: inherit; font-size: var(--hb-fs-sm, 12px); cursor: pointer; }
+.hb-tb-linkpop button:hover { background: var(--hb-accent-hover, #1A1A1A); }

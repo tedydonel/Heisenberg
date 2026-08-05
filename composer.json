@@ -1,0 +1,53 @@
+{
+    "name": "heisenberg/heisenberg",
+    "description": "A block-based content engine and bilingual blog backend for Laravel.",
+    "type": "library",
+    "license": "Apache-2.0",
+    "keywords": ["laravel", "blocks", "content-engine", "blog", "gutenberg", "cms", "bilingual"],
+    "require": {
+        "php": "^8.2",
+        "ezyang/htmlpurifier": "^4.17",
+        "illuminate/bus": "^11.0 || ^12.0",
+        "illuminate/database": "^11.0 || ^12.0",
+        "illuminate/http": "^11.0 || ^12.0",
+        "illuminate/support": "^11.0 || ^12.0",
+        "livewire/livewire": "^4.3"
+    },
+    "require-dev": {
+        "orchestra/testbench": "^9.0 || ^10.0",
+        "phpunit/phpunit": "^10.5 || ^11.0",
+        "intervention/image": "^3.9"
+    },
+    "suggest": {
+        "spatie/laravel-activitylog": "Wire the AuditSink to Spatie activitylog (optional).",
+        "spatie/laravel-permission": "If the host uses Spatie roles, the default RoleGate maps to it.",
+        "mallardduck/blade-lucide-icons": "Optional Lucide-backed IconProvider; the default provider serves the bundled Phosphor set (resources/icons/phosphor).",
+        "intervention/image": "Generate responsive image variants (small/medium) for the media library on upload; without it, uploads still work but ship no variants."
+    },
+    "autoload": {
+        "psr-4": {
+            "Heisenberg\\": "src/"
+        }
+    },
+    "autoload-dev": {
+        "psr-4": {
+            "Heisenberg\\Tests\\": "tests/"
+        }
+    },
+    "extra": {
+        "laravel": {
+            "providers": [
+                "Heisenberg\\HeisenbergServiceProvider"
+            ]
+        }
+    },
+    "scripts": {
+        "test": "phpunit"
+    },
+    "config": {
+        "sort-packages": true,
+        "preferred-install": "dist"
+    },
+    "minimum-stability": "stable",
+    "prefer-stable": true
+}

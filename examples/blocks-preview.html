@@ -1,0 +1,46 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Heisenberg — Block Palette</title>
+<style>
+  :root { --bg:#0d1117; --panel:#161b22; --line:#30363d; --txt:#e6edf3; --mut:#8b949e; --accent:#58a6ff; --ok:#3fb950; --bad:#f85149; }
+  * { box-sizing:border-box; }
+  body { margin:0; background:var(--bg); color:var(--txt); font:15px/1.5 -apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif; }
+  header { padding:32px 32px 16px; border-bottom:1px solid var(--line); }
+  header h1 { margin:0 0 6px; font-size:22px; }
+  header p { margin:0; color:var(--mut); max-width:70ch; }
+  .pills { margin-top:14px; display:flex; gap:8px; flex-wrap:wrap; }
+  .pill { font-size:12px; padding:3px 10px; border:1px solid var(--line); border-radius:999px; color:var(--mut); }
+  .pill code { color:var(--accent); }
+  .ok { color:var(--ok); } .bad { color:var(--bad); }
+  main { padding:24px 32px 64px; }
+  .cat { font-size:13px; text-transform:uppercase; letter-spacing:.08em; color:var(--mut); margin:28px 0 12px; }
+  .grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(240px,1fr)); gap:14px; }
+  .card { background:var(--panel); border:1px solid var(--line); border-radius:12px; padding:16px; transition:border-color .15s; }
+  .card:hover { border-color:var(--accent); }
+  .card__icon { display:inline-block; font-size:11px; font-family:ui-monospace,SFMono-Regular,Menlo,monospace; color:var(--accent); background:rgba(88,166,255,.1); border:1px solid rgba(88,166,255,.25); padding:2px 8px; border-radius:6px; }
+  .card__title { margin:12px 0 4px; font-size:16px; }
+  .card__name { display:block; font-size:12px; color:var(--mut); margin-bottom:10px; }
+  .card__meta { font-size:12px; color:var(--mut); }
+  .card__kw { font-size:11px; color:#6e7681; margin-top:8px; }
+  footer { padding:20px 32px; color:var(--mut); font-size:12px; border-top:1px solid var(--line); }
+</style>
+</head>
+<body>
+<header>
+  <h1>Heisenberg — Block Palette</h1>
+  <p>This is the current state of the block builder: the <strong>catalogue of block types</strong> the editor would offer in its inserter. There are no block <em>instances</em> yet (no rendered content) — the renderer lands later. Heisenberg ships the backend; the visual editor SPA is a host concern.</p>
+  <div class="pills">
+    <span class="pill"><strong>9</strong> block types</span>
+    <span class="pill"><span class="ok">0 errors</span></span>
+    <span class="pill">hash <code>sha256:2f6c722826834e90c1e07321ed0003124948a37222039b35f905c13508a71aee</code></span>
+  </div>
+</header>
+<main>
+<section><h2 class="cat">design</h2><div class="grid"><article class="card"><div class="card__icon" title="Lucide: mouse-pointer-click">mouse-pointer-click</div><h3 class="card__title">Button</h3><code class="card__name">heisenberg/button</code><div class="card__meta">10 attributes · supports: color, spacing, border, typography</div><div class="card__kw">button · cta · link · action</div></article><article class="card"><div class="card__icon" title="Lucide: send">send</div><h3 class="card__title">Cta</h3><code class="card__name">heisenberg/cta</code><div class="card__meta">7 attributes · supports: color, spacing, border, typography</div><div class="card__kw">cta · call to action · banner · button</div></article><article class="card"><div class="card__icon" title="Lucide: bookmark">bookmark</div><h3 class="card__title">Section Head</h3><code class="card__name">heisenberg/section-head</code><div class="card__meta">3 attributes · supports: color, typography, spacing, border</div><div class="card__kw">section · heading · label · divider</div></article><article class="card"><div class="card__icon" title="Lucide: minus">minus</div><h3 class="card__title">Separator</h3><code class="card__name">heisenberg/separator</code><div class="card__meta">5 attributes · supports: align, color, spacing</div><div class="card__kw">separator · divider · line · dots</div></article></div></section><section><h2 class="cat">media</h2><div class="grid"><article class="card"><div class="card__icon" title="Lucide: image">image</div><h3 class="card__title">Image</h3><code class="card__name">heisenberg/image</code><div class="card__meta">11 attributes · supports: align, spacing, border</div><div class="card__kw">image · photo · media · picture</div></article></div></section><section><h2 class="cat">text</h2><div class="grid"><article class="card"><div class="card__icon" title="Lucide: bookmark">bookmark</div><h3 class="card__title">Heading</h3><code class="card__name">heisenberg/heading</code><div class="card__meta">2 attributes · supports: align, color, typography, spacing</div><div class="card__kw">heading · title · text</div></article><article class="card"><div class="card__icon" title="Lucide: list">list</div><h3 class="card__title">List</h3><code class="card__name">heisenberg/list</code><div class="card__meta">5 attributes · supports: color, spacing, typography</div><div class="card__kw">list · bullets · numbered · checkmark</div></article><article class="card"><div class="card__icon" title="Lucide: pilcrow">pilcrow</div><h3 class="card__title">Paragraph</h3><code class="card__name">heisenberg/paragraph</code><div class="card__meta">1 attributes · supports: align, color, typography, spacing</div><div class="card__kw">paragraph · text · body</div></article><article class="card"><div class="card__icon" title="Lucide: quote">quote</div><h3 class="card__title">Quote</h3><code class="card__name">heisenberg/quote</code><div class="card__meta">3 attributes · supports: align, color, typography, spacing, border</div><div class="card__kw">quote · blockquote · citation</div></article></div></section>
+</main>
+<footer>Generated by <code>php examples/preview.php</code> from <code>resources/blocks/</code>. Regenerate any time the contracts change.</footer>
+</body>
+</html>

@@ -1,0 +1,32 @@
+/* Dark theme — scoped to .hb-editor--dark, re-declaring every token :root defines in tokens.css.
+   Not a blind invert: surfaces step up in lightness for elevation (bg < bg-subtle < bg-muted <
+   bg-inset, same relative order as light mode, just dark-anchored), status/brand colors are
+   brightened rather than reused as-is since the light-mode values were tuned for contrast against
+   white and read as muddy/low-contrast on a dark surface, and accent flips to a light neutral
+   because black-on-black (the light theme's accent) has no contrast in dark mode. */
+.hb-editor--dark {
+    --hb-accent: #F2F2F2;
+    --hb-accent-fg: #0A0A0A;
+    --hb-accent-hover: #D8D8D8;
+    --hb-bg: #121214;
+    --hb-bg-subtle: #19191C;
+    --hb-bg-muted: #202024;
+    --hb-bg-inset: #28282D;
+    --hb-surface: #19191C;
+    --hb-surface-hover: #232327;
+    --hb-surface-active: #2C2C31;
+    --hb-border: #303036;
+    --hb-border-strong: #46464E;
+    --hb-border-focus: #F2F2F2;
+    --hb-text-primary: #F2F2F3;
+    --hb-text-secondary: #A6A6AD;
+    --hb-text-muted: #75757D;
+    --hb-text-disabled: #4A4A51;
+    --hb-text-inverse: #0A0A0A;
+    --hb-danger: #FF6B6B;
+    --hb-danger-subtle: #2E1618;
+    --hb-success: #4ADE93;
+    --hb-success-soft: #123322;
+    --hb-editing: #6E8DFF;
+    --hb-editing-soft: #8AA1FF;
+}

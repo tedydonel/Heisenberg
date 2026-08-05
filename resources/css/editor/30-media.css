@@ -1,0 +1,27 @@
+/* Media Card (Pencil NVDCV + state variants) — shared so both the server-
+   rendered <x-live.media.media-card> and the client-side optimistic "uploading"
+   cards in the Livewire library reuse the exact same classes (no duplication).
+   Values taken 1:1 from the .pen nodes. */
+.hb-mediacard { display: flex; flex-direction: column; gap: var(--hb-space-2, 8px); width: 100%; border: 0; background: none; padding: 0; text-align: left; font-family: var(--hb-font-sans, Rubik, sans-serif); cursor: pointer; }
+.hb-mediacard__thumb { position: relative; width: 100%; height: 190px; overflow: hidden; border-radius: var(--hb-radius-md, 5px); background: var(--hb-bg-muted, #F4F4F4); border: 1px solid transparent; display: flex; align-items: center; justify-content: center; }
+.hb-mediacard__img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.hb-mediacard__icon { display: inline-flex; color: var(--hb-text-muted, #9A9A9A); }
+.hb-mediacard__badge { position: absolute; top: var(--hb-space-2, 8px); right: var(--hb-space-2, 8px); width: 24px; height: 24px; border-radius: 12px; display: none; align-items: center; justify-content: center; background: var(--hb-bg, #fff); border: 1px solid var(--hb-border-strong, #C8C8C8); color: transparent; }
+.hb-mediacard__name { font-size: var(--hb-fs-base, 13px); font-weight: 600; color: var(--hb-text-primary, #0A0A0A); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.hb-mediacard__meta { font-size: var(--hb-fs-sm, 12px); color: var(--hb-text-secondary, #5A5A5A); }
+.hb-mediacard__progress { display: flex; flex-direction: column; gap: var(--hb-space-1, 4px); }
+.hb-mediacard__track { position: relative; width: 100%; height: 4px; overflow: hidden; background: var(--hb-bg-inset, #EEEEEE); }
+.hb-mediacard__fill { position: absolute; left: 0; top: 0; height: 4px; background: var(--hb-success, #3BD186); border-radius: 0 3px 3px 0; transition: width .15s linear; }
+.hb-mediacard__status { font-size: var(--hb-fs-sm, 12px); color: var(--hb-text-secondary, #5A5A5A); }
+.hb-mediacard__statusrow { display: flex; align-items: center; justify-content: space-between; }
+.hb-mediacard__err { font-size: var(--hb-fs-sm, 12px); color: var(--hb-danger, #D4191A); }
+.hb-mediacard__retry { font-size: var(--hb-fs-sm, 12px); font-weight: 600; color: var(--hb-accent, #000); background: none; border: 0; padding: 0; cursor: pointer; }
+.hb-mediacard--selectable:hover .hb-mediacard__thumb, .hb-mediacard--hover .hb-mediacard__thumb { border-color: var(--hb-border-strong, #C8C8C8); }
+.hb-mediacard--selectable:hover .hb-mediacard__badge, .hb-mediacard--hover .hb-mediacard__badge { display: inline-flex; }
+.hb-mediacard--selected .hb-mediacard__thumb { border-color: var(--hb-border-focus, #000); }
+.hb-mediacard--selected .hb-mediacard__badge { display: inline-flex; background: var(--hb-accent, #000); border-color: var(--hb-accent, #000); color: var(--hb-accent-fg, #fff); }
+.hb-mediacard--selected .hb-mediacard__name { color: var(--hb-accent, #000); }
+.hb-mediacard--error .hb-mediacard__thumb { background: var(--hb-danger-subtle, #FEF2F2); }
+.hb-mediacard--error .hb-mediacard__icon { color: var(--hb-danger, #D4191A); }
+.hb-mediacard__spin { animation: hb-mediacard-spin 1s linear infinite; }
+@keyframes hb-mediacard-spin { to { transform: rotate(360deg); } }

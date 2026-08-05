@@ -1,0 +1,139 @@
+/* Block model — the document's living blocks on the paper sheet.
+   The per-block CSS (resources/blocks/<slug>/<slug>.css) is embedded by the
+   block-runtime component and styles the rendered `.hb-block-*` roots via a set
+   of design tokens (--ink, --accent-*, --fs-*, --space-*, …). Those tokens are
+   the builder's content palette, not the editor's --hb-* chrome tokens, so we
+   pin them here on the sheet itself. The sheet is a light paper in any theme
+   (see 34-canvas.css), so these stay light too — no dark variants. */
+.hb-page {
+    /* neutrals / surfaces (heisenberg.pen light values) */
+    --ink: #0a0a0a;
+    --ink-soft: #1a1a1a;
+    --slate: #5a5a5a;
+    --muted: #9a9a9a;
+    --faint: #9a9a9a;
+    --ghost: #c4c4c4;
+    --bg: #ffffff;
+    --paper: #ffffff;
+    --app: #eeeeee;
+    --app-2: #f4f4f4;
+    --subtle: #fafafa;
+    --surface-hover: #f7f7f7;
+    --line: #e4e4e4;
+    --line-strong: #c8c8c8;
+    --hl: #ffd166;
+
+    /* accent ramp — accent-1 is body ink (mirrors the builder's `--accent-1: var(--ink)`),
+       accent-3 the brand blue, 4/5 its tints; the rest fill the block palette. */
+    --accent-1: #0a0a0a;
+    --accent-2: #5a5a5a;
+    --accent-3: #3d68f5;
+    --accent-4: #eef2ff;
+    --accent-5: #c9d6ff;
+    --accent-6: #1a1a1a;
+    --accent-border: #e4e4e4;
+    --accent-muted: #9a9a9a;
+    --accent-surface: #f7f7f7;
+    --accent-danger: #d4191a;
+
+    /* type + space + radius scales */
+    --fs-sm: 13px;
+    --fs-md: 14px;
+    --fs-lg: 16px;
+    --fs-xl: 20px;
+    --text-xs: 12px;
+    --text-sm: 13px;
+    --text-md: 16px;
+    --text-lg: 18px;
+    --text-xl: 22px;
+    --text-2xl: 26px;
+    --text-3xl: 32px;
+    --text-4xl: 40px;
+    --sp-1: 4px;
+    --sp-2: 8px;
+    --sp-3: 16px;
+    --sp-4: 24px;
+    --space-1: 4px;
+    --space-2: 8px;
+    --space-3: 16px;
+    --space-4: 20px;
+    --space-5: 24px;
+    --space-6: 32px;
+    --radius-1: 6px;
+    --radius-2: 10px;
+    --r-xs: 2px;
+    --r-sm: 3px;
+    --r-md: 5px;
+    --r-lg: 8px;
+    --r-xl: 12px;
+    --font-sans: var(--hb-font-sans, Rubik, sans-serif);
+    --font-serif: Georgia, "Times New Roman", serif;
+    --font-mono: "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
+
+    /* Editing blue, pinned light for the same reason as everything above: the
+       selection ring and the block toolbar sit ON the white sheet, not on the
+       editor chrome, so they must NOT inherit the lightened dark-theme value
+       (--hb-editing: #6E8DFF, 02-dark-theme.css). That override is correct for
+       chrome, wrong here — it renders a washed-out blue on white paper. */
+    --hb-editing: #3d68f5;
+}
+
+/* Block wrapper — the selection target. Holds the rendered block root and,
+   while selected, the floating toolbar. */
+.hb-blk { position: relative; margin: 2px 0; border-radius: 0; }
+.hb-blk:hover:not(.is-selected) { box-shadow: 0 0 0 .6px var(--hb-border-strong, #C8C8C8); }
+.hb-blk.is-selected { box-shadow: 0 0 0 .6px var(--hb-editing, #3D68F5); }
+.hb-blk > .hb-block { outline: none; }
+
+/* Rich-text editables (.hb-ce) show a placeholder when empty. */
+.hb-ce:empty::before { content: attr(data-ph); color: var(--ghost, #C4C4C4); pointer-events: none; }
+.hb-ce { outline: none; }
+
+/* The floating block toolbar, docked above the selected block (mirrors the
+   builder's .btoolbar). The singleton lives in a hidden holder until a block
+   is selected, then it's moved in as the wrapper's first child. */
+.hb-blk-toolbar-holder { position: absolute; width: 0; height: 0; overflow: hidden; }
+.hb-blk > .hb-tb { position: absolute; top: calc(var(--hb-block-toolbar-h, 32px) * -1); left: 0; z-index: 30; }
+
+/* Per-selection gating: a group/button switched off for the selected block
+   (supports.color/align, rich-text) must actually hide — the .hb-tb__* rules
+   set display:inline-flex, which would otherwise beat the [hidden] attribute. */
+.hb-tb [hidden] { display: none; }
+
+/* Drag & drop reorder / insert (see block-runtime.blade.php: wireCanvasBlockDrag, wirePaletteDrag).
+   The dragged block dims in place — no ghost follows the cursor for a reorder, since there's an
+   existing element to dim; only the palette→canvas insert drag shows a floating chip below, because
+   there's no element on the canvas yet to represent it. A flat 2px line (no rounded pill, matching
+   the .6px selection ring language) shows where the drop will land. */
+.hb-blk.is-dragging { opacity: .4; }
+.hb-blk.is-drop-before::before,
+.hb-blk.is-drop-after::after {
+    content: ""; position: absolute; left: 0; right: 0; height: 2px;
+    background: var(--hb-editing, #3D68F5); pointer-events: none;
+}
+.hb-blk.is-drop-before::before { top: -2px; }
+.hb-blk.is-drop-after::after { bottom: -2px; }
+
+/* The floating chip that follows the pointer while dragging a Components card onto the canvas.
+   pointer-events: none is load-bearing — without it, elementFromPoint(pointerX, pointerY) would hit
+   the ghost itself (it's positioned exactly there) instead of the block/canvas underneath it. */
+.hb-drag-ghost {
+    position: fixed; top: 0; left: 0; z-index: 1000;
+    display: inline-flex; align-items: center; gap: 6px;
+    padding: 6px 10px;
+    background: var(--hb-bg, #fff);
+    border: 1px solid var(--hb-border-strong, #C8C8C8);
+    border-radius: var(--hb-radius-sm, 3px);
+    box-shadow: 0 6px 18px rgba(0, 0, 0, .18);
+    color: var(--hb-text-primary, #0A0A0A);
+    font-family: var(--hb-font-sans, Rubik, sans-serif);
+    font-size: 12px;
+    pointer-events: none;
+    transform: translate(14px, -50%);
+}
+.hb-drag-ghost .hb-icon, .hb-drag-ghost svg { width: 16px; height: 16px; flex: none; }
+
+/* Empty image block — a click-to-pick placeholder instead of a broken <img>. */
+.hb-blk .hb-img-empty { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 8px; min-height: 160px; width: 100%; border: 1px dashed var(--line-strong, #C8C8C8); border-radius: var(--r-md, 5px); background: var(--subtle, #FAFAFA); color: var(--muted, #9A9A9A); cursor: pointer; font-family: var(--hb-font-sans, Rubik, sans-serif); font-size: 13px; }
+.hb-blk .hb-img-empty:hover { border-color: var(--hb-editing, #3D68F5); color: var(--hb-editing, #3D68F5); }
+.hb-blk .hb-img-empty svg { width: 26px; height: 26px; opacity: .7; }

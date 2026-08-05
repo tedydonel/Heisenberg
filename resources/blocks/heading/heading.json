@@ -1,0 +1,440 @@
+{
+    "$schema": "../../../docs/block-schema.md",
+    "apiVersion": 1,
+    "name": "heisenberg/heading",
+    "title": "heisenberg::blocks.heading.title",
+    "category": "text",
+    "icon": "bookmark",
+    "description": "heisenberg::blocks.heading.description",
+    "keywords": [
+        "heading",
+        "title",
+        "text"
+    ],
+    "version": "1.0.0",
+    "attributes": {
+        "content": {
+            "type": "rich-text",
+            "default": "",
+            "sanitize": "rich-text-inline",
+            "control": {
+                "type": "textarea",
+                "section": "settings"
+            }
+        },
+        "level": {
+            "type": "integer",
+            "default": 2,
+            "enum": [
+                1,
+                2,
+                3,
+                4,
+                5,
+                6
+            ],
+            "control": {
+                "type": "select",
+                "section": "settings",
+                "inline": true,
+                "options": [
+                    {
+                        "value": 1,
+                        "label": "H1"
+                    },
+                    {
+                        "value": 2,
+                        "label": "H2"
+                    },
+                    {
+                        "value": 3,
+                        "label": "H3"
+                    },
+                    {
+                        "value": 4,
+                        "label": "H4"
+                    },
+                    {
+                        "value": 5,
+                        "label": "H5"
+                    },
+                    {
+                        "value": 6,
+                        "label": "H6"
+                    }
+                ]
+            }
+        },
+        "anchor": {
+            "type": "string",
+            "default": "",
+            "sanitize": "text",
+            "control": {
+                "type": "text",
+                "section": "general",
+                "half": true,
+                "placeholder": "unique-id"
+            }
+        },
+        "titleAttr": {
+            "type": "string",
+            "default": "",
+            "sanitize": "text",
+            "control": {
+                "type": "text",
+                "section": "general",
+                "half": true,
+                "placeholder": "Tooltip text"
+            }
+        },
+        "extraClasses": {
+            "type": "string",
+            "default": "",
+            "sanitize": "text",
+            "control": {
+                "type": "chips",
+                "section": "general",
+                "placeholder": "Add class…"
+            }
+        },
+        "hideXs": {
+            "type": "boolean",
+            "default": false,
+            "sanitize": "boolean",
+            "control": {
+                "type": "toggle",
+                "section": "visibility",
+                "half": true
+            }
+        },
+        "hideSm": {
+            "type": "boolean",
+            "default": false,
+            "sanitize": "boolean",
+            "control": {
+                "type": "toggle",
+                "section": "visibility",
+                "half": true
+            }
+        },
+        "hideMd": {
+            "type": "boolean",
+            "default": false,
+            "sanitize": "boolean",
+            "control": {
+                "type": "toggle",
+                "section": "visibility",
+                "half": true
+            }
+        },
+        "hideLg": {
+            "type": "boolean",
+            "default": false,
+            "sanitize": "boolean",
+            "control": {
+                "type": "toggle",
+                "section": "visibility",
+                "half": true
+            }
+        },
+        "hideXl": {
+            "type": "boolean",
+            "default": false,
+            "sanitize": "boolean",
+            "control": {
+                "type": "toggle",
+                "section": "visibility",
+                "half": true
+            }
+        },
+        "hideXxl": {
+            "type": "boolean",
+            "default": false,
+            "sanitize": "boolean",
+            "control": {
+                "type": "toggle",
+                "section": "visibility",
+                "half": true
+            }
+        }
+    },
+    "supports": {
+        "align": [
+            "left",
+            "center",
+            "right"
+        ],
+        "color": {
+            "text": true,
+            "background": true,
+            "custom": false
+        },
+        "typography": {
+            "fontFamily": true,
+            "fontWeight": true,
+            "fontSize": true,
+            "lineHeight": true
+        },
+        "size": {
+            "width": true,
+            "height": true,
+            "minWidth": true,
+            "minHeight": true,
+            "maxWidth": true,
+            "maxHeight": true
+        },
+        "spacing": {
+            "margin": {
+                "top": true,
+                "right": true,
+                "bottom": true,
+                "left": true
+            },
+            "padding": {
+                "top": true,
+                "right": true,
+                "bottom": true,
+                "left": true
+            }
+        },
+        "border": {
+            "style": true,
+            "width": true,
+            "color": true,
+            "radius": {
+                "topLeft": true,
+                "topRight": true,
+                "bottomLeft": true,
+                "bottomRight": true
+            }
+        },
+        "animation": true
+    },
+    "style": {
+        "css": "./heading.css",
+        "className": "hb-block-heading",
+        "classNames": [
+            {
+                "class": "hb-hide-xs",
+                "when": {
+                    "attribute": "hideXs",
+                    "equals": true
+                }
+            },
+            {
+                "class": "hb-hide-sm",
+                "when": {
+                    "attribute": "hideSm",
+                    "equals": true
+                }
+            },
+            {
+                "class": "hb-hide-md",
+                "when": {
+                    "attribute": "hideMd",
+                    "equals": true
+                }
+            },
+            {
+                "class": "hb-hide-lg",
+                "when": {
+                    "attribute": "hideLg",
+                    "equals": true
+                }
+            },
+            {
+                "class": "hb-hide-xl",
+                "when": {
+                    "attribute": "hideXl",
+                    "equals": true
+                }
+            },
+            {
+                "class": "hb-hide-xxl",
+                "when": {
+                    "attribute": "hideXxl",
+                    "equals": true
+                }
+            }
+        ],
+        "variables": {
+            "--hb-heading-color": {
+                "source": "supports.color.text",
+                "default": "var(--ink)",
+                "sanitize": "color-value"
+            },
+            "--hb-heading-bg": {
+                "source": "supports.color.background",
+                "default": "transparent",
+                "sanitize": "color-value"
+            },
+            "--hb-heading-ff": {
+                "source": "supports.typography.fontFamily",
+                "default": "",
+                "sanitize": "font-family"
+            },
+            "--hb-heading-fw": {
+                "source": "supports.typography.fontWeight",
+                "default": "",
+                "sanitize": "font-weight"
+            },
+            "--hb-heading-fs": {
+                "source": "supports.typography.fontSize",
+                "default": "",
+                "sanitize": "size-value"
+            },
+            "--hb-heading-w": {
+                "source": "supports.size.width",
+                "default": "",
+                "sanitize": "size-value"
+            },
+            "--hb-heading-h": {
+                "source": "supports.size.height",
+                "default": "",
+                "sanitize": "size-value"
+            },
+            "--hb-heading-minw": {
+                "source": "supports.size.minWidth",
+                "default": "",
+                "sanitize": "size-value"
+            },
+            "--hb-heading-minh": {
+                "source": "supports.size.minHeight",
+                "default": "",
+                "sanitize": "size-value"
+            },
+            "--hb-heading-maxw": {
+                "source": "supports.size.maxWidth",
+                "default": "",
+                "sanitize": "size-value"
+            },
+            "--hb-heading-maxh": {
+                "source": "supports.size.maxHeight",
+                "default": "",
+                "sanitize": "size-value"
+            },
+            "--hb-heading-mt": {
+                "source": "supports.spacing.margin.top",
+                "default": "",
+                "sanitize": "size-value"
+            },
+            "--hb-heading-mr": {
+                "source": "supports.spacing.margin.right",
+                "default": "",
+                "sanitize": "size-value"
+            },
+            "--hb-heading-mb": {
+                "source": "supports.spacing.margin.bottom",
+                "default": "",
+                "sanitize": "size-value"
+            },
+            "--hb-heading-ml": {
+                "source": "supports.spacing.margin.left",
+                "default": "",
+                "sanitize": "size-value"
+            },
+            "--hb-heading-pt": {
+                "source": "supports.spacing.padding.top",
+                "default": "",
+                "sanitize": "size-value"
+            },
+            "--hb-heading-pr": {
+                "source": "supports.spacing.padding.right",
+                "default": "",
+                "sanitize": "size-value"
+            },
+            "--hb-heading-pb": {
+                "source": "supports.spacing.padding.bottom",
+                "default": "",
+                "sanitize": "size-value"
+            },
+            "--hb-heading-pl": {
+                "source": "supports.spacing.padding.left",
+                "default": "",
+                "sanitize": "size-value"
+            },
+            "--hb-heading-bs": {
+                "source": "supports.border.style",
+                "default": "",
+                "sanitize": "border-style"
+            },
+            "--hb-heading-bw": {
+                "source": "supports.border.width",
+                "default": "",
+                "sanitize": "size-value"
+            },
+            "--hb-heading-bc": {
+                "source": "supports.border.color",
+                "default": "",
+                "sanitize": "color-value"
+            },
+            "--hb-heading-rtl": {
+                "source": "supports.border.radius.topLeft",
+                "default": "",
+                "sanitize": "size-value"
+            },
+            "--hb-heading-rtr": {
+                "source": "supports.border.radius.topRight",
+                "default": "",
+                "sanitize": "size-value"
+            },
+            "--hb-heading-rbl": {
+                "source": "supports.border.radius.bottomLeft",
+                "default": "",
+                "sanitize": "size-value"
+            },
+            "--hb-heading-rbr": {
+                "source": "supports.border.radius.bottomRight",
+                "default": "",
+                "sanitize": "size-value"
+            },
+            "--hb-heading-lh": {
+                "source": "supports.typography.lineHeight",
+                "default": "",
+                "sanitize": "size-token"
+            }
+        }
+    },
+    "render": {
+        "template": {
+            "tag": "h{{attributes.level}}",
+            "class": "hb-block hb-block-heading {{attributes.extraClasses}}",
+            "attributes": {
+                "data-block-name": "{{name}}",
+                "data-block-id": "{{id}}",
+                "id": {
+                    "value": "{{attributes.anchor}}",
+                    "omitWhenEmpty": true
+                },
+                "title": {
+                    "value": "{{attributes.titleAttr}}",
+                    "omitWhenEmpty": true
+                }
+            },
+            "children": [
+                {
+                    "type": "rich-text",
+                    "attribute": "content",
+                    "class": "hb-block-heading__text"
+                }
+            ]
+        },
+        "publicPartial": "blocks.heading",
+        "script": null
+    },
+    "innerBlocks": {
+        "enabled": false
+    },
+    "serialization": {
+        "mode": "json",
+        "saveAttributes": true,
+        "saveSupports": true,
+        "saveInnerBlocks": true,
+        "migrations": []
+    },
+    "security": {
+        "richText": "inline-basic",
+        "allowRawHtml": false,
+        "allowCustomCss": false
+    }
+}

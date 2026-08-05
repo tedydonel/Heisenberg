@@ -1,0 +1,90 @@
+{
+    "$schema": "../../../docs/post-template-schema.md",
+    "apiVersion": 1,
+    "name": "heisenberg/article",
+    "title": "heisenberg::templates.article.title",
+    "category": "post",
+    "icon": "newspaper",
+    "description": "heisenberg::templates.article.description",
+    "keywords": [
+        "article",
+        "post",
+        "blog",
+        "single"
+    ],
+    "version": "1.0.0",
+    "render": {
+        "view": "theme::posts.article",
+        "script": null
+    },
+    "capabilities": {
+        "tableOfContents": {
+            "enabled": true,
+            "source": "headings",
+            "minLevel": 2,
+            "maxLevel": 3,
+            "title": "heisenberg::templates.article.toc_title"
+        },
+        "featuredImage": {
+            "enabled": true,
+            "source": "first-image-block",
+            "context": "hero",
+            "fallback": null
+        },
+        "readingTime": {
+            "enabled": true,
+            "wordsPerMinute": 200,
+            "label": "heisenberg::templates.article.reading_time_label"
+        },
+        "authorBox": {
+            "enabled": true,
+            "fields": {
+                "name": "name",
+                "avatar": "avatar_url",
+                "bio": "bio"
+            }
+        },
+        "shareButtons": {
+            "enabled": true,
+            "networks": [
+                "x",
+                "facebook",
+                "linkedin",
+                "email",
+                "copy-link"
+            ]
+        },
+        "breadcrumbs": {
+            "enabled": true,
+            "homeLabel": "heisenberg::templates.article.breadcrumbs_home",
+            "categoryAttribute": null
+        },
+        "pagination": {
+            "enabled": true,
+            "mode": "prev-next"
+        },
+        "postViews": {
+            "enabled": true,
+            "label": "heisenberg::templates.article.views_label"
+        },
+        "comments": {
+            "enabled": true,
+            "allowGuests": true,
+            "sortOrder": "newest"
+        },
+        "relatedPosts": {
+            "enabled": true,
+            "limit": 3
+        },
+        "seoMeta": {
+            "enabled": false,
+            "fields": [
+                "title",
+                "description",
+                "canonical",
+                "ogImage",
+                "robots"
+            ]
+        }
+    }
+}

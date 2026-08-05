@@ -1,0 +1,40 @@
+.hb-block-heading {
+    transition: color 140ms ease, background-color 140ms ease, border-color 140ms ease, box-shadow 140ms ease, transform 140ms ease;
+    color: var(--hb-heading-color);
+    background: var(--hb-heading-bg);
+    font-family: var(--hb-heading-ff, inherit);
+    font-weight: var(--hb-heading-fw, 700);
+    font-size: var(--hb-heading-fs, 22px);
+    line-height: var(--hb-heading-lh, 1.25);
+    width: var(--hb-heading-w, auto);
+    height: var(--hb-heading-h, auto);
+    min-width: var(--hb-heading-minw, 0);
+    min-height: var(--hb-heading-minh, 0);
+    max-width: var(--hb-heading-maxw, none);
+    max-height: var(--hb-heading-maxh, none);
+    margin: var(--hb-heading-mt, 14px) var(--hb-heading-mr, 0) var(--hb-heading-mb, 8px) var(--hb-heading-ml, 0);
+    padding: var(--hb-heading-pt, 0) var(--hb-heading-pr, 0) var(--hb-heading-pb, 0) var(--hb-heading-pl, 0);
+    border-style: var(--hb-heading-bs, none);
+    border-width: var(--hb-heading-bw, 0);
+    border-color: var(--hb-heading-bc, transparent);
+    border-radius: var(--hb-heading-rtl, 0) var(--hb-heading-rtr, 0) var(--hb-heading-rbr, 0) var(--hb-heading-rbl, 0);
+}
+
+/* Level-driven scale — the H tag itself carries the size so switching
+   H1…H6 is visible immediately; an inspector fontSize (--hb-heading-fs)
+   always wins via the var() first slot. */
+h1.hb-block-heading { font-size: var(--hb-heading-fs, clamp(32px, 3.2vw, 40px)); letter-spacing: -0.02em; }
+h2.hb-block-heading { font-size: var(--hb-heading-fs, clamp(24px, 2.2vw, 28px)); letter-spacing: -0.015em; }
+h3.hb-block-heading { font-size: var(--hb-heading-fs, clamp(20px, 1.7vw, 23px)); letter-spacing: -0.012em; }
+h4.hb-block-heading { font-size: var(--hb-heading-fs, clamp(17px, 1.4vw, 19px)); }
+h5.hb-block-heading { font-size: var(--hb-heading-fs, 16px); }
+h6.hb-block-heading { font-size: var(--hb-heading-fs, 14px); letter-spacing: 0.01em; text-transform: uppercase; }
+
+/* Device visibility — six breakpoint bands (Bootstrap-style ranges).
+   Published output hides the block for every enabled band. */
+@media (max-width: 575.98px) { .hb-block-heading.hb-hide-xs { display: none; } }
+@media (min-width: 576px) and (max-width: 767.98px) { .hb-block-heading.hb-hide-sm { display: none; } }
+@media (min-width: 768px) and (max-width: 991.98px) { .hb-block-heading.hb-hide-md { display: none; } }
+@media (min-width: 992px) and (max-width: 1199.98px) { .hb-block-heading.hb-hide-lg { display: none; } }
+@media (min-width: 1200px) and (max-width: 1399.98px) { .hb-block-heading.hb-hide-xl { display: none; } }
+@media (min-width: 1400px) { .hb-block-heading.hb-hide-xxl { display: none; } }

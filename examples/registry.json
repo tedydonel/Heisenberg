@@ -1,0 +1,2323 @@
+{
+    "schemaVersion": 1,
+    "registryHash": "sha256:2f6c722826834e90c1e07321ed0003124948a37222039b35f905c13508a71aee",
+    "blockCount": 9,
+    "categories": [
+        "design",
+        "media",
+        "text"
+    ],
+    "errors": [],
+    "blocks": [
+        {
+            "$schema": "../../../docs/block-schema.md",
+            "apiVersion": 1,
+            "name": "heisenberg/button",
+            "title": "heisenberg::blocks.button.title",
+            "category": "design",
+            "icon": "mouse-pointer-click",
+            "description": "heisenberg::blocks.button.description",
+            "keywords": [
+                "button",
+                "cta",
+                "link",
+                "action"
+            ],
+            "version": "1.0.0",
+            "attributes": {
+                "text": {
+                    "type": "rich-text",
+                    "default": "Book a consultation",
+                    "source": "html",
+                    "selector": ".btn-text",
+                    "sanitize": "rich-text-inline"
+                },
+                "url": {
+                    "type": "url",
+                    "default": "#",
+                    "source": "attribute",
+                    "selector": ".hb-block-button__link",
+                    "attribute": "href",
+                    "sanitize": "url"
+                },
+                "variant": {
+                    "type": "string",
+                    "default": "primary",
+                    "enum": [
+                        "primary",
+                        "secondary",
+                        "danger",
+                        "link",
+                        "outline"
+                    ],
+                    "sanitize": "text"
+                },
+                "icon": {
+                    "type": "string",
+                    "default": "arrow-up-right",
+                    "sanitize": "text"
+                },
+                "iconPosition": {
+                    "type": "string",
+                    "default": "right",
+                    "enum": [
+                        "left",
+                        "right"
+                    ],
+                    "sanitize": "text"
+                },
+                "target": {
+                    "type": "string",
+                    "default": "_self",
+                    "enum": [
+                        "_self",
+                        "_blank"
+                    ],
+                    "sanitize": "text"
+                },
+                "fullWidth": {
+                    "type": "boolean",
+                    "default": false,
+                    "sanitize": "boolean"
+                },
+                "hoverTextColor": {
+                    "type": "string",
+                    "default": "",
+                    "sanitize": "text"
+                },
+                "hoverBackgroundColor": {
+                    "type": "string",
+                    "default": "",
+                    "sanitize": "text"
+                },
+                "hoverBorderColor": {
+                    "type": "string",
+                    "default": "",
+                    "sanitize": "text"
+                }
+            },
+            "supports": {
+                "color": {
+                    "text": true,
+                    "background": true,
+                    "custom": false
+                },
+                "spacing": {
+                    "margin": true,
+                    "padding": true
+                },
+                "border": {
+                    "color": true,
+                    "style": true,
+                    "width": true,
+                    "radius": true
+                },
+                "typography": {
+                    "fontSize": true,
+                    "fontWeight": true
+                }
+            },
+            "controls": [
+                {
+                    "id": "text",
+                    "type": "rich-text",
+                    "label": "heisenberg::blocks.button.controls.text",
+                    "attribute": "text",
+                    "section": "settings"
+                },
+                {
+                    "id": "url",
+                    "type": "link",
+                    "label": "heisenberg::blocks.button.controls.url",
+                    "attribute": "url",
+                    "section": "settings"
+                },
+                {
+                    "id": "variant",
+                    "type": "select",
+                    "label": "heisenberg::blocks.button.controls.variant",
+                    "attribute": "variant",
+                    "section": "settings",
+                    "options": [
+                        {
+                            "label": "heisenberg::blocks.button.options.variant.primary",
+                            "value": "primary"
+                        },
+                        {
+                            "label": "heisenberg::blocks.button.options.variant.secondary",
+                            "value": "secondary"
+                        },
+                        {
+                            "label": "heisenberg::blocks.button.options.variant.danger",
+                            "value": "danger"
+                        },
+                        {
+                            "label": "heisenberg::blocks.button.options.variant.link",
+                            "value": "link"
+                        },
+                        {
+                            "label": "heisenberg::blocks.button.options.variant.outline",
+                            "value": "outline"
+                        }
+                    ]
+                },
+                {
+                    "id": "icon",
+                    "type": "text",
+                    "label": "heisenberg::blocks.button.controls.icon",
+                    "attribute": "icon",
+                    "section": "settings"
+                },
+                {
+                    "id": "iconPosition",
+                    "type": "select",
+                    "label": "heisenberg::blocks.button.controls.icon_position",
+                    "attribute": "iconPosition",
+                    "section": "settings",
+                    "options": [
+                        {
+                            "label": "heisenberg::blocks.button.options.icon_position.left",
+                            "value": "left"
+                        },
+                        {
+                            "label": "heisenberg::blocks.button.options.icon_position.right",
+                            "value": "right"
+                        }
+                    ]
+                },
+                {
+                    "id": "target",
+                    "type": "select",
+                    "label": "heisenberg::blocks.button.controls.target",
+                    "attribute": "target",
+                    "section": "settings",
+                    "options": [
+                        {
+                            "label": "heisenberg::blocks.button.options.target.self",
+                            "value": "_self"
+                        },
+                        {
+                            "label": "heisenberg::blocks.button.options.target.blank",
+                            "value": "_blank"
+                        }
+                    ]
+                },
+                {
+                    "id": "fullWidth",
+                    "type": "toggle",
+                    "label": "heisenberg::blocks.button.controls.full_width",
+                    "attribute": "fullWidth",
+                    "section": "settings"
+                },
+                {
+                    "id": "hoverTextColor",
+                    "type": "select",
+                    "label": "heisenberg::blocks.button.controls.hover_text_color",
+                    "attribute": "hoverTextColor",
+                    "section": "hover",
+                    "options": [
+                        {
+                            "label": "heisenberg::blocks.button.options.color.default",
+                            "value": ""
+                        },
+                        {
+                            "label": "heisenberg::blocks.button.options.color.accent_1",
+                            "value": "var(--accent-1)"
+                        },
+                        {
+                            "label": "heisenberg::blocks.button.options.color.accent_2",
+                            "value": "var(--accent-2)"
+                        },
+                        {
+                            "label": "heisenberg::blocks.button.options.color.accent_3",
+                            "value": "var(--accent-3)"
+                        },
+                        {
+                            "label": "heisenberg::blocks.button.options.color.accent_4",
+                            "value": "var(--accent-4)"
+                        },
+                        {
+                            "label": "heisenberg::blocks.button.options.color.accent_6",
+                            "value": "var(--accent-6)"
+                        },
+                        {
+                            "label": "heisenberg::blocks.button.options.color.muted",
+                            "value": "var(--accent-muted)"
+                        }
+                    ]
+                },
+                {
+                    "id": "hoverBackgroundColor",
+                    "type": "select",
+                    "label": "heisenberg::blocks.button.controls.hover_background_color",
+                    "attribute": "hoverBackgroundColor",
+                    "section": "hover",
+                    "options": [
+                        {
+                            "label": "heisenberg::blocks.button.options.color.default",
+                            "value": ""
+                        },
+                        {
+                            "label": "heisenberg::blocks.button.options.color.accent_1",
+                            "value": "var(--accent-1)"
+                        },
+                        {
+                            "label": "heisenberg::blocks.button.options.color.accent_2",
+                            "value": "var(--accent-2)"
+                        },
+                        {
+                            "label": "heisenberg::blocks.button.options.color.accent_3",
+                            "value": "var(--accent-3)"
+                        },
+                        {
+                            "label": "heisenberg::blocks.button.options.color.accent_4",
+                            "value": "var(--accent-4)"
+                        },
+                        {
+                            "label": "heisenberg::blocks.button.options.color.accent_6",
+                            "value": "var(--accent-6)"
+                        },
+                        {
+                            "label": "heisenberg::blocks.button.options.color.danger",
+                            "value": "var(--accent-danger)"
+                        },
+                        {
+                            "label": "heisenberg::blocks.button.options.color.transparent",
+                            "value": "transparent"
+                        }
+                    ]
+                },
+                {
+                    "id": "hoverBorderColor",
+                    "type": "select",
+                    "label": "heisenberg::blocks.button.controls.hover_border_color",
+                    "attribute": "hoverBorderColor",
+                    "section": "hover",
+                    "options": [
+                        {
+                            "label": "heisenberg::blocks.button.options.color.default",
+                            "value": ""
+                        },
+                        {
+                            "label": "heisenberg::blocks.button.options.color.accent_1",
+                            "value": "var(--accent-1)"
+                        },
+                        {
+                            "label": "heisenberg::blocks.button.options.color.accent_2",
+                            "value": "var(--accent-2)"
+                        },
+                        {
+                            "label": "heisenberg::blocks.button.options.color.accent_3",
+                            "value": "var(--accent-3)"
+                        },
+                        {
+                            "label": "heisenberg::blocks.button.options.color.accent_4",
+                            "value": "var(--accent-4)"
+                        },
+                        {
+                            "label": "heisenberg::blocks.button.options.color.accent_6",
+                            "value": "var(--accent-6)"
+                        },
+                        {
+                            "label": "heisenberg::blocks.button.options.color.muted",
+                            "value": "var(--accent-muted)"
+                        }
+                    ]
+                }
+            ],
+            "style": {
+                "css": "./button.css",
+                "className": "hb-block-button",
+                "variables": {
+                    "--hb-button-color": {
+                        "source": "supports.color.text",
+                        "default": "",
+                        "sanitize": "color-token"
+                    },
+                    "--hb-button-background": {
+                        "source": "supports.color.background",
+                        "default": "",
+                        "sanitize": "color-token-or-transparent"
+                    },
+                    "--hb-button-margin": {
+                        "source": "supports.spacing.margin",
+                        "default": "0",
+                        "sanitize": "size-token"
+                    },
+                    "--hb-button-padding": {
+                        "source": "supports.spacing.padding",
+                        "default": "0",
+                        "sanitize": "size-token"
+                    },
+                    "--hb-button-border-color": {
+                        "source": "supports.border.color",
+                        "default": "",
+                        "sanitize": "color-token"
+                    },
+                    "--hb-button-border-style": {
+                        "source": "supports.border.style",
+                        "default": "",
+                        "sanitize": "text"
+                    },
+                    "--hb-button-border-width": {
+                        "source": "supports.border.width",
+                        "default": "",
+                        "sanitize": "size-token"
+                    },
+                    "--hb-button-border-radius": {
+                        "source": "supports.border.radius",
+                        "default": "var(--radius-2)",
+                        "sanitize": "size-token"
+                    },
+                    "--hb-button-font-size": {
+                        "source": "supports.typography.fontSize",
+                        "default": "var(--text-xs)",
+                        "sanitize": "size-token"
+                    },
+                    "--hb-button-font-weight": {
+                        "source": "supports.typography.fontWeight",
+                        "default": "400",
+                        "sanitize": "integer"
+                    },
+                    "--hb-button-hover-color": {
+                        "source": "attributes.hoverTextColor",
+                        "default": "",
+                        "sanitize": "color-token"
+                    },
+                    "--hb-button-hover-background": {
+                        "source": "attributes.hoverBackgroundColor",
+                        "default": "",
+                        "sanitize": "color-token-or-transparent"
+                    },
+                    "--hb-button-hover-border-color": {
+                        "source": "attributes.hoverBorderColor",
+                        "default": "",
+                        "sanitize": "color-token"
+                    }
+                }
+            },
+            "render": {
+                "template": {
+                    "tag": "div",
+                    "class": "hb-block hb-block-button hb-block-button--{{attributes.variant}} hb-block-button--icon-{{attributes.iconPosition}} hb-block-button--full-{{attributes.fullWidth}}",
+                    "attributes": {
+                        "data-block-name": "{{name}}",
+                        "data-block-id": "{{id}}"
+                    },
+                    "children": [
+                        {
+                            "type": "element",
+                            "tag": "a",
+                            "class": "btn btn-{{attributes.variant}} hb-block-button__link",
+                            "attributes": {
+                                "href": "{{attributes.url}}",
+                                "target": "{{attributes.target}}"
+                            },
+                            "children": [
+                                {
+                                    "type": "rich-text",
+                                    "attribute": "text",
+                                    "class": "btn-text"
+                                },
+                                {
+                                    "type": "element",
+                                    "tag": "span",
+                                    "class": "btn-icon-frame",
+                                    "children": [
+                                        {
+                                            "type": "element",
+                                            "tag": "i",
+                                            "class": "hb-block-button__icon",
+                                            "attributes": {
+                                                "data-lucide": "{{attributes.icon}}",
+                                                "aria-hidden": "true"
+                                            },
+                                            "children": [
+                                                {
+                                                    "type": "text",
+                                                    "content": ""
+                                                }
+                                            ]
+                                        }
+                                    ]
+                                }
+                            ]
+                        }
+                    ]
+                },
+                "publicPartial": "blocks.button",
+                "script": null
+            },
+            "innerBlocks": {
+                "enabled": false
+            },
+            "serialization": {
+                "mode": "json",
+                "saveAttributes": true,
+                "saveSupports": true,
+                "saveInnerBlocks": true,
+                "migrations": []
+            },
+            "security": {
+                "richText": "inline-basic",
+                "allowRawHtml": false,
+                "allowedUrlProtocols": [
+                    "http",
+                    "https",
+                    "mailto",
+                    "tel"
+                ],
+                "allowCustomCss": false
+            }
+        },
+        {
+            "$schema": "../../../docs/block-schema.md",
+            "apiVersion": 1,
+            "name": "heisenberg/cta",
+            "title": "heisenberg::blocks.cta.title",
+            "category": "design",
+            "icon": "send",
+            "description": "heisenberg::blocks.cta.description",
+            "keywords": [
+                "cta",
+                "call to action",
+                "banner",
+                "button"
+            ],
+            "version": "1.0.0",
+            "attributes": {
+                "heading": {
+                    "type": "rich-text",
+                    "default": "Ready to plan your next trip?",
+                    "source": "html",
+                    "selector": ".hb-block-cta__heading-text",
+                    "sanitize": "rich-text-inline"
+                },
+                "subheading": {
+                    "type": "string",
+                    "default": "Talk to a specialist for tailored guidance.",
+                    "source": "text",
+                    "selector": ".hb-block-cta__subheading",
+                    "sanitize": "text"
+                },
+                "buttonText": {
+                    "type": "string",
+                    "default": "Book a consultation",
+                    "source": "text",
+                    "selector": ".hb-block-cta__button .btn-text",
+                    "sanitize": "text"
+                },
+                "buttonUrl": {
+                    "type": "url",
+                    "default": "#",
+                    "source": "attribute",
+                    "selector": ".hb-block-cta__button",
+                    "attribute": "href",
+                    "sanitize": "url"
+                },
+                "buttonIcon": {
+                    "type": "string",
+                    "default": "arrow-up-right",
+                    "sanitize": "text"
+                },
+                "variant": {
+                    "type": "string",
+                    "default": "default",
+                    "enum": [
+                        "default",
+                        "accent",
+                        "muted"
+                    ],
+                    "sanitize": "text"
+                },
+                "alignment": {
+                    "type": "string",
+                    "default": "center",
+                    "enum": [
+                        "left",
+                        "center",
+                        "right"
+                    ],
+                    "sanitize": "text"
+                }
+            },
+            "supports": {
+                "color": {
+                    "text": true,
+                    "background": true,
+                    "custom": false
+                },
+                "spacing": {
+                    "margin": true,
+                    "padding": true
+                },
+                "border": {
+                    "radius": true
+                },
+                "typography": {
+                    "fontSize": true,
+                    "fontWeight": true
+                }
+            },
+            "controls": [
+                {
+                    "id": "heading",
+                    "type": "rich-text",
+                    "label": "heisenberg::blocks.cta.controls.heading",
+                    "attribute": "heading",
+                    "section": "settings"
+                },
+                {
+                    "id": "subheading",
+                    "type": "textarea",
+                    "label": "heisenberg::blocks.cta.controls.subheading",
+                    "attribute": "subheading",
+                    "section": "settings"
+                },
+                {
+                    "id": "buttonText",
+                    "type": "text",
+                    "label": "heisenberg::blocks.cta.controls.button_text",
+                    "attribute": "buttonText",
+                    "section": "settings"
+                },
+                {
+                    "id": "buttonUrl",
+                    "type": "link",
+                    "label": "heisenberg::blocks.cta.controls.button_url",
+                    "attribute": "buttonUrl",
+                    "section": "settings"
+                },
+                {
+                    "id": "buttonIcon",
+                    "type": "text",
+                    "label": "heisenberg::blocks.cta.controls.button_icon",
+                    "attribute": "buttonIcon",
+                    "section": "settings"
+                },
+                {
+                    "id": "variant",
+                    "type": "select",
+                    "label": "heisenberg::blocks.cta.controls.variant",
+                    "attribute": "variant",
+                    "section": "settings",
+                    "options": [
+                        {
+                            "label": "heisenberg::blocks.cta.options.variant.default",
+                            "value": "default"
+                        },
+                        {
+                            "label": "heisenberg::blocks.cta.options.variant.accent",
+                            "value": "accent"
+                        },
+                        {
+                            "label": "heisenberg::blocks.cta.options.variant.muted",
+                            "value": "muted"
+                        }
+                    ]
+                },
+                {
+                    "id": "alignment",
+                    "type": "select",
+                    "label": "heisenberg::blocks.cta.controls.alignment",
+                    "attribute": "alignment",
+                    "section": "settings",
+                    "options": [
+                        {
+                            "label": "heisenberg::blocks.cta.options.alignment.left",
+                            "value": "left"
+                        },
+                        {
+                            "label": "heisenberg::blocks.cta.options.alignment.center",
+                            "value": "center"
+                        },
+                        {
+                            "label": "heisenberg::blocks.cta.options.alignment.right",
+                            "value": "right"
+                        }
+                    ]
+                }
+            ],
+            "style": {
+                "css": "./cta.css",
+                "className": "hb-block-cta",
+                "variables": {
+                    "--hb-cta-color": {
+                        "source": "supports.color.text",
+                        "default": "var(--accent-1)",
+                        "sanitize": "color-token"
+                    },
+                    "--hb-cta-background": {
+                        "source": "supports.color.background",
+                        "default": "var(--accent-surface)",
+                        "sanitize": "color-token-or-transparent"
+                    },
+                    "--hb-cta-margin": {
+                        "source": "supports.spacing.margin",
+                        "default": "0",
+                        "sanitize": "size-token"
+                    },
+                    "--hb-cta-padding": {
+                        "source": "supports.spacing.padding",
+                        "default": "var(--space-6)",
+                        "sanitize": "size-token"
+                    },
+                    "--hb-cta-radius": {
+                        "source": "supports.border.radius",
+                        "default": "var(--radius-1)",
+                        "sanitize": "size-token"
+                    },
+                    "--hb-cta-heading-size": {
+                        "source": "supports.typography.fontSize",
+                        "default": "var(--text-4xl)",
+                        "sanitize": "size-token"
+                    },
+                    "--hb-cta-heading-weight": {
+                        "source": "supports.typography.fontWeight",
+                        "default": "700",
+                        "sanitize": "integer"
+                    }
+                }
+            },
+            "render": {
+                "template": {
+                    "tag": "section",
+                    "class": "hb-block hb-block-cta hb-block-cta--{{attributes.variant}} hb-block-cta--align-{{attributes.alignment}}",
+                    "attributes": {
+                        "data-block-name": "{{name}}",
+                        "data-block-id": "{{id}}"
+                    },
+                    "children": [
+                        {
+                            "type": "element",
+                            "tag": "div",
+                            "class": "hb-block-cta__content",
+                            "children": [
+                                {
+                                    "type": "element",
+                                    "tag": "h2",
+                                    "class": "hb-block-cta__heading",
+                                    "children": [
+                                        {
+                                            "type": "rich-text",
+                                            "attribute": "heading",
+                                            "class": "hb-block-cta__heading-text"
+                                        }
+                                    ]
+                                },
+                                {
+                                    "type": "element",
+                                    "tag": "p",
+                                    "class": "hb-block-cta__subheading",
+                                    "children": [
+                                        {
+                                            "type": "text",
+                                            "content": "{{attributes.subheading}}"
+                                        }
+                                    ]
+                                }
+                            ]
+                        },
+                        {
+                            "type": "element",
+                            "tag": "a",
+                            "class": "btn btn-primary hb-block-cta__button",
+                            "attributes": {
+                                "href": "{{attributes.buttonUrl}}"
+                            },
+                            "children": [
+                                {
+                                    "type": "element",
+                                    "tag": "span",
+                                    "class": "btn-text",
+                                    "children": [
+                                        {
+                                            "type": "text",
+                                            "content": "{{attributes.buttonText}}"
+                                        }
+                                    ]
+                                },
+                                {
+                                    "type": "element",
+                                    "tag": "span",
+                                    "class": "btn-icon-frame",
+                                    "children": [
+                                        {
+                                            "type": "element",
+                                            "tag": "i",
+                                            "attributes": {
+                                                "data-lucide": "{{attributes.buttonIcon}}",
+                                                "aria-hidden": "true"
+                                            }
+                                        }
+                                    ]
+                                }
+                            ]
+                        }
+                    ]
+                },
+                "publicPartial": "blocks.cta",
+                "script": null
+            },
+            "innerBlocks": {
+                "enabled": false
+            },
+            "serialization": {
+                "mode": "json",
+                "saveAttributes": true,
+                "saveSupports": true,
+                "saveInnerBlocks": true,
+                "migrations": []
+            },
+            "security": {
+                "richText": "inline-basic",
+                "allowRawHtml": false,
+                "allowedUrlProtocols": [
+                    "http",
+                    "https",
+                    "mailto",
+                    "tel"
+                ],
+                "allowCustomCss": false
+            }
+        },
+        {
+            "$schema": "../../../docs/block-schema.md",
+            "apiVersion": 1,
+            "name": "heisenberg/heading",
+            "title": "heisenberg::blocks.heading.title",
+            "category": "text",
+            "icon": "bookmark",
+            "description": "heisenberg::blocks.heading.description",
+            "keywords": [
+                "heading",
+                "title",
+                "text"
+            ],
+            "version": "1.0.0",
+            "attributes": {
+                "content": {
+                    "type": "rich-text",
+                    "default": "Heading",
+                    "source": "html",
+                    "selector": ".hb-block-heading__text",
+                    "sanitize": "rich-text-inline"
+                },
+                "level": {
+                    "type": "integer",
+                    "default": 2,
+                    "enum": [
+                        1,
+                        2,
+                        3,
+                        4,
+                        5,
+                        6
+                    ]
+                }
+            },
+            "supports": {
+                "align": [
+                    "left",
+                    "center",
+                    "right"
+                ],
+                "color": {
+                    "text": true,
+                    "background": true,
+                    "custom": false
+                },
+                "typography": {
+                    "fontFamily": true,
+                    "fontSize": true,
+                    "fontWeight": true,
+                    "lineHeight": true,
+                    "letterSpacing": true,
+                    "textTransform": true
+                },
+                "spacing": {
+                    "margin": true,
+                    "padding": true
+                }
+            },
+            "controls": [
+                {
+                    "id": "content",
+                    "type": "rich-text",
+                    "label": "Text",
+                    "attribute": "content",
+                    "section": "settings"
+                },
+                {
+                    "id": "level",
+                    "type": "select",
+                    "label": "Heading level",
+                    "attribute": "level",
+                    "section": "settings",
+                    "options": [
+                        {
+                            "label": "H1",
+                            "value": 1
+                        },
+                        {
+                            "label": "H2",
+                            "value": 2
+                        },
+                        {
+                            "label": "H3",
+                            "value": 3
+                        },
+                        {
+                            "label": "H4",
+                            "value": 4
+                        },
+                        {
+                            "label": "H5",
+                            "value": 5
+                        },
+                        {
+                            "label": "H6",
+                            "value": 6
+                        }
+                    ]
+                }
+            ],
+            "style": {
+                "css": "./heading.css",
+                "className": "hb-block-heading",
+                "variables": {
+                    "--hb-heading-color": {
+                        "source": "supports.color.text",
+                        "default": "var(--accent-1)",
+                        "sanitize": "color-token"
+                    },
+                    "--hb-heading-background": {
+                        "source": "supports.color.background",
+                        "default": "transparent",
+                        "sanitize": "color-token-or-transparent"
+                    },
+                    "--hb-heading-font-size": {
+                        "source": "supports.typography.fontSize",
+                        "default": "",
+                        "sanitize": "size-token"
+                    },
+                    "--hb-heading-font-family": {
+                        "source": "supports.typography.fontFamily",
+                        "default": "var(--font-1)",
+                        "sanitize": "text"
+                    },
+                    "--hb-heading-font-weight": {
+                        "source": "supports.typography.fontWeight",
+                        "default": "700",
+                        "sanitize": "integer"
+                    },
+                    "--hb-heading-line-height": {
+                        "source": "supports.typography.lineHeight",
+                        "default": "1.15",
+                        "sanitize": "size-token"
+                    },
+                    "--hb-heading-letter-spacing": {
+                        "source": "supports.typography.letterSpacing",
+                        "default": "0",
+                        "sanitize": "size-token"
+                    },
+                    "--hb-heading-text-transform": {
+                        "source": "supports.typography.textTransform",
+                        "default": "none",
+                        "sanitize": "text"
+                    },
+                    "--hb-heading-margin": {
+                        "source": "supports.spacing.margin",
+                        "default": "0",
+                        "sanitize": "size-token"
+                    },
+                    "--hb-heading-padding": {
+                        "source": "supports.spacing.padding",
+                        "default": "0",
+                        "sanitize": "size-token"
+                    },
+                    "--hb-heading-align": {
+                        "source": "supports.align",
+                        "default": "left",
+                        "sanitize": "text"
+                    }
+                }
+            },
+            "render": {
+                "template": {
+                    "tag": "h{{attributes.level}}",
+                    "class": "hb-block hb-block-heading",
+                    "attributes": {
+                        "data-block-name": "{{name}}",
+                        "data-block-id": "{{id}}"
+                    },
+                    "children": [
+                        {
+                            "type": "rich-text",
+                            "attribute": "content",
+                            "class": "hb-block-heading__text"
+                        }
+                    ]
+                },
+                "publicPartial": "blocks.heading",
+                "script": null
+            },
+            "innerBlocks": {
+                "enabled": false
+            },
+            "serialization": {
+                "mode": "json",
+                "saveAttributes": true,
+                "saveSupports": true,
+                "saveInnerBlocks": true,
+                "migrations": []
+            },
+            "security": {
+                "richText": "inline-basic",
+                "allowRawHtml": false,
+                "allowCustomCss": false
+            }
+        },
+        {
+            "$schema": "../../../docs/block-schema.md",
+            "apiVersion": 1,
+            "name": "heisenberg/image",
+            "title": "heisenberg::blocks.image.title",
+            "category": "media",
+            "icon": "image",
+            "description": "heisenberg::blocks.image.description",
+            "keywords": [
+                "image",
+                "photo",
+                "media",
+                "picture"
+            ],
+            "version": "1.0.0",
+            "attributes": {
+                "url": {
+                    "type": "url",
+                    "default": "",
+                    "source": "attribute",
+                    "selector": ".hb-block-image__image",
+                    "attribute": "src",
+                    "sanitize": "url"
+                },
+                "alt": {
+                    "type": "string",
+                    "default": "",
+                    "source": "attribute",
+                    "selector": ".hb-block-image__image",
+                    "attribute": "alt",
+                    "sanitize": "text"
+                },
+                "caption": {
+                    "type": "rich-text",
+                    "default": "",
+                    "source": "html",
+                    "selector": ".hb-block-image__caption-text",
+                    "sanitize": "rich-text-inline"
+                },
+                "href": {
+                    "type": "url",
+                    "default": "",
+                    "source": "attribute",
+                    "selector": ".hb-block-image__link",
+                    "attribute": "href",
+                    "sanitize": "url"
+                },
+                "target": {
+                    "type": "string",
+                    "default": "_self",
+                    "enum": [
+                        "_self",
+                        "_blank"
+                    ],
+                    "sanitize": "text"
+                },
+                "alignment": {
+                    "type": "string",
+                    "default": "center",
+                    "enum": [
+                        "left",
+                        "center",
+                        "right",
+                        "wide",
+                        "full"
+                    ],
+                    "sanitize": "text"
+                },
+                "width": {
+                    "type": "string",
+                    "default": "100%",
+                    "sanitize": "text"
+                },
+                "height": {
+                    "type": "string",
+                    "default": "auto",
+                    "sanitize": "text"
+                },
+                "aspectRatio": {
+                    "type": "string",
+                    "default": "auto",
+                    "sanitize": "text"
+                },
+                "scale": {
+                    "type": "string",
+                    "default": "cover",
+                    "enum": [
+                        "cover",
+                        "contain",
+                        "fill"
+                    ],
+                    "sanitize": "text"
+                },
+                "lightboxEnabled": {
+                    "type": "boolean",
+                    "default": false,
+                    "sanitize": "boolean"
+                }
+            },
+            "supports": {
+                "align": [
+                    "left",
+                    "center",
+                    "right",
+                    "wide",
+                    "full"
+                ],
+                "spacing": {
+                    "margin": true
+                },
+                "border": {
+                    "color": true,
+                    "width": true,
+                    "radius": true
+                }
+            },
+            "controls": [
+                {
+                    "id": "url",
+                    "type": "media",
+                    "label": "heisenberg::blocks.image.controls.url",
+                    "attribute": "url",
+                    "section": "settings"
+                },
+                {
+                    "id": "alt",
+                    "type": "text",
+                    "label": "heisenberg::blocks.image.controls.alt",
+                    "attribute": "alt",
+                    "section": "settings"
+                },
+                {
+                    "id": "caption",
+                    "type": "rich-text",
+                    "label": "heisenberg::blocks.image.controls.caption",
+                    "attribute": "caption",
+                    "section": "settings"
+                },
+                {
+                    "id": "href",
+                    "type": "link",
+                    "label": "heisenberg::blocks.image.controls.href",
+                    "attribute": "href",
+                    "section": "settings"
+                },
+                {
+                    "id": "target",
+                    "type": "select",
+                    "label": "heisenberg::blocks.image.controls.target",
+                    "attribute": "target",
+                    "section": "settings",
+                    "options": [
+                        {
+                            "label": "heisenberg::blocks.image.options.target.self",
+                            "value": "_self"
+                        },
+                        {
+                            "label": "heisenberg::blocks.image.options.target.blank",
+                            "value": "_blank"
+                        }
+                    ]
+                },
+                {
+                    "id": "alignment",
+                    "type": "select",
+                    "label": "heisenberg::blocks.image.controls.alignment",
+                    "attribute": "alignment",
+                    "section": "settings",
+                    "options": [
+                        {
+                            "label": "heisenberg::blocks.image.options.alignment.left",
+                            "value": "left"
+                        },
+                        {
+                            "label": "heisenberg::blocks.image.options.alignment.center",
+                            "value": "center"
+                        },
+                        {
+                            "label": "heisenberg::blocks.image.options.alignment.right",
+                            "value": "right"
+                        },
+                        {
+                            "label": "heisenberg::blocks.image.options.alignment.wide",
+                            "value": "wide"
+                        },
+                        {
+                            "label": "heisenberg::blocks.image.options.alignment.full",
+                            "value": "full"
+                        }
+                    ]
+                },
+                {
+                    "id": "width",
+                    "type": "text",
+                    "label": "heisenberg::blocks.image.controls.width",
+                    "attribute": "width",
+                    "section": "settings"
+                },
+                {
+                    "id": "height",
+                    "type": "text",
+                    "label": "heisenberg::blocks.image.controls.height",
+                    "attribute": "height",
+                    "section": "settings"
+                },
+                {
+                    "id": "aspectRatio",
+                    "type": "text",
+                    "label": "heisenberg::blocks.image.controls.aspect_ratio",
+                    "attribute": "aspectRatio",
+                    "section": "settings"
+                },
+                {
+                    "id": "scale",
+                    "type": "select",
+                    "label": "heisenberg::blocks.image.controls.scale",
+                    "attribute": "scale",
+                    "section": "settings",
+                    "options": [
+                        {
+                            "label": "heisenberg::blocks.image.options.scale.cover",
+                            "value": "cover"
+                        },
+                        {
+                            "label": "heisenberg::blocks.image.options.scale.contain",
+                            "value": "contain"
+                        },
+                        {
+                            "label": "heisenberg::blocks.image.options.scale.fill",
+                            "value": "fill"
+                        }
+                    ]
+                },
+                {
+                    "id": "lightboxEnabled",
+                    "type": "toggle",
+                    "label": "heisenberg::blocks.image.controls.lightbox_enabled",
+                    "attribute": "lightboxEnabled",
+                    "section": "settings"
+                }
+            ],
+            "style": {
+                "css": "./image.css",
+                "className": "hb-block-image",
+                "variables": {
+                    "--hb-image-margin": {
+                        "source": "supports.spacing.margin",
+                        "default": "0",
+                        "sanitize": "size-token"
+                    },
+                    "--hb-image-border-color": {
+                        "source": "supports.border.color",
+                        "default": "var(--accent-border)",
+                        "sanitize": "color-token"
+                    },
+                    "--hb-image-border-width": {
+                        "source": "supports.border.width",
+                        "default": "0",
+                        "sanitize": "size-token"
+                    },
+                    "--hb-image-border-radius": {
+                        "source": "supports.border.radius",
+                        "default": "0",
+                        "sanitize": "size-token"
+                    },
+                    "--hb-image-width": {
+                        "source": "attributes.width",
+                        "default": "100%",
+                        "sanitize": "size-token"
+                    },
+                    "--hb-image-height": {
+                        "source": "attributes.height",
+                        "default": "auto",
+                        "sanitize": "size-token"
+                    },
+                    "--hb-image-aspect-ratio": {
+                        "source": "attributes.aspectRatio",
+                        "default": "auto",
+                        "sanitize": "text"
+                    },
+                    "--hb-image-scale": {
+                        "source": "attributes.scale",
+                        "default": "cover",
+                        "sanitize": "text"
+                    }
+                }
+            },
+            "render": {
+                "template": {
+                    "tag": "figure",
+                    "class": "hb-block hb-block-image hb-block-image--align-{{attributes.alignment}} hb-block-image--scale-{{attributes.scale}} hb-block-image--lightbox-{{attributes.lightboxEnabled}}",
+                    "attributes": {
+                        "data-block-name": "{{name}}",
+                        "data-block-id": "{{id}}"
+                    },
+                    "children": [
+                        {
+                            "type": "element",
+                            "tag": "img",
+                            "class": "hb-block-image__image",
+                            "attributes": {
+                                "src": "{{attributes.url}}",
+                                "alt": "{{attributes.alt}}"
+                            }
+                        },
+                        {
+                            "type": "element",
+                            "tag": "button",
+                            "class": "hb-block-image__picker",
+                            "attributes": {
+                                "type": "button",
+                                "data-image-picker": "true"
+                            },
+                            "children": [
+                                {
+                                    "type": "element",
+                                    "tag": "i",
+                                    "class": "hb-block-image__picker-icon",
+                                    "attributes": {
+                                        "data-lucide": "image",
+                                        "aria-hidden": "true"
+                                    }
+                                },
+                                {
+                                    "type": "text",
+                                    "content": "Select image"
+                                }
+                            ]
+                        },
+                        {
+                            "type": "element",
+                            "tag": "figcaption",
+                            "class": "hb-block-image__caption",
+                            "children": [
+                                {
+                                    "type": "rich-text",
+                                    "attribute": "caption",
+                                    "class": "hb-block-image__caption-text"
+                                }
+                            ]
+                        }
+                    ]
+                },
+                "publicPartial": "blocks.image",
+                "script": null
+            },
+            "innerBlocks": {
+                "enabled": false
+            },
+            "serialization": {
+                "mode": "json",
+                "saveAttributes": true,
+                "saveSupports": true,
+                "saveInnerBlocks": true,
+                "migrations": []
+            },
+            "security": {
+                "richText": "inline-basic",
+                "allowRawHtml": false,
+                "allowedUrlProtocols": [
+                    "http",
+                    "https",
+                    "mailto",
+                    "tel"
+                ],
+                "allowedMediaSources": [
+                    "public_media_library"
+                ],
+                "allowCustomCss": false
+            }
+        },
+        {
+            "$schema": "../../../docs/block-schema.md",
+            "apiVersion": 1,
+            "name": "heisenberg/list",
+            "title": "heisenberg::blocks.list.title",
+            "category": "text",
+            "icon": "list",
+            "description": "heisenberg::blocks.list.description",
+            "keywords": [
+                "list",
+                "bullets",
+                "numbered",
+                "checkmark"
+            ],
+            "version": "1.0.0",
+            "attributes": {
+                "content": {
+                    "type": "rich-text",
+                    "default": "First item\nSecond item\nThird item",
+                    "source": "html",
+                    "selector": ".hb-block-list__content",
+                    "sanitize": "rich-text-block"
+                },
+                "ordered": {
+                    "type": "boolean",
+                    "default": false,
+                    "sanitize": "boolean"
+                },
+                "start": {
+                    "type": "integer",
+                    "default": 1,
+                    "sanitize": "integer"
+                },
+                "reversed": {
+                    "type": "boolean",
+                    "default": false,
+                    "sanitize": "boolean"
+                },
+                "style": {
+                    "type": "string",
+                    "default": "default",
+                    "enum": [
+                        "default",
+                        "checkmark"
+                    ],
+                    "sanitize": "text"
+                }
+            },
+            "supports": {
+                "color": {
+                    "text": true,
+                    "background": true,
+                    "custom": false
+                },
+                "spacing": {
+                    "margin": true,
+                    "padding": true
+                },
+                "typography": {
+                    "fontSize": true,
+                    "fontWeight": true,
+                    "lineHeight": true
+                }
+            },
+            "controls": [
+                {
+                    "id": "content",
+                    "type": "rich-text",
+                    "label": "heisenberg::blocks.list.controls.content",
+                    "attribute": "content",
+                    "section": "settings"
+                },
+                {
+                    "id": "ordered",
+                    "type": "toggle",
+                    "label": "heisenberg::blocks.list.controls.ordered",
+                    "attribute": "ordered",
+                    "section": "settings"
+                },
+                {
+                    "id": "start",
+                    "type": "number",
+                    "label": "heisenberg::blocks.list.controls.start",
+                    "attribute": "start",
+                    "section": "settings",
+                    "min": 1,
+                    "step": 1
+                },
+                {
+                    "id": "reversed",
+                    "type": "toggle",
+                    "label": "heisenberg::blocks.list.controls.reversed",
+                    "attribute": "reversed",
+                    "section": "settings"
+                },
+                {
+                    "id": "style",
+                    "type": "select",
+                    "label": "heisenberg::blocks.list.controls.style",
+                    "attribute": "style",
+                    "section": "settings",
+                    "options": [
+                        {
+                            "label": "heisenberg::blocks.list.options.style.default",
+                            "value": "default"
+                        },
+                        {
+                            "label": "heisenberg::blocks.list.options.style.checkmark",
+                            "value": "checkmark"
+                        }
+                    ]
+                }
+            ],
+            "style": {
+                "css": "./list.css",
+                "className": "hb-block-list",
+                "variables": {
+                    "--hb-list-color": {
+                        "source": "supports.color.text",
+                        "default": "var(--accent-1)",
+                        "sanitize": "color-token"
+                    },
+                    "--hb-list-background": {
+                        "source": "supports.color.background",
+                        "default": "transparent",
+                        "sanitize": "color-token-or-transparent"
+                    },
+                    "--hb-list-margin": {
+                        "source": "supports.spacing.margin",
+                        "default": "0",
+                        "sanitize": "size-token"
+                    },
+                    "--hb-list-padding": {
+                        "source": "supports.spacing.padding",
+                        "default": "0",
+                        "sanitize": "size-token"
+                    },
+                    "--hb-list-font-size": {
+                        "source": "supports.typography.fontSize",
+                        "default": "var(--text-md)",
+                        "sanitize": "size-token"
+                    },
+                    "--hb-list-font-weight": {
+                        "source": "supports.typography.fontWeight",
+                        "default": "400",
+                        "sanitize": "integer"
+                    },
+                    "--hb-list-line-height": {
+                        "source": "supports.typography.lineHeight",
+                        "default": "1.65",
+                        "sanitize": "size-token"
+                    }
+                }
+            },
+            "render": {
+                "template": {
+                    "tag": "div",
+                    "class": "hb-block hb-block-list hb-block-list--ordered-{{attributes.ordered}} hb-block-list--reversed-{{attributes.reversed}} hb-block-list--{{attributes.style}}",
+                    "attributes": {
+                        "data-block-name": "{{name}}",
+                        "data-block-id": "{{id}}"
+                    },
+                    "children": [
+                        {
+                            "type": "rich-text",
+                            "attribute": "content",
+                            "class": "hb-block-list__content"
+                        }
+                    ]
+                },
+                "publicPartial": "blocks.list",
+                "script": null
+            },
+            "innerBlocks": {
+                "enabled": false
+            },
+            "serialization": {
+                "mode": "json",
+                "saveAttributes": true,
+                "saveSupports": true,
+                "saveInnerBlocks": true,
+                "migrations": []
+            },
+            "security": {
+                "richText": "inline-basic",
+                "allowRawHtml": false,
+                "allowCustomCss": false
+            }
+        },
+        {
+            "$schema": "../../../docs/block-schema.md",
+            "apiVersion": 1,
+            "name": "heisenberg/paragraph",
+            "title": "heisenberg::blocks.paragraph.title",
+            "category": "text",
+            "icon": "pilcrow",
+            "description": "heisenberg::blocks.paragraph.description",
+            "keywords": [
+                "paragraph",
+                "text",
+                "body"
+            ],
+            "version": "1.0.0",
+            "attributes": {
+                "content": {
+                    "type": "rich-text",
+                    "default": "",
+                    "source": "html",
+                    "selector": ".hb-block-paragraph__text",
+                    "sanitize": "rich-text-block"
+                }
+            },
+            "supports": {
+                "align": [
+                    "left",
+                    "center",
+                    "right"
+                ],
+                "color": {
+                    "text": true,
+                    "background": true,
+                    "custom": false
+                },
+                "typography": {
+                    "fontFamily": true,
+                    "fontSize": true,
+                    "fontWeight": true,
+                    "lineHeight": true,
+                    "letterSpacing": true,
+                    "textTransform": true
+                },
+                "spacing": {
+                    "margin": true,
+                    "padding": true
+                }
+            },
+            "controls": [
+                {
+                    "id": "content",
+                    "type": "rich-text",
+                    "label": "Text",
+                    "attribute": "content",
+                    "section": "settings"
+                }
+            ],
+            "style": {
+                "css": "./paragraph.css",
+                "className": "hb-block-paragraph",
+                "variables": {
+                    "--hb-paragraph-color": {
+                        "source": "supports.color.text",
+                        "default": "var(--accent-1)",
+                        "sanitize": "color-token"
+                    },
+                    "--hb-paragraph-background": {
+                        "source": "supports.color.background",
+                        "default": "transparent",
+                        "sanitize": "color-token-or-transparent"
+                    },
+                    "--hb-paragraph-font-size": {
+                        "source": "supports.typography.fontSize",
+                        "default": "var(--text-md)",
+                        "sanitize": "size-token"
+                    },
+                    "--hb-paragraph-align": {
+                        "source": "supports.align",
+                        "default": "left",
+                        "sanitize": "text"
+                    }
+                }
+            },
+            "render": {
+                "template": {
+                    "tag": "p",
+                    "class": "hb-block hb-block-paragraph",
+                    "attributes": {
+                        "data-block-name": "{{name}}",
+                        "data-block-id": "{{id}}"
+                    },
+                    "children": [
+                        {
+                            "type": "rich-text",
+                            "attribute": "content",
+                            "class": "hb-block-paragraph__text"
+                        }
+                    ]
+                },
+                "publicPartial": "blocks.paragraph",
+                "script": null
+            },
+            "innerBlocks": {
+                "enabled": false
+            },
+            "serialization": {
+                "mode": "json",
+                "saveAttributes": true,
+                "saveSupports": true,
+                "saveInnerBlocks": true,
+                "migrations": []
+            },
+            "security": {
+                "richText": "inline-basic",
+                "allowRawHtml": false,
+                "allowCustomCss": false
+            }
+        },
+        {
+            "$schema": "../../../docs/block-schema.md",
+            "apiVersion": 1,
+            "name": "heisenberg/quote",
+            "title": "heisenberg::blocks.quote.title",
+            "category": "text",
+            "icon": "quote",
+            "description": "heisenberg::blocks.quote.description",
+            "keywords": [
+                "quote",
+                "blockquote",
+                "citation"
+            ],
+            "version": "1.0.0",
+            "attributes": {
+                "content": {
+                    "type": "rich-text",
+                    "default": "Travel changes the way you see the world.",
+                    "source": "html",
+                    "selector": ".hb-block-quote__content-text",
+                    "sanitize": "rich-text-block"
+                },
+                "citation": {
+                    "type": "rich-text",
+                    "default": "Anonymous",
+                    "source": "html",
+                    "selector": ".hb-block-quote__citation-text",
+                    "sanitize": "rich-text-inline"
+                },
+                "style": {
+                    "type": "string",
+                    "default": "default",
+                    "enum": [
+                        "default",
+                        "plain"
+                    ],
+                    "sanitize": "text"
+                }
+            },
+            "supports": {
+                "align": [
+                    "left",
+                    "right",
+                    "wide",
+                    "full"
+                ],
+                "color": {
+                    "text": true,
+                    "background": true,
+                    "custom": false
+                },
+                "typography": {
+                    "fontSize": true,
+                    "fontWeight": true,
+                    "lineHeight": true
+                },
+                "spacing": {
+                    "margin": true,
+                    "padding": true,
+                    "gap": true
+                },
+                "border": {
+                    "color": true,
+                    "radius": true,
+                    "style": true,
+                    "width": true
+                }
+            },
+            "controls": [
+                {
+                    "id": "content",
+                    "type": "rich-text",
+                    "label": "heisenberg::blocks.quote.controls.content",
+                    "attribute": "content",
+                    "section": "settings"
+                },
+                {
+                    "id": "citation",
+                    "type": "rich-text",
+                    "label": "heisenberg::blocks.quote.controls.citation",
+                    "attribute": "citation",
+                    "section": "settings"
+                },
+                {
+                    "id": "style",
+                    "type": "select",
+                    "label": "heisenberg::blocks.quote.controls.style",
+                    "attribute": "style",
+                    "section": "settings",
+                    "options": [
+                        {
+                            "label": "heisenberg::blocks.quote.options.style.default",
+                            "value": "default"
+                        },
+                        {
+                            "label": "heisenberg::blocks.quote.options.style.plain",
+                            "value": "plain"
+                        }
+                    ]
+                }
+            ],
+            "style": {
+                "css": "./quote.css",
+                "className": "hb-block-quote",
+                "variables": {
+                    "--hb-quote-color": {
+                        "source": "supports.color.text",
+                        "default": "var(--accent-1)",
+                        "sanitize": "color-token"
+                    },
+                    "--hb-quote-background": {
+                        "source": "supports.color.background",
+                        "default": "var(--accent-surface)",
+                        "sanitize": "color-token-or-transparent"
+                    },
+                    "--hb-quote-margin": {
+                        "source": "supports.spacing.margin",
+                        "default": "0",
+                        "sanitize": "size-token"
+                    },
+                    "--hb-quote-padding": {
+                        "source": "supports.spacing.padding",
+                        "default": "var(--space-5)",
+                        "sanitize": "size-token"
+                    },
+                    "--hb-quote-gap": {
+                        "source": "supports.spacing.gap",
+                        "default": "var(--space-3)",
+                        "sanitize": "size-token"
+                    },
+                    "--hb-quote-font-size": {
+                        "source": "supports.typography.fontSize",
+                        "default": "var(--text-xl)",
+                        "sanitize": "size-token"
+                    },
+                    "--hb-quote-font-weight": {
+                        "source": "supports.typography.fontWeight",
+                        "default": "500",
+                        "sanitize": "integer"
+                    },
+                    "--hb-quote-line-height": {
+                        "source": "supports.typography.lineHeight",
+                        "default": "1.4",
+                        "sanitize": "size-token"
+                    },
+                    "--hb-quote-border-color": {
+                        "source": "supports.border.color",
+                        "default": "var(--accent-2)",
+                        "sanitize": "color-token"
+                    },
+                    "--hb-quote-border-radius": {
+                        "source": "supports.border.radius",
+                        "default": "var(--radius-1)",
+                        "sanitize": "size-token"
+                    },
+                    "--hb-quote-border-style": {
+                        "source": "supports.border.style",
+                        "default": "solid",
+                        "sanitize": "text"
+                    },
+                    "--hb-quote-border-width": {
+                        "source": "supports.border.width",
+                        "default": "0",
+                        "sanitize": "size-token"
+                    },
+                    "--hb-quote-align": {
+                        "source": "supports.align",
+                        "default": "left",
+                        "sanitize": "text"
+                    }
+                }
+            },
+            "render": {
+                "template": {
+                    "tag": "blockquote",
+                    "class": "hb-block hb-block-quote hb-block-quote--{{attributes.style}}",
+                    "attributes": {
+                        "data-block-name": "{{name}}",
+                        "data-block-id": "{{id}}"
+                    },
+                    "children": [
+                        {
+                            "type": "element",
+                            "tag": "p",
+                            "class": "hb-block-quote__content",
+                            "children": [
+                                {
+                                    "type": "rich-text",
+                                    "attribute": "content",
+                                    "class": "hb-block-quote__content-text"
+                                }
+                            ]
+                        },
+                        {
+                            "type": "element",
+                            "tag": "cite",
+                            "class": "hb-block-quote__citation",
+                            "children": [
+                                {
+                                    "type": "rich-text",
+                                    "attribute": "citation",
+                                    "class": "hb-block-quote__citation-text"
+                                }
+                            ]
+                        }
+                    ]
+                },
+                "publicPartial": "blocks.quote",
+                "script": null
+            },
+            "innerBlocks": {
+                "enabled": false
+            },
+            "serialization": {
+                "mode": "json",
+                "saveAttributes": true,
+                "saveSupports": true,
+                "saveInnerBlocks": true,
+                "migrations": []
+            },
+            "security": {
+                "richText": "inline-basic",
+                "allowRawHtml": false,
+                "allowCustomCss": false
+            }
+        },
+        {
+            "$schema": "../../../docs/block-schema.md",
+            "apiVersion": 1,
+            "name": "heisenberg/section-head",
+            "title": "heisenberg::blocks.section_head.title",
+            "category": "design",
+            "icon": "bookmark",
+            "description": "heisenberg::blocks.section_head.description",
+            "keywords": [
+                "section",
+                "heading",
+                "label",
+                "divider"
+            ],
+            "version": "1.0.0",
+            "attributes": {
+                "label": {
+                    "type": "string",
+                    "default": "KEY TAKEAWAY",
+                    "source": "text",
+                    "selector": ".hb-block-section-head__label",
+                    "sanitize": "text"
+                },
+                "heading": {
+                    "type": "rich-text",
+                    "default": "What you need to know",
+                    "source": "html",
+                    "selector": ".hb-block-section-head__heading-text",
+                    "sanitize": "rich-text-inline"
+                },
+                "style": {
+                    "type": "string",
+                    "default": "default",
+                    "enum": [
+                        "default",
+                        "accent",
+                        "muted"
+                    ],
+                    "sanitize": "text"
+                }
+            },
+            "supports": {
+                "color": {
+                    "text": true,
+                    "background": true,
+                    "custom": false
+                },
+                "typography": {
+                    "fontSize": true,
+                    "fontWeight": true,
+                    "textTransform": true
+                },
+                "spacing": {
+                    "margin": true,
+                    "padding": true
+                },
+                "border": {
+                    "color": true,
+                    "style": true,
+                    "width": true,
+                    "radius": true
+                }
+            },
+            "controls": [
+                {
+                    "id": "label",
+                    "type": "text",
+                    "label": "heisenberg::blocks.section_head.controls.label",
+                    "attribute": "label",
+                    "section": "settings"
+                },
+                {
+                    "id": "heading",
+                    "type": "rich-text",
+                    "label": "heisenberg::blocks.section_head.controls.heading",
+                    "attribute": "heading",
+                    "section": "settings"
+                },
+                {
+                    "id": "style",
+                    "type": "select",
+                    "label": "heisenberg::blocks.section_head.controls.style",
+                    "attribute": "style",
+                    "section": "settings",
+                    "options": [
+                        {
+                            "label": "heisenberg::blocks.section_head.options.style.default",
+                            "value": "default"
+                        },
+                        {
+                            "label": "heisenberg::blocks.section_head.options.style.accent",
+                            "value": "accent"
+                        },
+                        {
+                            "label": "heisenberg::blocks.section_head.options.style.muted",
+                            "value": "muted"
+                        }
+                    ]
+                }
+            ],
+            "style": {
+                "css": "./section-head.css",
+                "className": "hb-block-section-head",
+                "variables": {
+                    "--hb-section-head-color": {
+                        "source": "supports.color.text",
+                        "default": "var(--accent-1)",
+                        "sanitize": "color-token"
+                    },
+                    "--hb-section-head-background": {
+                        "source": "supports.color.background",
+                        "default": "transparent",
+                        "sanitize": "color-token-or-transparent"
+                    },
+                    "--hb-section-head-font-size": {
+                        "source": "supports.typography.fontSize",
+                        "default": "var(--text-3xl)",
+                        "sanitize": "size-token"
+                    },
+                    "--hb-section-head-font-weight": {
+                        "source": "supports.typography.fontWeight",
+                        "default": "700",
+                        "sanitize": "integer"
+                    },
+                    "--hb-section-head-label-transform": {
+                        "source": "supports.typography.textTransform",
+                        "default": "uppercase",
+                        "sanitize": "text"
+                    },
+                    "--hb-section-head-margin": {
+                        "source": "supports.spacing.margin",
+                        "default": "0",
+                        "sanitize": "size-token"
+                    },
+                    "--hb-section-head-padding": {
+                        "source": "supports.spacing.padding",
+                        "default": "var(--space-5)",
+                        "sanitize": "size-token"
+                    },
+                    "--hb-section-head-border-color": {
+                        "source": "supports.border.color",
+                        "default": "var(--accent-border)",
+                        "sanitize": "color-token"
+                    },
+                    "--hb-section-head-border-style": {
+                        "source": "supports.border.style",
+                        "default": "solid",
+                        "sanitize": "text"
+                    },
+                    "--hb-section-head-border-width": {
+                        "source": "supports.border.width",
+                        "default": "1px",
+                        "sanitize": "size-token"
+                    },
+                    "--hb-section-head-border-radius": {
+                        "source": "supports.border.radius",
+                        "default": "var(--radius-1)",
+                        "sanitize": "size-token"
+                    }
+                }
+            },
+            "render": {
+                "template": {
+                    "tag": "section",
+                    "class": "hb-block hb-block-section-head hb-block-section-head--{{attributes.style}}",
+                    "attributes": {
+                        "data-block-name": "{{name}}",
+                        "data-block-id": "{{id}}"
+                    },
+                    "children": [
+                        {
+                            "type": "element",
+                            "tag": "span",
+                            "class": "hb-block-section-head__label",
+                            "children": [
+                                {
+                                    "type": "text",
+                                    "content": "{{attributes.label}}"
+                                }
+                            ]
+                        },
+                        {
+                            "type": "element",
+                            "tag": "h2",
+                            "class": "hb-block-section-head__heading",
+                            "children": [
+                                {
+                                    "type": "rich-text",
+                                    "attribute": "heading",
+                                    "class": "hb-block-section-head__heading-text"
+                                }
+                            ]
+                        }
+                    ]
+                },
+                "publicPartial": "blocks.section-head",
+                "script": null
+            },
+            "innerBlocks": {
+                "enabled": false
+            },
+            "serialization": {
+                "mode": "json",
+                "saveAttributes": true,
+                "saveSupports": true,
+                "saveInnerBlocks": true,
+                "migrations": []
+            },
+            "security": {
+                "richText": "inline-basic",
+                "allowRawHtml": false,
+                "allowCustomCss": false
+            }
+        },
+        {
+            "$schema": "../../../docs/block-schema.md",
+            "apiVersion": 1,
+            "name": "heisenberg/separator",
+            "title": "heisenberg::blocks.separator.title",
+            "category": "design",
+            "icon": "minus",
+            "description": "heisenberg::blocks.separator.description",
+            "keywords": [
+                "separator",
+                "divider",
+                "line",
+                "dots"
+            ],
+            "version": "1.0.0",
+            "attributes": {
+                "opacity": {
+                    "type": "string",
+                    "default": "alpha-channel",
+                    "enum": [
+                        "default",
+                        "alpha-channel"
+                    ],
+                    "sanitize": "text"
+                },
+                "color": {
+                    "type": "string",
+                    "default": "var(--accent-border)",
+                    "sanitize": "text"
+                },
+                "thickness": {
+                    "type": "string",
+                    "default": "1px",
+                    "sanitize": "text"
+                },
+                "width": {
+                    "type": "string",
+                    "default": "100%",
+                    "sanitize": "text"
+                },
+                "style": {
+                    "type": "string",
+                    "default": "default",
+                    "enum": [
+                        "default",
+                        "wide-line",
+                        "dots"
+                    ],
+                    "sanitize": "text"
+                }
+            },
+            "supports": {
+                "align": [
+                    "center",
+                    "wide",
+                    "full"
+                ],
+                "color": {
+                    "background": true,
+                    "custom": false
+                },
+                "spacing": {
+                    "margin": true
+                }
+            },
+            "controls": [
+                {
+                    "id": "style",
+                    "type": "select",
+                    "label": "heisenberg::blocks.separator.controls.style",
+                    "attribute": "style",
+                    "section": "settings",
+                    "options": [
+                        {
+                            "label": "heisenberg::blocks.separator.options.style.default",
+                            "value": "default"
+                        },
+                        {
+                            "label": "heisenberg::blocks.separator.options.style.wide_line",
+                            "value": "wide-line"
+                        },
+                        {
+                            "label": "heisenberg::blocks.separator.options.style.dots",
+                            "value": "dots"
+                        }
+                    ]
+                },
+                {
+                    "id": "opacity",
+                    "type": "select",
+                    "label": "heisenberg::blocks.separator.controls.opacity",
+                    "attribute": "opacity",
+                    "section": "settings",
+                    "options": [
+                        {
+                            "label": "heisenberg::blocks.separator.options.opacity.default",
+                            "value": "default"
+                        },
+                        {
+                            "label": "heisenberg::blocks.separator.options.opacity.alpha_channel",
+                            "value": "alpha-channel"
+                        }
+                    ]
+                },
+                {
+                    "id": "color",
+                    "type": "select",
+                    "label": "heisenberg::blocks.separator.controls.color",
+                    "attribute": "color",
+                    "section": "settings",
+                    "options": [
+                        {
+                            "label": "heisenberg::blocks.common.color.default",
+                            "value": "var(--accent-border)"
+                        },
+                        {
+                            "label": "heisenberg::blocks.common.color.accent_1",
+                            "value": "var(--accent-1)"
+                        },
+                        {
+                            "label": "heisenberg::blocks.common.color.accent_2",
+                            "value": "var(--accent-2)"
+                        },
+                        {
+                            "label": "heisenberg::blocks.common.color.accent_3",
+                            "value": "var(--accent-3)"
+                        },
+                        {
+                            "label": "heisenberg::blocks.common.color.accent_4",
+                            "value": "var(--accent-4)"
+                        },
+                        {
+                            "label": "heisenberg::blocks.common.color.muted",
+                            "value": "var(--accent-muted)"
+                        }
+                    ]
+                },
+                {
+                    "id": "thickness",
+                    "type": "text",
+                    "label": "heisenberg::blocks.separator.controls.thickness",
+                    "attribute": "thickness",
+                    "section": "settings"
+                },
+                {
+                    "id": "width",
+                    "type": "text",
+                    "label": "heisenberg::blocks.separator.controls.width",
+                    "attribute": "width",
+                    "section": "settings"
+                }
+            ],
+            "style": {
+                "css": "./separator.css",
+                "className": "hb-block-separator",
+                "variables": {
+                    "--hb-separator-color": {
+                        "source": "attributes.color",
+                        "default": "var(--accent-border)",
+                        "sanitize": "color-token"
+                    },
+                    "--hb-separator-thickness": {
+                        "source": "attributes.thickness",
+                        "default": "1px",
+                        "sanitize": "size-token"
+                    },
+                    "--hb-separator-width": {
+                        "source": "attributes.width",
+                        "default": "100%",
+                        "sanitize": "size-token"
+                    },
+                    "--hb-separator-margin": {
+                        "source": "supports.spacing.margin",
+                        "default": "var(--space-5)",
+                        "sanitize": "size-token"
+                    },
+                    "--hb-separator-background": {
+                        "source": "supports.color.background",
+                        "default": "var(--accent-border)",
+                        "sanitize": "color-token-or-transparent"
+                    },
+                    "--hb-separator-align": {
+                        "source": "supports.align",
+                        "default": "center",
+                        "sanitize": "text"
+                    }
+                }
+            },
+            "render": {
+                "template": {
+                    "tag": "div",
+                    "class": "hb-block hb-block-separator hb-block-separator--{{attributes.style}} hb-block-separator--opacity-{{attributes.opacity}}",
+                    "attributes": {
+                        "data-block-name": "{{name}}",
+                        "data-block-id": "{{id}}",
+                        "aria-hidden": "true"
+                    },
+                    "children": [
+                        {
+                            "type": "element",
+                            "tag": "span",
+                            "class": "hb-block-separator__line"
+                        }
+                    ]
+                },
+                "publicPartial": "blocks.separator",
+                "script": null
+            },
+            "innerBlocks": {
+                "enabled": false
+            },
+            "serialization": {
+                "mode": "json",
+                "saveAttributes": true,
+                "saveSupports": true,
+                "saveInnerBlocks": true,
+                "migrations": []
+            },
+            "security": {
+                "richText": "inline-basic",
+                "allowRawHtml": false,
+                "allowCustomCss": false
+            }
+        }
+    ]
+}

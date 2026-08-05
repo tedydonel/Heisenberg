@@ -1,0 +1,20 @@
+# Keep distributed Composer archives lean: development-only paths are
+# export-ignored so `composer create-project` / --prefer-dist users don't
+# pull tests, docs, or scratch artifacts.
+/.github            export-ignore
+/tests              export-ignore
+/docs               export-ignore
+/examples           export-ignore
+/.editorconfig      export-ignore
+/.gitattributes     export-ignore
+/.gitignore         export-ignore
+/phpunit.xml.dist   export-ignore
+/testbench.yaml     export-ignore
+/CODEBASE-REVIEW.md export-ignore
+/IDEA.md            export-ignore
+
+# Normalize line endings.
+* text=auto eol=lf
+*.woff2 binary
+*.png binary
+*.svg text eol=lf
