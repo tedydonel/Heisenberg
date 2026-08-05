@@ -75,7 +75,9 @@
          not a member of SUPPORT_KEYS, and BlockRenderer::resolveClass() consumes it directly
          without a style variable. An empty array means "no alignments", hence the count check. --}}
     @if (is_array($supports['align'] ?? null) && count($supports['align']) > 0)
-        <x-live.block.style.alignment />
+        {{-- Offers exactly the values THIS contract declares, so a block that allows only
+             left/center never shows a right button that would validate away on write. --}}
+        <x-live.block.style.alignment :values="$supports['align']" />
     @endif
 
     @if ($has('typography'))

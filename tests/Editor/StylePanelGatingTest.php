@@ -475,6 +475,69 @@ class StylePanelGatingTest extends TestCase
         $this->assertStringNotContainsString('<span class="hb-section__title">Flex Layout</span>', $html);
     }
 
+    public function test_absolute_position_checkbox_writes_a_css_keyword_not_a_boolean(): void
+    {
+        $html = $this->editorHtml();
+
+        // supports.position.mode is sanitised as `position-mode` (static|relative|absolute), so
+        // a plain boolean would be rejected and render nothing. The control declares the strings
+        // it writes for each state instead.
+        $this->assertMatchesRegularExpression(
+            '/data-hb-control="position\.mode"[^>]*data-hb-control-type="checkbox"/',
+            $html,
+        );
+        $this->assertStringContainsString('data-hb-control-on="absolute"', $html);
+        $this->assertStringContainsString("? (el.getAttribute('data-hb-control-on') ?? 'true')", $html);
+
+        // Off writes '' so the variable falls back to SupportsStyle's own default rather than
+        // pinning an explicit `static` the user never chose.
+        $this->assertStringContainsString('data-hb-control-off=""', $html);
+    }
+
+    public function test_alignment_offers_only_values_the_contract_declares(): void
+    {
+        $html = $this->editorHtml();
+
+        // The section is the BLOCK's placement in its parent, wired to `align` — which needs no
+        // style variable, since resolveClass() emits hb-align-<value> directly.
+        $this->assertMatchesRegularExpression(
+            '/data-hb-control="align"[^>]*data-hb-control-type="segmented"/',
+            $html,
+        );
+
+        // The design's three vertical options are NOT rendered: `align` accepts only
+        // left|center|right|wide|full, so top/middle/bottom would write a value resolveClass()
+        // discards — three controls on screen writing nowhere, the defect this phase removes.
+        foreach (['top', 'middle', 'bottom'] as $vertical) {
+            $this->assertStringNotContainsString('data-hb-tab="' . $vertical . '"', $html);
+        }
+
+        // And it offers exactly what the contract declares.
+        $declared = app(BlockRegistryService::class)->getBlock('heisenberg/heading')['supports']['align'] ?? [];
+        $this->assertSame(['left', 'center', 'right'], $declared);
+    }
+
+    public function test_theme_token_edits_repaint_immediately(): void
+    {
+        $html = $this->editorHtml();
+
+        // The editor emits #hb-theme-vars once at render time, so before this a token edit was
+        // invisible until reload — and any block bound to that token appeared not to respond.
+        $this->assertStringContainsString('const applyThemeVars = () => {', $html);
+        $this->assertStringContainsString("document.getElementById('hb-theme-vars')", $html);
+
+        // Applied immediately rather than on the save debounce, so dragging a colour reads live.
+        $this->assertMatchesRegularExpression(
+            '/const scheduleSave = \(\) => \{\s*applyThemeVars\(\);/',
+            $html,
+        );
+
+        // Must mirror ThemeRepository::css()'s prefix and font quoting, or preview and saved
+        // render disagree.
+        $this->assertStringContainsString("'  --hb-t-' + token.name + ': ' + token.value + ';'", $html);
+        $this->assertStringContainsString("', sans-serif;'", $html);
+    }
+
     public function test_state_section_is_never_contract_gated(): void
     {
         $html = $this->editorHtml();

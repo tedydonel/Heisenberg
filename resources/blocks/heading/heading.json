@@ -212,7 +212,8 @@
         "position": {
             "x": true,
             "y": true,
-            "rotation": true
+            "rotation": true,
+            "mode": true
         },
         "effects": {
             "shadow": true
@@ -405,6 +406,11 @@
                 "source": "supports.effects.shadow",
                 "default": "",
                 "sanitize": "shadow"
+            },
+            "--hb-position-mode": {
+                "source": "supports.position.mode",
+                "default": "",
+                "sanitize": "position-mode"
             }
         }
     },

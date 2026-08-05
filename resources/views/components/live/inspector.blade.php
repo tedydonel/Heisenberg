@@ -1075,6 +1075,14 @@
                 if (input) input.checked = !!value;
                 return;
             }
+            // ui/checkbox maps a boolean control onto a NON-boolean model value (e.g. the
+            // Absolute Position box writes 'absolute' or ''), so "checked" is defined as
+            // matching data-hb-control-on rather than plain truthiness.
+            if (type === 'checkbox') {
+                const input = el.querySelector('.hb-checkbox__input');
+                if (input) input.checked = String(value ?? '') === (el.getAttribute('data-hb-control-on') ?? 'true');
+                return;
+            }
             if (type === 'select') {
                 syncSelect(el, value);
                 syncColorPreview(el, value == null ? '' : String(value));
@@ -1215,6 +1223,14 @@
             if (!isChange) return; // avoid double-processing the checkbox's paired input+change
             const input = el.querySelector('.hb-toggle__input');
             raw = !!(input && input.checked);
+        } else if (type === 'checkbox') {
+            if (!isChange) return; // same input+change pairing as toggle
+            const input = el.querySelector('.hb-checkbox__input');
+            // Writes the configured on/off strings, not a boolean: the model value is a CSS
+            // keyword the sanitizer has to accept (`position-mode` etc.), and `false` is not one.
+            raw = input && input.checked
+                ? (el.getAttribute('data-hb-control-on') ?? 'true')
+                : (el.getAttribute('data-hb-control-off') ?? '');
         } else if (type === 'select') {
             if (event.target !== el) return; // the select's own custom 'change', dispatched on its root
             raw = el.dataset.value;

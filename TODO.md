@@ -18,7 +18,7 @@ Iterative checklist. Tick items as they land — this file is the *plan*.
 | 6 — Audit debt | ⬜ mostly open, but 6.1/6.2/6.6 landed 2026-08-02, 6.7 landed 2026-08-03 (see below) |
 | 7 — Inspector functional; contracts catch up to the UI | 🟡 7.2–7.8 done; 7.1 mostly done (remaining groups blocked on unwired controls, listed inline); 7.9 deferred by instruction |
 
-Suite: **527 tests, 2233 assertions, green.**
+Suite: **530 tests, 2249 assertions, green.**
 
 **2026-08-05 — repository reset.** The GitHub repo was deleted and recreated to remove AI
 co-author attribution that could not be stripped any other way (a closed PR's `refs/pull/1/head`
@@ -457,14 +457,18 @@ install/DX bugs nothing in this repo can catch.
   — nothing loaded it before, so the whole sheet was unreachable regardless of what was declared.
   **The rule applied throughout: wire the control first, then declare the group.** Declaring a
   group whose section writes nothing just recreates the defect this phase exists to remove.
-  **Still open**, all for the same reason — the controls carry no `data-hb-control` yet:
-  - `position.mode` (the "Absolute Position" checkbox)
-  - `size.overflow` / fill / hug / clip (the Dimensions checkboxes)
-  - the standalone Alignment section's 6-way bar (writes `align`, which needs no variable)
-  - Stroke's join/cap selects — moot while text has no `border` (7.2)
-  - `layout` — deliberately NOT gated on `supports.layout` alone. Flex Layout now requires
-    `innerBlocks.enabled` too: a flex container lays out children, and the control is incoherent
-    on a block that cannot have any. It will appear automatically for a real container contract.
+  **Remaining, and it is a STRUCTURAL blocker rather than unfinished wiring:** the Dimensions
+  fill/hug/clip checkboxes and the flex-container marker are CLASS-based capabilities in
+  `SupportsStyle` (`hb-size-fill-w`, `hb-size-clip`, `hb-flex-layout`), not variable-based —
+  a bare custom property cannot flip `display`/`width`. Classes come from
+  `style.classNames`, whose predicates `BlockRenderer::predicateMatches()` resolves against
+  **`attributes` only**, never `supports`. So these cannot be expressed as supports at all today.
+  Two ways forward, neither guessed at here:
+    (a) declare them as attributes (e.g. `fillWidth`, `clipContent`) with `classNames` predicates —
+        works with the engine as-is, and `dropCap` is existing precedent for a style-ish boolean
+        living in attributes;
+    (b) teach `predicateMatches()` to read `supports.` sources — cleaner model, engine change.
+  Also still open: Stroke's join/cap selects, moot while text has no `border` (7.2).
 
 - [x] **7.2 Text blocks must NOT support Stroke or border-radius** — done 2026-08-05.
   Quote: *"text cant have things like borders which is offered by the stroke section or border

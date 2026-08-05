@@ -138,7 +138,35 @@
                     });
                 };
 
+                // Repaint the page's `--hb-t-*` custom properties from the in-DOM theme. Mirrors
+                // ThemeRepository::css()'s CSS_PREFIX and its `family, sans-serif` quoting for
+                // fonts, so the live preview and the saved render agree.
+                //
+                // Without this the panel could edit and PUT a token that nothing on the page then
+                // used: the editor emits #hb-theme-vars once at render time, so a change was
+                // invisible until reload — and any block bound to that token appeared not to
+                // respond at all. Applied immediately, not on the debounce, so dragging a colour
+                // reads as live.
+                const applyThemeVars = () => {
+                    const target = document.getElementById('hb-theme-vars');
+                    if (!target) return;
+                    const theme = collectTheme();
+                    const lines = [];
+                    ['colors', 'fontSizes', 'spaces', 'radii'].forEach((section) => {
+                        (theme[section] || []).forEach((token) => {
+                            if (token.name && token.value) lines.push('  --hb-t-' + token.name + ': ' + token.value + ';');
+                        });
+                    });
+                    (theme.fonts || []).forEach((token) => {
+                        if (!token.name || !token.family) return;
+                        const family = token.family.indexOf(' ') >= 0 ? "'" + token.family + "'" : token.family;
+                        lines.push('  --hb-t-' + token.name + ': ' + family + ', sans-serif;');
+                    });
+                    target.textContent = ':root {\n' + lines.join('\n') + '\n}';
+                };
+
                 const scheduleSave = () => {
+                    applyThemeVars();
                     clearTimeout(saveTimer);
                     saveTimer = setTimeout(saveNow, 600);
                 };
