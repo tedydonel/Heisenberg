@@ -93,6 +93,7 @@ return [
         'post_discussion' => 'Discussion',
         'post_allow_comments' => 'Autoriser les commentaires',
         'post_page_layout' => 'Mise en page',
+        'bind_theme_variable' => 'Lier à une variable de thème',
         'post_layout_padding_x' => 'X Padding',
         'post_layout_padding_y' => 'Y Padding',
         'block_empty' => 'Sélectionnez un bloc dans la zone de dessin pour modifier ses paramètres.',

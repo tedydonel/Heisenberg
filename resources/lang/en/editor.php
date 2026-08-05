@@ -93,6 +93,7 @@ return [
         'post_discussion' => 'Discussion',
         'post_allow_comments' => 'Allow comments',
         'post_page_layout' => 'Page layout',
+        'bind_theme_variable' => 'Bind to theme variable',
         'post_layout_padding_x' => 'X Padding',
         'post_layout_padding_y' => 'Y Padding',
         // Block tab — empty-state

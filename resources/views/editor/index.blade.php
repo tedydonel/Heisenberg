@@ -1,6 +1,15 @@
 @extends('heisenberg::editor.layouts.app')
 
 @section('content')
+    {{-- The user theme's own `--hb-t-*` custom properties. Only preview.blade.php emitted these,
+         so in the editor every token reference resolved to nothing: the Style/Themes panel could
+         save tokens the canvas then could not display, and binding a block style to one was
+         pointless. Emitted first so everything below can reference them. (TODO 7.6)
+
+         This is the SAVED theme at render time. Live edits in the Style tab still only debounce a
+         PUT; nothing rewrites these properties in place, so an unsaved edit is not previewed until
+         reload — see TODO 7.6. --}}
+    <style id="hb-theme-vars">{!! $themeCss ?? '' !!}</style>
     <x-live.topbar class="hb-editor__topbar" :post-id="$postId ?? null" :content-version="$contentVersion ?? 0" />
     <x-live.sidebar class="hb-editor__sidebar" />
     {{-- All 4 panel pairs live in the DOM simultaneously; only one is visible at a time.
@@ -35,7 +44,8 @@
         :post-page-padding-x="$postPagePaddingX ?? 56" :post-page-padding-y="$postPagePaddingY ?? 56"
         :post-layout-url-template="$postLayoutUrlTemplate" :post-allow-comments="$postAllowComments ?? true"
         :post-discussion-url-template="$postDiscussionUrlTemplate"
-        :fonts-search-url="route('heisenberg.editor.fonts.search')" />
+        :fonts-search-url="route('heisenberg.editor.fonts.search')"
+        :theme-tokens="$themeTokens ?? []" />
     <x-live.footer class="hb-editor__footer" />
 
     {{-- The block model: registry + render/insert/select runtime. Kept last so the canvas,

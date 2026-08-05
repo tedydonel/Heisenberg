@@ -28,7 +28,7 @@
          write border.radius.*. Neither contract declares `appearance`; both fully declare
          `border.radius`. A single-key gate is wrong either way, so the section shows when either
          group is present and the opacity field gates independently on `appearance`. --}}
-@props(['supports' => [], 'state' => 0])
+@props(['supports' => [], 'state' => 0, 'themeTokens' => []])
 @php
     use Illuminate\Support\Arr;
 
@@ -127,4 +127,30 @@
             <x-live.pickers.effect-editor />
         </div>
     @endif
+
+    {{-- Theme-variable pickers (TODO 7.6). live/pickers/variable-menu existed but was mounted
+         ONLY in the components gallery, never in the inspector — and its token list was a
+         hardcoded array in the component, so wiring it without passing real tokens would have
+         offered names that do not exist. These are fed ThemeRepository::tokens(), which merges
+         the user's theme over the config registry and had no callers at all.
+
+         Two modes because the menu shows a swatch for colours and a raw value for everything
+         else. Both are mounted once per panel and repositioned at whichever field opened them. --}}
+    <div class="hb-style-popup" data-hb-style-popup="var-color" hidden>
+        <x-live.pickers.variable-menu mode="color" selected="" :tokens="$themeTokens['color'] ?? null" />
+    </div>
+    <div class="hb-style-popup" data-hb-style-popup="var-number" hidden>
+        <x-live.pickers.variable-menu mode="number" selected="" :tokens="$themeTokens['space'] ?? null" />
+    </div>
+
+    {{-- Trigger prototype, cloned into every Block.style text field's right edge (TODO 7.7).
+         Injected from script rather than added to each of the eight style/*.blade.php files:
+         the requirement is "only for the Block.style sub-tab", and one decorator over
+         [data-hb-control] inside .hb-blockstyle expresses exactly that scope — adding a prop to
+         ui/field would put the affordance on every field in the editor, Post tab included. --}}
+    <span data-hb-style-var-prototype hidden aria-hidden="true">
+        <button type="button" class="hb-varbtn" data-hb-style-var-trigger aria-expanded="false" aria-label="{{ __('heisenberg::editor.inspector.bind_theme_variable') }}">
+            @include('heisenberg::components.ui.icon', ['name' => 'selection-all-fill', 'size' => 14])
+        </button>
+    </span>
 </div>

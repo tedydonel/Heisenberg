@@ -102,3 +102,47 @@
 .hb-style-popup[hidden] { display: none !important; }
 .hb-field__value--mixed { color: var(--hb-text-muted, #9A9A9A); font-style: italic; }
 .hb-fxlayer[data-hb-style-effect-hidden="true"] { opacity: .45; }
+
+/* Theme-variable binding trigger — Block.style text fields only (TODO 7.7).
+   Cloned into each field by inspector.blade.php's hbDecorateVarTriggers(); the field itself is
+   position:relative so the button can sit at its right edge without reflowing the input.
+
+   Three states. `bound` uses the THEME's own accent token rather than a fixed editor colour, so
+   the indicator follows the user's palette; --hb-editing is the fallback for a theme that has no
+   accent-1 (identical value today, #3D68F5). `manual` is deliberately hidden until the field is
+   hovered or the button focused — a literal value is the common case and a permanently-lit icon
+   on every field would read as noise. Focus-visible keeps it reachable by keyboard. */
+.hb-field.hb-has-varbtn,
+.hb-input.hb-has-varbtn { position: relative; }
+
+.hb-varbtn {
+    position: absolute;
+    top: 50%;
+    right: 6px;
+    transform: translateY(-50%);
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 18px;
+    height: 18px;
+    padding: 0;
+    border: 0;
+    border-radius: var(--hb-radius-sm, 3px);
+    background: transparent;
+    color: var(--hb-text-muted, #9A9A9A);
+    cursor: pointer;
+    opacity: 1;
+    transition: color .12s ease, opacity .12s ease;
+}
+.hb-varbtn:hover { background: var(--hb-bg-muted, #F4F4F4); }
+.hb-varbtn:focus-visible { outline: 2px solid var(--hb-border-focus, #000); outline-offset: 1px; }
+
+.hb-varbtn[data-hb-var-state="bound"] { color: var(--hb-t-accent-1, var(--hb-editing, #3D68F5)); }
+.hb-varbtn[data-hb-var-state="unset"] { color: var(--hb-text-muted, #9A9A9A); }
+.hb-varbtn[data-hb-var-state="manual"] { opacity: 0; }
+.hb-has-varbtn:hover .hb-varbtn[data-hb-var-state="manual"],
+.hb-varbtn[data-hb-var-state="manual"]:focus-visible { opacity: 1; }
+
+/* The input must not run under the button. */
+.hb-has-varbtn .hb-field__value,
+.hb-has-varbtn .hb-input__value { padding-right: 26px; }

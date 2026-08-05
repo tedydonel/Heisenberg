@@ -109,11 +109,14 @@ class InspectorWiringTest extends TestCase
         // They hold no model path, so syncControls (which walks [data-hb-control]) skips them —
         // without this a re-selected block shows real per-side values under a stale summary.
         $this->assertStringContainsString('function syncSpacingAggregates(root)', $html);
-        $this->assertMatchesRegularExpression(
-            '/syncSpacingAggregates\(root\);\s*\n\s*refreshConditionals\(root, model\);/',
-            $html,
-            'syncSpacingAggregates must run as part of syncControls',
-        );
+
+        // Must be called from inside syncControls — asserted by position rather than adjacency,
+        // since other per-selection passes (the theme-variable trigger sync, TODO 7.7) legitimately
+        // sit between it and refreshConditionals.
+        $body = substr($html, (int) strpos($html, 'function syncControls(root, model)'));
+        $body = substr($body, 0, (int) strpos($body, 'function showBlockPanels'));
+        $this->assertStringContainsString('syncSpacingAggregates(root);', $body);
+        $this->assertStringContainsString('refreshConditionals(root, model);', $body);
     }
 
     // ── Content → General ─────────────────────────────────────────────────────

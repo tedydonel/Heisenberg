@@ -100,6 +100,15 @@ final class EditorController
             'registry' => BlockViewData::clientBlocks($registry),
             'blocksCss' => BlockViewData::blocksCss($registry),
             'theme' => $themes->load(),
+            // The theme's own `--hb-t-*` custom properties. Only preview.blade.php ever emitted
+            // these, so in the editor a token reference like `var(--hb-t-accent-1)` resolved to
+            // nothing: the Style/Themes panel could edit and save tokens that the canvas could
+            // not then display, and binding a block style to one was pointless. (TODO 7.6)
+            'themeCss' => $themes->css(),
+            // Merged theme-over-config token maps (color/fontSize/space/radius/fontFamily), keyed
+            // `var(--hb-t-name) => Label`. ThemeRepository::tokens() existed with no callers at
+            // all; it is what the Block.style variable picker offers.
+            'themeTokens' => $themes->tokens(),
             'savedThemes' => $savedThemes->all(),
             // Seeds the Fonts field's ui/select (searchable) with a first page so it never opens
             // empty before a single keystroke — same popular-head GET /editor/fonts?q= would return.

@@ -268,6 +268,9 @@
     // ui/combobox against the vendored Google Fonts catalog, same endpoint and paging contract
     // the left sidebar's Style tab uses. Empty string disables the search rather than 404ing.
     'fontsSearchUrl' => '',
+    // ThemeRepository::tokens() — merged theme-over-config maps keyed `var(--hb-t-name) => Label`,
+    // feeding the Block.style theme-variable pickers (TODO 7.6).
+    'themeTokens' => [],
 ])
 <aside data-hb-inspector data-hb-fonts-search-url="{{ $fontsSearchUrl }}" {{ $attributes->merge(['class' => 'hb-inspector']) }}>
     <x-ui.panel-tabs :items="$panelTabs" :active-index="$panelActiveIndex" />
@@ -914,7 +917,7 @@
                              `supports` map, which is exactly what it was designed to do — it needs
                              the real supports passed in, nothing more. --}}
                         <div data-hb-block-panel="{{ $hbRegBlockName }}" hidden>
-                            <x-live.block.style-panel :supports="$hbRegBlockContract['supports'] ?? []" />
+                            <x-live.block.style-panel :supports="$hbRegBlockContract['supports'] ?? []" :theme-tokens="$themeTokens" />
                         </div>
                     @endforeach
                 </div>
@@ -1092,6 +1095,10 @@
             }
         });
         syncSpacingAggregates(root);
+        // Runs after the values are in, so each trigger reads the block's real state rather
+        // than the component's rendered default. Idempotent — it skips fields already decorated.
+        hbDecorateVarTriggers(root);
+        root.querySelectorAll('[data-hb-control]').forEach(hbSyncVarTrigger);
         refreshConditionals(root, model);
     }
 
@@ -1446,6 +1453,87 @@
         syncPaddingControls(root);
         syncMarginControls(root);
     }
+
+    // ── Block.style theme-variable binding (TODO 7.6 / 7.7) ──────────────────────────
+    // Every text-ish Style control gets a trailing selection-all-fill trigger that opens the
+    // matching variable-menu. Scoped to .hb-blockstyle deliberately: the requirement is
+    // "only for the Block.style sub-tab", and decorating from here expresses that exactly,
+    // where a prop on ui/field would put the affordance on every field in the editor.
+    //
+    // Three states, driven off the field's current value:
+    //   bound  — value is a var(--…) reference  -> accent colour, always visible
+    //   unset  — value is empty                 -> muted, always visible
+    //   manual — value is a literal             -> muted, revealed on hover/focus of the field
+    const HB_VAR_TYPES = ['text', 'number'];
+
+    function hbVarStateOf(value) {
+        const v = String(value ?? '').trim();
+        if (v === '') return 'unset';
+        return /^var\(\s*--/.test(v) ? 'bound' : 'manual';
+    }
+
+    // Colour-ish paths get the swatch menu; everything else gets the value menu.
+    function hbVarMenuFor(path) {
+        return /(^|\.)color(\.|$)|color$/i.test(path) ? 'var-color' : 'var-number';
+    }
+
+    function hbSyncVarTrigger(control) {
+        const button = control.querySelector('[data-hb-style-var-trigger]');
+        if (!button) return;
+        const input = control.matches('input') ? control : control.querySelector('input');
+        button.dataset.hbVarState = hbVarStateOf(input?.value);
+    }
+
+    function hbDecorateVarTriggers(root) {
+        const prototype = root.querySelector('[data-hb-style-var-prototype] [data-hb-style-var-trigger]');
+        if (!prototype) return;
+        root.querySelectorAll('[data-hb-control]').forEach((control) => {
+            if (control.closest('[data-hb-style-var-prototype]')) return;
+            if (!HB_VAR_TYPES.includes(control.getAttribute('data-hb-control-type'))) return;
+            if (control.querySelector('[data-hb-style-var-trigger]')) return;
+            const button = prototype.cloneNode(true);
+            button.removeAttribute('hidden');
+            control.appendChild(button);
+            control.classList.add('hb-has-varbtn');
+            hbSyncVarTrigger(control);
+        });
+    }
+
+    document.addEventListener('click', (event) => {
+        const trigger = event.target.closest('[data-hb-style-var-trigger]');
+        if (!trigger) return;
+        const root = mountedStyleRoot(trigger);
+        const control = trigger.closest('[data-hb-control]');
+        if (!root || !control) return;
+        event.stopPropagation();
+        root.__hbVarTarget = control;
+        showStylePopup(root, hbVarMenuFor(control.getAttribute('data-hb-control') || ''), trigger);
+    });
+
+    // variable-menu reports the token KEY, which ThemeRepository::tokens() already builds as the
+    // CSS value itself (`var(--hb-t-accent-1) => Accent`) — so the selection is written straight
+    // through, no name-to-value lookup that could drift from the theme.
+    document.addEventListener('varselect', (event) => {
+        const popup = event.target.closest('[data-hb-style-popup^="var-"]');
+        const root = popup ? mountedStyleRoot(popup) : null;
+        const control = root?.__hbVarTarget;
+        if (!root || !control) return;
+        const input = control.matches('input') ? control : control.querySelector('input');
+        if (!input) return;
+        input.value = event.detail?.name || '';
+        // Re-use the one delegated write path rather than calling setSupport here, so the
+        // linked-value/aggregate handlers (spacing, corners) still see the edit.
+        input.dispatchEvent(new Event('input', { bubbles: true }));
+        input.dispatchEvent(new Event('change', { bubbles: true }));
+        hbSyncVarTrigger(control);
+        closeStylePopups(root);
+    });
+
+    // Keep the indicator honest as the user types a literal over a bound value, or clears it.
+    document.addEventListener('input', (event) => {
+        const control = event.target.closest('[data-hb-control]');
+        if (control && mountedStyleRoot(control)) hbSyncVarTrigger(control);
+    });
 
     // ── Typography font family: paged search against the vendored catalog (TODO 7.5) ──
     // The field is ui/combobox; this only answers the `search`/`loadmore` events it dispatches

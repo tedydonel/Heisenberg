@@ -293,6 +293,74 @@ class StylePanelGatingTest extends TestCase
         $this->assertStringContainsString("tab.dataset.hbTab === text && text !== '' ? 'true' : 'false'", $html);
     }
 
+    public function test_theme_variables_actually_resolve_in_the_editor(): void
+    {
+        $html = $this->editorHtml();
+
+        // Only preview.blade.php ever emitted ThemeRepository::css(), so in the editor every
+        // `var(--hb-t-*)` reference resolved to nothing: the Style/Themes panel could save tokens
+        // the canvas could not display, and binding a block style to one was pointless (TODO 7.6).
+        $this->assertStringContainsString('id="hb-theme-vars"', $html);
+        $this->assertStringContainsString('--hb-t-accent-1', $html);
+    }
+
+    public function test_variable_menu_is_mounted_in_the_inspector_with_real_theme_tokens(): void
+    {
+        $html = $this->editorHtml();
+
+        // live/pickers/variable-menu existed but was mounted only in the components gallery, and
+        // its token list was a hardcoded array — wiring it without real tokens would offer names
+        // that do not exist.
+        $this->assertStringContainsString('data-hb-style-popup="var-color"', $html);
+        $this->assertStringContainsString('data-hb-style-popup="var-number"', $html);
+        $this->assertStringContainsString('data-hb-varmenu', $html);
+
+        // Options come from ThemeRepository::tokens(), whose keys ARE the CSS values.
+        $this->assertStringContainsString('data-vm-name="var(--hb-t-accent-1)"', $html);
+    }
+
+    public function test_style_text_fields_get_the_theme_variable_trigger_with_three_states(): void
+    {
+        $html = $this->editorHtml();
+
+        // TODO 7.7 — selection-all-fill at the right end of Block.style text fields.
+        $this->assertStringContainsString('data-hb-style-var-trigger', $html);
+        $this->assertStringContainsString('data-icon-name="selection-all-fill"', $html);
+
+        // bound -> accent, unset -> muted, manual -> muted but hover-only.
+        $this->assertStringContainsString("if (v === '') return 'unset';", $html);
+        $this->assertStringContainsString("return /^var\\(\\s*--/.test(v) ? 'bound' : 'manual';", $html);
+    }
+
+    public function test_the_variable_trigger_is_scoped_to_the_style_sub_tab_only(): void
+    {
+        $html = $this->editorHtml();
+
+        // "only for the Block.style sub-tab" — the decorator reads the mounted style root, so
+        // Content/Advanced/Post fields never receive it. A prop on ui/field would have put the
+        // affordance on every field in the editor.
+        $this->assertStringContainsString('function hbDecorateVarTriggers(root)', $html);
+        $this->assertStringContainsString('[data-hb-style-var-prototype] [data-hb-style-var-trigger]', $html);
+
+        // The prototype is the only occurrence rendered server-side; the rest are cloned at
+        // runtime, so exactly one trigger per Style panel exists in the delivered HTML.
+        $this->assertSame(
+            $this->blockCount(),
+            substr_count($html, 'data-hb-style-var-trigger aria-expanded'),
+            'only the per-panel prototype should be server-rendered',
+        );
+    }
+
+    public function test_variable_selection_writes_through_the_shared_control_path(): void
+    {
+        $html = $this->editorHtml();
+
+        // Writing via setSupport directly would bypass the linked-value handlers (spacing's
+        // aggregate modes, the corner group), leaving those summaries stale.
+        $this->assertStringContainsString("input.dispatchEvent(new Event('input', { bubbles: true }))", $html);
+        $this->assertStringContainsString("input.dispatchEvent(new Event('change', { bubbles: true }))", $html);
+    }
+
     public function test_state_section_is_never_contract_gated(): void
     {
         $html = $this->editorHtml();
