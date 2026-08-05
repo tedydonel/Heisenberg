@@ -46,16 +46,18 @@ class StylePanelGatingTest extends TestCase
     {
         $html = $this->editorHtml();
 
-        // Neither shipped contract declares position, layout or effects. Their controls must be
-        // absent entirely — not merely disabled, since a rendered-but-dead control is the exact
-        // failure this change exists to remove.
-        foreach (['position.x', 'position.y', 'position.rotation', 'layout.gap'] as $path) {
-            $this->assertSame(0, $this->controlCount($html, $path), "{$path} is unsupported and must not render");
-        }
-
-        $this->assertStringNotContainsString('<span class="hb-section__title">Position</span>', $html);
+        // `layout` is the remaining unsupported group. Its controls must be absent entirely —
+        // not merely disabled, since a rendered-but-dead control is the exact failure this
+        // change exists to remove.
+        $this->assertSame(0, $this->controlCount($html, 'layout.gap'), 'layout.gap is unsupported and must not render');
         $this->assertStringNotContainsString('<span class="hb-section__title">Flex Layout</span>', $html);
-        $this->assertStringNotContainsString('<span class="hb-section__title">Effects</span>', $html);
+
+        // Position and Effects were in this list until their controls were wired (TODO 7.1) —
+        // declaring a group whose section writes nothing just recreates the problem, so they
+        // were declared only once they could actually do something.
+        $this->assertSame($this->blockCount(), $this->controlCount($html, 'position.x'));
+        $this->assertStringContainsString('<span class="hb-section__title">Position</span>', $html);
+        $this->assertStringContainsString('<span class="hb-section__title">Effects</span>', $html);
     }
 
     public function test_supported_sections_render_once_per_registered_block_type(): void
@@ -181,11 +183,12 @@ class StylePanelGatingTest extends TestCase
     {
         $html = $this->editorHtml();
 
-        // Fill is the colour picker's only surviving trigger now that Stroke and Appearance are
-        // gone with `border` (TODO 7.2), and Fill still renders — so the popup stays mounted.
+        // Fill and Appearance both trigger the colour picker, so it stays mounted.
         $this->assertStringContainsString('data-hb-style-popup="color"', $html);
-        // Effects is the effect editor's only trigger, and Effects is gated away.
-        $this->assertStringNotContainsString('data-hb-style-popup="effect"', $html);
+        // Effects is the effect editor's only trigger; it renders now that effects.shadow is
+        // declared and wired (TODO 7.1), so the editor is mounted with it.
+        $this->assertStringContainsString('data-hb-style-popup="effect"', $html);
+        $this->assertStringContainsString('data-hb-fx-blur', $html);
     }
 
     public function test_typography_font_field_searches_the_live_catalog_not_a_static_list(): void
@@ -422,6 +425,54 @@ class StylePanelGatingTest extends TestCase
         // would never see the change either.
         $this->assertStringContainsString("if (control.getAttribute('data-hb-control-type') === 'combobox') {", $html);
         $this->assertStringContainsString('control.__hbCombobox?.setValue(value, value);', $html);
+    }
+
+    public function test_a_composed_shadow_survives_the_renderer(): void
+    {
+        // The Effects editor's five fields compose ONE box-shadow string into
+        // supports.effects.shadow. This proves the composed shape actually renders rather than
+        // being silently dropped by the `shadow` sanitizer — the failure mode that made every
+        // other "wired" control in this phase look like it worked.
+        $html = app(\Heisenberg\Services\BlockRenderer::class)->renderBlock([
+            'id' => 'fx1',
+            'name' => 'heisenberg/paragraph',
+            'attributes' => ['content' => 'x'],
+            // Exactly what hbComposeShadow() builds: x, y, blur, then rgba() folding opacity in.
+            'supports' => ['effects' => ['shadow' => '0px 8px 28px rgba(0, 0, 0, 0.14)']],
+            'innerBlocks' => [],
+        ], 'en');
+
+        $this->assertStringContainsString('--hb-shadow: 0px 8px 28px rgba(0, 0, 0, 0.14)', $html);
+
+        // And a malformed one is refused rather than injected.
+        $bad = app(\Heisenberg\Services\BlockRenderer::class)->renderBlock([
+            'id' => 'fx2',
+            'name' => 'heisenberg/paragraph',
+            'attributes' => ['content' => 'x'],
+            'supports' => ['effects' => ['shadow' => 'red; background: url(javascript:alert(1))']],
+            'innerBlocks' => [],
+        ], 'en');
+
+        $this->assertStringNotContainsString('--hb-shadow', $bad);
+        $this->assertStringNotContainsString('javascript:', $bad);
+    }
+
+    public function test_flex_layout_gates_on_being_a_container_not_on_supports_layout(): void
+    {
+        $html = $this->editorHtml();
+
+        // A flex container lays out its children; the control is incoherent on a block that
+        // cannot have any. Gating on innerBlocks.enabled means the section appears automatically
+        // when a real container contract exists, rather than needing `layout` remembered too.
+        // Asserted against the Blade source — the gate is server-side and never reaches the page.
+        $panel = file_get_contents(__DIR__ . '/../../resources/views/components/live/block/style-panel.blade.php');
+        $this->assertStringContainsString("\$isContainer = (bool) (\$innerBlocks['enabled'] ?? false);", $panel);
+        $this->assertStringContainsString('@if ($isContainer && $has(\'layout\'))', $panel);
+
+        foreach (['heisenberg/heading', 'heisenberg/paragraph'] as $name) {
+            $this->assertFalse(app(BlockRegistryService::class)->getBlock($name)['innerBlocks']['enabled'] ?? false);
+        }
+        $this->assertStringNotContainsString('<span class="hb-section__title">Flex Layout</span>', $html);
     }
 
     public function test_state_section_is_never_contract_gated(): void

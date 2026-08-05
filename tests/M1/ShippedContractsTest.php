@@ -85,7 +85,7 @@ class ShippedContractsTest extends TestCase
         );
         // Full-kit overhaul 2026-07-19 (Phase 1) — the new Alignment panel is
         // derived from supports.align, which paragraph already declares.
-        $this->assertSame(['align', 'appearance', 'typography', 'size', 'color', 'margin', 'padding'], array_column($paragraph['panels'], 'key')); // no border/radius (7.2); appearance from opacity (7.1)
+        $this->assertSame(['align', 'position', 'appearance', 'typography', 'size', 'color', 'margin', 'padding', 'effects'], array_column($paragraph['panels'], 'key')); // no border/radius (7.2); appearance from opacity (7.1)
 
         $dropCap = collect($paragraph['controls'])->firstWhere('attribute', 'dropCap');
         $this->assertSame('toggle', $dropCap['type'] ?? null);
@@ -110,7 +110,7 @@ class ShippedContractsTest extends TestCase
             $heading['supports']['typography'],
         );
         // Full-kit overhaul 2026-07-19 (Phase 1) — see the paragraph test above.
-        $this->assertSame(['align', 'appearance', 'typography', 'size', 'color', 'margin', 'padding'], array_column($heading['panels'], 'key')); // no border/radius (7.2); appearance from opacity (7.1)
+        $this->assertSame(['align', 'position', 'appearance', 'typography', 'size', 'color', 'margin', 'padding', 'effects'], array_column($heading['panels'], 'key')); // no border/radius (7.2); appearance from opacity (7.1)
 
         $level = collect($heading['controls'])->firstWhere('attribute', 'level');
         $this->assertSame('select', $level['type'] ?? null);

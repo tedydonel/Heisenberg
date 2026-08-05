@@ -111,12 +111,14 @@ class EditorRendersTest extends TestCase
         // SECTION still being mounted.
         $header = fn (string $section): string => '<span class="hb-section__title">' . $section . '</span>';
 
-        // Appearance is back as of TODO 7.1 — not for corner radius (text has no border) but
-        // because `appearance.opacity` is now declared, which is that section's other control.
-        foreach (['State', 'Alignment', 'Typography', 'Dimensions', 'Fill', 'Appearance'] as $section) {
+        // Position and Effects joined as of TODO 7.1, once their controls were actually wired.
+        // Appearance is here for `appearance.opacity`, not corner radius — text has no border.
+        foreach (['State', 'Alignment', 'Typography', 'Dimensions', 'Fill', 'Appearance', 'Position', 'Effects'] as $section) {
             $this->assertStringContainsString($header($section), $html);
         }
-        foreach (['Position', 'Flex Layout', 'Effects', 'Stroke'] as $section) {
+        // Flex Layout gates on being a CONTAINER, not on supports.layout — a flex container lays
+        // out children, and neither text block can have any (innerBlocks.enabled false).
+        foreach (['Flex Layout', 'Stroke'] as $section) {
             $this->assertStringNotContainsString(
                 $header($section),
                 $html,

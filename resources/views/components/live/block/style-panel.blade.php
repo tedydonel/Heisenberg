@@ -28,9 +28,11 @@
          write border.radius.*. Neither contract declares `appearance`; both fully declare
          `border.radius`. A single-key gate is wrong either way, so the section shows when either
          group is present and the opacity field gates independently on `appearance`. --}}
-@props(['supports' => [], 'state' => 0, 'themeTokens' => []])
+@props(['supports' => [], 'state' => 0, 'themeTokens' => [], 'innerBlocks' => []])
 @php
     use Illuminate\Support\Arr;
+
+    $isContainer = (bool) ($innerBlocks['enabled'] ?? false);
 
     $has = fn (string $key): bool => Arr::get($supports, $key, null) !== null
         && Arr::get($supports, $key) !== false;
@@ -84,7 +86,12 @@
         <x-live.block.style.position />
     @endif
 
-    @if ($has('layout'))
+    {{-- Flex Layout gates on being a CONTAINER, not on `supports.layout`. A flex container lays
+         out its children, so the control is incoherent on a block that cannot have any — both
+         shipped contracts set innerBlocks.enabled false. Same rule the toolbar's save-as-block
+         button uses (TODO 7.8), and it means the section appears automatically the moment a real
+         container contract exists rather than needing `layout` remembered separately. --}}
+    @if ($isContainer && $has('layout'))
         <x-live.block.style.flex-layout />
     @endif
 

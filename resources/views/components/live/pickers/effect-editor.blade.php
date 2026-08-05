@@ -15,22 +15,27 @@
     </button>
     <div class="hb-shadow__body">
         @if ($type === 'drop-shadow' || $type === 'inner-shadow')
+            {{-- Hooks added 2026-08-05 (TODO 7.1): these five fields compose ONE box-shadow
+                 string written to supports.effects.shadow, which SupportsStyle reads as
+                 --hb-shadow. They are not five model paths — the model holds the composed value,
+                 because that is the shape BlockRenderer's `shadow` sanitizer validates and the
+                 only thing CSS can consume. See inspector.blade.php's hbComposeShadow(). --}}
             <div class="hb-shadow__row">
                 <span class="hb-shadow__lbl">Color</span>
                 <div class="hb-shadow__color">
-                    <span class="hb-shadow__sw" style="background: {{ $color }};"></span>
-                    <input type="text" class="hb-shadow__hex" value="{{ $color }}">
+                    <span class="hb-shadow__sw" style="background: {{ $color }};" data-hb-fx-swatch></span>
+                    <input type="text" class="hb-shadow__hex" value="{{ $color }}" data-hb-fx-color>
                 </div>
-                <span class="hb-shadow__box hb-shadow__box--fixed"><input type="text" value="{{ $opacity }}"><span class="p">%</span></span>
+                <span class="hb-shadow__box hb-shadow__box--fixed"><input type="text" value="{{ $opacity }}" data-hb-fx-opacity><span class="p">%</span></span>
             </div>
             <div class="hb-shadow__row">
                 <span class="hb-shadow__lbl">Blur</span>
-                <span class="hb-shadow__box hb-shadow__box--grow"><input type="text" value="{{ $blur }}"></span>
+                <span class="hb-shadow__box hb-shadow__box--grow"><input type="text" value="{{ $blur }}" data-hb-fx-blur></span>
             </div>
             <div class="hb-shadow__row">
                 <span class="hb-shadow__lbl">Offset</span>
-                <span class="hb-shadow__box hb-shadow__box--grow"><input type="text" value="{{ $x }}"></span>
-                <span class="hb-shadow__box hb-shadow__box--grow"><input type="text" value="{{ $y }}"></span>
+                <span class="hb-shadow__box hb-shadow__box--grow"><input type="text" value="{{ $x }}" data-hb-fx-x></span>
+                <span class="hb-shadow__box hb-shadow__box--grow"><input type="text" value="{{ $y }}" data-hb-fx-y></span>
             </div>
         @else
             <div class="hb-shadow__row">

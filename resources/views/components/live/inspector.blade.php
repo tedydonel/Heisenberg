@@ -917,7 +917,7 @@
                              `supports` map, which is exactly what it was designed to do — it needs
                              the real supports passed in, nothing more. --}}
                         <div data-hb-block-panel="{{ $hbRegBlockName }}" hidden>
-                            <x-live.block.style-panel :supports="$hbRegBlockContract['supports'] ?? []" :theme-tokens="$themeTokens" />
+                            <x-live.block.style-panel :supports="$hbRegBlockContract['supports'] ?? []" :theme-tokens="$themeTokens" :inner-blocks="$hbRegBlockContract['innerBlocks'] ?? []" />
                         </div>
                     @endforeach
                 </div>
@@ -1491,6 +1491,51 @@
         const model = id ? window.hbEditor.getModel(id) : null;
         if (model) syncControls(root.closest('[data-hb-block-panel]') || root, model);
         window.hbEditor.previewState?.(id, root.dataset.hbStyleState);
+    });
+
+    // ── Effects: compose one box-shadow from the editor's five fields (TODO 7.1) ──────
+    // The model holds the composed CSS string, not five separate paths — that is the shape
+    // BlockRenderer's `shadow` sanitizer validates (optional inset, 2-4 signed lengths, exactly
+    // one colour) and the only thing box-shadow can consume. Opacity folds into the colour as
+    // rgba() rather than being its own declaration, since CSS has no shadow-opacity.
+    function hbShadowRgba(hex, opacityPercent) {
+        const raw = String(hex || '').trim().replace(/^#/, '');
+        const full = raw.length === 3 ? raw.split('').map((c) => c + c).join('') : raw;
+        if (!/^[0-9a-f]{6}$/i.test(full)) return null;
+        const r = parseInt(full.slice(0, 2), 16);
+        const g = parseInt(full.slice(2, 4), 16);
+        const b = parseInt(full.slice(4, 6), 16);
+        let a = Number(opacityPercent);
+        if (!Number.isFinite(a)) a = 100;
+        a = Math.max(0, Math.min(100, a)) / 100;
+        return 'rgba(' + r + ', ' + g + ', ' + b + ', ' + Math.round(a * 1000) / 1000 + ')';
+    }
+
+    function hbComposeShadow(editor) {
+        const num = (sel, fallback) => {
+            const v = Number(editor.querySelector(sel)?.value);
+            return Number.isFinite(v) ? v : fallback;
+        };
+        const colour = hbShadowRgba(editor.querySelector('[data-hb-fx-color]')?.value, num('[data-hb-fx-opacity]', 100));
+        if (!colour) return null;
+        return num('[data-hb-fx-x]', 0) + 'px '
+            + num('[data-hb-fx-y]', 0) + 'px '
+            + Math.max(0, num('[data-hb-fx-blur]', 0)) + 'px '
+            + colour;
+    }
+
+    document.addEventListener('input', (event) => {
+        const editor = event.target.closest('[data-hb-effect]');
+        if (!editor) return;
+        const root = mountedStyleRoot(editor);
+        if (!root || !window.hbEditor) return;
+        const id = window.hbEditor.getSelectedId();
+        if (!id) return;
+        const css = hbComposeShadow(editor);
+        if (css === null) return; // mid-edit hex like "#0" — leave the model alone
+        const swatch = editor.querySelector('[data-hb-fx-swatch]');
+        if (swatch) swatch.style.background = editor.querySelector('[data-hb-fx-color]')?.value || '#000000';
+        window.hbEditor.setSupport(id, hbStatePath(root, 'effects.shadow'), css);
     });
 
     // ── Block.style theme-variable binding (TODO 7.6 / 7.7) ──────────────────────────

@@ -208,6 +208,14 @@
             "hover": true,
             "active": true,
             "focus": true
+        },
+        "position": {
+            "x": true,
+            "y": true,
+            "rotation": true
+        },
+        "effects": {
+            "shadow": true
         }
     },
     "style": {
@@ -377,6 +385,26 @@
                 "source": "supports.appearance.opacity",
                 "default": "",
                 "sanitize": "opacity"
+            },
+            "--hb-tx": {
+                "source": "supports.position.x",
+                "default": "",
+                "sanitize": "length-signed"
+            },
+            "--hb-ty": {
+                "source": "supports.position.y",
+                "default": "",
+                "sanitize": "length-signed"
+            },
+            "--hb-rotate": {
+                "source": "supports.position.rotation",
+                "default": "",
+                "sanitize": "angle"
+            },
+            "--hb-shadow": {
+                "source": "supports.effects.shadow",
+                "default": "",
+                "sanitize": "shadow"
             }
         }
     },

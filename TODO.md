@@ -16,9 +16,9 @@ Iterative checklist. Tick items as they land — this file is the *plan*.
 | 4 — Footer + editor UI language | ✅ done (en/fr at 195/195 key parity) |
 | 5 — Client test platform | ⬜ not started |
 | 6 — Audit debt | ⬜ mostly open, but 6.1/6.2/6.6 landed 2026-08-02, 6.7 landed 2026-08-03 (see below) |
-| 7 — Inspector functional; contracts catch up to the UI | 🟡 7.2–7.8 done, 7.1 partial (position/layout/effects undeclared — needs a decision); 7.9 deferred by instruction |
+| 7 — Inspector functional; contracts catch up to the UI | 🟡 7.2–7.8 done; 7.1 mostly done (remaining groups blocked on unwired controls, listed inline); 7.9 deferred by instruction |
 
-Suite: **521 tests, 2206 assertions, green.**
+Suite: **527 tests, 2233 assertions, green.**
 
 **2026-08-05 — repository reset.** The GitHub repo was deleted and recreated to remove AI
 co-author attribution that could not be stripped any other way (a closed PR's `refs/pull/1/head`
@@ -448,23 +448,23 @@ install/DX bugs nothing in this repo can catch.
 > Verbatim quotes below are marked. Anything not quoted and not obviously mechanical is flagged
 > **[interpretation]** — do not treat those as instructions received.
 
-- [~] **7.1 Contracts declare what the UI offers** — landed 2026-08-05 for typography.textAlign/
-  textAlignVertical/letterSpacing and appearance.opacity, plus the `hb-supports` opt-in and
-  `SupportsStyle::css()` now prepended by `BlockViewData::blocksCss()` (nothing loaded it before —
-  the route existed, no view linked it, so the whole sheet was unreachable).
-  **Still open — needs a decision, not guessing:** `position`, `layout` and `effects` are NOT
-  declared. The reasoning that excluded `border` in 7.2 applies to position/layout (canvas and
-  container concerns, not text), and Effects has zero control hooks so declaring it would un-gate
-  a section that still writes nothing. Wire the Effects controls first, or drop the section.
-  Both shipped contracts declare 7 groups (`align`, `color`, `typography`, `size`, `spacing`,
-  `border`, `animation`) while the Style panel offers controls for `position`, `layout`,
-  `effects`, `appearance` and `typography.textAlign`/`letterSpacing` as well. `SupportsStyle`
-  (`src/Support/SupportsStyle.php`) **already implements the CSS for every one of them**, gated
-  behind an opt-in `hb-supports` class no contract carries. So this is declaring + opting in,
-  not writing new CSS.
-  *Excludes `border` for text blocks — see 7.2.*
-  *AC:* every Style control that renders for a block writes to a path that block's contract
-  declares AND that has a matching `style.variables` entry; nothing renders that writes nowhere.
+- [~] **7.1 Contracts declare what the UI offers** — largely landed 2026-08-05.
+  Declared, each only once its controls actually wrote something: `typography.textAlign`/
+  `textAlignVertical`/`letterSpacing`, `appearance.opacity`, `position.x`/`y`/`rotation`, and
+  `effects.shadow` (the effect editor's five fields now compose one box-shadow string, which is
+  the shape BlockRenderer's `shadow` sanitizer validates and the only thing CSS consumes).
+  Plus the `hb-supports` opt-in and `SupportsStyle::css()` prepended by `BlockViewData::blocksCss()`
+  — nothing loaded it before, so the whole sheet was unreachable regardless of what was declared.
+  **The rule applied throughout: wire the control first, then declare the group.** Declaring a
+  group whose section writes nothing just recreates the defect this phase exists to remove.
+  **Still open**, all for the same reason — the controls carry no `data-hb-control` yet:
+  - `position.mode` (the "Absolute Position" checkbox)
+  - `size.overflow` / fill / hug / clip (the Dimensions checkboxes)
+  - the standalone Alignment section's 6-way bar (writes `align`, which needs no variable)
+  - Stroke's join/cap selects — moot while text has no `border` (7.2)
+  - `layout` — deliberately NOT gated on `supports.layout` alone. Flex Layout now requires
+    `innerBlocks.enabled` too: a flex container lays out children, and the control is incoherent
+    on a block that cannot have any. It will appear automatically for a real container contract.
 
 - [x] **7.2 Text blocks must NOT support Stroke or border-radius** — done 2026-08-05.
   Quote: *"text cant have things like borders which is offered by the stroke section or border
