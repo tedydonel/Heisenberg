@@ -111,10 +111,12 @@ class EditorRendersTest extends TestCase
         // SECTION still being mounted.
         $header = fn (string $section): string => '<span class="hb-section__title">' . $section . '</span>';
 
-        foreach (['State', 'Alignment', 'Typography', 'Dimensions', 'Fill'] as $section) {
+        // Appearance is back as of TODO 7.1 — not for corner radius (text has no border) but
+        // because `appearance.opacity` is now declared, which is that section's other control.
+        foreach (['State', 'Alignment', 'Typography', 'Dimensions', 'Fill', 'Appearance'] as $section) {
             $this->assertStringContainsString($header($section), $html);
         }
-        foreach (['Position', 'Flex Layout', 'Effects', 'Stroke', 'Appearance'] as $section) {
+        foreach (['Position', 'Flex Layout', 'Effects', 'Stroke'] as $section) {
             $this->assertStringNotContainsString(
                 $header($section),
                 $html,

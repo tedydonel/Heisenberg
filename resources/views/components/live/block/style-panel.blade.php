@@ -44,6 +44,10 @@
         'fontSize' => $has('typography.fontSize'),
         'lineHeight' => $has('typography.lineHeight'),
         'letterSpacing' => $has('typography.letterSpacing'),
+        // Text placement inside the block (TODO 7.4) — not the standalone Alignment section,
+        // which places the block itself within its parent.
+        'textAlign' => $has('typography.textAlign'),
+        'textAlignVertical' => $has('typography.textAlignVertical'),
     ];
 
     $showFill = $has('color');
@@ -93,7 +97,7 @@
     @endif
 
     @if ($showAppearance)
-        <x-live.block.style.appearance :show-opacity="$has('appearance')" />
+        <x-live.block.style.appearance :show-opacity="$has('appearance')" :show-corners="$showStroke" />
     @endif
 
     @if ($showFill)

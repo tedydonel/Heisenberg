@@ -274,13 +274,23 @@ class SupportsCapabilityFixtureTest extends TestCase
         $this->assertStringNotContainsString('hb-align-full', $html);
     }
 
-    // ── Additive-only guard: the 2 working blocks never carry the new
-    //    activation markers, so SupportsStyle can never reach them ────────
+    // ── Capability opt-in: the text blocks now claim `hb-supports`, but must not
+    //    claim the STRUCTURAL markers, which do not apply to a text block ────────
 
-    public function test_the_working_blocks_never_carry_a_new_capability_marker_class(): void
+    public function test_text_blocks_opt_into_the_capability_sheet_but_not_its_structural_markers(): void
     {
+        // SUPERSEDES test_the_working_blocks_never_carry_a_new_capability_marker_class, which
+        // asserted the shipped blocks carry NO marker at all. That was the additive-only guard
+        // from the phase where SupportsStyle had to be provably inert so it could not disturb
+        // blocks that already worked. TODO 7.1 reverses it deliberately: the contracts have to
+        // opt in, or every capability the sheet implements — opacity, letter-spacing,
+        // text-align — stays unreachable no matter what the contract declares.
+        //
+        // The structural half of the guard still stands. `hb-flex-layout` and the `hb-size-*`
+        // markers flip `display`/`width`/`height` outright and are container concerns; a text
+        // block must not carry them.
         $registry = new BlockRegistryService(new BlockContractValidator('heisenberg'));
-        $markers = ['hb-supports', 'hb-flex-layout', 'hb-size-fill-w', 'hb-size-fill-h', 'hb-size-hug-w', 'hb-size-hug-h', 'hb-size-clip'];
+        $structural = ['hb-flex-layout', 'hb-size-fill-w', 'hb-size-fill-h', 'hb-size-hug-w', 'hb-size-hug-h', 'hb-size-clip'];
 
         foreach ([
             'heisenberg/paragraph', 'heisenberg/heading',
@@ -291,7 +301,13 @@ class SupportsCapabilityFixtureTest extends TestCase
             $classNames = trim((string) ($contract['style']['className'] ?? ''));
             $conditionalClasses = array_column($contract['style']['classNames'] ?? [], 'class');
 
-            foreach ($markers as $marker) {
+            $this->assertStringContainsString(
+                'hb-supports',
+                $classNames,
+                "{$name} must opt into the capability sheet, or its declared supports render nothing",
+            );
+
+            foreach ($structural as $marker) {
                 $this->assertStringNotContainsString($marker, $classNames, "{$name} must not carry {$marker} in style.className");
                 $this->assertNotContains($marker, $conditionalClasses, "{$name} must not carry {$marker} in style.classNames");
             }

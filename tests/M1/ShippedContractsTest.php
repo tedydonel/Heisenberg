@@ -75,10 +75,17 @@ class ShippedContractsTest extends TestCase
         $this->assertSame('general', $extraClasses['section'] ?? null, 'extraClasses lives in the Content tab General section');
         $this->assertFalse($paragraph['attributes']['dropCap']['default']);
         $this->assertSame(['left', 'center', 'right'], $paragraph['supports']['align']);
-        $this->assertSame(['fontFamily' => true, 'fontWeight' => true, 'fontSize' => true], $paragraph['supports']['typography']);
+        // textAlign/textAlignVertical/letterSpacing added 2026-08-05 (TODO 7.1/7.4) — the Style
+        // panel already offered all three; the contract now backs them via SupportsStyle's
+        // --hb-text-align / --hb-text-align-v / --hb-letter-spacing. No lineHeight: paragraph
+        // still declares none, so that field stays gated off for it.
+        $this->assertSame(
+            ['fontFamily' => true, 'fontWeight' => true, 'fontSize' => true, 'textAlign' => true, 'textAlignVertical' => true, 'letterSpacing' => true],
+            $paragraph['supports']['typography'],
+        );
         // Full-kit overhaul 2026-07-19 (Phase 1) — the new Alignment panel is
         // derived from supports.align, which paragraph already declares.
-        $this->assertSame(['align', 'typography', 'size', 'color', 'margin', 'padding'], array_column($paragraph['panels'], 'key')); // no border/radius — TODO 7.2
+        $this->assertSame(['align', 'appearance', 'typography', 'size', 'color', 'margin', 'padding'], array_column($paragraph['panels'], 'key')); // no border/radius (7.2); appearance from opacity (7.1)
 
         $dropCap = collect($paragraph['controls'])->firstWhere('attribute', 'dropCap');
         $this->assertSame('toggle', $dropCap['type'] ?? null);
@@ -97,9 +104,13 @@ class ShippedContractsTest extends TestCase
         $this->assertIsArray($heading);
         $this->assertSame(['content', 'level', 'anchor', 'titleAttr', 'extraClasses', 'hideXs', 'hideSm', 'hideMd', 'hideLg', 'hideXl', 'hideXxl', 'animate', 'animateDuration', 'animateDelay', 'animateEasing', 'animateOnce'], array_keys($heading['attributes']));
         $this->assertSame([1, 2, 3, 4, 5, 6], $heading['attributes']['level']['enum']);
-        $this->assertSame(['fontFamily' => true, 'fontWeight' => true, 'fontSize' => true, 'lineHeight' => true], $heading['supports']['typography']);
+        // Same additions as paragraph (TODO 7.1/7.4); heading keeps its lineHeight.
+        $this->assertSame(
+            ['fontFamily' => true, 'fontWeight' => true, 'fontSize' => true, 'lineHeight' => true, 'textAlign' => true, 'textAlignVertical' => true, 'letterSpacing' => true],
+            $heading['supports']['typography'],
+        );
         // Full-kit overhaul 2026-07-19 (Phase 1) — see the paragraph test above.
-        $this->assertSame(['align', 'typography', 'size', 'color', 'margin', 'padding'], array_column($heading['panels'], 'key')); // no border/radius — TODO 7.2
+        $this->assertSame(['align', 'appearance', 'typography', 'size', 'color', 'margin', 'padding'], array_column($heading['panels'], 'key')); // no border/radius (7.2); appearance from opacity (7.1)
 
         $level = collect($heading['controls'])->firstWhere('attribute', 'level');
         $this->assertSame('select', $level['type'] ?? null);

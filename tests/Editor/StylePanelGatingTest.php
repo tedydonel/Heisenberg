@@ -106,7 +106,6 @@ class StylePanelGatingTest extends TestCase
         foreach (['heisenberg/heading', 'heisenberg/paragraph'] as $name) {
             $contract = app(BlockRegistryService::class)->getBlock($name);
             $this->assertArrayNotHasKey('border', $contract['supports'] ?? []);
-            $this->assertArrayNotHasKey('appearance', $contract['supports'] ?? []);
 
             $sources = array_column($contract['style']['variables'] ?? [], 'source');
             foreach ($sources as $source) {
@@ -114,33 +113,37 @@ class StylePanelGatingTest extends TestCase
             }
         }
 
-        // Stroke follows `border` directly. Appearance follows it too, because corner radius was
-        // the only thing keeping that section alive — its other control, opacity, needs
-        // `appearance`, which neither contract declares.
+        // Stroke follows `border` directly and is gone. Appearance is NOT — TODO 7.1 declared
+        // `appearance.opacity`, that section's other control, so it renders for opacity alone
+        // while its four corner-radius fields stay gone with `border`.
         $this->assertStringNotContainsString('<span class="hb-section__title">Stroke</span>', $html);
-        $this->assertStringNotContainsString('<span class="hb-section__title">Appearance</span>', $html);
+        $this->assertStringContainsString('<span class="hb-section__title">Appearance</span>', $html);
 
-        foreach (['border.color', 'border.width', 'border.radius.topLeft', 'appearance.opacity'] as $path) {
+        foreach (['border.color', 'border.width', 'border.radius.topLeft'] as $path) {
             $this->assertSame(0, $this->controlCount($html, $path), "{$path} must not render");
         }
+        $this->assertSame($this->blockCount(), $this->controlCount($html, 'appearance.opacity'));
     }
 
     public function test_typography_gates_per_control_not_only_per_section(): void
     {
         $html = $this->editorHtml();
 
-        // heading declares lineHeight; paragraph does not. Neither declares letterSpacing.
-        // The hardcoded all-true map this replaced gave paragraph a line-height field with no
-        // style variable behind it.
+        // heading declares lineHeight; paragraph does not. The hardcoded all-true map this
+        // replaced gave paragraph a line-height field with no style variable behind it.
+        // letterSpacing is now declared by BOTH (TODO 7.1) — it is the per-control gating
+        // mechanism that matters here, not which keys happen to be set today.
         $heading = app(BlockRegistryService::class)->getBlock('heisenberg/heading')['supports']['typography'] ?? [];
         $paragraph = app(BlockRegistryService::class)->getBlock('heisenberg/paragraph')['supports']['typography'] ?? [];
         $this->assertArrayHasKey('lineHeight', $heading);
         $this->assertArrayNotHasKey('lineHeight', $paragraph);
-        $this->assertArrayNotHasKey('letterSpacing', $heading);
-        $this->assertArrayNotHasKey('letterSpacing', $paragraph);
 
         $this->assertSame(1, $this->controlCount($html, 'typography.lineHeight'), 'line height is heading-only');
-        $this->assertSame(0, $this->controlCount($html, 'typography.letterSpacing'), 'letter spacing is declared by neither');
+        $this->assertSame(
+            $this->blockCount(),
+            $this->controlCount($html, 'typography.letterSpacing'),
+            'letter spacing is declared by both',
+        );
     }
 
     public function test_gating_uses_the_same_truthiness_rule_as_the_toolbar(): void
@@ -221,6 +224,73 @@ class StylePanelGatingTest extends TestCase
         // another's results.
         $this->assertStringContainsString('combobox.__hbFontPage = page', $html);
         $this->assertStringContainsString('if (combobox.__hbFontPage !== page) return;', $html);
+    }
+
+    public function test_contracts_opt_into_the_capability_sheet_and_map_its_generic_variables(): void
+    {
+        // TODO 7.1. SupportsStyle implements opacity/letter-spacing/text-align against generic
+        // --hb-* names, gated behind an opt-in `hb-supports` class. Declaring the supports group
+        // alone does nothing without BOTH the class and a style.variables entry pointing at it.
+        foreach (['heisenberg/heading', 'heisenberg/paragraph'] as $name) {
+            $contract = app(BlockRegistryService::class)->getBlock($name);
+
+            $this->assertStringContainsString('hb-supports', $contract['style']['className'] ?? '');
+
+            $bySource = [];
+            foreach ($contract['style']['variables'] ?? [] as $var => $def) {
+                $bySource[$def['source'] ?? ''] = $var;
+            }
+
+            $this->assertSame('--hb-text-align', $bySource['supports.typography.textAlign'] ?? null);
+            $this->assertSame('--hb-text-align-v', $bySource['supports.typography.textAlignVertical'] ?? null);
+            $this->assertSame('--hb-letter-spacing', $bySource['supports.typography.letterSpacing'] ?? null);
+            $this->assertSame('--hb-opacity', $bySource['supports.appearance.opacity'] ?? null);
+        }
+    }
+
+    public function test_the_capability_stylesheet_actually_reaches_the_editor(): void
+    {
+        $html = $this->editorHtml();
+
+        // The route serving it (/heisenberg-assets/editor-supports.css) existed but no view ever
+        // linked it, so every capability SupportsStyle implements was unreachable in the canvas
+        // regardless of what a contract declared. blocksCss now prepends it.
+        $this->assertStringContainsString('[data-block-id].hb-supports', $html);
+        $this->assertStringContainsString('--hb-text-align', $html);
+        $this->assertStringContainsString('--hb-opacity', $html);
+    }
+
+    public function test_typography_text_alignment_is_wired_and_distinct_from_block_alignment(): void
+    {
+        $html = $this->editorHtml();
+        $n = $this->blockCount();
+
+        // TODO 7.4: the standalone Alignment section places the BLOCK in its parent
+        // (supports.align -> hb-align-* class, no style variable); Typography's segmenteds place
+        // the TEXT inside the block. Both were decorative; the text pair is now wired.
+        $this->assertSame($n, $this->controlCount($html, 'typography.textAlign'));
+        $this->assertSame($n, $this->controlCount($html, 'typography.textAlignVertical'));
+        $this->assertStringContainsString('data-hb-control-type="segmented"', $html);
+
+        // Vertical alignment compiles through align-self, whose sanitizer is `align-3`
+        // (start|center|end) — top/middle/bottom would fail validation and render nothing.
+        foreach (['start', 'center', 'end'] as $value) {
+            $this->assertStringContainsString('data-hb-tab="' . $value . '"', $html);
+        }
+
+        // Labels distinguish the two, since both read as "alignment" otherwise.
+        $this->assertStringContainsString('Text horizontal', $html);
+        $this->assertStringContainsString('Text vertical', $html);
+    }
+
+    public function test_segmented_controls_deselect_when_the_support_is_unset(): void
+    {
+        $html = $this->editorHtml();
+
+        // A tablist always has one tab selected by default; for a control bound to an unset
+        // support that would read as a real choice the user never made.
+        $this->assertStringContainsString("if (type === 'segmented')", $html);
+        $this->assertStringContainsString("tab.dataset.hbTab === text && text !== '' ? 'true' : 'false'", $html);
     }
 
     public function test_state_section_is_never_contract_gated(): void

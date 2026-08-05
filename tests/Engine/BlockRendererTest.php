@@ -159,7 +159,7 @@ class BlockRendererTest extends TestCase
         );
 
         $this->assertStringContainsString('<p', $html);
-        $this->assertStringContainsString('class="hb-block hb-block-paragraph hb-ease-smooth"', $html);
+        $this->assertStringContainsString('class="hb-block hb-block-paragraph hb-supports hb-ease-smooth"', $html);
         $this->assertStringContainsString('data-block-name="heisenberg/paragraph"', $html);
         $this->assertStringContainsString('data-block-id="b1"', $html);
         $this->assertStringContainsString('<span class="hb-block-paragraph__text">', $html);
@@ -189,7 +189,7 @@ class BlockRendererTest extends TestCase
             'en'
         );
 
-        $this->assertStringContainsString('class="hb-block hb-block-paragraph hb-ease-smooth hb-align-center"', $html);
+        $this->assertStringContainsString('class="hb-block hb-block-paragraph hb-supports hb-ease-smooth hb-align-center"', $html);
     }
 
     public function test_unknown_alignment_is_not_emitted(): void

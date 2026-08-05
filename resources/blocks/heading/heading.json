@@ -173,7 +173,10 @@
             "fontFamily": true,
             "fontWeight": true,
             "fontSize": true,
-            "lineHeight": true
+            "lineHeight": true,
+            "textAlign": true,
+            "textAlignVertical": true,
+            "letterSpacing": true
         },
         "size": {
             "width": true,
@@ -197,11 +200,14 @@
                 "left": true
             }
         },
-        "animation": true
+        "animation": true,
+        "appearance": {
+            "opacity": true
+        }
     },
     "style": {
         "css": "./heading.css",
-        "className": "hb-block-heading",
+        "className": "hb-block-heading hb-supports",
         "classNames": [
             {
                 "class": "hb-hide-xs",
@@ -346,6 +352,26 @@
                 "source": "supports.typography.lineHeight",
                 "default": "",
                 "sanitize": "size-token"
+            },
+            "--hb-text-align": {
+                "source": "supports.typography.textAlign",
+                "default": "",
+                "sanitize": "text-align"
+            },
+            "--hb-text-align-v": {
+                "source": "supports.typography.textAlignVertical",
+                "default": "",
+                "sanitize": "align-3"
+            },
+            "--hb-letter-spacing": {
+                "source": "supports.typography.letterSpacing",
+                "default": "",
+                "sanitize": "length-signed"
+            },
+            "--hb-opacity": {
+                "source": "supports.appearance.opacity",
+                "default": "",
+                "sanitize": "opacity"
             }
         }
     },

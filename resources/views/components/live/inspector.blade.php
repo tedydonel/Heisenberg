@@ -1054,6 +1054,16 @@
                 syncColorPreview(el, value == null ? '' : String(value));
                 return;
             }
+            // ui/segmented is a tablist: the "value" is which tab carries aria-selected. An
+            // unset support deselects every tab rather than defaulting to the first, so an
+            // untouched control does not read as a real choice.
+            if (type === 'segmented') {
+                const text = value == null ? '' : String(value);
+                el.querySelectorAll('[data-hb-tab]').forEach((tab) => {
+                    tab.setAttribute('aria-selected', tab.dataset.hbTab === text && text !== '' ? 'true' : 'false');
+                });
+                return;
+            }
             // ui/combobox owns its own display state (the input doubles as the search field), so
             // writing input.value directly would be overwritten the next time it re-renders.
             // Font families are their own label, hence setValue(v, v).
@@ -1185,6 +1195,12 @@
             // of a search that may never be committed.
             if (event.target !== el) return;
             raw = el.dataset.value;
+        } else if (type === 'segmented') {
+            // ui/segmented is a tablist (ui/partials/tablist-script): clicking a tab flips
+            // aria-selected and dispatches a bubbling `change` from the tablist root. Read the
+            // selected tab rather than event.detail so a programmatic activate() writes too.
+            if (event.target !== el) return;
+            raw = el.querySelector('[data-hb-tab][aria-selected="true"]')?.dataset.hbTab ?? '';
         } else {
             const input = el.matches('input, textarea') ? el : el.querySelector('input, textarea');
             if (!input) return;

@@ -110,7 +110,12 @@ class BlockViewDataTest extends TestCase
 
         $css = BlockViewData::blocksCss($this->registry());
 
-        $this->assertSame('', $css, 'skip behavior must be unchanged: no chunk for a missing CSS file');
+        // blocksCss now always prepends the shared capability stylesheet (TODO 7.1) — nothing
+        // else loads SupportsStyle into the editor, so every capability it implements was
+        // unreachable in the canvas. The assertion is therefore "no chunk for THIS block",
+        // not "no output at all".
+        $this->assertStringNotContainsString('haslogged', $css, 'skip behavior must be unchanged: no chunk for a missing CSS file');
+        $this->assertStringContainsString('.hb-supports', $css, 'the capability sheet is always present');
     }
 
     public function test_present_css_file_is_included_and_not_logged(): void

@@ -77,10 +77,19 @@ final class BlockViewData
      * `style.css` file (`resources/blocks/<slug>/<slug>.css`). The editor embeds
      * this so a component stays self-contained — its styles live with its contract,
      * not in a shared stylesheet. `$enabled` behaves exactly like clientBlocks()'s.
+     *
+     * The shared capability stylesheet ({@see SupportsStyle}) is prepended, because
+     * nothing else loads it into the editor: the route serving it
+     * (`/heisenberg-assets/editor-supports.css`) exists but no view ever linked it, so
+     * every capability it implements — opacity, letter-spacing, text-align, transforms,
+     * shadow, overflow, flex, per-side border — was unreachable in the canvas no matter
+     * what a contract declared. It is prepended rather than appended so a block's own
+     * CSS still wins on equal specificity, and it is inert until a contract opts in by
+     * carrying `hb-supports` on its root (TODO 7.1).
      */
     public static function blocksCss(BlockRegistryService $registry, ?array $enabled = null): string
     {
-        $chunks = [];
+        $chunks = ["/* supports capabilities */\n" . SupportsStyle::css()];
 
         foreach ($registry->discover()['blocks'] as $block) {
             $name = (string) ($block['name'] ?? '');
