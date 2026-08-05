@@ -743,6 +743,45 @@ class StylePanelGatingTest extends TestCase
         $this->assertStringContainsString("row.querySelector('[data-hb-style-layer-opacity]')?.textContent", $html);
     }
 
+    public function test_the_trigger_state_styling_is_keyed_on_behaviour_not_a_class(): void
+    {
+        // Triggers come from two places with different classes: injected into a field
+        // (.hb-varbtn, absolutely positioned) and rendered inline inside a colour layer
+        // (.hb-colorlayer__open, placed by the .pen composition). Keying the STATE colours on
+        // .hb-varbtn meant a layer's trigger never showed any state — selecting a token looked
+        // like nothing had happened. Positioning stays class-scoped; the states are shared.
+        $css = $this->get('/heisenberg-assets/editor.css')->getContent();
+
+        foreach (['bound', 'unset', 'manual'] as $state) {
+            $this->assertStringContainsString(
+                '[data-hb-style-var-trigger][data-hb-var-state="' . $state . '"]',
+                $css,
+                "the {$state} state must key on the behaviour attribute",
+            );
+        }
+
+        // A layer reveals its manual-state trigger on row hover, the injected ones on field hover.
+        $this->assertStringContainsString('.hb-colorlayer:hover [data-hb-style-var-trigger]', $css);
+        // Positioning must NOT leak onto the inline layer trigger.
+        $this->assertStringContainsString('.hb-varbtn {', $css);
+    }
+
+    public function test_selecting_a_token_on_a_layer_paints_its_swatch(): void
+    {
+        $html = $this->editorHtml();
+
+        // The swatch takes the REFERENCE, not a resolved hex: the theme's --hb-t-* properties are
+        // on the page so the browser resolves it, and the swatch then tracks the token if its
+        // value is later edited in the Style tab.
+        $this->assertStringContainsString("const swatch = control.querySelector('.hb-colorlayer__swatch');", $html);
+        $this->assertStringContainsString("swatch.style.background = value || 'transparent';", $html);
+
+        // A layer carries no data-hb-control, so it has to be synced explicitly or its indicator
+        // renders unstyled — including on a freshly added row.
+        $this->assertStringContainsString("root.querySelectorAll('[data-hb-control], .hb-colorlayer').forEach(hbSyncVarTrigger);", $html);
+        $this->assertStringContainsString("list.querySelectorAll('.hb-colorlayer').forEach(hbSyncVarTrigger);", $html);
+    }
+
     public function test_state_section_is_never_contract_gated(): void
     {
         $html = $this->editorHtml();

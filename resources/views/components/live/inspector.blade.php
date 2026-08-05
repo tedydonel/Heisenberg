@@ -1140,7 +1140,9 @@
         // Runs after the values are in, so each trigger reads the block's real state rather
         // than the component's rendered default. Idempotent — it skips fields already decorated.
         hbDecorateVarTriggers(root);
-        root.querySelectorAll('[data-hb-control]').forEach(hbSyncVarTrigger);
+        // Colour layers carry a server-rendered trigger and no data-hb-control (the stack owns
+        // the write), so they need syncing explicitly or their indicator stays unstyled.
+        root.querySelectorAll('[data-hb-control], .hb-colorlayer').forEach(hbSyncVarTrigger);
         refreshConditionals(root, model);
     }
 
@@ -1766,6 +1768,11 @@
             if (!hex) return;
             hex.value = label || value;
             if (label) control.dataset.hbVarBound = value; else delete control.dataset.hbVarBound;
+            // Paint the swatch with the reference itself, not a resolved hex: the theme's
+            // --hb-t-* properties are on the page, so the browser resolves it — and the swatch
+            // then tracks the token if its value is later edited in the Style tab.
+            const swatch = control.querySelector('.hb-colorlayer__swatch');
+            if (swatch) swatch.style.background = value || 'transparent';
             hex.dispatchEvent(new Event('input', { bubbles: true }));
             hbSyncVarTrigger(control);
             closeStylePopups(root);
@@ -2075,8 +2082,10 @@
             if (list && template?.content) {
                 list.append(template.content.cloneNode(true));
                 document.dispatchEvent(new Event('hb:refresh'));
-                // A new layer changes the composite immediately, not only once it is edited.
+                // A new layer changes the composite immediately, not only once it is edited, and
+                // its trigger needs an initial state or it renders with no styling at all.
                 hbCommitLayers(root, add.dataset.hbStyleAdd);
+                list.querySelectorAll('.hb-colorlayer').forEach(hbSyncVarTrigger);
             }
             return;
         }

@@ -137,11 +137,18 @@
 .hb-varbtn:hover { background: var(--hb-bg-muted, #F4F4F4); }
 .hb-varbtn:focus-visible { outline: 2px solid var(--hb-border-focus, #000); outline-offset: 1px; }
 
-.hb-varbtn[data-hb-var-state="bound"] { color: var(--hb-t-accent-1, var(--hb-editing, #3D68F5)); }
-.hb-varbtn[data-hb-var-state="unset"] { color: var(--hb-text-muted, #9A9A9A); }
-.hb-varbtn[data-hb-var-state="manual"] { opacity: 0; }
-.hb-has-varbtn:hover .hb-varbtn[data-hb-var-state="manual"],
-.hb-varbtn[data-hb-var-state="manual"]:focus-visible { opacity: 1; }
+/* Keyed on the BEHAVIOUR attribute, not the .hb-varbtn class. Triggers come from two places:
+   injected into a field (which is what .hb-varbtn's absolute positioning above is for) and
+   rendered inline inside a colour layer, where the .pen composition gives it its own class
+   (.hb-colorlayer__open) and its own place in the row. Keying the states on the class meant a
+   layer's trigger never showed any state at all — selecting a token looked like nothing had
+   happened. Positioning stays class-scoped; only the state colours are shared. */
+[data-hb-style-var-trigger][data-hb-var-state="bound"] { color: var(--hb-t-accent-1, var(--hb-editing, #3D68F5)); }
+[data-hb-style-var-trigger][data-hb-var-state="unset"] { color: var(--hb-text-muted, #9A9A9A); }
+[data-hb-style-var-trigger][data-hb-var-state="manual"] { opacity: 0; }
+.hb-has-varbtn:hover [data-hb-style-var-trigger][data-hb-var-state="manual"],
+.hb-colorlayer:hover [data-hb-style-var-trigger][data-hb-var-state="manual"],
+[data-hb-style-var-trigger][data-hb-var-state="manual"]:focus-visible { opacity: 1; }
 
 /* The input must not run under the button. */
 .hb-has-varbtn .hb-field__value,
