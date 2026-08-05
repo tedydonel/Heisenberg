@@ -1122,7 +1122,15 @@
                 return;
             }
             const input = el.matches('input, textarea') ? el : el.querySelector('input, textarea');
-            if (input) input.value = value == null ? '' : value;
+            if (input) {
+                // Re-derive the binding from the stored value rather than trusting a leftover
+                // attribute, so selecting a different block cannot carry the previous one's label.
+                const ref = value == null ? '' : String(value);
+                const label = hbVarLabelOf(mountedStyleRoot(el) || el.closest('.hb-blockstyle'), ref);
+                if (label) el.dataset.hbVarBound = ref;
+                else delete el.dataset.hbVarBound;
+                input.value = label || ref;
+            }
             if (type === 'range') {
                 const readout = el.closest('.hb-icol')?.querySelector('[data-hb-range-readout]');
                 if (readout) readout.textContent = value == null ? '' : value;
@@ -1255,7 +1263,10 @@
         } else {
             const input = el.matches('input, textarea') ? el : el.querySelector('input, textarea');
             if (!input) return;
-            raw = input.value;
+            // A field bound to a theme variable shows the token's NAME but must write its
+            // reference. data-hb-var-bound holds the reference and is cleared the moment the
+            // user edits the text (see the input listener below), so a literal writes literally.
+            raw = el.dataset.hbVarBound || input.value;
             if (type === 'range') {
                 const readout = el.closest('.hb-icol')?.querySelector('[data-hb-range-readout]');
                 if (readout) readout.textContent = raw;
@@ -1571,6 +1582,19 @@
     //   manual — value is a literal             -> muted, revealed on hover/focus of the field
     const HB_VAR_TYPES = ['text', 'number'];
 
+    // `var(--hb-t-accent-1)` -> "Accent". A bound field shows the name the user gave the token;
+    // the model still holds the reference. The pair is kept apart by data-hb-var-bound on the
+    // control: the input carries the LABEL, that attribute carries the VALUE, and the write path
+    // prefers it. Typing over the field clears it, so a literal is written literally.
+    function hbVarLabelOf(root, ref) {
+        if (!root || !ref) return null;
+        try {
+            return JSON.parse(root.getAttribute('data-hb-var-labels') || '{}')[ref] || null;
+        } catch (e) {
+            return null;
+        }
+    }
+
     function hbVarStateOf(value) {
         const v = String(value ?? '').trim();
         if (v === '') return 'unset';
@@ -1587,6 +1611,12 @@
     function hbSyncVarTrigger(control) {
         const button = control.querySelector('[data-hb-style-var-trigger]');
         if (!button) return;
+        // A bound field DISPLAYS the token's name, so the visible text reads as a literal.
+        // The binding is authoritative; only fall back to inspecting the text without one.
+        if (control.dataset.hbVarBound) {
+            button.dataset.hbVarState = 'bound';
+            return;
+        }
         const input = control.matches('input') ? control : control.querySelector('input');
         button.dataset.hbVarState = hbVarStateOf(input?.value);
     }
@@ -1637,12 +1667,19 @@
         // inner <input> directly would be reverted on its next render, and the delegated write
         // handler ignores events whose target is not the combobox root, so the model would never
         // see the change either.
+        const label = hbVarLabelOf(root, value);
+
         if (control.getAttribute('data-hb-control-type') === 'combobox') {
-            control.__hbCombobox?.setValue(value, value);
+            // ui/combobox already separates the two: dataset.value is what the model gets, the
+            // input text is what the user sees.
+            control.__hbCombobox?.setValue(value, label || value);
         } else {
             const input = control.matches('input') ? control : control.querySelector('input');
             if (!input) return;
-            input.value = value;
+            // Show the token's name, remember the reference for the write path.
+            if (label) control.dataset.hbVarBound = value;
+            else delete control.dataset.hbVarBound;
+            input.value = label || value;
             // Re-use the one delegated write path rather than calling setSupport here, so the
             // linked-value/aggregate handlers (spacing, corners) still see the edit.
             input.dispatchEvent(new Event('input', { bubbles: true }));
@@ -1652,11 +1689,23 @@
         closeStylePopups(root);
     });
 
-    // Keep the indicator honest as the user types a literal over a bound value, or clears it.
+    // Typing over a bound field breaks the binding: the text is no longer the token's name, so
+    // keeping the reference would silently discard what was typed. Cleared BEFORE the delegated
+    // write handler reads it — both listeners are on document and this one is registered first,
+    // but the guard does not rely on that: it compares the text to the label, so a stale
+    // attribute can never outlive the value it described.
     document.addEventListener('input', (event) => {
         const control = event.target.closest('[data-hb-control]');
-        if (control && mountedStyleRoot(control)) hbSyncVarTrigger(control);
-    });
+        if (!control) return;
+        const root = mountedStyleRoot(control);
+        if (!root) return;
+        const bound = control.dataset.hbVarBound;
+        if (bound) {
+            const input = control.matches('input') ? control : control.querySelector('input');
+            if (input && input.value !== hbVarLabelOf(root, bound)) delete control.dataset.hbVarBound;
+        }
+        hbSyncVarTrigger(control);
+    }, true);
 
     // ── Typography font family: paged search against the vendored catalog (TODO 7.5) ──
     // The field is ui/combobox; this only answers the `search`/`loadmore` events it dispatches

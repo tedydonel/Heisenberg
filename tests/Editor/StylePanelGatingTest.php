@@ -431,7 +431,9 @@ class StylePanelGatingTest extends TestCase
         // write handler ignores events whose target is not the combobox root — so the model
         // would never see the change either.
         $this->assertStringContainsString("if (control.getAttribute('data-hb-control-type') === 'combobox') {", $html);
-        $this->assertStringContainsString('control.__hbCombobox?.setValue(value, value);', $html);
+        // Two arguments, not one: the model gets the CSS reference, the field shows the token's
+        // name. Passing the reference as the label made a bound field read as var(--hb-t-…).
+        $this->assertStringContainsString('control.__hbCombobox?.setValue(value, label || value);', $html);
     }
 
     public function test_a_composed_shadow_survives_the_renderer(): void
@@ -646,6 +648,43 @@ class StylePanelGatingTest extends TestCase
         // vacuously.
         $this->assertStringContainsString('hb-blockstyle', $markup);
         $this->assertStringContainsString('<span class="hb-section__title">Typography</span>', $markup);
+    }
+
+    public function test_a_bound_field_displays_the_token_name_not_its_css_reference(): void
+    {
+        $html = $this->editorHtml();
+
+        // Picking a token wrote var(--hb-t-…) straight into the field, so a bound control read as
+        // its own CSS reference. The field now shows the NAME while the model keeps the
+        // reference, split by data-hb-var-bound.
+        $this->assertStringContainsString('function hbVarLabelOf(root, ref)', $html);
+        $this->assertStringContainsString('data-hb-var-labels="{', $html);
+        $this->assertStringContainsString('if (label) control.dataset.hbVarBound = value;', $html);
+        $this->assertStringContainsString('input.value = label || value;', $html);
+
+        // The write path must send the reference, never the displayed label.
+        $this->assertStringContainsString('raw = el.dataset.hbVarBound || input.value;', $html);
+
+        // The label map has to survive reload and re-selection, so it is re-derived on sync from
+        // the stored value rather than trusting a leftover attribute.
+        $this->assertStringContainsString('if (label) el.dataset.hbVarBound = ref;', $html);
+
+        // The indicator reads the binding, not the visible text — a bound field displays a name,
+        // which would otherwise look like a hand-typed literal.
+        $this->assertStringContainsString("if (control.dataset.hbVarBound) {", $html);
+        $this->assertStringContainsString("button.dataset.hbVarState = 'bound';", $html);
+    }
+
+    public function test_typing_over_a_bound_field_breaks_the_binding(): void
+    {
+        $html = $this->editorHtml();
+
+        // Otherwise the stale reference would keep being written and silently discard what was
+        // typed. Compared against the label rather than relying on listener order.
+        $this->assertStringContainsString(
+            'if (input && input.value !== hbVarLabelOf(root, bound)) delete control.dataset.hbVarBound;',
+            $html,
+        );
     }
 
     public function test_state_section_is_never_contract_gated(): void

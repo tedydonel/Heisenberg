@@ -71,6 +71,21 @@
     $hbSpaceValues['Default'] = '';
     $hbFontValues['Default'] = '';
 
+    /*
+     * Reverse map, `var(--hb-t-name) => Label`, emitted onto the panel root. A bound field must
+     * READ as "Accent" while the model holds `var(--hb-t-accent-1)`, and that has to survive a
+     * reload and a re-selection — not just the click that set it — so the lookup has to be on the
+     * page rather than remembered in the moment.
+     */
+    $hbVarLabels = [];
+    foreach ([$hbColorValues, $hbSpaceValues, $hbFontValues] as $pairs) {
+        foreach ($pairs as $label => $ref) {
+            if (is_string($ref) && $ref !== '') {
+                $hbVarLabels[$ref] = $label;
+            }
+        }
+    }
+
     $has = fn (string $key): bool => Arr::get($supports, $key, null) !== null
         && Arr::get($supports, $key) !== false;
 
@@ -95,7 +110,7 @@
     // Corner radius lives under border; opacity under appearance. Either one earns the section.
     $showAppearance = $showStroke || $has('appearance');
 @endphp
-<div {{ $attributes->merge(['class' => 'hb-blockstyle']) }}>
+<div data-hb-var-labels="{{ json_encode($hbVarLabels, JSON_UNESCAPED_SLASHES) }}" {{ $attributes->merge(['class' => 'hb-blockstyle']) }}>
     {{-- State is per-INSTANCE, not contract-declared: BlockRenderer::stateStylesCss() reads
          `supports.states` off the block instance, and `states` is deliberately absent from
          BlockContractValidator::SUPPORT_KEYS, so no contract can declare it. Always mounted. --}}
