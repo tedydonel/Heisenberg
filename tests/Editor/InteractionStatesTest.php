@@ -122,6 +122,34 @@ class InteractionStatesTest extends TestCase
         $this->assertStringContainsString("el.classList.add('hb-state-preview-' + next)", $html);
     }
 
+    public function test_toolbar_hides_select_parent_and_save_for_non_container_blocks(): void
+    {
+        $html = $this->editorHtml();
+
+        // TODO 7.8 — both were rendered unconditionally and inert. select-parent is only
+        // meaningful for a block that HAS a parent; save-as-reusable-block only for a container.
+        $this->assertStringContainsString("show(tb.querySelector('[data-tb-action=\"select-parent\"]'), parentIdOf(model.id) !== null)", $html);
+        $this->assertStringContainsString("show(tb.querySelector('[data-tb-action=\"save\"]'), !!(c.innerBlocks && c.innerBlocks.enabled))", $html);
+
+        // Neither shipped contract is a container, so both stay hidden today.
+        foreach (['heisenberg/heading', 'heisenberg/paragraph'] as $name) {
+            $contract = app(BlockRegistryService::class)->getBlock($name);
+            $this->assertFalse($contract['innerBlocks']['enabled'] ?? false, "{$name} is not a container");
+        }
+    }
+
+    public function test_parent_lookup_walks_the_tree_rather_than_assuming_a_flat_document(): void
+    {
+        $html = $this->editorHtml();
+
+        // The document IS flat today, so a hardcoded `false` would behave identically — and would
+        // have to be found and corrected once containers exist. This walks innerBlocks instead,
+        // so the gate is right now and stays right later.
+        $this->assertStringContainsString('function parentIdOf(id, list, parent)', $html);
+        $this->assertStringContainsString('const found = parentIdOf(id, inner, blocks[i].id);', $html);
+        $this->assertStringContainsString('parentIdOf: function (id) { return parentIdOf(id); }', $html);
+    }
+
     public function test_only_supports_sourced_variables_can_be_state_overridden(): void
     {
         $html = $this->editorHtml();

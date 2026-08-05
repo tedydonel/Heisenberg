@@ -267,10 +267,18 @@
                 // `drag` is a pointer gesture block-runtime already owns end-to-end
                 // (wireCanvasBlockDrag's pointerdown on .hb-tb__btn--drag calls preventDefault,
                 // which suppresses the compatibility click this handler would otherwise see — there
-                // is nothing left for a click handler to do for it). `select-parent` has no backing
-                // model (this runtime doesn't support block nesting yet) and `save` has no
-                // reusable-block capability anywhere in window.hbEditor — both are left as inert
-                // event dispatches below rather than faked.
+                // is nothing left for a click handler to do for it).
+                //
+                // `select-parent` now selects the containing block when there is one. It is gated
+                // off entirely today (gateToolbar hides it unless parentIdOf() finds a parent, and
+                // nothing nests yet), so this is unreachable rather than wrong — written against
+                // the real API so it works the moment containers exist. `save` stays an inert
+                // dispatch: there is no reusable-block capability anywhere in window.hbEditor, and
+                // it is gated to containers only (TODO 7.8/7.9).
+                if (ctx && window.hbEditor && action === 'select-parent') {
+                    const parent = window.hbEditor.parentIdOf?.(ctx.id);
+                    if (parent) window.hbEditor.selectById(parent);
+                }
                 tb.dispatchEvent(new CustomEvent('hb:toolbar-action', { bubbles: true, detail: { action: action } }));
             }));
 

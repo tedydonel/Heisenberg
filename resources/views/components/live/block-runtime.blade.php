@@ -393,6 +393,24 @@
         return false;
     }
 
+    // The id of whichever block holds `id` in its innerBlocks, or null when it sits at the top
+    // level. Walks the tree rather than assuming the document is flat: it IS flat today (nothing
+    // nests yet), so this returns null for every block and the select-parent button stays hidden —
+    // which is the correct answer now and stays correct once containers exist, instead of a
+    // hardcoded false that would have to be found and changed later. (TODO 7.8)
+    function parentIdOf(id, list, parent) {
+        const blocks = list || doc.blocks;
+        for (let i = 0; i < blocks.length; i++) {
+            if (blocks[i].id === id) return parent || null;
+            const inner = blocks[i].innerBlocks;
+            if (Array.isArray(inner) && inner.length) {
+                const found = parentIdOf(id, inner, blocks[i].id);
+                if (found) return found;
+            }
+        }
+        return null;
+    }
+
     function gateToolbar(tb, model) {
         const c = REGISTRY[model.name] || {};
         const supports = c.supports || {};
@@ -401,6 +419,10 @@
         const color = supports.color || {};
         show(tb.querySelector('[data-tb-popover="color"]'), !!(color.text || color.background));
         show(tb.querySelector('[data-tb-popover="align"]'), Array.isArray(supports.align) && supports.align.length > 0);
+        // Select-parent is only meaningful for a block that HAS a parent; save-as-reusable-block
+        // only for a container. Both were rendered unconditionally and inert. (TODO 7.8)
+        show(tb.querySelector('[data-tb-action="select-parent"]'), parentIdOf(model.id) !== null);
+        show(tb.querySelector('[data-tb-action="save"]'), !!(c.innerBlocks && c.innerBlocks.enabled));
     }
 
     function dockToolbar(blk, model) {
@@ -874,6 +896,7 @@
         setAttribute: setAttribute,
         setSupport: setSupport,
         previewState: previewState,
+        parentIdOf: function (id) { return parentIdOf(id); },
         moveBlock: moveBlock,
         removeBlock: removeBlock,
         selectById: selectById,

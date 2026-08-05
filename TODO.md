@@ -16,9 +16,9 @@ Iterative checklist. Tick items as they land — this file is the *plan*.
 | 4 — Footer + editor UI language | ✅ done (en/fr at 195/195 key parity) |
 | 5 — Client test platform | ⬜ not started |
 | 6 — Audit debt | ⬜ mostly open, but 6.1/6.2/6.6 landed 2026-08-02, 6.7 landed 2026-08-03 (see below) |
-| 7 — Inspector functional; contracts catch up to the UI | 🟡 **current focus** — 7.2/7.4/7.5/7.6/7.7 done, 7.1 partial; 7.3 next; 7.8/7.9 blocked |
+| 7 — Inspector functional; contracts catch up to the UI | 🟡 7.2–7.8 done, 7.1 partial (position/layout/effects undeclared — needs a decision); 7.9 deferred by instruction |
 
-Suite: **511 tests, 2173 assertions, green.**
+Suite: **521 tests, 2206 assertions, green.**
 
 **2026-08-05 — repository reset.** The GitHub repo was deleted and recreated to remove AI
 co-author attribution that could not be stripped any other way (a closed PR's `refs/pull/1/head`
@@ -476,7 +476,11 @@ install/DX bugs nothing in this repo can catch.
   too — radius is the only thing currently keeping Appearance alive for text.
   *Note:* Appearance returns for text only if `appearance.opacity` is declared under 7.1.
 
-- [ ] **7.3 Every block supports interaction states**
+- [x] **7.3 Every block supports interaction states** — done 2026-08-05. `states` is a validated
+  contract group (BlockContractValidator::INTERACTION_STATES, asserted identical to the
+  renderer's list); the State tabs retarget every supports control to
+  `supports.states.<state>.<path>`, the exact shape stateStylesCss() compiles; and
+  `window.hbEditor.previewState(id, state)` forces the look on canvas.
   Quote: *"every block component should support the status, 'default, active, hover etc'"*.
   `BlockRenderer::INTERACTION_STATES` already compiles `hover`/`active`/`focus-within` from
   `block.supports.states.<state>` and is tested — but (a) `states` is deliberately absent from
@@ -553,7 +557,12 @@ install/DX bugs nothing in this repo can catch.
   - The typography font combobox takes no free text, so its inline `x` (clear-font,
     `data-hb-style-clear-font`) is **replaced** by the `selection-all-fill` trigger.
 
-- [ ] **7.8 Toolbar must not load what the block does not need**
+- [x] **7.8 Toolbar must not load what the block does not need** — done 2026-08-05. It turned out
+  NOT to be blocked on nesting: "is a container" is already in the contract as
+  `innerBlocks.enabled`, and parent-ness is answerable by walking the tree. Both gates are written
+  with real semantics — they evaluate false for text blocks today (nothing nests, neither contract
+  is a container), so both buttons hide, which is the asked-for behaviour and stays correct when
+  containers arrive.
   Quote: *"we still need to fix the toolbar. it should not lood full stuff it does not need."*
   - *"the second icon 'elbow up' should only show up when a component is in a container etc where
     its meant to select parent block"* — `data-tb-action="select-parent"`, currently always
