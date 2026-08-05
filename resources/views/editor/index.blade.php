@@ -34,7 +34,8 @@
         :post-category-url-template="$postCategoryUrlTemplate" :post-tags-url-template="$postTagsUrlTemplate"
         :post-page-padding-x="$postPagePaddingX ?? 56" :post-page-padding-y="$postPagePaddingY ?? 56"
         :post-layout-url-template="$postLayoutUrlTemplate" :post-allow-comments="$postAllowComments ?? true"
-        :post-discussion-url-template="$postDiscussionUrlTemplate" />
+        :post-discussion-url-template="$postDiscussionUrlTemplate"
+        :fonts-search-url="route('heisenberg.editor.fonts.search')" />
     <x-live.footer class="hb-editor__footer" />
 
     {{-- The block model: registry + render/insert/select runtime. Kept last so the canvas,

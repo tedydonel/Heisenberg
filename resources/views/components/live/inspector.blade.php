@@ -264,8 +264,12 @@
         ['value' => 'advanced', 'icon' => 'gear-fill', 'label' => __('heisenberg::editor.inspector.subtab_advanced')],
     ],
     'subActiveIndex' => 0,
+    // GET /editor/fonts (FontController::search) — the Style tab's Typography font field is a
+    // ui/combobox against the vendored Google Fonts catalog, same endpoint and paging contract
+    // the left sidebar's Style tab uses. Empty string disables the search rather than 404ing.
+    'fontsSearchUrl' => '',
 ])
-<aside data-hb-inspector {{ $attributes->merge(['class' => 'hb-inspector']) }}>
+<aside data-hb-inspector data-hb-fonts-search-url="{{ $fontsSearchUrl }}" {{ $attributes->merge(['class' => 'hb-inspector']) }}>
     <x-ui.panel-tabs :items="$panelTabs" :active-index="$panelActiveIndex" />
 
     <div class="hb-inspector__post-content" data-hb-inspector-post-content @if ($panelActiveIndex !== 0) hidden @endif>
@@ -1050,6 +1054,19 @@
                 syncColorPreview(el, value == null ? '' : String(value));
                 return;
             }
+            // ui/combobox owns its own display state (the input doubles as the search field), so
+            // writing input.value directly would be overwritten the next time it re-renders.
+            // Font families are their own label, hence setValue(v, v).
+            if (type === 'combobox') {
+                const text = value == null ? '' : String(value);
+                if (el.__hbCombobox?.setValue) el.__hbCombobox.setValue(text, text);
+                else {
+                    const field = el.querySelector('[data-hb-combobox-input]');
+                    if (field) field.value = text;
+                    el.dataset.value = text;
+                }
+                return;
+            }
             // Must precede the generic input fallback below — a chips host CONTAINS an
             // <input> (its add-class field), which would otherwise be filled with the whole
             // space-separated class string.
@@ -1162,6 +1179,12 @@
             if (event.target !== el) return; // the select's own custom 'change', dispatched on its root
             raw = el.dataset.value;
             syncColorPreview(el, raw);
+        } else if (type === 'combobox') {
+            // Same shape as select: ui/combobox dispatches its own `change` on its root carrying
+            // the committed value. Reading its inner <input> instead would catch every keystroke
+            // of a search that may never be committed.
+            if (event.target !== el) return;
+            raw = el.dataset.value;
         } else {
             const input = el.matches('input, textarea') ? el : el.querySelector('input, textarea');
             if (!input) return;
@@ -1408,6 +1431,73 @@
         syncMarginControls(root);
     }
 
+    // ── Typography font family: paged search against the vendored catalog (TODO 7.5) ──
+    // The field is ui/combobox; this only answers the `search`/`loadmore` events it dispatches
+    // and hands results back through its own replaceOptions()/appendOptions(). Deliberately the
+    // same contract panel-style-themes.blade.php uses for the left sidebar's Fonts rows — one
+    // endpoint, one paging shape, no second dropdown implementation to keep in step.
+    //
+    // Page state lives on the combobox element itself, not a shared variable: the Style panel is
+    // pre-rendered once per registered block type, so several font comboboxes exist at once and
+    // each needs its own offset/hasMore.
+    const HB_FONT_PAGE_LIMIT = 40;
+    let hbFontTimer = null;
+
+    function hbFontsUrl() {
+        return document.querySelector('[data-hb-inspector]')?.dataset.hbFontsSearchUrl || '';
+    }
+
+    function hbFetchFonts(url) {
+        return window.fetch(url, { headers: { 'Accept': 'application/json' } })
+            .then((res) => (res.ok ? res.json() : { fonts: [], has_more: false }))
+            .then((body) => ({
+                list: (body.fonts || []).map((f) => ({ value: f.family, label: f.family })),
+                hasMore: !!body.has_more,
+            }));
+    }
+
+    function hbSearchFonts(combobox, query) {
+        const url = hbFontsUrl();
+        if (!url) return;
+        const page = { query, offset: 0, hasMore: true, loading: true };
+        combobox.__hbFontPage = page;
+        hbFetchFonts(url + '?q=' + encodeURIComponent(query) + '&limit=' + HB_FONT_PAGE_LIMIT)
+            .then(({ list, hasMore }) => {
+                combobox.__hbCombobox?.replaceOptions(list);
+                if (combobox.__hbFontPage !== page) return; // a newer search superseded this one
+                page.offset = list.length;
+                page.hasMore = hasMore;
+                page.loading = false;
+            });
+    }
+
+    function hbLoadMoreFonts(combobox, query) {
+        const url = hbFontsUrl();
+        const page = combobox.__hbFontPage;
+        if (!url || !page || page.loading || !page.hasMore || page.query !== query) return;
+        page.loading = true;
+        hbFetchFonts(url + '?q=' + encodeURIComponent(query) + '&limit=' + HB_FONT_PAGE_LIMIT + '&offset=' + page.offset)
+            .then(({ list, hasMore }) => {
+                combobox.__hbCombobox?.appendOptions(list);
+                page.offset += list.length;
+                page.hasMore = hasMore;
+                page.loading = false;
+            });
+    }
+
+    document.addEventListener('search', (event) => {
+        const combobox = event.target.closest('[data-hb-style-font-family]');
+        if (!combobox) return;
+        clearTimeout(hbFontTimer);
+        hbFontTimer = setTimeout(() => hbSearchFonts(combobox, event.detail?.query || ''), 250);
+    });
+
+    document.addEventListener('loadmore', (event) => {
+        const combobox = event.target.closest('[data-hb-style-font-family]');
+        if (!combobox) return;
+        hbLoadMoreFonts(combobox, event.detail?.query || '');
+    });
+
     // ── extraClasses chips (Content → General, 2026-08-04) ────────────────────────────
     // The model holds ONE space-separated string (contract type "string"); the panel presents it
     // as chips plus an add-input (contract control type "chips"). Read from the DOM rather than a
@@ -1602,15 +1692,14 @@
             return;
         }
 
+        // Clear font — the field became a ui/combobox against the live catalog (TODO 7.5), so
+        // there is no static "Default" option to re-select any more. Clearing means emptying the
+        // value, which setValue('', '') does, and that dispatches the combobox's own `change` so
+        // the model write goes through the one delegated handler like any other edit.
         const clearFont = event.target.closest('[data-hb-style-clear-font]');
         if (clearFont) {
-            const select = clearFont.closest('.hb-style-typography__font-row')?.querySelector('[data-hb-select]');
-            const defaultOption = select?.querySelector('[data-hb-select-option=""]');
-            if (!select || !defaultOption) return;
-            select.querySelectorAll('[data-hb-select-option]').forEach((option) => option.setAttribute('aria-selected', option === defaultOption ? 'true' : 'false'));
-            select.dataset.value = '';
-            const value = select.querySelector('[data-hb-select-value]');
-            if (value) value.textContent = defaultOption.textContent.trim();
+            const combobox = clearFont.closest('.hb-style-typography__font-row')?.querySelector('[data-hb-combobox]');
+            combobox?.__hbCombobox?.setValue('', '');
         }
     });
 

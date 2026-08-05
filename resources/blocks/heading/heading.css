@@ -1,5 +1,9 @@
+/* Border/radius intentionally absent (2026-08-05, TODO 7.2): text blocks do not support
+   `border`, so the contract declares no border group and no --hb-heading-b*/-r* variables.
+   The rules that read them are removed rather than left on their fallbacks — a declaration
+   whose variable can never be set is dead weight that reads as a supported capability. */
 .hb-block-heading {
-    transition: color 140ms ease, background-color 140ms ease, border-color 140ms ease, box-shadow 140ms ease, transform 140ms ease;
+    transition: color 140ms ease, background-color 140ms ease, box-shadow 140ms ease, transform 140ms ease;
     color: var(--hb-heading-color);
     background: var(--hb-heading-bg);
     font-family: var(--hb-heading-ff, inherit);
@@ -14,10 +18,6 @@
     max-height: var(--hb-heading-maxh, none);
     margin: var(--hb-heading-mt, 14px) var(--hb-heading-mr, 0) var(--hb-heading-mb, 8px) var(--hb-heading-ml, 0);
     padding: var(--hb-heading-pt, 0) var(--hb-heading-pr, 0) var(--hb-heading-pb, 0) var(--hb-heading-pl, 0);
-    border-style: var(--hb-heading-bs, none);
-    border-width: var(--hb-heading-bw, 0);
-    border-color: var(--hb-heading-bc, transparent);
-    border-radius: var(--hb-heading-rtl, 0) var(--hb-heading-rtr, 0) var(--hb-heading-rbr, 0) var(--hb-heading-rbl, 0);
 }
 
 /* Level-driven scale — the H tag itself carries the size so switching

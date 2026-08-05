@@ -158,17 +158,6 @@
                 "left": true
             }
         },
-        "border": {
-            "style": true,
-            "width": true,
-            "color": true,
-            "radius": {
-                "topLeft": true,
-                "topRight": true,
-                "bottomLeft": true,
-                "bottomRight": true
-            }
-        },
         "animation": true
     },
     "style": {
@@ -318,41 +307,6 @@
             },
             "--hb-paragraph-pl": {
                 "source": "supports.spacing.padding.left",
-                "default": "",
-                "sanitize": "size-value"
-            },
-            "--hb-paragraph-bs": {
-                "source": "supports.border.style",
-                "default": "",
-                "sanitize": "border-style"
-            },
-            "--hb-paragraph-bw": {
-                "source": "supports.border.width",
-                "default": "",
-                "sanitize": "size-value"
-            },
-            "--hb-paragraph-bc": {
-                "source": "supports.border.color",
-                "default": "",
-                "sanitize": "color-value"
-            },
-            "--hb-paragraph-rtl": {
-                "source": "supports.border.radius.topLeft",
-                "default": "",
-                "sanitize": "size-value"
-            },
-            "--hb-paragraph-rtr": {
-                "source": "supports.border.radius.topRight",
-                "default": "",
-                "sanitize": "size-value"
-            },
-            "--hb-paragraph-rbl": {
-                "source": "supports.border.radius.bottomLeft",
-                "default": "",
-                "sanitize": "size-value"
-            },
-            "--hb-paragraph-rbr": {
-                "source": "supports.border.radius.bottomRight",
                 "default": "",
                 "sanitize": "size-value"
             }

@@ -74,8 +74,6 @@ class StylePanelGatingTest extends TestCase
             'size.height',
             'spacing.padding.top',
             'spacing.margin.top',
-            'border.color',
-            'border.radius.topLeft',
         ] as $path) {
             $this->assertSame($n, $this->controlCount($html, $path), "{$path} should render once per block type");
         }
@@ -99,23 +97,32 @@ class StylePanelGatingTest extends TestCase
         $this->assertSame($this->blockCount(), $this->controlCount($html, 'size.width'));
     }
 
-    public function test_appearance_shows_for_border_radius_but_its_opacity_field_gates_separately(): void
+    public function test_text_blocks_support_no_border_so_stroke_and_appearance_both_disappear(): void
     {
         $html = $this->editorHtml();
 
-        // The section straddles two groups: opacity -> appearance, corners -> border.radius.
-        // Neither contract declares `appearance`; both fully declare `border.radius`.
+        // TODO 7.2: text blocks do not support borders or corner radius. Both contracts had
+        // `border` removed 2026-08-05 along with their seven border-sourced style variables.
         foreach (['heisenberg/heading', 'heisenberg/paragraph'] as $name) {
-            $supports = app(BlockRegistryService::class)->getBlock($name)['supports'] ?? [];
-            $this->assertArrayNotHasKey('appearance', $supports);
-            $this->assertArrayHasKey('radius', $supports['border'] ?? []);
+            $contract = app(BlockRegistryService::class)->getBlock($name);
+            $this->assertArrayNotHasKey('border', $contract['supports'] ?? []);
+            $this->assertArrayNotHasKey('appearance', $contract['supports'] ?? []);
+
+            $sources = array_column($contract['style']['variables'] ?? [], 'source');
+            foreach ($sources as $source) {
+                $this->assertStringStartsNotWith('supports.border', $source);
+            }
         }
 
-        // Section renders (for the corners)...
-        $this->assertStringContainsString('<span class="hb-section__title">Appearance</span>', $html);
-        $this->assertSame($this->blockCount(), $this->controlCount($html, 'border.radius.topLeft'));
-        // ...but the opacity field does not, because `appearance` is undeclared.
-        $this->assertSame(0, $this->controlCount($html, 'appearance.opacity'));
+        // Stroke follows `border` directly. Appearance follows it too, because corner radius was
+        // the only thing keeping that section alive — its other control, opacity, needs
+        // `appearance`, which neither contract declares.
+        $this->assertStringNotContainsString('<span class="hb-section__title">Stroke</span>', $html);
+        $this->assertStringNotContainsString('<span class="hb-section__title">Appearance</span>', $html);
+
+        foreach (['border.color', 'border.width', 'border.radius.topLeft', 'appearance.opacity'] as $path) {
+            $this->assertSame(0, $this->controlCount($html, $path), "{$path} must not render");
+        }
     }
 
     public function test_typography_gates_per_control_not_only_per_section(): void
@@ -171,10 +178,49 @@ class StylePanelGatingTest extends TestCase
     {
         $html = $this->editorHtml();
 
-        // Fill/Stroke/Appearance all open the colour picker, and all three render today.
+        // Fill is the colour picker's only surviving trigger now that Stroke and Appearance are
+        // gone with `border` (TODO 7.2), and Fill still renders — so the popup stays mounted.
         $this->assertStringContainsString('data-hb-style-popup="color"', $html);
         // Effects is the effect editor's only trigger, and Effects is gated away.
         $this->assertStringNotContainsString('data-hb-style-popup="effect"', $html);
+    }
+
+    public function test_typography_font_field_searches_the_live_catalog_not_a_static_list(): void
+    {
+        $html = $this->editorHtml();
+
+        // TODO 7.5. This was a ui/select with five literal families; the left sidebar's Style tab
+        // already paged the vendored Google Fonts catalog properly, so this reuses that endpoint
+        // and contract rather than a second implementation.
+        $this->assertStringContainsString('data-hb-style-font-family', $html);
+        $this->assertStringContainsString('data-hb-control-type="combobox"', $html);
+
+        // The five hardcoded families are gone.
+        foreach (['JetBrains Mono', 'Georgia'] as $family) {
+            $this->assertStringNotContainsString(
+                "['value' => '{$family}'",
+                $html,
+                "'{$family}' looks like a leftover hardcoded font option",
+            );
+        }
+
+        // Paged search wiring, same shape as panel-style-themes.
+        $this->assertStringContainsString('function hbSearchFonts(combobox, query)', $html);
+        $this->assertStringContainsString('function hbLoadMoreFonts(combobox, query)', $html);
+        $this->assertStringContainsString('__hbCombobox?.replaceOptions(list)', $html);
+        $this->assertStringContainsString('__hbCombobox?.appendOptions(list)', $html);
+        $this->assertStringContainsString("data-hb-fonts-search-url=\"" . route('heisenberg.editor.fonts.search') . '"', $html);
+    }
+
+    public function test_font_page_state_is_per_combobox_not_shared(): void
+    {
+        $html = $this->editorHtml();
+
+        // The Style panel is pre-rendered once per registered block type, so several font
+        // comboboxes exist at once. A shared offset would make one field's scroll paginate
+        // another's results.
+        $this->assertStringContainsString('combobox.__hbFontPage = page', $html);
+        $this->assertStringContainsString('if (combobox.__hbFontPage !== page) return;', $html);
     }
 
     public function test_state_section_is_never_contract_gated(): void

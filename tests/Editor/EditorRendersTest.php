@@ -100,17 +100,21 @@ class EditorRendersTest extends TestCase
         // it would write into the model and change nothing on the canvas, which is
         // indistinguishable from a working control until you reload.
         //
-        // Both shipped contracts declare: align, color, typography, size, spacing, border.
-        // Neither declares: position, layout, effects, appearance.
+        // Both shipped contracts declare: align, color, typography, size, spacing, animation.
+        // Neither declares: position, layout, effects, appearance, border.
+        //
+        // `border` was removed from both 2026-08-05 (TODO 7.2): text blocks do not support
+        // borders or corner radius. That drops Stroke, and Appearance with it — radius was the
+        // only thing keeping Appearance alive, since neither contract declares `appearance`.
         // Matched on ui/panel-section's own title span, not a bare '>Name<' — Stroke renders its
         // own "Position" label (inside/center/outside), which a loose match reads as the Position
         // SECTION still being mounted.
         $header = fn (string $section): string => '<span class="hb-section__title">' . $section . '</span>';
 
-        foreach (['State', 'Alignment', 'Typography', 'Dimensions', 'Appearance', 'Fill', 'Stroke'] as $section) {
+        foreach (['State', 'Alignment', 'Typography', 'Dimensions', 'Fill'] as $section) {
             $this->assertStringContainsString($header($section), $html);
         }
-        foreach (['Position', 'Flex Layout', 'Effects'] as $section) {
+        foreach (['Position', 'Flex Layout', 'Effects', 'Stroke', 'Appearance'] as $section) {
             $this->assertStringNotContainsString(
                 $header($section),
                 $html,
@@ -126,10 +130,13 @@ class EditorRendersTest extends TestCase
         // it appears nowhere else in the editor.
         $this->assertStringNotContainsString('data-icon-name="arrows-horizontal"', $html);
         $this->assertStringContainsString('data-icon-name="style-padding-left"', $html);
-        $this->assertStringContainsString('data-icon-name="style-corner-radius-top-left"', $html);
+        // The corner-radius glyphs belong to Appearance, which goes with `border` (TODO 7.2).
+        $this->assertStringNotContainsString('data-icon-name="style-corner-radius-top-left"', $html);
         $this->assertStringContainsString('data-icon-name="align-left-fill"', $html);
         $this->assertStringContainsString('data-hb-style-layer-template="fill"', $html);
-        $this->assertStringContainsString('data-hb-style-layer-template="stroke"', $html);
+        // Stroke's layer template goes with the Stroke section.
+        $this->assertStringNotContainsString('data-hb-style-layer-template="stroke"', $html);
+        // Fill still triggers the colour picker, so the popup stays mounted.
         $this->assertStringContainsString('data-hb-style-popup="color"', $html);
         $this->assertStringContainsString('data-cp-gradient-add', $html);
         $this->assertStringContainsString('data-cp-gradient-reverse', $html);
@@ -275,14 +282,17 @@ class EditorRendersTest extends TestCase
 
         // The Style sub-panels (live/block/style/*.blade.php) used to render with zero binding
         // hooks — nothing they displayed reflected the selected block and nothing they changed
-        // wrote back. Heading declares typography.fontFamily/border.radius (a per-corner map)
-        // among its supports, so its pre-rendered Style panel must now carry real data-hb-control
-        // hooks keyed by dotted supports paths, per inspector.blade.php's syncControls()/
+        // wrote back. Every control a block's contract supports must carry a real data-hb-control
+        // hook keyed by its dotted supports path, per inspector.blade.php's syncControls()/
         // handleControlEvent() contract.
-        $this->assertStringContainsString('data-hb-control="typography.fontFamily" data-hb-control-kind="supports" data-hb-control-type="select"', $html);
+        //
+        // Paths chosen from what both contracts still declare after `border` was removed
+        // (TODO 7.2): typography, size, spacing, color.
+        // fontFamily is a ui/combobox against the live font catalog, not a select (TODO 7.5).
+        $this->assertStringContainsString('data-hb-control="typography.fontFamily" data-hb-control-kind="supports" data-hb-control-type="combobox"', $html);
         $this->assertStringContainsString('data-hb-control="size.width" data-hb-control-kind="supports" data-hb-control-type="text"', $html);
-        $this->assertStringContainsString('data-hb-control="border.radius.topLeft" data-hb-control-kind="supports" data-hb-control-type="text"', $html);
-        $this->assertStringContainsString('data-hb-control="border.width" data-hb-control-kind="supports" data-hb-control-type="text"', $html);
+        $this->assertStringContainsString('data-hb-control="spacing.padding.top" data-hb-control-kind="supports" data-hb-control-type="text"', $html);
+        $this->assertStringContainsString('data-hb-control="color.text" data-hb-control-kind="supports" data-hb-control-type="text"', $html);
     }
 
     public function test_advanced_panel_controls_carry_attribute_binding_hooks(): void

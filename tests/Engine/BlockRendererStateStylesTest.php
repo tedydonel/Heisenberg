@@ -45,15 +45,18 @@ class BlockRendererStateStylesTest extends TestCase
 
     public function test_active_and_focus_states_scope_to_their_own_pseudo_classes(): void
     {
+        // `focus` used to override border.color, but text blocks no longer support `border`
+        // (TODO 7.2) so --hb-paragraph-bc does not exist. color.text exercises the same path:
+        // a second state resolving a different variable to its own pseudo-class.
         $css = $this->renderer()->stateStylesCss([$this->paragraph([
             'active' => ['color' => ['background' => 'var(--hb-t-accent-1)']],
-            'focus' => ['border' => ['color' => '#00ff00']],
+            'focus' => ['color' => ['text' => '#00ff00']],
         ])]);
 
         $this->assertStringContainsString('[data-block-id="hb7"]:active', $css);
         $this->assertStringContainsString('--hb-paragraph-bg: var(--hb-t-accent-1) !important', $css);
         $this->assertStringContainsString('[data-block-id="hb7"]:focus-within', $css);
-        $this->assertStringContainsString('--hb-paragraph-bc: #00ff00 !important', $css);
+        $this->assertStringContainsString('--hb-paragraph-color: #00ff00 !important', $css);
     }
 
     public function test_invalid_values_and_unsafe_ids_are_dropped_fail_closed(): void

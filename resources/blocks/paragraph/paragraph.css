@@ -1,5 +1,9 @@
+/* Border/radius intentionally absent (2026-08-05, TODO 7.2): text blocks do not support
+   `border`, so the contract declares no border group and no --hb-paragraph-b*/-r* variables.
+   The rules that read them are removed rather than left on their fallbacks — a declaration
+   whose variable can never be set is dead weight that reads as a supported capability. */
 .hb-block-paragraph {
-    transition: color 140ms ease, background-color 140ms ease, border-color 140ms ease, box-shadow 140ms ease, transform 140ms ease;
+    transition: color 140ms ease, background-color 140ms ease, box-shadow 140ms ease, transform 140ms ease;
     color: var(--hb-paragraph-color);
     background: var(--hb-paragraph-bg);
     font-family: var(--hb-paragraph-ff, inherit);
@@ -13,10 +17,6 @@
     max-height: var(--hb-paragraph-maxh, none);
     margin: var(--hb-paragraph-mt, 6px) var(--hb-paragraph-mr, 0) var(--hb-paragraph-mb, 6px) var(--hb-paragraph-ml, 0);
     padding: var(--hb-paragraph-pt, 0) var(--hb-paragraph-pr, 0) var(--hb-paragraph-pb, 0) var(--hb-paragraph-pl, 0);
-    border-style: var(--hb-paragraph-bs, none);
-    border-width: var(--hb-paragraph-bw, 0);
-    border-color: var(--hb-paragraph-bc, transparent);
-    border-radius: var(--hb-paragraph-rtl, 0) var(--hb-paragraph-rtr, 0) var(--hb-paragraph-rbr, 0) var(--hb-paragraph-rbl, 0);
 }
 
 .hb-block-paragraph.has-drop-cap::first-letter {

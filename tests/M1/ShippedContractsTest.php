@@ -78,7 +78,7 @@ class ShippedContractsTest extends TestCase
         $this->assertSame(['fontFamily' => true, 'fontWeight' => true, 'fontSize' => true], $paragraph['supports']['typography']);
         // Full-kit overhaul 2026-07-19 (Phase 1) — the new Alignment panel is
         // derived from supports.align, which paragraph already declares.
-        $this->assertSame(['align', 'typography', 'size', 'color', 'margin', 'padding', 'border', 'radius'], array_column($paragraph['panels'], 'key'));
+        $this->assertSame(['align', 'typography', 'size', 'color', 'margin', 'padding'], array_column($paragraph['panels'], 'key')); // no border/radius — TODO 7.2
 
         $dropCap = collect($paragraph['controls'])->firstWhere('attribute', 'dropCap');
         $this->assertSame('toggle', $dropCap['type'] ?? null);
@@ -99,7 +99,7 @@ class ShippedContractsTest extends TestCase
         $this->assertSame([1, 2, 3, 4, 5, 6], $heading['attributes']['level']['enum']);
         $this->assertSame(['fontFamily' => true, 'fontWeight' => true, 'fontSize' => true, 'lineHeight' => true], $heading['supports']['typography']);
         // Full-kit overhaul 2026-07-19 (Phase 1) — see the paragraph test above.
-        $this->assertSame(['align', 'typography', 'size', 'color', 'margin', 'padding', 'border', 'radius'], array_column($heading['panels'], 'key'));
+        $this->assertSame(['align', 'typography', 'size', 'color', 'margin', 'padding'], array_column($heading['panels'], 'key')); // no border/radius — TODO 7.2
 
         $level = collect($heading['controls'])->firstWhere('attribute', 'level');
         $this->assertSame('select', $level['type'] ?? null);

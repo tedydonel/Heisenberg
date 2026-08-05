@@ -19,14 +19,21 @@
 @endphp
 <x-ui.panel-section title="Typography">
     @if ($on('fontFamily'))
+        {{-- ui/combobox against the vendored Google Fonts catalog (TODO 7.5), NOT a static list.
+             This was a ui/select with five literal families (Default/Rubik/Inter/Georgia/JetBrains
+             Mono). The left sidebar's Style tab already does this properly — same component, same
+             GET /editor/fonts endpoint, same paged search/loadmore contract — so this reuses that
+             wiring rather than reimplementing it. Options start empty and are filled by the
+             inspector's own search handler on focus/typing. --}}
         <div class="hb-irow hb-style-typography__font-row">
-            <x-ui.select class="hb-style-typography__font" value="Rubik" :options="[
-                ['value' => '', 'label' => 'Default'],
-                ['value' => 'Rubik', 'label' => 'Rubik'],
-                ['value' => 'Inter', 'label' => 'Inter'],
-                ['value' => 'Georgia', 'label' => 'Georgia'],
-                ['value' => 'JetBrains Mono', 'label' => 'JetBrains Mono'],
-            ]" data-hb-control="typography.fontFamily" data-hb-control-kind="supports" data-hb-control-type="select" />
+            <x-ui.combobox class="hb-style-typography__font" :options="[]" value=""
+                placeholder="Default" empty-label="No fonts found" aria-label="Font family"
+                data-hb-style-font-family
+                data-hb-control="typography.fontFamily" data-hb-control-kind="supports" data-hb-control-type="combobox" />
+            {{-- TODO 7.7 replaces this with the `selection-all-fill` theme-variable trigger:
+                 "since on the typography font combobox does not support input, please the x icon
+                 in line with it for that 'selection-all-fill' icon". Left as the clear-font
+                 button until the variable-popup wiring lands, so the field stays clearable. --}}
             <button type="button" class="hb-itrail hb-itrail--bare" aria-label="Clear font" data-hb-style-clear-font>
                 @include('heisenberg::components.ui.icon', ['name' => 'x', 'size' => 14])
             </button>
