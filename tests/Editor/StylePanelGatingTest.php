@@ -361,6 +361,69 @@ class StylePanelGatingTest extends TestCase
         $this->assertStringContainsString("input.dispatchEvent(new Event('change', { bubbles: true }))", $html);
     }
 
+    public function test_the_variable_trigger_survives_the_outside_click_handler(): void
+    {
+        $html = $this->editorHtml();
+
+        // REGRESSION. The Style panel has a document-level handler that closes every popup when
+        // the click was not on an allow-listed trigger. Both it and each trigger's own handler
+        // are on `document`, so stopPropagation cannot keep them apart — a trigger missing from
+        // this list has its popup closed the instant it opens, which reads as the button doing
+        // nothing at all. That is exactly what happened to data-hb-style-var-trigger.
+        $this->assertMatchesRegularExpression(
+            "/if \(!event\.target\.closest\('\[data-hb-style-popup\][^']*\[data-hb-style-var-trigger\][^']*'\)\) \{\s*closeStylePopups\(root\);/",
+            $html,
+            'the var trigger must be in the outside-click allow-list, or its popup closes on open',
+        );
+
+        // Its aria-expanded must be reset alongside the other triggers too.
+        $this->assertMatchesRegularExpression(
+            "/querySelectorAll\('\[data-hb-style-color-trigger\][^']*\[data-hb-style-var-trigger\][^']*'\)\.forEach/",
+            $html,
+        );
+    }
+
+    public function test_every_menu_a_trigger_can_request_is_actually_mounted(): void
+    {
+        $html = $this->editorHtml();
+
+        // hbVarMenuFor() routes to one of three names; a route with no mounted popup makes
+        // showStylePopup() a silent no-op.
+        foreach (['var-color', 'var-number', 'var-font'] as $menu) {
+            $this->assertStringContainsString('data-hb-style-popup="' . $menu . '"', $html, "{$menu} is routed to but not mounted");
+        }
+        $this->assertStringContainsString("if (/fontFamily$/i.test(path)) return 'var-font';", $html);
+    }
+
+    public function test_the_font_clear_button_is_replaced_by_the_variable_trigger(): void
+    {
+        $html = $this->editorHtml();
+
+        // The `x` clear-font button is gone, per instruction, and its handler with it.
+        $this->assertStringNotContainsString('data-hb-style-clear-font', $html);
+
+        // Replaced in place by the trigger. It is a SIBLING of the combobox rather than a
+        // descendant (a combobox owns its own trailing caret), so it names its target explicitly
+        // — and that target must exist.
+        $this->assertStringContainsString('data-hb-style-var-for="typography.fontFamily"', $html);
+        $this->assertStringContainsString('data-hb-control="typography.fontFamily"', $html);
+
+        // Clearing is preserved: ThemeRepository::tokens() always prepends an empty row, and
+        // picking it writes '' exactly as the x did.
+        $this->assertStringContainsString('data-vm-name=""', $html);
+    }
+
+    public function test_a_combobox_bound_to_a_token_commits_through_its_own_api(): void
+    {
+        $html = $this->editorHtml();
+
+        // Writing a combobox's inner <input> is reverted on its next render, and the delegated
+        // write handler ignores events whose target is not the combobox root — so the model
+        // would never see the change either.
+        $this->assertStringContainsString("if (control.getAttribute('data-hb-control-type') === 'combobox') {", $html);
+        $this->assertStringContainsString('control.__hbCombobox?.setValue(value, value);', $html);
+    }
+
     public function test_state_section_is_never_contract_gated(): void
     {
         $html = $this->editorHtml();

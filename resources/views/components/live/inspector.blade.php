@@ -1313,7 +1313,7 @@
         root?.querySelectorAll('[data-hb-style-popup]').forEach((popup) => {
             if (popup !== except) popup.hidden = true;
         });
-        root?.querySelectorAll('[data-hb-style-color-trigger], [data-hb-style-popup-trigger], [data-hb-style-effect-trigger]').forEach((trigger) => {
+        root?.querySelectorAll('[data-hb-style-color-trigger], [data-hb-style-popup-trigger], [data-hb-style-effect-trigger], [data-hb-style-var-trigger]').forEach((trigger) => {
             if (!except || !except.contains(trigger)) trigger.setAttribute('aria-expanded', 'false');
         });
     }
@@ -1511,8 +1511,10 @@
         return /^var\(\s*--/.test(v) ? 'bound' : 'manual';
     }
 
-    // Colour-ish paths get the swatch menu; everything else gets the value menu.
+    // Colour-ish paths get the swatch menu, font families their own (routing them to var-number
+    // would offer spacing tokens), everything else the value menu.
     function hbVarMenuFor(path) {
+        if (/fontFamily$/i.test(path)) return 'var-font';
         return /(^|\.)color(\.|$)|color$/i.test(path) ? 'var-color' : 'var-number';
     }
 
@@ -1542,7 +1544,12 @@
         const trigger = event.target.closest('[data-hb-style-var-trigger]');
         if (!trigger) return;
         const root = mountedStyleRoot(trigger);
-        const control = trigger.closest('[data-hb-control]');
+        // A trigger injected into a field is a descendant of its control; one rendered beside a
+        // combobox is a sibling, so it names its target explicitly.
+        const named = trigger.getAttribute('data-hb-style-var-for');
+        const control = named
+            ? root?.querySelector('[data-hb-control="' + named + '"]')
+            : trigger.closest('[data-hb-control]');
         if (!root || !control) return;
         event.stopPropagation();
         root.__hbVarTarget = control;
@@ -1557,13 +1564,23 @@
         const root = popup ? mountedStyleRoot(popup) : null;
         const control = root?.__hbVarTarget;
         if (!root || !control) return;
-        const input = control.matches('input') ? control : control.querySelector('input');
-        if (!input) return;
-        input.value = event.detail?.name || '';
-        // Re-use the one delegated write path rather than calling setSupport here, so the
-        // linked-value/aggregate handlers (spacing, corners) still see the edit.
-        input.dispatchEvent(new Event('input', { bubbles: true }));
-        input.dispatchEvent(new Event('change', { bubbles: true }));
+        const value = event.detail?.name || '';
+
+        // A combobox owns its display state and only commits through its own API — writing its
+        // inner <input> directly would be reverted on its next render, and the delegated write
+        // handler ignores events whose target is not the combobox root, so the model would never
+        // see the change either.
+        if (control.getAttribute('data-hb-control-type') === 'combobox') {
+            control.__hbCombobox?.setValue(value, value);
+        } else {
+            const input = control.matches('input') ? control : control.querySelector('input');
+            if (!input) return;
+            input.value = value;
+            // Re-use the one delegated write path rather than calling setSupport here, so the
+            // linked-value/aggregate handlers (spacing, corners) still see the edit.
+            input.dispatchEvent(new Event('input', { bubbles: true }));
+            input.dispatchEvent(new Event('change', { bubbles: true }));
+        }
         hbSyncVarTrigger(control);
         closeStylePopups(root);
     });
@@ -1702,7 +1719,12 @@
         const root = mountedStyleRoot(event.target);
         if (!root) return;
 
-        if (!event.target.closest('[data-hb-style-popup], [data-hb-style-color-trigger], [data-hb-style-popup-trigger], [data-hb-style-effect-trigger]')) {
+        // Any trigger omitted from this list gets its popup closed the instant it opens: this
+        // listener and each trigger's own are BOTH on document, so stopPropagation cannot keep
+        // them apart (that needs stopImmediatePropagation, and listener order is not guaranteed).
+        // data-hb-style-var-trigger was missing here, which is why the theme-variable popup
+        // appeared not to respond to clicks at all.
+        if (!event.target.closest('[data-hb-style-popup], [data-hb-style-color-trigger], [data-hb-style-popup-trigger], [data-hb-style-effect-trigger], [data-hb-style-var-trigger]')) {
             closeStylePopups(root);
         }
 
@@ -1835,15 +1857,9 @@
             return;
         }
 
-        // Clear font — the field became a ui/combobox against the live catalog (TODO 7.5), so
-        // there is no static "Default" option to re-select any more. Clearing means emptying the
-        // value, which setValue('', '') does, and that dispatches the combobox's own `change` so
-        // the model write goes through the one delegated handler like any other edit.
-        const clearFont = event.target.closest('[data-hb-style-clear-font]');
-        if (clearFont) {
-            const combobox = clearFont.closest('.hb-style-typography__font-row')?.querySelector('[data-hb-combobox]');
-            combobox?.__hbCombobox?.setValue('', '');
-        }
+        // The clear-font `x` button was replaced by the theme-variable trigger (TODO 7.7); its
+        // handler is gone with it. Clearing now happens by picking the font menu's empty
+        // "Default" row, which writes '' exactly as the x did.
     });
 
     document.addEventListener('input', (event) => {

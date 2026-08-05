@@ -142,6 +142,12 @@
     <div class="hb-style-popup" data-hb-style-popup="var-number" hidden>
         <x-live.pickers.variable-menu mode="number" selected="" :tokens="$themeTokens['space'] ?? null" />
     </div>
+    {{-- Font families need their own menu: routing them to var-number would offer spacing tokens.
+         Its first row is the empty "Default" entry ThemeRepository::tokens() always prepends, so
+         picking it clears the field — which is what the `x` button this trigger replaced did. --}}
+    <div class="hb-style-popup" data-hb-style-popup="var-font" hidden>
+        <x-live.pickers.variable-menu mode="number" selected="" :tokens="$themeTokens['fontFamily'] ?? null" />
+    </div>
 
     {{-- Trigger prototype, cloned into every Block.style text field's right edge (TODO 7.7).
          Injected from script rather than added to each of the eight style/*.blade.php files:

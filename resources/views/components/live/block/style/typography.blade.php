@@ -30,12 +30,22 @@
                 placeholder="Default" empty-label="No fonts found" aria-label="Font family"
                 data-hb-style-font-family
                 data-hb-control="typography.fontFamily" data-hb-control-kind="supports" data-hb-control-type="combobox" />
-            {{-- TODO 7.7 replaces this with the `selection-all-fill` theme-variable trigger:
+            {{-- The `x` clear-font button is REPLACED by the theme-variable trigger (TODO 7.7):
                  "since on the typography font combobox does not support input, please the x icon
-                 in line with it for that 'selection-all-fill' icon". Left as the clear-font
-                 button until the variable-popup wiring lands, so the field stays clearable. --}}
-            <button type="button" class="hb-itrail hb-itrail--bare" aria-label="Clear font" data-hb-style-clear-font>
-                @include('heisenberg::components.ui.icon', ['name' => 'x', 'size' => 14])
+                 in line with it for that 'selection-all-fill' icon".
+
+                 Clearing is not lost — the font token menu's first row is the empty "Default"
+                 entry ThemeRepository::tokens() always prepends, and picking it writes '' exactly
+                 as the x did.
+
+                 Rendered here rather than injected by hbDecorateVarTriggers(), which only
+                 decorates text/number controls: a combobox owns its own trailing caret, so the
+                 trigger sits beside the field instead of inside it. `data-hb-style-var-for` names
+                 the control it acts on, since it is a sibling of the combobox, not a descendant. --}}
+            <button type="button" class="hb-itrail hb-itrail--bare hb-varbtn--inline"
+                data-hb-style-var-trigger data-hb-style-var-for="typography.fontFamily"
+                aria-expanded="false" aria-label="{{ __('heisenberg::editor.inspector.bind_theme_variable') }}">
+                @include('heisenberg::components.ui.icon', ['name' => 'selection-all-fill', 'size' => 14])
             </button>
         </div>
     @endif
