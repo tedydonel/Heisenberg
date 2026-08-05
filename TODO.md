@@ -16,9 +16,9 @@ Iterative checklist. Tick items as they land — this file is the *plan*.
 | 4 — Footer + editor UI language | ✅ done (en/fr at 195/195 key parity) |
 | 5 — Client test platform | ⬜ not started |
 | 6 — Audit debt | ⬜ mostly open, but 6.1/6.2/6.6 landed 2026-08-02, 6.7 landed 2026-08-03 (see below) |
-| 7 — Inspector functional; contracts catch up to the UI | 🟡 **current focus** — 7.2/7.4/7.5 done, 7.1 partial; 7.3/7.6/7.7 next, 7.8/7.9 blocked |
+| 7 — Inspector functional; contracts catch up to the UI | 🟡 **current focus** — 7.2/7.4/7.5/7.6/7.7 done, 7.1 partial; 7.3 next; 7.8/7.9 blocked |
 
-Suite: **506 tests, 2157 assertions, green.**
+Suite: **511 tests, 2173 assertions, green.**
 
 **2026-08-05 — repository reset.** The GitHub repo was deleted and recreated to remove AI
 co-author attribution that could not be stripped any other way (a closed PR's `refs/pull/1/head`
@@ -512,7 +512,11 @@ install/DX bugs nothing in this repo can catch.
   `GET /editor/fonts` (`FontController::search`, paged via `offset`/`has_more`, appended on the
   combobox's `loadmore` event). Reuse that, do not reimplement.
 
-- [ ] **7.6 Wire the theme-variable popup into the Block.style sub-tab**
+- [x] **7.6 Wire the theme-variable popup into the Block.style sub-tab** — done 2026-08-05.
+  Two foundations were missing and landed with it: `ThemeRepository::css()` was emitted only by
+  preview, so `var(--hb-t-*)` resolved to nothing in the editor; and `ThemeRepository::tokens()`
+  had no callers at all. **Still open:** live theme edits only debounce a PUT — nothing rewrites
+  the `#hb-theme-vars` properties in place, so an unsaved token change is not previewed until reload.
   Quote: *"we do have pop ups but the theme variable pop ups are not yet wired to the Block.style
   sub tab on the right sidebar. eg there should be an icon that when clicked on calls the needed
   theme variable popup, i think they where already extracted. but never used."*
@@ -523,7 +527,11 @@ install/DX bugs nothing in this repo can catch.
   real theme (`ThemeRepository`, the same source the left sidebar's Style tab renders) is part of
   this item — otherwise it offers tokens that do not exist.
 
-- [ ] **7.7 The theme-variable trigger icon and its three colour states**
+- [x] **7.7 The theme-variable trigger icon and its three colour states** — done 2026-08-05.
+  The colour question resolved without a new token: `bound` uses the THEME's own
+  `--hb-t-accent-1` so the indicator follows the user's palette, with `--hb-editing` as fallback
+  (identical value today, #3D68F5). The `x` clear-font button beside the Typography combobox is
+  still present — see the note in 7.5; decide whether it is replaced or kept alongside.
   Quotes: *"for the icon that would have to be clicked to trigger a theme variable popup, only for
   the Block.style sub-tab, you would have to add in the input fields for text at the right end the
   'selection-all-fill' phosphor icon should be used."* · *"where if a filed already uses the a theme
