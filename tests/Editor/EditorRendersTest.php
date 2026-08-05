@@ -88,21 +88,43 @@ class EditorRendersTest extends TestCase
         $this->assertStringContainsString('hb-blockadvanced', $html);
     }
 
-    public function test_style_panel_keeps_the_complete_pencil_section_stack_mounted(): void
+    public function test_style_panel_mounts_only_the_sections_the_contract_supports(): void
     {
         $html = $this->get('/editor')->getContent();
 
-        // Block.style is the fixed Pencil LtsDN composition. Mounting a selected block must not
-        // remove designed sections and leave a partial/stale sidebar when its contract differs.
-        foreach (['State', 'Alignment', 'Typography', 'Position', 'Flex Layout', 'Dimensions', 'Appearance', 'Fill', 'Stroke', 'Effects'] as $section) {
-            $this->assertStringContainsString('>' . $section . '<', $html);
+        // SUPERSEDES test_style_panel_keeps_the_complete_pencil_section_stack_mounted (removed
+        // 2026-08-05), which pinned the opposite rule: "mounting a selected block must not remove
+        // designed sections". That treated the .pen composition as a per-block contract when it is
+        // really the design's full vocabulary. The inspector loads only what the active block
+        // needs, so a section whose supports group the contract never declares must not render —
+        // it would write into the model and change nothing on the canvas, which is
+        // indistinguishable from a working control until you reload.
+        //
+        // Both shipped contracts declare: align, color, typography, size, spacing, border.
+        // Neither declares: position, layout, effects, appearance.
+        // Matched on ui/panel-section's own title span, not a bare '>Name<' — Stroke renders its
+        // own "Position" label (inside/center/outside), which a loose match reads as the Position
+        // SECTION still being mounted.
+        $header = fn (string $section): string => '<span class="hb-section__title">' . $section . '</span>';
+
+        foreach (['State', 'Alignment', 'Typography', 'Dimensions', 'Appearance', 'Fill', 'Stroke'] as $section) {
+            $this->assertStringContainsString($header($section), $html);
+        }
+        foreach (['Position', 'Flex Layout', 'Effects'] as $section) {
+            $this->assertStringNotContainsString(
+                $header($section),
+                $html,
+                "'{$section}' has no supports group in either shipped contract and must not render",
+            );
         }
 
         // Section-specific glyphs must resolve rather than falling back to generic arrows. Numeric
         // Style fields intentionally do not import arbitrary prefix/unit/caret chrome.
         $this->assertStringContainsString('data-icon-name="format_align_right"', $html);
         $this->assertStringContainsString('data-icon-name="gear-six"', $html);
-        $this->assertStringContainsString('data-icon-name="arrows-horizontal"', $html);
+        // `arrows-horizontal` is the Flex Layout gap field's icon and is gated away with it —
+        // it appears nowhere else in the editor.
+        $this->assertStringNotContainsString('data-icon-name="arrows-horizontal"', $html);
         $this->assertStringContainsString('data-icon-name="style-padding-left"', $html);
         $this->assertStringContainsString('data-icon-name="style-corner-radius-top-left"', $html);
         $this->assertStringContainsString('data-icon-name="align-left-fill"', $html);

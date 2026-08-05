@@ -148,23 +148,52 @@ section rather than getting a renamed one.
 
 This is where the gap is widest, so read this section before designing a contract's `supports`.
 
-### 4.1 The gating claim is false
+### 4.1 How gating works
 
-`inspector.blade.php` mounts the Style panel like this, with a comment stating the component
-gates each section on the contract's supports:
+`inspector.blade.php` mounts the Style panel with the selected block's contract supports:
 
 ```blade
 <x-live.block.style-panel :supports="$hbRegBlockContract['supports'] ?? []" />
 ```
 
-`style-panel.blade.php` accepts `$supports` and **never reads it.** It mounts all ten sections
-unconditionally and hardcodes its own typography map, including `letterSpacing`, which neither
-shipped contract declares.
+Each section renders only when the contract declares its group. The rule is deliberately
+identical to the toolbar's, so the two surfaces cannot drift — a group counts as supported when
+the key is **present and not `false`**; an empty array or object still counts, since a contract
+that declares a group with no members has opted in.
 
-**Consequence:** the Style tab looks identical for every block type. A block that declares no
-`supports` at all still gets Position, Flex Layout, Effects and the rest — all of them writing
-into a model nothing reads. The toolbar does gate correctly (see the companion doc); the Style
-panel is the surface that doesn't.
+```php
+$has = fn (string $key): bool => Arr::get($supports, $key, null) !== null
+    && Arr::get($supports, $key) !== false;
+```
+
+Gating here is **render-time only**, and that is sufficient. The inspector pre-renders one Style
+panel per registered block type and shows/hides by name on selection, so each panel is already
+built against exactly one contract. The toolbar needs a second JS layer only because a single
+toolbar element is shared across every block.
+
+Two mappings are **not** what their section titles suggest:
+
+- **Dimensions gates on `size`, not `dimensions`.** Both are legal `SUPPORT_KEYS`, but the
+  section's controls write `size.width`/`size.height` and no shipped contract declares a
+  `dimensions` group at all. Gating on the title's key would hide a section both blocks fully
+  support.
+- **Appearance spans two groups.** Opacity writes `appearance.opacity`; the four corner fields
+  write `border.radius.*`. Neither contract declares `appearance`, both fully declare
+  `border.radius`. So the section shows when *either* group is present, and the opacity field
+  gates independently on `appearance`.
+
+Typography gates per control as well as per section — `lineHeight` is declared by heading only,
+`letterSpacing` by neither.
+
+For the two shipped contracts this means **Position, Flex Layout and Effects do not render at
+all**, and neither does Appearance's opacity field or Typography's letter-spacing field.
+
+> Wired 2026-08-05. Previously `style-panel.blade.php` accepted `$supports` and never read it,
+> mounting all ten sections for every block and hardcoding an all-true typography map. This
+> reversed `EditorRendersTest::test_style_panel_keeps_the_complete_pencil_section_stack_mounted`,
+> which had pinned the opposite rule ("mounting a selected block must not remove designed
+> sections") — that treated the `.pen` composition as a per-block contract when it is really the
+> design's full vocabulary. Regression coverage: `tests/Editor/StylePanelGatingTest.php`.
 
 ### 4.2 Full section inventory
 
@@ -175,27 +204,32 @@ panel is the surface that doesn't.
 | 3 | **Typography** | Font family | `typography.fontFamily` | ✅ wired + renders |
 | | | Font weight | `typography.fontWeight` | ✅ wired + renders |
 | | | Font size | `typography.fontSize` | ✅ wired + renders |
-| | | Line height | `typography.lineHeight` | ⚠️ renders on **heading only** — paragraph declares no `--hb-*-lh` |
-| | | Letter spacing | `typography.letterSpacing` | ⚠️ writes; no contract declares it |
+| | | Line height | `typography.lineHeight` | ✅ **heading only** — gated off for paragraph |
+| | | Letter spacing | `typography.letterSpacing` | 🚫 gated off — declared by neither contract |
 | | | Horizontal / vertical align | — | ❌ inert |
-| 4 | **Position** | X / Y / Rotation | `position.x` `.y` `.rotation` | ⚠️ writes; no contract declares it |
-| | | Absolute Position | — | ❌ inert |
-| 5 | **Flex Layout** | direction, 3×3 align grid, space-between/around | — | ❌ inert |
-| | | Gap | `layout.gap` | ⚠️ writes; no contract declares it |
+| 4 | **Position** | X / Y / Rotation | `position.x` `.y` `.rotation` | 🚫 **whole section gated off** — no contract declares `position` |
+| | | Absolute Position | — | 🚫 gated off with the section |
+| 5 | **Flex Layout** | direction, 3×3 align grid, space-between/around | — | 🚫 **whole section gated off** — no contract declares `layout` |
+| | | Gap | `layout.gap` | 🚫 gated off with the section |
 | 6 | **Spacing** | padding / margin, per side | `spacing.{group}.{side}` | ✅ wired + renders |
 | | | padding / margin, "one value" + "H/V" modes | same four paths, fanned out | ✅ wired + renders — see below |
 | 7 | **Dimensions** | W / H | `size.width` `size.height` | ✅ wired + renders |
 | | | Fill / Hug / Clip checkboxes | — | ❌ inert |
-| 8 | **Appearance** | Opacity | `appearance.opacity` | ⚠️ writes; no contract declares it |
-| | | Corner radius ×4 | `border.radius.{corner}` | ✅ wired + renders |
+| 8 | **Appearance** | Opacity | `appearance.opacity` | 🚫 field gated off — no contract declares `appearance` |
+| | | Corner radius ×4 | `border.radius.{corner}` | ✅ wired + renders — this is what keeps the section |
 | 9 | **Fill** | colour layer → colour picker | `color.text` | ✅ wired + renders |
 | 10 | **Stroke** | colour layer | `border.color` | ✅ wired + renders |
 | | | Weight (all) | `border.width` | ✅ wired + renders |
 | | | Weight per side | `border.width.{side}` | ⚠️ writes; contract's `border.width` is a **scalar**, so the per-side write shadows it and renders nothing |
 | | | Position / Join / Cap | — | ❌ inert |
-| 11 | **Effects** | shadow stack + editor | — | ❌ inert |
+| 11 | **Effects** | shadow stack + editor | — | 🚫 **whole section gated off** — no contract declares `effects` |
 
-Legend: ✅ writes and renders · ⚠️ writes to the model but nothing reads it back · ❌ no write at all
+Legend: ✅ writes and renders · ⚠️ writes to the model but nothing reads it back · ❌ renders but no
+write at all · 🚫 not rendered for either shipped contract (§4.1)
+
+Net for the two shipped contracts: **Position, Flex Layout and Effects do not render**, and
+neither does Appearance's opacity field nor Typography's letter-spacing field. Everything else
+in the table renders.
 
 ### 4.3 Spacing's three modes and one write
 
@@ -416,21 +450,32 @@ omitting the declaration — it never reaches the page.
 
 ## 9. Known defects, in priority order
 
-1. **`style-panel` ignores `$supports`** — every block shows every section. The prop is accepted
-   and dropped; the inspector's comment claims otherwise. This is now the largest one.
-2. **Per-side border width shadows the scalar** — panel writes `border.width.{side}` over a
-   contract whose `border.width` is a scalar; neither shape then renders.
-3. **State tabs inert** — the renderer's state system has no editor front-end (§6).
-4. **Advanced animation writes undeclared attributes** — `animate*` is written by the panel and
-   declared by no contract; `AnimationCatalog` is built and unreferenced.
-5. **`color.background`, `size.min*`/`max*` unreachable** — declared with variables, no control.
-6. **Inert decorative controls** — Alignment, Flex Layout, Effects, stroke join/cap, Fill/Hug/Clip,
-   typography's horizontal/vertical align. Most are unclaimed rather than unimplemented: the CSS
-   behind them already exists in `SupportsStyle` (§5).
+1. **Per-side border width shadows the scalar** — panel writes `border.width.{side}` over a
+   contract whose `border.width` is a scalar; neither shape then renders. Gating cannot help
+   here: the section legitimately declares `border`, so it renders, and only the four per-side
+   fields are dead. Fixing it means deciding whether `border.width` becomes an object.
+2. **State tabs inert** — the renderer's state system has no editor front-end (§6).
+3. **Advanced animation writes undeclared attributes** — `animate*` is written by the panel and
+   declared by no contract; `AnimationCatalog` is built and unreferenced. The Advanced tab is
+   hardcoded and reads no contract at all, so it gates nothing.
+4. **`color.background`, `size.min*`/`max*` unreachable** — declared with variables, no control.
+5. **Inert decorative controls in sections that DO render** — Alignment's 6-way bar, stroke
+   join/cap, Fill/Hug/Clip, typography's horizontal/vertical align. These sit inside sections
+   their contract legitimately supports, so gating leaves them visible; each needs either a
+   control hook or removal.
+
+> **The open question behind 1–5.** Most of these are unclaimed rather than unimplemented — the
+> CSS already exists in `SupportsStyle` (§5), gated behind an opt-in `hb-supports` class no
+> contract carries. Gating hides the affordances a block does not support; the alternative is to
+> make the contracts declare those groups so the affordances *work*. That is the "content editor
+> vs site builder" fork, still unsettled.
 
 ### Fixed
 
+- ~~`style-panel` ignores `$supports`~~ — gated 2026-08-05 (§4.1). Sections, and Typography's
+  individual fields, now render only when the contract declares them.
 - ~~Spacing writes nothing~~ — wired 2026-08-04 (§4.3). All eight paths, all three modes.
 - ~~General section unwired~~ — wired 2026-08-04 (§3). `anchor`, `titleAttr`, `extraClasses`.
 
-Regression coverage for both: `tests/Editor/InspectorWiringTest.php`.
+Regression coverage: `tests/Editor/StylePanelGatingTest.php` and
+`tests/Editor/InspectorWiringTest.php`.
