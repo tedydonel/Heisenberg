@@ -956,6 +956,24 @@
     // ── tiny dotted-path helpers (mirrors block-runtime.blade.php's own dataGet — that copy is
     //    private to its closure and not part of window.hbEditor, so this is a deliberate, small,
     //    read-only-in-spirit reimplementation, not a divergent one) ─────────────────────────────
+    // ── Interaction states (TODO 7.3) ────────────────────────────────────────────────
+    // The Style panel's State tabs retarget where every supports-keyed control reads and writes.
+    // On `default` a control addresses `supports.<path>` as before; on hover/active/focus it
+    // addresses `supports.states.<state>.<path>` — the exact shape
+    // BlockRenderer::stateStylesCss() compiles, so an override authored here is what the public
+    // page and preview render, with no second format to keep in step.
+    //
+    // Only supports-keyed controls retarget. Attributes are per-block content, not per-state
+    // style, and `stateDeclarations()` already skips any variable not sourced from `supports.`.
+    function hbActiveState(root) {
+        return root?.dataset.hbStyleState || 'default';
+    }
+
+    function hbStatePath(root, path) {
+        const state = hbActiveState(root);
+        return state === 'default' ? path : 'states.' + state + '.' + path;
+    }
+
     function hbGet(obj, path) {
         const parts = String(path || '').split('.');
         let value = obj;
@@ -1038,7 +1056,12 @@
             const kind = el.getAttribute('data-hb-control-kind');
             const type = el.getAttribute('data-hb-control-type');
             const source = kind === 'supports' ? (model.supports || {}) : (model.attributes || {});
-            const value = hbGet(source, key);
+            // On a non-default state tab a supports control reads its own override, not the base
+            // value — otherwise every state would open showing the default and overwrite it on
+            // the first edit (TODO 7.3).
+            const value = kind === 'supports'
+                ? hbGet(source, hbStatePath(mountedStyleRoot(el) || el.closest('.hb-blockstyle'), key))
+                : hbGet(source, key);
 
             // Block.style is a complete Pencil composition, including fields not represented on
             // every selected model. An absent source value must not erase the component's extracted
@@ -1223,7 +1246,8 @@
             // Style controls are keyed by dotted paths into `supports` (e.g. "color.text"), which
             // setAttribute cannot address — setSupport is its counterpart, and like setAttribute it
             // owns the re-render and both events, so the model has exactly one write path per branch.
-            window.hbEditor.setSupport(id, key, raw);
+            // The active State tab prefixes the path (TODO 7.3); on `default` it is unchanged.
+            window.hbEditor.setSupport(id, hbStatePath(el.closest('.hb-blockstyle'), key), raw);
             return;
         }
 
@@ -1453,6 +1477,21 @@
         syncPaddingControls(root);
         syncMarginControls(root);
     }
+
+    // State tab switch: retarget the panel, re-read every control against the new state, and ask
+    // the canvas to force that state's look on the selected block so the edit is visible.
+    document.addEventListener('change', (event) => {
+        const tabs = event.target.closest('[data-hb-style-state]');
+        const root = tabs ? mountedStyleRoot(tabs) : null;
+        if (!root || !event.detail) return;
+        root.dataset.hbStyleState = event.detail.value || 'default';
+
+        if (!window.hbEditor) return;
+        const id = window.hbEditor.getSelectedId();
+        const model = id ? window.hbEditor.getModel(id) : null;
+        if (model) syncControls(root.closest('[data-hb-block-panel]') || root, model);
+        window.hbEditor.previewState?.(id, root.dataset.hbStyleState);
+    });
 
     // ── Block.style theme-variable binding (TODO 7.6 / 7.7) ──────────────────────────
     // Every text-ish Style control gets a trailing selection-all-fill trigger that opens the

@@ -164,6 +164,11 @@
         "animation": true,
         "appearance": {
             "opacity": true
+        },
+        "states": {
+            "hover": true,
+            "active": true,
+            "focus": true
         }
     },
     "style": {

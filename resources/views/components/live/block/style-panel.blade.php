@@ -61,7 +61,7 @@
          `supports.states` off the block instance, and `states` is deliberately absent from
          BlockContractValidator::SUPPORT_KEYS, so no contract can declare it. Always mounted. --}}
     <x-ui.panel-section title="State">
-        <x-ui.tabs :active-index="0" :items="[
+        <x-ui.tabs data-hb-style-state :active-index="0" :items="[
             ['value' => 'default', 'label' => 'Default'],
             ['value' => 'hover', 'label' => 'Hover'],
             ['value' => 'active', 'label' => 'Active'],

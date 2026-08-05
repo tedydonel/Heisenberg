@@ -60,6 +60,13 @@ class BlockContractValidator
     /** Allowed alignment values. */
     private const ALIGN_VALUES = ['left', 'center', 'right', 'wide', 'full'];
 
+    /**
+     * Interaction states a contract may declare under `supports.states` (TODO 7.3). Must stay in
+     * lockstep with {@see \Heisenberg\Services\BlockRenderer::INTERACTION_STATES} — a state this
+     * accepts but the renderer cannot compile would validate and then never emit any CSS.
+     */
+    public const INTERACTION_STATES = ['hover', 'active', 'focus'];
+
     /** The editor control types. */
     private const CONTROL_TYPES = [
         'text', 'textarea', 'rich-text', 'select', 'toggle', 'checkbox', 'range',
@@ -201,6 +208,25 @@ class BlockContractValidator
                 foreach ($value as $align) {
                     if (! in_array($align, self::ALIGN_VALUES, true)) {
                         $errors[] = "supports.align has unknown value '" . $this->stringify($align) . "'";
+                    }
+                }
+                continue;
+            }
+
+            // `states` declares WHICH interaction states a block may style. Its instance-side
+            // counterpart is the override map BlockRenderer::stateStylesCss() compiles, keyed by
+            // the same state names — so the contract side is a plain name => bool map, exactly
+            // like `color`/`typography` declare which of their keys are available. Restricted to
+            // the states the renderer can actually compile; anything else would validate and then
+            // silently never emit. (TODO 7.3)
+            if ($group === 'states') {
+                if (! is_array($value)) {
+                    $errors[] = 'supports.states must be an object';
+                    continue;
+                }
+                foreach (array_keys($value) as $state) {
+                    if (! in_array($state, self::INTERACTION_STATES, true)) {
+                        $errors[] = "supports.states has unknown state '" . $this->stringify($state) . "'";
                     }
                 }
                 continue;

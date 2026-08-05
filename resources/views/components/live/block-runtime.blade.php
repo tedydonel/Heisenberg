@@ -152,9 +152,22 @@
         if (sanitizer === 'text-align') return ['left', 'center', 'right', 'justify'].indexOf(value) >= 0;
         return /^[a-z0-9\s().,%_\/-]+$/i.test(value);
     }
+    // Which interaction state the canvas is forcing, per block id. Set by previewState() when the
+    // inspector's State tab changes; `default` (or absent) means the base values. This mirrors
+    // BlockRenderer::stateStylesCss()'s `.hb-state-preview-<state>` hook, which exists precisely
+    // so an editor can force a state's look while it is being edited (TODO 7.3).
+    const previewStates = {};
+
     function styleDeclarations(model, contract) {
         const variables = contract && contract.style && contract.style.variables;
         if (!variables || typeof variables !== 'object') return '';
+        const state = previewStates[model.id];
+        // Only supports-sourced variables can be overridden per state — the same rule
+        // stateDeclarations() enforces server-side, so the canvas cannot preview something the
+        // renderer would refuse to emit.
+        const overrides = state && state !== 'default'
+            ? dataGet(model.supports || {}, 'states.' + state)
+            : null;
         const declarations = [];
         for (const name in variables) {
             if (!Object.prototype.hasOwnProperty.call(variables, name)) continue;
@@ -162,7 +175,10 @@
             if (!definition || typeof definition !== 'object') continue;
             const source = String(definition.source || '');
             let value = null;
-            if (source.indexOf('supports.') === 0) value = dataGet(model.supports || {}, source.slice(9));
+            if (source.indexOf('supports.') === 0) {
+                if (overrides) value = dataGet(overrides, source.slice(9));
+                if (value == null || value === '') value = dataGet(model.supports || {}, source.slice(9));
+            }
             else if (source.indexOf('attributes.') === 0) value = dataGet(model.attributes || {}, source.slice(11));
             if (value == null || value === '') value = definition.default == null ? '' : String(definition.default);
             value = String(value).trim();
@@ -518,6 +534,27 @@
         return true;
     }
 
+    // Force a block to render as it would in one of its interaction states, so an override being
+    // authored in the inspector is visible on the canvas (TODO 7.3). Re-rendering is enough:
+    // styleDeclarations() reads previewStates and merges supports.states.<state> over the base.
+    // The `.hb-state-preview-<state>` class rides along for any contract CSS keyed off it — the
+    // same hook BlockRenderer::stateStylesCss() emits for the public page.
+    function previewState(id, state) {
+        const model = findModel(id);
+        if (!model) return false;
+        const next = String(state || 'default');
+        if (next === 'default') delete previewStates[id];
+        else previewStates[id] = next;
+        reRenderBlock(id);
+        const el = document.querySelector('.hb-blk[data-block="' + id + '"] [data-block-id]')
+            || document.querySelector('.hb-blk[data-block="' + id + '"]');
+        if (el) {
+            ['hover', 'active', 'focus'].forEach((s) => el.classList.remove('hb-state-preview-' + s));
+            if (next !== 'default') el.classList.add('hb-state-preview-' + next);
+        }
+        return true;
+    }
+
     function moveBlock(fromIndex, toIndex) {
         const n = doc.blocks.length;
         if (typeof fromIndex !== 'number' || typeof toIndex !== 'number') return false;
@@ -836,6 +873,7 @@
         insertBlock: insertBlock,
         setAttribute: setAttribute,
         setSupport: setSupport,
+        previewState: previewState,
         moveBlock: moveBlock,
         removeBlock: removeBlock,
         selectById: selectById,
