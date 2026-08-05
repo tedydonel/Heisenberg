@@ -697,10 +697,13 @@ class StylePanelGatingTest extends TestCase
         // and the icon opens the variable popup, so the decorator's "already has a var trigger"
         // check skips the row and the duplicate disappears at its source.
         $this->assertStringContainsString('class="hb-colorlayer__swatch"', $html);
+        // Markup follows the .pen composition (Documents/head-ui.html): the swatch stays a
+        // <span> and opacity stays text. Only hooks were added — an earlier pass rewrote both
+        // into form controls, which was a redesign rather than wiring.
         $this->assertMatchesRegularExpression(
-            '/class="hb-colorlayer__swatch"[^>]*data-hb-style-color-trigger/s',
+            '/<span class="hb-colorlayer__swatch"[^>]*data-hb-style-color-trigger/s',
             $html,
-            'the swatch must open the colour picker',
+            'the swatch must open the colour picker and remain a span',
         );
         $this->assertMatchesRegularExpression(
             '/class="hb-colorlayer__open"[^>]*data-hb-style-var-trigger/s',
@@ -733,8 +736,11 @@ class StylePanelGatingTest extends TestCase
         $this->assertStringNotContainsString('data-hb-control="color.text"', $html);
         $this->assertStringNotContainsString('data-hb-control="border.color"', $html);
 
-        // Opacity has to be editable for stacking to mean anything — it was a static <span>.
+        // Opacity is read per layer. It stays a DISPLAY span fed by the colour picker's alpha —
+        // the picker already emits `a` on colorchange, so a second typed field for the same
+        // number would be redundant, and the .pen composition has no such field.
         $this->assertStringContainsString('data-hb-style-layer-opacity', $html);
+        $this->assertStringContainsString("row.querySelector('[data-hb-style-layer-opacity]')?.textContent", $html);
     }
 
     public function test_state_section_is_never_contract_gated(): void

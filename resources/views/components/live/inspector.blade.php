@@ -1568,8 +1568,10 @@
 
     function hbReadLayers(list) {
         return Array.from(list?.querySelectorAll('.hb-colorlayer') || []).map((row) => ({
-            color: row.querySelector('.hb-colorlayer__hex')?.value || '',
-            opacity: row.querySelector('[data-hb-style-layer-opacity]')?.value ?? '100',
+            // A row bound to a theme token displays the token's NAME; its value is the reference.
+            color: row.dataset.hbVarBound || row.querySelector('.hb-colorlayer__hex')?.value || '',
+            // Opacity is a display span fed by the colour picker's alpha, not a typed field.
+            opacity: (row.querySelector('[data-hb-style-layer-opacity]')?.textContent || '100').trim(),
         })).filter((layer) => layer.color !== '');
     }
 
@@ -1719,16 +1721,25 @@
         const trigger = event.target.closest('[data-hb-style-var-trigger]');
         if (!trigger) return;
         const root = mountedStyleRoot(trigger);
-        // A trigger injected into a field is a descendant of its control; one rendered beside a
-        // combobox is a sibling, so it names its target explicitly.
+        if (!root) return;
+
+        // Three ways a trigger names its target, because it sits differently in each case:
+        //   - injected INTO a field  -> it is a descendant of the control
+        //   - beside a combobox      -> a sibling, so it names the control explicitly
+        //   - inside a colour LAYER  -> the row carries no data-hb-control at all (the stack owns
+        //     the write, see hbCommitLayers), so the row itself is the target
+        // The layer case is why this button appeared dead: closest('[data-hb-control]') returned
+        // null and the handler bailed before opening anything.
         const named = trigger.getAttribute('data-hb-style-var-for');
-        const control = named
-            ? root?.querySelector('[data-hb-control="' + named + '"]')
-            : trigger.closest('[data-hb-control]');
-        if (!root || !control) return;
+        const layer = trigger.closest('.hb-colorlayer');
+        const control = named ? root.querySelector('[data-hb-control="' + named + '"]')
+            : (layer || trigger.closest('[data-hb-control]'));
+        if (!control) return;
         event.stopPropagation();
         root.__hbVarTarget = control;
-        showStylePopup(root, hbVarMenuFor(control.getAttribute('data-hb-control') || ''), trigger);
+        // A layer always binds a colour, whatever section it belongs to.
+        const menu = layer ? 'var-color' : hbVarMenuFor(control.getAttribute('data-hb-control') || '');
+        showStylePopup(root, menu, trigger);
     });
 
     // variable-menu reports the token KEY, which ThemeRepository::tokens() already builds as the
@@ -1747,6 +1758,19 @@
         // handler ignores events whose target is not the combobox root, so the model would never
         // see the change either.
         const label = hbVarLabelOf(root, value);
+
+        // A colour layer holds its value in its own hex field and commits through its stack, so
+        // the write goes there rather than to a control path.
+        if (control.classList.contains('hb-colorlayer')) {
+            const hex = control.querySelector('.hb-colorlayer__hex');
+            if (!hex) return;
+            hex.value = label || value;
+            if (label) control.dataset.hbVarBound = value; else delete control.dataset.hbVarBound;
+            hex.dispatchEvent(new Event('input', { bubbles: true }));
+            hbSyncVarTrigger(control);
+            closeStylePopups(root);
+            return;
+        }
 
         if (control.getAttribute('data-hb-control-type') === 'combobox') {
             // ui/combobox already separates the two: dataset.value is what the model gets, the
@@ -2140,10 +2164,19 @@
         const root = popup ? mountedStyleRoot(popup) : null;
         if (!root || !root.__hbStyleActiveColorLayer) return;
         if (event.detail?.gradientStop !== null && event.detail?.gradientStop !== undefined) return;
-        const { r, g, b } = event.detail || {};
+        const { r, g, b, a } = event.detail || {};
         const toHex = (value) => Number(value).toString(16).padStart(2, '0');
         if ([r, g, b].some((value) => !Number.isFinite(value))) return;
-        updateColorLayer(root.__hbStyleActiveColorLayer, `#${toHex(r)}${toHex(g)}${toHex(b)}`);
+        const layer = root.__hbStyleActiveColorLayer;
+        updateColorLayer(layer, `#${toHex(r)}${toHex(g)}${toHex(b)}`);
+        // The picker's alpha IS the layer's opacity — that is why the row needs no separate
+        // opacity field. Picking a colour also un-binds any theme token the row was on, since a
+        // literal colour is what was just chosen.
+        const op = layer?.querySelector('[data-hb-style-layer-opacity]');
+        if (op && Number.isFinite(a)) op.textContent = String(Math.round(Math.max(0, Math.min(1, a)) * 100));
+        if (layer) delete layer.dataset.hbVarBound;
+        const group = layer ? hbLayerGroupOf(layer) : null;
+        if (group) { hbCommitLayers(root, group); hbSyncVarTrigger(layer); }
     });
 
     document.addEventListener('gradientchange', (event) => {
