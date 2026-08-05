@@ -28,11 +28,48 @@
          write border.radius.*. Neither contract declares `appearance`; both fully declare
          `border.radius`. A single-key gate is wrong either way, so the section shows when either
          group is present and the opacity field gates independently on `appearance`. --}}
-@props(['supports' => [], 'state' => 0, 'themeTokens' => [], 'innerBlocks' => []])
+@props(['supports' => [], 'state' => 0, 'theme' => [], 'innerBlocks' => []])
 @php
     use Illuminate\Support\Arr;
 
     $isContainer = (bool) ($innerBlocks['enabled'] ?? false);
+
+    /*
+     * Theme-variable menus (TODO 7.6). Built from the raw theme rather than
+     * ThemeRepository::tokens(), because the two maps are keyed opposite ways: tokens() returns
+     * `var(--hb-t-name) => Label`, and variable-menu keys by the DISPLAY name. Passing tokens()
+     * straight through made every row read as "var(--hb-t-accent-1)" instead of "Accent".
+     *
+     * So each section yields two parallel maps: what the row shows (label => swatch/value) and
+     * what selecting it writes (label => CSS reference).
+     */
+    $hbVarMenu = static function (array $rows, string $display): array {
+        $labels = [];
+        $values = [];
+        foreach ($rows as $row) {
+            $name = $row['name'] ?? null;
+            if (! is_string($name) || $name === '') {
+                continue;
+            }
+            // Fall back to the machine name when a token has no label, so a row is never blank.
+            $label = trim((string) ($row['label'] ?? '')) !== '' ? $row['label'] : $name;
+            $labels[$label] = $row[$display] ?? '';
+            $values[$label] = 'var(--' . \Heisenberg\Services\ThemeRepository::CSS_PREFIX . $name . ')';
+        }
+
+        return [$labels, $values];
+    };
+
+    // A leading empty row clears the binding — the same affordance the font field's old `x` had.
+    [$hbColorTokens, $hbColorValues] = $hbVarMenu($theme['colors'] ?? [], 'value');
+    [$hbSpaceTokens, $hbSpaceValues] = $hbVarMenu($theme['spaces'] ?? [], 'value');
+    [$hbFontTokens, $hbFontValues] = $hbVarMenu($theme['fonts'] ?? [], 'family');
+    $hbColorTokens = ['Default' => null] + $hbColorTokens;
+    $hbSpaceTokens = ['Default' => ''] + $hbSpaceTokens;
+    $hbFontTokens = ['Default' => ''] + $hbFontTokens;
+    $hbColorValues['Default'] = '';
+    $hbSpaceValues['Default'] = '';
+    $hbFontValues['Default'] = '';
 
     $has = fn (string $key): bool => Arr::get($supports, $key, null) !== null
         && Arr::get($supports, $key) !== false;
@@ -146,16 +183,16 @@
          Two modes because the menu shows a swatch for colours and a raw value for everything
          else. Both are mounted once per panel and repositioned at whichever field opened them. --}}
     <div class="hb-style-popup" data-hb-style-popup="var-color" hidden>
-        <x-live.pickers.variable-menu mode="color" selected="" :tokens="$themeTokens['color'] ?? null" />
+        <x-live.pickers.variable-menu mode="color" selected="" :tokens="$hbColorTokens" :values="$hbColorValues" />
     </div>
     <div class="hb-style-popup" data-hb-style-popup="var-number" hidden>
-        <x-live.pickers.variable-menu mode="number" selected="" :tokens="$themeTokens['space'] ?? null" />
+        <x-live.pickers.variable-menu mode="number" selected="" :tokens="$hbSpaceTokens" :values="$hbSpaceValues" />
     </div>
     {{-- Font families need their own menu: routing them to var-number would offer spacing tokens.
-         Its first row is the empty "Default" entry ThemeRepository::tokens() always prepends, so
-         picking it clears the field — which is what the `x` button this trigger replaced did. --}}
+         Its leading "Default" row writes '', which is what the `x` button this trigger replaced
+         did. --}}
     <div class="hb-style-popup" data-hb-style-popup="var-font" hidden>
-        <x-live.pickers.variable-menu mode="number" selected="" :tokens="$themeTokens['fontFamily'] ?? null" />
+        <x-live.pickers.variable-menu mode="number" selected="" :tokens="$hbFontTokens" :values="$hbFontValues" />
     </div>
 
     {{-- Trigger prototype, cloned into every Block.style text field's right edge (TODO 7.7).

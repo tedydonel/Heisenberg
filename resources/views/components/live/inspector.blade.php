@@ -268,9 +268,10 @@
     // ui/combobox against the vendored Google Fonts catalog, same endpoint and paging contract
     // the left sidebar's Style tab uses. Empty string disables the search rather than 404ing.
     'fontsSearchUrl' => '',
-    // ThemeRepository::tokens() — merged theme-over-config maps keyed `var(--hb-t-name) => Label`,
-    // feeding the Block.style theme-variable pickers (TODO 7.6).
-    'themeTokens' => [],
+    // The raw user theme (ThemeRepository::load()), feeding the Block.style theme-variable
+    // pickers. Deliberately NOT tokens(): that map is keyed by CSS reference, which made every
+    // menu row read as "var(--hb-t-accent-1)" rather than the name the user gave the token.
+    'theme' => [],
 ])
 <aside data-hb-inspector data-hb-fonts-search-url="{{ $fontsSearchUrl }}" {{ $attributes->merge(['class' => 'hb-inspector']) }}>
     <x-ui.panel-tabs :items="$panelTabs" :active-index="$panelActiveIndex" />
@@ -917,7 +918,7 @@
                              `supports` map, which is exactly what it was designed to do — it needs
                              the real supports passed in, nothing more. --}}
                         <div data-hb-block-panel="{{ $hbRegBlockName }}" hidden>
-                            <x-live.block.style-panel :supports="$hbRegBlockContract['supports'] ?? []" :theme-tokens="$themeTokens" :inner-blocks="$hbRegBlockContract['innerBlocks'] ?? []" />
+                            <x-live.block.style-panel :supports="$hbRegBlockContract['supports'] ?? []" :theme="$theme" :inner-blocks="$hbRegBlockContract['innerBlocks'] ?? []" />
                         </div>
                     @endforeach
                 </div>
@@ -1629,7 +1630,8 @@
         const root = popup ? mountedStyleRoot(popup) : null;
         const control = root?.__hbVarTarget;
         if (!root || !control) return;
-        const value = event.detail?.name || '';
+        // `value` is the CSS reference (var(--hb-t-…)); `name` is only the label shown on the row.
+        const value = event.detail?.value ?? event.detail?.name ?? '';
 
         // A combobox owns its display state and only commits through its own API — writing its
         // inner <input> directly would be reverted on its next render, and the delegated write

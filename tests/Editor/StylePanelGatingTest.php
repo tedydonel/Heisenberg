@@ -318,8 +318,15 @@ class StylePanelGatingTest extends TestCase
         $this->assertStringContainsString('data-hb-style-popup="var-number"', $html);
         $this->assertStringContainsString('data-hb-varmenu', $html);
 
-        // Options come from ThemeRepository::tokens(), whose keys ARE the CSS values.
-        $this->assertStringContainsString('data-vm-name="var(--hb-t-accent-1)"', $html);
+        // A row READS as the name the user gave the token in the Style tab and WRITES the CSS
+        // reference. Passing ThemeRepository::tokens() straight through inverted this — that map
+        // is keyed by CSS reference, so every row rendered as "var(--hb-t-accent-1)".
+        $this->assertStringContainsString('data-vm-name="Accent"', $html);
+        $this->assertStringContainsString('data-vm-value="var(--hb-t-accent-1)"', $html);
+        $this->assertStringNotContainsString('data-vm-name="var(--hb-t-', $html);
+
+        // Consumers must read detail.value (the reference), not detail.name (the label).
+        $this->assertStringContainsString('const value = event.detail?.value ?? event.detail?.name ?? \'\';', $html);
     }
 
     public function test_style_text_fields_get_the_theme_variable_trigger_with_three_states(): void
@@ -411,9 +418,9 @@ class StylePanelGatingTest extends TestCase
         $this->assertStringContainsString('data-hb-style-var-for="typography.fontFamily"', $html);
         $this->assertStringContainsString('data-hb-control="typography.fontFamily"', $html);
 
-        // Clearing is preserved: ThemeRepository::tokens() always prepends an empty row, and
-        // picking it writes '' exactly as the x did.
-        $this->assertStringContainsString('data-vm-name=""', $html);
+        // Clearing is preserved: each menu leads with a "Default" row whose emitted value is
+        // empty, so picking it writes '' exactly as the x did.
+        $this->assertMatchesRegularExpression('/data-vm-name="Default"\s+data-vm-value=""/', $html);
     }
 
     public function test_a_combobox_bound_to_a_token_commits_through_its_own_api(): void

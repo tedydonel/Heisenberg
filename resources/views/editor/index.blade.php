@@ -45,7 +45,7 @@
         :post-layout-url-template="$postLayoutUrlTemplate" :post-allow-comments="$postAllowComments ?? true"
         :post-discussion-url-template="$postDiscussionUrlTemplate"
         :fonts-search-url="route('heisenberg.editor.fonts.search')"
-        :theme-tokens="$themeTokens ?? []" />
+        :theme="$theme ?? []" />
     <x-live.footer class="hb-editor__footer" />
 
     {{-- The block model: registry + render/insert/select runtime. Kept last so the canvas,

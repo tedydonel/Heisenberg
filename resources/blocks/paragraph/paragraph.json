@@ -122,27 +122,32 @@
         "fillWidth": {
             "type": "boolean",
             "default": false,
-            "sanitize": "boolean"
+            "sanitize": "boolean",
+            "control": false
         },
         "fillHeight": {
             "type": "boolean",
             "default": false,
-            "sanitize": "boolean"
+            "sanitize": "boolean",
+            "control": false
         },
         "hugWidth": {
             "type": "boolean",
             "default": false,
-            "sanitize": "boolean"
+            "sanitize": "boolean",
+            "control": false
         },
         "hugHeight": {
             "type": "boolean",
             "default": false,
-            "sanitize": "boolean"
+            "sanitize": "boolean",
+            "control": false
         },
         "clipContent": {
             "type": "boolean",
             "default": false,
-            "sanitize": "boolean"
+            "sanitize": "boolean",
+            "control": false
         }
     },
     "supports": {

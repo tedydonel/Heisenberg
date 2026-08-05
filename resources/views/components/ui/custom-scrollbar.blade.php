@@ -100,7 +100,20 @@
                     // behavior, used by the gallery page). With a container, every window-scoped call
                     // below is replaced by the container's own scrollTop/scrollHeight/clientHeight so
                     // this scrollbar only ever drives ITS container, not the page.
-                    const container = containerSelector ? bar.closest(containerSelector) || document.querySelector(containerSelector) : null;
+                    // Resolution order matters once a page has MORE THAN ONE instance of the same
+                    // component. The bar is normally a SIBLING of its scroll container (see
+                    // ui/combobox, panel-navigator, the inspector's sub-tabs), so `closest` misses
+                    // and the old code fell straight through to document.querySelector — which
+                    // returns the FIRST match anywhere on the page. Every combobox's scrollbar
+                    // then drove the first combobox's list, so the others appeared unscrollable.
+                    // Checking the bar's own parent subtree first keeps each instance on its own
+                    // container; the document lookup stays as the last resort for layouts where
+                    // the bar is neither inside nor beside its container.
+                    const container = containerSelector
+                        ? (bar.closest(containerSelector)
+                            || bar.parentElement?.querySelector(containerSelector)
+                            || document.querySelector(containerSelector))
+                        : null;
                     const isWindow = !container;
                     if (!isWindow) {
                         container.classList.add('hb-scroll-container');
