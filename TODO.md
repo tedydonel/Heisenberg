@@ -5,19 +5,36 @@ Iterative checklist. Tick items as they land — this file is the *plan*.
 **Legend:** `[ ]` todo · `[~]` in progress · `[x]` done · `[!]` blocked (reason inline)
 **D:** dependency · **AC:** acceptance criteria · **Own:** which agent owns the files
 
-## Status — 2026-08-04
+## Status — 2026-08-05
 
 | Phase | State |
 |---|---|
 | 0 — Unblockers | ✅ done |
 | 1 — Persistence | ✅ done except 1.1 (locale-specific save unverified) and 1.7 (`Revision` exists, **nothing calls `snapshotOf()`**) |
-| 2 — Inspector + toolbar | ✅ done except 2.6 (contracts declare no `supports.position/layout/effects/appearance`) |
+| 2 — Inspector + toolbar | ✅ done except 2.6, which Phase 7 supersedes (see below) |
 | 3 — Taxonomy + template schema | ✅ done — 3.1 (Categories/Tags) 2026-08-03, 3.2 (Post Template schema) 2026-08-03 |
 | 4 — Footer + editor UI language | ✅ done (en/fr at 195/195 key parity) |
-| 5 — Client test platform | ⬜ not started — **the next step** (see below) |
+| 5 — Client test platform | ⬜ not started |
 | 6 — Audit debt | ⬜ mostly open, but 6.1/6.2/6.6 landed 2026-08-02, 6.7 landed 2026-08-03 (see below) |
+| 7 — Inspector functional; contracts catch up to the UI | ⬜ **current focus** — see below |
 
-Suite: **481 tests, 1970 assertions, green.**
+Suite: **500 tests, 2076 assertions, green.**
+
+**2026-08-05 — repository reset.** The GitHub repo was deleted and recreated to remove AI
+co-author attribution that could not be stripped any other way (a closed PR's `refs/pull/1/head`
+is server-managed and immutable). History restarted at a single `Initial commit`; the previous
+176 commits survive only on the local `archive/pre-reset` branch. Dropped in the same pass:
+`docs/gutenberg-study/`, `docs/superpowers/`, `CODEBASE-REVIEW.md`,
+`docs/editor-remediation-audit.md`. **Commits must never carry `Co-Authored-By` or any
+AI-attribution trailer.**
+
+**2026-08-05 — Style panel now gates on the contract.** `style-panel.blade.php` accepted a
+`$supports` prop and never read it, so every block rendered all ten Style sections. It now gates
+per section (and Typography per field), using the same truthiness rule as the toolbar. This
+reversed `EditorRendersTest::test_style_panel_keeps_the_complete_pencil_section_stack_mounted`.
+**Phase 7 is the other half of that work**: gating removed UI the contracts did not back;
+Phase 7 makes the contracts back the UI that should exist. See
+`docs/inspector-composition.md` and `docs/toolbar-composition.md` for the full control catalogue.
 
 **2026-08-04 — the gap the README exposed.** Writing host-app install instructions
 (`README.md`) surfaced the one thing nothing in this repo can catch: Heisenberg can *author*
@@ -411,6 +428,130 @@ install/DX bugs nothing in this repo can catch.
 - [x] **6.11** Two hand-synced design-token systems — moot 2026-08-02: the builder's bare-name
       token system was deleted with the builder. Only the editor's `--hb-*` tokens remain.
 - [ ] **6.12** Four independent icon-name resolvers over one vendored SVG set.
+
+---
+
+## Phase 7 — Make the inspector functional; contracts catch up to the UI
+
+> **Source.** Recorded 2026-08-05 from a direct instruction. The governing sentence is:
+> *"the inspector is not yet built to support all functionalities, theres alot that does not work
+> yet. and the inspector need to be functional, and the said block contracts are still lacking
+> behind the ui. so they would have to be active."* and *"the ui displays what needs to be added so
+> the contracts need to be updated to reflect that."*
+>
+> **Direction of travel: the UI is the specification; the contracts follow it.** This is the
+> opposite of Phase 2.6/the 2026-08-05 gating pass, which assumed the contracts were authoritative
+> and hid UI the contracts did not declare. Both still apply — a section with no contract support
+> must not render (that stays) — but the fix is now to make the contracts declare what the UI
+> offers, not to keep deleting UI.
+>
+> Verbatim quotes below are marked. Anything not quoted and not obviously mechanical is flagged
+> **[interpretation]** — do not treat those as instructions received.
+
+- [ ] **7.1 Contracts declare what the UI offers**
+  Both shipped contracts declare 7 groups (`align`, `color`, `typography`, `size`, `spacing`,
+  `border`, `animation`) while the Style panel offers controls for `position`, `layout`,
+  `effects`, `appearance` and `typography.textAlign`/`letterSpacing` as well. `SupportsStyle`
+  (`src/Support/SupportsStyle.php`) **already implements the CSS for every one of them**, gated
+  behind an opt-in `hb-supports` class no contract carries. So this is declaring + opting in,
+  not writing new CSS.
+  *Excludes `border` for text blocks — see 7.2.*
+  *AC:* every Style control that renders for a block writes to a path that block's contract
+  declares AND that has a matching `style.variables` entry; nothing renders that writes nowhere.
+
+- [ ] **7.2 Text blocks must NOT support Stroke or border-radius**
+  Quote: *"text cant have things like borders which is offered by the stroke section or border
+  raduis which is supported by the apperance section"* — and, when asked to confirm: *"they text
+  should not support them."*
+  Remove `border` from `heisenberg/heading` and `heisenberg/paragraph` (`style`, `width`, `color`,
+  and all four `radius` corners) plus their 7 matching `style.variables` each. With the 2026-08-05
+  gating in place this removes the **Stroke** section automatically, and removes **Appearance**
+  too — radius is the only thing currently keeping Appearance alive for text.
+  *Note:* Appearance returns for text only if `appearance.opacity` is declared under 7.1.
+
+- [ ] **7.3 Every block supports interaction states**
+  Quote: *"every block component should support the status, 'default, active, hover etc'"*.
+  `BlockRenderer::INTERACTION_STATES` already compiles `hover`/`active`/`focus-within` from
+  `block.supports.states.<state>` and is tested — but (a) `states` is deliberately absent from
+  `BlockContractValidator::SUPPORT_KEYS`, so no contract can declare it; (b) nothing in the editor
+  writes `supports.states`; (c) `stateStylesCss()` is called only by `PreviewController`, so the
+  canvas never previews a state. The Style panel's Default/Hover/Active/Focus tabs are inert.
+  *Needs:* allow `states` in the contract schema, wire the State tabs to author per-state overrides,
+  and make the canvas preview the selected state (`.hb-state-preview-<state>` already exists in the
+  renderer's emitted CSS for exactly this).
+
+- [ ] **7.4 Alignment section vs Typography alignment**
+  Quote: *"there is the alignment section on its own, and for text, components, they have their own
+  alignment within the typography section."*
+  **[interpretation]** These are two different properties and both are legitimate: the standalone
+  Alignment section is the block's placement in its parent (`supports.align` → `hb-align-*` class,
+  already working via `BlockRenderer::resolveClass()`), while Typography's Horizontal/Vertical
+  segmenteds are text placement inside the block (`text-align`). `SupportsStyle` already ships
+  `--hb-text-align` and `--hb-text-align-v`. Neither Typography segmented carries a
+  `data-hb-control` today, so both are decorative.
+  *Confirm the reading before acting.* If correct: wire Typography's to
+  `typography.textAlign`/`textAlignVertical` and leave the Alignment section on `align`, and make
+  the labels say which is which.
+
+- [ ] **7.5 Typography font picker must use internet fonts, not a hardcoded list**
+  Quote: *"the font type ui in the typography section still uses hard coded fonts instead of
+  internet fonts just as done with the combobox in the styles tab on the left sidebar. fix that."*
+  `live/block/style/typography.blade.php` renders a `ui/select` with 5 literal families
+  (Default/Rubik/Inter/Georgia/JetBrains Mono). The left sidebar's Style tab
+  (`live/panel-style-themes.blade.php`) already does this properly: `ui/combobox` +
+  `GET /editor/fonts` (`FontController::search`, paged via `offset`/`has_more`, appended on the
+  combobox's `loadmore` event). Reuse that, do not reimplement.
+
+- [ ] **7.6 Wire the theme-variable popup into the Block.style sub-tab**
+  Quote: *"we do have pop ups but the theme variable pop ups are not yet wired to the Block.style
+  sub tab on the right sidebar. eg there should be an icon that when clicked on calls the needed
+  theme variable popup, i think they where already extracted. but never used."*
+  Confirmed: `live/pickers/variable-menu.blade.php` exists (modes `color` and `number`, rows via
+  `ui/var-menu-item`) and is mounted **only** in the components gallery
+  (`resources/views/editor/components.blade.php`), never in the inspector.
+  *Also required:* its token list is a hardcoded `$default` array in the component. Feeding it the
+  real theme (`ThemeRepository`, the same source the left sidebar's Style tab renders) is part of
+  this item — otherwise it offers tokens that do not exist.
+
+- [ ] **7.7 The theme-variable trigger icon and its three colour states**
+  Quotes: *"for the icon that would have to be clicked to trigger a theme variable popup, only for
+  the Block.style sub-tab, you would have to add in the input fields for text at the right end the
+  'selection-all-fill' phosphor icon should be used."* · *"where if a filed already uses the a theme
+  variable, it should indicate with the info-accent color, then if not it can use the same icon but
+  with the muted color, then if a manual value was used, it should show the icon with muted color
+  only on hover of said input field."* · *"then since on the typography font combobox does not
+  support input, please the x icon in line with it for that 'selection-all-fill' icon."*
+  - Scope is **the Block.style sub-tab only** — not Content, not Advanced, not the Post tab.
+  - Icon sits at the **right end of text input fields**.
+  - `selection-all-fill` already resolves: `EditorIcon` aliases it to the regular `selection-all`
+    glyph (the vendored Phosphor `fill/` set has only 19 icons and does not include it).
+  - Three states: **bound to a theme variable → info-accent, always visible**; **not bound →
+    muted, always visible**; **manual value → muted, visible only on hover of the field**.
+    **[interpretation]** "if not" and "if a manual value was used" are read as distinct: unset/default
+    vs. a typed literal. Confirm if that is wrong.
+  - **Blocker:** there is no `info-accent` token. `tokens.css` has no `--hb-info` at all; the
+    nearest existing blue is `--hb-editing: #3D68F5`. A token has to be added (or `--hb-editing`
+    reused — not assumed).
+  - The typography font combobox takes no free text, so its inline `x` (clear-font,
+    `data-hb-style-clear-font`) is **replaced** by the `selection-all-fill` trigger.
+
+- [ ] **7.8 Toolbar must not load what the block does not need**
+  Quote: *"we still need to fix the toolbar. it should not lood full stuff it does not need."*
+  - *"the second icon 'elbow up' should only show up when a component is in a container etc where
+    its meant to select parent block"* — `data-tb-action="select-parent"`, currently always
+    rendered and inert (the runtime has no block nesting yet, see `block-toolbar.blade.php`).
+  - *"the save icon should only appear for containers"* — `data-tb-action="save"`, currently
+    always rendered in `toolbar/groups/style.blade.php` and inert.
+  *Both depend on container/nesting existing in the runtime, which it does not yet.*
+
+- [ ] **7.9 Reusable blocks — "save as block" → the Blocks tab (deferred, by instruction)**
+  Quote: *"the save icon would be to save said component as a reusable block, where it goes under
+  the blocks tab on the left sidebar, we are not doing that yet, so you can add it to the TODO.md
+  for it to be done later when other block contracts have been built."*
+  Explicitly **not now** — revisit once more block contracts exist. Context that already exists:
+  the Blocks tab is deliberately empty (see the memory note "Components tab = block palette;
+  Blocks tab = saved custom UIs"), `heisenberg_patterns` is reserved in `config/heisenberg.php`
+  with no model behind it, and `window.hbEditor` has no reusable-block capability.
 
 ---
 
