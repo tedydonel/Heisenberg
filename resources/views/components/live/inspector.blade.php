@@ -321,7 +321,7 @@
                 :scrim="true"
                 tab="library"
                 accept="image/*"
-                title="Select Featured Image"
+                :title="__('heisenberg::editor.media.select_featured_image')"
                 :select-url="$hbFeaturedSelectUrl"
                 :upload-url="$hbFeaturedUploadUrl"
             />

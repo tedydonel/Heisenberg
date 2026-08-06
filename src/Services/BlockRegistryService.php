@@ -30,6 +30,9 @@ class BlockRegistryService
     /** @var array{contracts: array<string, array>, paths: array<string, array{abs: string, rel: string}>, errors: list<array{file: string, error: string}>}|null */
     private ?array $scanCache = null;
 
+    /** Fingerprint of the file set the cache was built from — see {@see scan()}. */
+    private ?string $scanFingerprint = null;
+
     public function __construct(
         private BlockContractValidator $validator,
         private ?string $blockRootPath = null,
@@ -128,10 +131,6 @@ class BlockRegistryService
      */
     private function scan(): array
     {
-        if ($this->scanCache !== null) {
-            return $this->scanCache;
-        }
-
         $contracts = [];
         $paths = [];
         $errors = [];
@@ -140,11 +139,22 @@ class BlockRegistryService
         $realRoot = realpath($root);
 
         if ($realRoot === false || ! is_dir($realRoot)) {
+            $this->scanFingerprint = null;
+
             return $this->scanCache = compact('contracts', 'paths', 'errors');
         }
 
         $files = $this->jsonFiles($realRoot);
         sort($files);
+
+        // The cache is a singleton-lifetime memo, so it must self-invalidate when a
+        // contract file is added, removed, or edited — otherwise persistent-worker
+        // runtimes (Octane, queue workers) keep serving a stale registry forever.
+        $fingerprint = $this->fingerprint($realRoot, $files);
+        if ($this->scanCache !== null && $this->scanFingerprint === $fingerprint) {
+            return $this->scanCache;
+        }
+        $this->scanFingerprint = $fingerprint;
 
         foreach ($files as $file) {
             $real = realpath($file);
@@ -299,6 +309,17 @@ class BlockRegistryService
         }
 
         return $out;
+    }
+
+    /** @param string[] $files sorted absolute paths */
+    private function fingerprint(string $root, array $files): string
+    {
+        $parts = [$root];
+        foreach ($files as $file) {
+            $parts[] = $file . '|' . ((int) @filemtime($file)) . '|' . ((int) @filesize($file));
+        }
+
+        return sha1(implode("\n", $parts));
     }
 
     private function sortedByName(array $blocks): array

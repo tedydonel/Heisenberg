@@ -87,6 +87,10 @@ final class BlockViewData
     public static function blocksCss(BlockRegistryService $registry, ?array $enabled = null): string
     {
         $chunks = ["/* supports capabilities */\n" . SupportsStyle::css()];
+        // The animation catalog rides the same channel: nothing else loads it into the
+        // editor, and without it hb-anim-*/hb-anim-play (the Animate section's preview)
+        // are inert on the canvas while working on the published page.
+        $chunks[] = "/* animation catalog */\n" . AnimationCatalog::css();
 
         foreach ($registry->discover()['blocks'] as $block) {
             $name = (string) ($block['name'] ?? '');

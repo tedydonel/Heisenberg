@@ -21,11 +21,11 @@
 @endonce
 
 @props([
-    'title' => 'Drop files to upload',
-    'description' => 'Images are optimized automatically. Documents are stored as originals. Maximum size: 10 MB each.',
+    'title' => null,
+    'description' => null,
 ])
 <div {{ $attributes->merge(['class' => 'hb-dropzone']) }} role="button" tabindex="0">
     <span class="hb-dropzone__icon" aria-hidden="true">@include('heisenberg::components.ui.icon', ['name' => 'cloud-arrow-up', 'size' => 56])</span>
-    <div class="hb-dropzone__title">{{ $title }}</div>
-    <div class="hb-dropzone__desc">{{ $description }}</div>
+    <div class="hb-dropzone__title">{{ $title ?? __('heisenberg::editor.media.dropzone_title') }}</div>
+    <div class="hb-dropzone__desc">{{ $description ?? __('heisenberg::editor.media.dropzone_desc') }}</div>
 </div>

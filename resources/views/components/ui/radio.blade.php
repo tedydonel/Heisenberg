@@ -29,9 +29,12 @@
     'selected' => false,
     'disabled' => false,
     'label' => '',
-    'name' => 'radio',
+    // No shared default: radios that omit `name` must NOT merge into one page-wide
+    // group. A real radiogroup always passes an explicit shared name.
+    'name' => null,
     'value' => '1',
 ])
+@php $name ??= 'hb-radio-' . uniqid(); @endphp
 <label {{ $attributes->merge(['class' => 'hb-radio' . ($disabled ? ' hb-radio--disabled' : '')]) }}>
     <input
         type="radio"

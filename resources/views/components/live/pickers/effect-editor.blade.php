@@ -1,6 +1,6 @@
 {{-- live/pickers/effect-editor — local Drop Shadow editor popover. --}}
 @props([
-    'title' => 'Drop Shadow',
+    'title' => null,
     'type' => 'drop-shadow',
     'color' => '#000000',
     'opacity' => '14',
@@ -8,6 +8,7 @@
     'x' => '0',
     'y' => '8',
 ])
+@php $title ??= __('heisenberg::editor.effects.drop_shadow'); @endphp
 <div class="hb-pop hb-shadow" data-hb-effect="{{ $type }}">
     <button type="button" class="hb-shadow__head" data-hb-effect-toggle>
         <b>{{ $title }}</b>
@@ -21,7 +22,7 @@
                  because that is the shape BlockRenderer's `shadow` sanitizer validates and the
                  only thing CSS can consume. See inspector.blade.php's hbComposeShadow(). --}}
             <div class="hb-shadow__row">
-                <span class="hb-shadow__lbl">Color</span>
+                <span class="hb-shadow__lbl">{{ __('heisenberg::editor.effects.color') }}</span>
                 <div class="hb-shadow__color">
                     <span class="hb-shadow__sw" style="background: {{ $color }};" data-hb-fx-swatch></span>
                     <input type="text" class="hb-shadow__hex" value="{{ $color }}" data-hb-fx-color>
@@ -29,17 +30,17 @@
                 <span class="hb-shadow__box hb-shadow__box--fixed"><input type="text" value="{{ $opacity }}" data-hb-fx-opacity><span class="p">%</span></span>
             </div>
             <div class="hb-shadow__row">
-                <span class="hb-shadow__lbl">Blur</span>
+                <span class="hb-shadow__lbl">{{ __('heisenberg::editor.effects.blur') }}</span>
                 <span class="hb-shadow__box hb-shadow__box--grow"><input type="text" value="{{ $blur }}" data-hb-fx-blur></span>
             </div>
             <div class="hb-shadow__row">
-                <span class="hb-shadow__lbl">Offset</span>
+                <span class="hb-shadow__lbl">{{ __('heisenberg::editor.effects.offset') }}</span>
                 <span class="hb-shadow__box hb-shadow__box--grow"><input type="text" value="{{ $x }}" data-hb-fx-x></span>
                 <span class="hb-shadow__box hb-shadow__box--grow"><input type="text" value="{{ $y }}" data-hb-fx-y></span>
             </div>
         @else
             <div class="hb-shadow__row">
-                <span class="hb-shadow__lbl">Blur</span>
+                <span class="hb-shadow__lbl">{{ __('heisenberg::editor.effects.blur') }}</span>
                 <span class="hb-shadow__box hb-shadow__box--grow"><input type="text" value="{{ $blur }}"></span>
             </div>
         @endif

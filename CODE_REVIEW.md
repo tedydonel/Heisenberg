@@ -3,10 +3,24 @@
 > **Remediation status (2026-08-05, same day):** Phases A, B, C (safe subset), E, and F are
 > **done and green** (541 tests). Phase D (comment cleanup) is done for `src/` and every
 > flagged worst-offender; the mechanical Pencil-provenance and TODO-N.M markers were swept
-> repo-wide. Phase G remains deferred (overlaps planned feature work). Details per finding
-> in the sections below still describe the *pre-remediation* state — read them as the
-> review record, with this note as the ledger of what was fixed.
+> repo-wide. Details per finding in the sections below still describe the *pre-remediation*
+> state — read them as the review record, with this note as the ledger of what was fixed.
 > Full unabridged findings: `docs/code-review-findings-2026-08-05.md`.
+>
+> **Phase G done (2026-08-06):** canvas renders `innerBlocks` children (read-only, depth-capped
+> in lockstep with `BlockRenderer::MAX_NESTING_DEPTH`); `BlockContractValidator` shape-checks
+> every supports group's interior (unknown features / non-boolean flags now fail validation);
+> both registry scan caches self-invalidate on a file-set fingerprint (path+mtime+size);
+> the Animate section is `AnimationCatalog`-driven end-to-end with a working Play preview
+> (the canvas now loads the catalog CSS via `blocksCss()`); all four panel search fields
+> filter client-side (`ui/search-field`'s `data-hb-filter` contract); the dead AI toolbar
+> trigger was removed; `live/media/*`, `effect-editor`, the topbar's save-failure copy and
+> the featured-image dialog title route through `__()` (en+fr); `ui/radio` no longer merges
+> unrelated groups and `ui/custom-scrollbar` honors `:smooth="false"`; the three orphan
+> components (`ui/var-menu-item`, `pickers/gradient-stop-row`, `live/side-panel`) are deleted.
+> Verified: 553 PHP tests green + `tests/js/phase-g-matrix.mjs` (14 Chromium checks) alongside
+> the existing browser/inspector matrices. Still deferred by design: the title/postId
+> shared-store refactor (overlaps the planned left-sidebar work).
 
 **Date:** 2026-08-05
 **Method:** 10 parallel review agents across dimensions (data flow, state, theme tokens, docs conformance, comment noise, PHP services, HTTP/security, UI components), followed by adversarial verification of every critical/high finding, followed by first-hand re-verification of the root-cause chain. 77 deduplicated findings survived: **2 critical, 12 high, 32 medium, 31 low**.
@@ -148,7 +162,7 @@ RC‑1 unit normalization → RC‑3 apply `style.className` in `renderNode()` �
 
 **Phase F — docs refresh:** rewrite `file-structure.md`; update `inspector-composition.md` (both directions), `ROADMAP.md`, `block-schema.md` (+classNames/states/control types), `BLUEPRINT.md` §1.4; fix `TODO.md:507-509`.
 
-**Phase G — before building new blocks:** client-side `inner-blocks` rendering; supports shape validation in the contract validator; registry cache invalidation; i18n for media/effect-editor/topbar strings; wire or hide the four search fields, Animate section, AI/More buttons; delete or adopt the three orphan components.
+**Phase G — before building new blocks** *(done 2026-08-06 — see the ledger at the top)*: client-side `inner-blocks` rendering; supports shape validation in the contract validator; registry cache invalidation; i18n for media/effect-editor/topbar strings; wire or hide the four search fields, Animate section, AI/More buttons; delete or adopt the three orphan components.
 
 ---
 

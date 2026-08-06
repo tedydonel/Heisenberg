@@ -216,13 +216,6 @@ $inspStyle = 'width:272px; border:1px solid var(--hb-border); border-radius:8px;
                 </div>
             </article>
 
-            <article class="hb-preview__card">
-                <h2 class="hb-preview__card-title">Var Menu Item</h2>
-                <div class="hb-preview__card-body" style="flex-direction:column; align-items:stretch; gap:4px;">
-                    <x-ui.var-menu-item name="Color / Accent" :selected="true" :trailing="['type' => 'swatch', 'color' => '#000000']" />
-                    <x-ui.var-menu-item name="Number / Radius" :trailing="['type' => 'value', 'value' => '8']" />
-                </div>
-            </article>
         </section>
 
         <section class="hb-preview__section" style="min-height:auto;">

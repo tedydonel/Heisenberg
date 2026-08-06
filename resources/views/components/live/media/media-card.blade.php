@@ -34,12 +34,12 @@
     @if ($state === 'uploading')
         <div class="hb-mediacard__progress">
             <div class="hb-mediacard__track"><div class="hb-mediacard__fill" style="width: {{ $pct }}%;"></div></div>
-            <div class="hb-mediacard__status">{{ $status ?? ('Uploading… ' . $pct . '%') }}</div>
+            <div class="hb-mediacard__status">{{ $status ?? (__('heisenberg::editor.media.uploading') . ' ' . $pct . '%') }}</div>
         </div>
     @elseif ($state === 'error')
         <div class="hb-mediacard__statusrow">
-            <span class="hb-mediacard__err">{{ $status ?? 'Upload failed' }}</span>
-            <button type="button" class="hb-mediacard__retry">Retry</button>
+            <span class="hb-mediacard__err">{{ $status ?? __('heisenberg::editor.media.upload_failed') }}</span>
+            <button type="button" class="hb-mediacard__retry">{{ __('heisenberg::editor.common.retry') }}</button>
         </div>
     @else
         <div class="hb-mediacard__meta">{{ $meta }}</div>

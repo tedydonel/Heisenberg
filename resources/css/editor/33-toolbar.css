@@ -16,13 +16,10 @@
 .hb-tb__btn--drag { width: 20px; }
 .hb-tb__btn--drag svg { width: 16px; height: 16px; }
 .hb-tb__cv { opacity: .8; flex: none; }
-/* filled pills (type switcher, AI) */
+/* filled pills (type switcher) */
 .hb-tb__pill { display: inline-flex; align-items: center; gap: 6px; height: 100%; padding: 0 8px; border: 0; background: rgba(255, 255, 255, .12); color: #fff; border-radius: var(--hb-radius-control, 6px); cursor: pointer; font-family: inherit; font-size: var(--hb-fs-sm, 12px); }
 .hb-tb__pill:hover { background: rgba(255, 255, 255, .2); }
 .hb-tb__pill svg { width: 14px; height: 14px; }
-.hb-tb__ai { display: inline-flex; align-items: center; gap: 5px; height: 100%; padding: 0 9px 0 8px; border: 0; background: rgba(255, 255, 255, .15); color: #fff; border-radius: var(--hb-radius-control, 6px); cursor: pointer; font-family: inherit; font-size: var(--hb-fs-sm, 12px); font-weight: 600; }
-.hb-tb__ai:hover { background: rgba(255, 255, 255, .24); }
-.hb-tb__ai svg { width: 14px; height: 14px; }
 /* align: transparent button with a small trailing caret (.pen fill is transparent) */
 .hb-tb__align { display: inline-flex; align-items: center; gap: 3px; height: 100%; padding: 0 5px; border: 0; background: none; color: #fff; border-radius: var(--hb-radius-control, 6px); cursor: pointer; }
 .hb-tb__align:hover { background: rgba(255, 255, 255, .16); }
@@ -33,7 +30,7 @@
 .hb-tb__color b { font-size: 13px; font-weight: 700; line-height: 1; color: #fff; }
 .hb-tb__color i { display: block; width: 14px; height: 3px; border-radius: var(--hb-radius-xs, 2px); background: var(--hb-tb-color, #FFD166); }
 /* the .pen toolbar + its controls are square — no border radius (declared last so it wins) */
-.hb-tb, .hb-tb__btn, .hb-tb__pill, .hb-tb__ai, .hb-tb__align { border-radius: 0; }
+.hb-tb, .hb-tb__btn, .hb-tb__pill, .hb-tb__align { border-radius: 0; }
 
 /* block-type dropdown (type switcher) */
 .hb-typemenu { width: 220px; display: flex; flex-direction: column; overflow: hidden; }

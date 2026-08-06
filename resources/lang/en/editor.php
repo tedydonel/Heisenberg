@@ -31,6 +31,8 @@ return [
         'untitled_post' => 'Untitled post',
         'add_block' => 'Add block',
         'send' => 'Send',
+        'close' => 'Close',
+        'retry' => 'Retry',
     ],
 
     // ── Topbar (live/topbar.blade.php) ────────────────────────────
@@ -50,6 +52,33 @@ return [
         'device_desktop' => 'Desktop',
         'device_tablet' => 'Tablet',
         'device_mobile' => 'Mobile',
+        // Save-failure messages (surfaced via hb:save-state → the footer pill).
+        'save_conflict' => 'This post was changed elsewhere — reload and try again.',
+        'save_invalid' => 'Could not save — check the form.',
+        'save_network' => 'Network error — check your connection.',
+    ],
+
+    // ── Media dialog / library / dropzone (live/media/*) ──────────
+    'media' => [
+        'select_featured_image' => 'Select Featured Image',
+        'tab_upload' => 'Upload Files',
+        'tab_library' => 'Media Library',
+        'search_ph' => 'Search media items…',
+        'empty' => 'No media yet — upload a file to get started.',
+        'load_error' => 'Couldn’t load the media library. Try again.',
+        'upload_failed' => 'Upload failed.',
+        'upload_network' => 'Upload failed. Check your connection and try again.',
+        'uploading' => 'Uploading…',
+        'dropzone_title' => 'Drop files to upload',
+        'dropzone_desc' => 'Images are optimized automatically. Documents are stored as originals. Maximum size: 10 MB each.',
+    ],
+
+    // ── Effect editor (live/pickers/effect-editor.blade.php) ──────
+    'effects' => [
+        'drop_shadow' => 'Drop Shadow',
+        'color' => 'Color',
+        'blur' => 'Blur',
+        'offset' => 'Offset',
     ],
 
     // ── Sidebar (live/sidebar.blade.php) ──────────────────────────
@@ -100,6 +129,24 @@ return [
         'post_layout_padding_y' => 'Y Padding',
         // Block tab — empty-state
         'block_empty' => 'Select a block on the canvas to edit its settings.',
+    ],
+
+    // ── Block Advanced tab (live/block/advanced.blade.php) ────────
+    'advanced' => [
+        'section_visibility' => 'Hide based on device screen width',
+        'hide_xs' => 'Extra small devices',
+        'hide_sm' => 'Small devices',
+        'hide_md' => 'Medium devices',
+        'hide_lg' => 'Large devices',
+        'hide_xl' => 'Xl devices',
+        'hide_xxl' => 'Xxl devices',
+        'section_animate' => 'Animate on scroll',
+        'animation_type' => 'Animation type',
+        'duration' => 'Duration',
+        'delay' => 'Delay',
+        'easing' => 'Easing',
+        'play_once' => 'Play once',
+        'play_animation' => 'Play animation',
     ],
 
     // ── Footer (live/footer.blade.php) ────────────────────────────

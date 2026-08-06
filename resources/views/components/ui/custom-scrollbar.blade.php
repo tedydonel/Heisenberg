@@ -109,11 +109,14 @@
                     }
 
                     const thumb = bar.querySelector('[data-hb-scrollbar-thumb]');
-                    const smooth = Number(bar.dataset.smooth || 0.06);
+                    // `:smooth="false"` reaches the DOM as data-smooth="" (Blade renders false
+                    // as an empty string) — so empty/'false'/'0'/NaN all mean "smoothing off".
+                    const smoothRaw = bar.dataset.smooth;
+                    const smooth = (smoothRaw === '' || smoothRaw === 'false') ? 0 : (Number(smoothRaw) || 0);
                     const wheelMultiplier = Number(bar.dataset.wheelMultiplier || 1);
                     const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
                     const coarsePointer = window.matchMedia('(pointer: coarse)').matches;
-                    const useSmooth = !reduceMotion && !coarsePointer && smooth !== false;
+                    const useSmooth = !reduceMotion && !coarsePointer && smooth > 0;
 
                     const getScrollTop = () => (isWindow ? (window.scrollY || window.pageYOffset || 0) : container.scrollTop);
                     const setScrollTop = (v) => { if (isWindow) window.scrollTo(0, v); else container.scrollTop = v; };

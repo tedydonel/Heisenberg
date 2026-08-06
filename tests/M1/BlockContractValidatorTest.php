@@ -182,6 +182,79 @@ class BlockContractValidatorTest extends TestCase
         $this->assertInvalid($contract, 'align');
     }
 
+    // ── Phase G: supports interior-shape validation ───────────
+
+    public function test_unknown_support_feature_is_rejected(): void
+    {
+        $contract = $this->validContract();
+        $contract['supports']['typography'] = ['fontsize' => true]; // typo: fontSize
+        $this->assertInvalid($contract, "unknown feature 'fontsize'");
+    }
+
+    public function test_support_feature_flags_must_be_booleans(): void
+    {
+        $contract = $this->validContract();
+        $contract['supports']['color'] = ['text' => 'yes'];
+        $this->assertInvalid($contract, 'supports.color.text');
+    }
+
+    public function test_support_group_must_be_an_object_not_a_bare_flag(): void
+    {
+        $contract = $this->validContract();
+        $contract['supports']['color'] = true; // engine derives nothing from a bare true
+        $this->assertInvalid($contract, 'supports.color');
+    }
+
+    public function test_spacing_features_accept_bool_or_side_maps(): void
+    {
+        $contract = $this->validContract();
+        $contract['supports']['spacing'] = [
+            'margin' => ['top' => true, 'bottom' => true],
+            'padding' => true,
+        ];
+        $this->assertValid($contract, 'side-map margin + bool padding');
+
+        $contract['supports']['spacing'] = ['padding' => ['diagonal' => true]];
+        $this->assertInvalid($contract, 'supports.spacing.padding');
+    }
+
+    public function test_border_radius_accepts_bool_or_corner_map(): void
+    {
+        $contract = $this->validContract();
+        $contract['supports']['border'] = ['radius' => ['topLeft' => true, 'bottomRight' => true]];
+        $this->assertValid($contract, 'corner-map radius');
+
+        $contract['supports']['border'] = ['radius' => ['top' => true]]; // side, not corner
+        $this->assertInvalid($contract, 'supports.border.radius');
+    }
+
+    public function test_size_fill_and_hug_require_axis_maps(): void
+    {
+        $contract = $this->validContract();
+        $contract['supports']['size'] = ['fill' => ['width' => true], 'hug' => ['height' => true]];
+        $this->assertValid($contract, 'axis maps');
+
+        $contract['supports']['size'] = ['fill' => true]; // engine only consumes the axis-map form
+        $this->assertInvalid($contract, 'supports.size.fill');
+    }
+
+    public function test_animation_support_must_be_a_boolean(): void
+    {
+        $contract = $this->validContract();
+        $contract['supports']['animation'] = true;
+        $this->assertValid($contract, 'animation flag');
+
+        $contract['supports']['animation'] = ['enabled' => true];
+        $this->assertInvalid($contract, 'supports.animation');
+    }
+
+    public function test_states_flags_must_be_booleans(): void
+    {
+        $contract = $this->validContract();
+        $contract['supports']['states'] = ['hover' => 'yes'];
+        $this->assertInvalid($contract, 'supports.states.hover');
+    }
+
     public function test_control_override_type_must_be_known(): void
     {
         $contract = $this->validContract();

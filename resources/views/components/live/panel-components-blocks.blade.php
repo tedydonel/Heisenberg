@@ -1,5 +1,4 @@
-{{-- live/panel-components-blocks — Middle panel,
-     240px (real page composition override — see live/side-panel's note; base components are 260px).
+{{-- live/panel-components-blocks — Middle panel, 240px.
      Components tab: search (ui/search-field), "BASE" category head (ui/category-head, now wired to
      collapse the grid below via its [data-hb-category-body] contract) and a grid of ui/tool-card
      cards — genuinely one per block BlockRegistryService discovers, no hardcoded per-name list
@@ -79,7 +78,8 @@
     <x-ui.panel-tabs :items="[['label' => __('heisenberg::editor.panel_components_blocks.tab_components')], ['label' => __('heisenberg::editor.panel_components_blocks.tab_blocks')]]" :active-index="0" />
 
     <div class="hb-panel-cb__content" data-hb-panel-cb-components>
-        <x-ui.search-field :placeholder="__('heisenberg::editor.panel_components_blocks.search_components')" />
+        <x-ui.search-field :placeholder="__('heisenberg::editor.panel_components_blocks.search_components')"
+            data-hb-filter="[data-hb-panel-cb-components]" data-hb-filter-item="[data-hb-insert-block]" />
         <x-ui.category-head :label="__('heisenberg::editor.panel_components_blocks.category_base')" />
         {{-- data-hb-category-body: the sibling ui/category-head above collapses/expands this via its
              own script (see ui/category-head.blade.php) — no wiring needed here. --}}
@@ -97,6 +97,9 @@
     </div>
 
     <div class="hb-panel-cb__content" data-hb-panel-cb-blocks hidden>
-        <x-ui.search-field :placeholder="__('heisenberg::editor.panel_components_blocks.search_blocks')" />
+        {{-- Filters the user's saved custom blocks ([data-hb-saved-block] rows) once that
+             feature lands — the same live-query contract as the Components filter above. --}}
+        <x-ui.search-field :placeholder="__('heisenberg::editor.panel_components_blocks.search_blocks')"
+            data-hb-filter="[data-hb-panel-cb-blocks]" data-hb-filter-item="[data-hb-saved-block]" />
     </div>
 </div>

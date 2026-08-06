@@ -23,7 +23,12 @@ class SupportsSanitizerValidatorTest extends TestCase
         'flex-direction', 'flex-justify', 'flex-align', 'overflow',
     ];
 
-    private const NEW_SUPPORT_GROUPS = ['appearance', 'position', 'effects'];
+    /** Each new group with a REAL feature — the validator now checks interiors too. */
+    private const NEW_SUPPORT_GROUPS = [
+        'appearance' => ['opacity' => true],
+        'position' => ['mode' => true, 'x' => true, 'y' => true, 'rotation' => true],
+        'effects' => ['shadow' => true],
+    ];
 
     private function validator(): BlockContractValidator
     {
@@ -112,9 +117,9 @@ class SupportsSanitizerValidatorTest extends TestCase
 
     public function test_every_new_support_group_is_recognized(): void
     {
-        foreach (self::NEW_SUPPORT_GROUPS as $group) {
+        foreach (self::NEW_SUPPORT_GROUPS as $group => $features) {
             $contract = $this->validContract();
-            $contract['supports'] = [$group => ['enabled' => true]];
+            $contract['supports'] = [$group => $features];
 
             $result = $this->validator()->validate($contract);
 

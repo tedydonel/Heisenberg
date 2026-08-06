@@ -32,6 +32,8 @@ return [
         'untitled_post' => 'Article sans titre',
         'add_block' => 'Ajouter un bloc',
         'send' => 'Envoyer',
+        'close' => 'Fermer',
+        'retry' => 'Réessayer',
     ],
 
     // ── Barre supérieure (live/topbar.blade.php) ──────────────────
@@ -51,6 +53,33 @@ return [
         'device_desktop' => 'Ordinateur',
         'device_tablet' => 'Tablette',
         'device_mobile' => 'Mobile',
+        // Messages d'échec d'enregistrement (via hb:save-state → la pastille du pied de page).
+        'save_conflict' => 'Cet article a été modifié ailleurs — rechargez et réessayez.',
+        'save_invalid' => 'Enregistrement impossible — vérifiez le formulaire.',
+        'save_network' => 'Erreur réseau — vérifiez votre connexion.',
+    ],
+
+    // ── Médias : dialogue / bibliothèque / zone de dépôt (live/media/*) ──
+    'media' => [
+        'select_featured_image' => 'Choisir l\'image mise en avant',
+        'tab_upload' => 'Téléverser des fichiers',
+        'tab_library' => 'Bibliothèque de médias',
+        'search_ph' => 'Rechercher des médias…',
+        'empty' => 'Aucun média — téléversez un fichier pour commencer.',
+        'load_error' => 'Impossible de charger la bibliothèque. Réessayez.',
+        'upload_failed' => 'Le téléversement a échoué.',
+        'upload_network' => 'Le téléversement a échoué. Vérifiez votre connexion et réessayez.',
+        'uploading' => 'Téléversement…',
+        'dropzone_title' => 'Déposez des fichiers pour les téléverser',
+        'dropzone_desc' => 'Les images sont optimisées automatiquement. Les documents sont conservés tels quels. Taille maximale : 10 Mo chacun.',
+    ],
+
+    // ── Éditeur d'effets (live/pickers/effect-editor.blade.php) ───
+    'effects' => [
+        'drop_shadow' => 'Ombre portée',
+        'color' => 'Couleur',
+        'blur' => 'Flou',
+        'offset' => 'Décalage',
     ],
 
     // ── Barre latérale (live/sidebar.blade.php) ───────────────────
@@ -99,6 +128,24 @@ return [
         'post_layout_padding_x' => 'X Padding',
         'post_layout_padding_y' => 'Y Padding',
         'block_empty' => 'Sélectionnez un bloc dans la zone de dessin pour modifier ses paramètres.',
+    ],
+
+    // ── Onglet Avancé du bloc (live/block/advanced.blade.php) ─────
+    'advanced' => [
+        'section_visibility' => 'Masquer selon la largeur d\'écran',
+        'hide_xs' => 'Très petits écrans',
+        'hide_sm' => 'Petits écrans',
+        'hide_md' => 'Écrans moyens',
+        'hide_lg' => 'Grands écrans',
+        'hide_xl' => 'Écrans XL',
+        'hide_xxl' => 'Écrans XXL',
+        'section_animate' => 'Animer au défilement',
+        'animation_type' => 'Type d\'animation',
+        'duration' => 'Durée',
+        'delay' => 'Délai',
+        'easing' => 'Interpolation',
+        'play_once' => 'Jouer une seule fois',
+        'play_animation' => 'Jouer l\'animation',
     ],
 
     // ── Pied de page (live/footer.blade.php) ───────────────────────

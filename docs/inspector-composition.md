@@ -379,23 +379,26 @@ base-only by design.
 
 ## 7. Advanced sub-tab
 
-Entirely hardcoded — it does not read the contract.
+Catalog-driven since Phase G (2026-08-06): the Animate section renders straight from
+`AnimationCatalog` (options, easings, ranges, defaults), so it cannot drift from the engine.
 
 | Control | Writes to (attribute) | Status |
 |---|---|---|
 | Hide on XS/SM/MD/LG/XL/XXL | `hideXs` … `hideXxl` | ✅ both shipped contracts declare these + matching `style.classNames` → `hb-hide-*` |
-| Animation type | `animate` | ⚠️ writes; **neither contract declares an `animate` attribute** |
-| Duration | `animateDuration` | ⚠️ same |
-| Delay | `animateDelay` | ⚠️ same |
-| Play animation | — | ❌ inert |
+| Animation type | `animate` | ✅ options = the full `AnimationCatalog::options()` list |
+| Duration / Delay | `animateDuration` / `animateDelay` | ✅ real ms ranges (100–3000 / 0–3000, step 50) |
+| Easing | `animateEasing` | ✅ `AnimationCatalog::easingOptions()` |
+| Play once | `animateOnce` | ✅ toggle |
+| Play animation | — | ✅ re-triggers `.hb-anim-play` on the selected block's canvas root |
 
-`supports.animation: true` is declared by both contracts, but that is a supports flag with no
-variable behind it; the Advanced panel writes to *attributes* named `animate*`. The catalogue that
-would consume them (`src/Support/AnimationCatalog.php`, served at
-`/heisenberg-assets/editor-animations.css`, with presets/easings/duration/delay) exists and is
-unreferenced by either contract — the same "built, unclaimed" shape as `SupportsStyle`.
+The `animate*` attributes are expanded into every contract that declares
+`supports.animation: true` by `BlockRegistryService::applyCapabilities()` (attributes, the
+`hb-anim-*`/`hb-ease-*` classNames, and the `--hb-anim-dur`/`--hb-anim-delay` variables).
+The editor canvas loads the catalog stylesheet through `BlockViewData::blocksCss()` (the same
+channel as `SupportsStyle`); the published page links `/heisenberg-assets/editor-animations.css`.
+Detail rows gate on `data-hb-showwhen` (visible only while a preset is picked).
 
-Because this panel is hardcoded, a new contract cannot add its own Advanced controls. Anything
+Because this panel is shared, a new contract cannot add its own Advanced controls. Anything
 bespoke goes in Content via `control.section: "settings"`.
 
 ---
@@ -448,9 +451,8 @@ omitting the declaration — it never reaches the page.
 
 ## 9. Known defects, in priority order
 
-1. **Advanced animation writes undeclared attributes** — `animate*` is written by the panel and
-   declared by no contract; `AnimationCatalog` is built and unreferenced. The Advanced tab is
-   hardcoded and reads no contract at all, so it gates nothing. Wire it or remove the section.
+1. ~~Advanced animation writes undeclared attributes~~ — resolved 2026-08-06 (Phase G): the
+   section is `AnimationCatalog`-driven end-to-end; see §7.
 2. **`color.background`, `size.min*`/`max*` unreachable** — declared with variables, no control.
 3. **Stroke / corner radius currently unreachable** — both contracts dropped `border`
    (2026-08-05, TODO 7.2), so the Stroke section and Appearance's corner fields never mount.

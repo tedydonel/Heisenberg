@@ -131,12 +131,12 @@
                     .then(({ ok, data }) => {
                         if (!ok) {
                             const firstError = data && data.errors ? Object.values(data.errors)[0] : null;
-                            showError((Array.isArray(firstError) ? firstError[0] : firstError) || data.message || 'Upload failed.');
+                            showError((Array.isArray(firstError) ? firstError[0] : firstError) || data.message || dialog.dataset.msgUploadFailed || '');
                             return;
                         }
                         goToLibrary();
                     })
-                    .catch(() => showError('Upload failed. Check your connection and try again.'));
+                    .catch(() => showError(dialog.dataset.msgUploadNetwork || ''));
             };
 
             zone.addEventListener('click', () => input.click());
@@ -228,7 +228,7 @@
 
 @props([
     'tab' => 'upload',
-    'title' => 'Select Featured Image',
+    'title' => null,
     'items' => [],
     'scrim' => false,
     'accept' => '',
@@ -236,9 +236,10 @@
     'uploadUrl' => null,
 ])
 @php
+    $title ??= __('heisenberg::editor.media.select_featured_image');
     $tabs = [
-        ['value' => 'upload', 'label' => 'Upload Files'],
-        ['value' => 'library', 'label' => 'Media Library'],
+        ['value' => 'upload', 'label' => __('heisenberg::editor.media.tab_upload')],
+        ['value' => 'library', 'label' => __('heisenberg::editor.media.tab_library')],
     ];
     $activeIndex = $tab === 'library' ? 1 : 0;
 @endphp
@@ -248,11 +249,13 @@
          `hbOpen()`/`hbClose()` (exposed on this element by the script above) to toggle it. --}}
     <div {{ $attributes->merge(['class' => 'hb-mediadialog__scrim']) }}>
         <div class="hb-mediadialog" role="dialog" aria-modal="true" aria-label="{{ $title }}" tabindex="-1"
-            data-hb-mediadialog data-upload-url="{{ $uploadUrl }}" data-accept="{{ $accept }}">
+            data-hb-mediadialog data-upload-url="{{ $uploadUrl }}" data-accept="{{ $accept }}"
+            data-msg-upload-failed="{{ __('heisenberg::editor.media.upload_failed') }}"
+            data-msg-upload-network="{{ __('heisenberg::editor.media.upload_network') }}">
             <div class="hb-mediadialog__top">
                 <span class="hb-mediadialog__title">{{ $title }}</span>
                 <span class="hb-mediadialog__tabs"><x-ui.tabs :items="$tabs" :active-index="$activeIndex" /></span>
-                <button type="button" class="hb-mediadialog__close" aria-label="Close">
+                <button type="button" class="hb-mediadialog__close" aria-label="{{ __('heisenberg::editor.common.close') }}">
                     @include('heisenberg::components.ui.icon', ['name' => 'x', 'size' => 16])
                 </button>
             </div>
@@ -267,11 +270,13 @@
     </div>
 @else
     <div {{ $attributes->merge(['class' => 'hb-mediadialog']) }} role="dialog" aria-modal="true" aria-label="{{ $title }}" tabindex="-1"
-        data-hb-mediadialog data-upload-url="{{ $uploadUrl }}" data-accept="{{ $accept }}">
+        data-hb-mediadialog data-upload-url="{{ $uploadUrl }}" data-accept="{{ $accept }}"
+        data-msg-upload-failed="{{ __('heisenberg::editor.media.upload_failed') }}"
+        data-msg-upload-network="{{ __('heisenberg::editor.media.upload_network') }}">
         <div class="hb-mediadialog__top">
             <span class="hb-mediadialog__title">{{ $title }}</span>
             <span class="hb-mediadialog__tabs"><x-ui.tabs :items="$tabs" :active-index="$activeIndex" /></span>
-            <button type="button" class="hb-mediadialog__close" aria-label="Close">
+            <button type="button" class="hb-mediadialog__close" aria-label="{{ __('heisenberg::editor.common.close') }}">
                 @include('heisenberg::components.ui.icon', ['name' => 'x', 'size' => 16])
             </button>
         </div>

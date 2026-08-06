@@ -125,6 +125,11 @@
         let hbPreviewShowUrl = '';
         let hbPreviewPostUrlTemplate = '';
         let hbEditorUrlTemplate = '';
+        // Localized save-failure messages — seeded from the component's data-hb-msg-*
+        // attributes (the Blade side owns the __() calls; JS never hardcodes copy).
+        let hbMsgConflict = '';
+        let hbMsgInvalid = '';
+        let hbMsgNetwork = '';
         let hbSeeded = false;
         let hbDirty = false;
         let hbConflicted = false;
@@ -166,6 +171,9 @@
             hbPreviewShowUrl = root.dataset.hbPreviewShowUrl || '';
             hbPreviewPostUrlTemplate = root.dataset.hbPreviewPostUrlTemplate || '';
             hbEditorUrlTemplate = root.dataset.hbEditorUrlTemplate || '';
+            hbMsgConflict = root.dataset.hbMsgConflict || hbMsgConflict;
+            hbMsgInvalid = root.dataset.hbMsgInvalid || hbMsgInvalid;
+            hbMsgNetwork = root.dataset.hbMsgNetwork || hbMsgNetwork;
         };
 
         // A brand-new post was just created: point the browser at it. Without this the URL stays
@@ -250,14 +258,14 @@
                     hbDirty = true; // the attempted save did not happen — still unsaved
                     if (res.status === 409) {
                         hbConflicted = true;
-                        hbEmitSaveState('conflict', { message: (res.data && res.data.message) || 'This post was changed elsewhere — reload and try again.' });
+                        hbEmitSaveState('conflict', { message: (res.data && res.data.message) || hbMsgConflict });
                         return;
                     }
                     if (res.status === 422) {
                         const errors = (res.data && res.data.errors) || {};
                         const messages = [];
                         Object.keys(errors).forEach((key) => { (errors[key] || []).forEach((m) => messages.push(m)); });
-                        hbEmitSaveState('error', { message: messages.join(' ') || 'Could not save — check the form.', errors: errors });
+                        hbEmitSaveState('error', { message: messages.join(' ') || hbMsgInvalid, errors: errors });
                         return;
                     }
                     // Always carry the HTTP status: with APP_DEBUG off a 500 body is just
@@ -271,7 +279,7 @@
                 })
                 .catch(() => {
                     hbDirty = true;
-                    hbEmitSaveState('error', { message: 'Network error — check your connection.' });
+                    hbEmitSaveState('error', { message: hbMsgNetwork });
                 })
                 .finally(() => {
                     hbSaveInFlight = null;
@@ -490,6 +498,9 @@
 <div {{ $attributes->merge(['class' => 'hb-topbar']) }}
     data-hb-post-id="{{ $postId ?? '' }}"
     data-hb-content-version="{{ $contentVersion ?? 0 }}"
+    data-hb-msg-conflict="{{ __('heisenberg::editor.topbar.save_conflict') }}"
+    data-hb-msg-invalid="{{ __('heisenberg::editor.topbar.save_invalid') }}"
+    data-hb-msg-network="{{ __('heisenberg::editor.topbar.save_network') }}"
     data-hb-save-url="{{ route('heisenberg.editor.posts.store') }}"
     data-hb-update-url-template="{{ route('heisenberg.editor.posts.store') }}/__ID__"
     data-hb-preview-store-url="{{ route('heisenberg.editor.preview.store') }}"

@@ -49,6 +49,42 @@ class BlockContractValidator
         'appearance', 'position', 'effects',
     ];
 
+    /**
+     * Feature catalog per support group: feature => value shape. Only features the
+     * engine (SupportsStyle / BlockRegistryService::derivePanels) actually consumes
+     * are legal — an unknown feature would validate and then silently never emit.
+     * Shapes: `bool`; `bool-or-sides` (bool or {top,right,bottom,left} bool map);
+     * `bool-or-corners` (bool or corner bool map); `axes` ({width,height} bool map).
+     */
+    private const SUPPORT_FEATURES = [
+        'color' => ['text' => 'bool', 'background' => 'bool', 'custom' => 'bool'],
+        'typography' => [
+            'fontFamily' => 'bool', 'fontWeight' => 'bool', 'fontSize' => 'bool',
+            'lineHeight' => 'bool', 'letterSpacing' => 'bool',
+            'textAlign' => 'bool', 'textAlignVertical' => 'bool',
+        ],
+        'spacing' => ['margin' => 'bool-or-sides', 'padding' => 'bool-or-sides', 'blockGap' => 'bool'],
+        'border' => [
+            'style' => 'bool-or-sides', 'width' => 'bool-or-sides',
+            'color' => 'bool-or-sides', 'radius' => 'bool-or-corners',
+        ],
+        'size' => [
+            'width' => 'bool', 'height' => 'bool', 'minWidth' => 'bool', 'minHeight' => 'bool',
+            'maxWidth' => 'bool', 'maxHeight' => 'bool',
+            'fill' => 'axes', 'hug' => 'axes', 'clip' => 'bool',
+        ],
+        'layout' => ['direction' => 'bool', 'justify' => 'bool', 'align' => 'bool', 'gap' => 'bool', 'padding' => 'bool'],
+        'position' => ['mode' => 'bool', 'x' => 'bool', 'y' => 'bool', 'rotation' => 'bool'],
+        'appearance' => ['opacity' => 'bool'],
+        'effects' => ['shadow' => 'bool'],
+    ];
+
+    private const SIDE_KEYS = ['top', 'right', 'bottom', 'left'];
+
+    private const CORNER_KEYS = ['topLeft', 'topRight', 'bottomLeft', 'bottomRight'];
+
+    private const AXIS_KEYS = ['width', 'height'];
+
     /** Allowed alignment values. */
     private const ALIGN_VALUES = ['left', 'center', 'right', 'wide', 'full'];
 
@@ -216,9 +252,11 @@ class BlockContractValidator
                     $errors[] = 'supports.states must be an object';
                     continue;
                 }
-                foreach (array_keys($value) as $state) {
+                foreach ($value as $state => $enabled) {
                     if (! in_array($state, self::INTERACTION_STATES, true)) {
                         $errors[] = "supports.states has unknown state '" . $this->stringify($state) . "'";
+                    } elseif (! is_bool($enabled)) {
+                        $errors[] = "supports.states.{$state} must be a boolean";
                     }
                 }
                 continue;
@@ -226,8 +264,93 @@ class BlockContractValidator
 
             if (! in_array($group, self::SUPPORT_KEYS, true)) {
                 $errors[] = "unknown support group '{$group}'";
+                continue;
+            }
+
+            if ($group === 'animation') {
+                if (! is_bool($value)) {
+                    $errors[] = 'supports.animation must be a boolean';
+                }
+                continue;
+            }
+
+            $this->validateSupportGroupShape($group, $value, $errors);
+        }
+    }
+
+    /**
+     * Shape-check a support group's interior against SUPPORT_FEATURES. `dimensions`
+     * has no engine backing yet, so it only gets a generic boolean-tree check.
+     *
+     * @param string[] $errors
+     */
+    private function validateSupportGroupShape(string $group, mixed $value, array &$errors): void
+    {
+        if (! is_array($value)) {
+            $errors[] = "supports.{$group} must be an object of feature flags";
+
+            return;
+        }
+
+        $catalog = self::SUPPORT_FEATURES[$group] ?? null;
+        if ($catalog === null) {
+            if (! $this->isBoolTree($value, 2)) {
+                $errors[] = "supports.{$group} must contain only booleans (or side maps of booleans)";
+            }
+
+            return;
+        }
+
+        foreach ($value as $feature => $flag) {
+            $shape = $catalog[$feature] ?? null;
+            if ($shape === null) {
+                $errors[] = "supports.{$group} has unknown feature '" . $this->stringify($feature) . "'";
+                continue;
+            }
+
+            $ok = match ($shape) {
+                'bool' => is_bool($flag),
+                'bool-or-sides' => is_bool($flag) || $this->isBoolMap($flag, self::SIDE_KEYS),
+                'bool-or-corners' => is_bool($flag) || $this->isBoolMap($flag, self::CORNER_KEYS),
+                'axes' => $this->isBoolMap($flag, self::AXIS_KEYS),
+            };
+            if (! $ok) {
+                $errors[] = "supports.{$group}.{$feature} has an invalid shape (expected {$shape})";
             }
         }
+    }
+
+    /** A non-empty map whose keys are all in $allowedKeys and whose values are all booleans. */
+    private function isBoolMap(mixed $value, array $allowedKeys): bool
+    {
+        if (! is_array($value) || $value === []) {
+            return false;
+        }
+        foreach ($value as $key => $flag) {
+            if (! in_array($key, $allowedKeys, true) || ! is_bool($flag)) {
+                return false;
+            }
+        }
+
+        return true;
+    }
+
+    /** Booleans at the leaves, arrays allowed down to $depth levels. */
+    private function isBoolTree(mixed $value, int $depth): bool
+    {
+        if (is_bool($value)) {
+            return true;
+        }
+        if ($depth <= 0 || ! is_array($value)) {
+            return false;
+        }
+        foreach ($value as $child) {
+            if (! $this->isBoolTree($child, $depth - 1)) {
+                return false;
+            }
+        }
+
+        return true;
     }
 
     /**

@@ -39,6 +39,10 @@
                     if (grid) grid.hidden = true;
                     if (empty) { empty.textContent = msg; empty.hidden = false; }
                 };
+                // Localized copy comes from the Blade side via data attributes — JS owns no strings.
+                const msgEmpty = root.dataset.msgEmpty || '';
+                const msgLoadError = root.dataset.msgLoadError || '';
+                const msgUntitled = root.dataset.msgUntitled || '';
 
                 const pick = (file) => {
                     selectedId = file.id;
@@ -51,7 +55,7 @@
                     if (!grid || !template) return;
                     grid.innerHTML = '';
                     if (!currentFiles.length) {
-                        setMessage('No media yet — upload a file to get started.');
+                        setMessage(msgEmpty);
                         return;
                     }
                     if (empty) empty.hidden = true;
@@ -73,7 +77,7 @@
                             img?.remove();
                         }
                         const nameEl = node.querySelector('.hb-mediacard__name');
-                        if (nameEl) nameEl.textContent = file.original_name || 'Untitled';
+                        if (nameEl) nameEl.textContent = file.original_name || msgUntitled;
                         const metaEl = node.querySelector('.hb-mediacard__meta');
                         if (metaEl) metaEl.textContent = file.human_size || '';
                         const selected = selectedId != null && file.id === selectedId;
@@ -98,7 +102,7 @@
                     window.fetch(url, { headers: { Accept: 'application/json' }, credentials: 'same-origin' })
                         .then((r) => { if (!r.ok) throw new Error('http-' + r.status); return r.json(); })
                         .then((res) => paint(Array.isArray(res.files) ? res.files : []))
-                        .catch(() => setMessage('Couldn’t load the media library. Try again.'));
+                        .catch(() => setMessage(msgLoadError));
                 };
 
                 searchInput?.addEventListener('input', () => {
@@ -117,11 +121,14 @@
 
 @props([
     'items' => [],
-    'placeholder' => 'Search media items…',
+    'placeholder' => null,
     'selectUrl' => null,
 ])
-<div {{ $attributes->merge(['class' => 'hb-medialib']) }} data-hb-medialib data-select-url="{{ $selectUrl }}">
-    <x-ui.search-field :placeholder="$placeholder" />
+<div {{ $attributes->merge(['class' => 'hb-medialib']) }} data-hb-medialib data-select-url="{{ $selectUrl }}"
+    data-msg-empty="{{ __('heisenberg::editor.media.empty') }}"
+    data-msg-load-error="{{ __('heisenberg::editor.media.load_error') }}"
+    data-msg-untitled="{{ __('heisenberg::editor.common.untitled') }}">
+    <x-ui.search-field :placeholder="$placeholder ?? __('heisenberg::editor.media.search_ph')" />
     <div class="hb-medialib__grid" data-hb-medialib-grid @if (! count($items)) hidden @endif>
         @foreach ($items as $item)
             <x-live.media.media-card
@@ -134,7 +141,7 @@
             />
         @endforeach
     </div>
-    <div class="hb-medialib__empty" data-hb-medialib-empty @if (count($items)) hidden @endif>No media yet — upload a file to get started.</div>
+    <div class="hb-medialib__empty" data-hb-medialib-empty @if (count($items)) hidden @endif>{{ __('heisenberg::editor.media.empty') }}</div>
     {{-- Clone target for JS-rendered results — guarantees fetched cards are pixel-identical to
          the server-rendered ones above without re-implementing media-card's markup/icons in JS. --}}
     <template data-hb-mediacard-template><x-live.media.media-card /></template>

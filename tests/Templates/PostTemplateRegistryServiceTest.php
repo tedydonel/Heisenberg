@@ -213,22 +213,23 @@ class PostTemplateRegistryServiceTest extends TestCase
         $this->assertSame(1, $registry['schemaVersion']);
     }
 
-    public function test_registry_is_cached_per_instance(): void
+    public function test_registry_cache_self_invalidates_on_file_changes(): void
     {
         $this->writeContract('article');
         $registry = $this->registry();
 
         $first = $registry->discover();
-        // Write a second contract AFTER the first scan — the cached instance
-        // must not pick it up (same per-instance cache contract as
+        // A contract written AFTER the first scan must be picked up by the SAME
+        // instance — the cache fingerprints the file set, so persistent-worker
+        // runtimes never serve a stale registry (same contract as
         // BlockRegistryService::scan()).
         $this->writeContract('landing');
         $second = $registry->discover();
 
         $this->assertCount(1, $first['templates']);
-        $this->assertCount(1, $second['templates']);
+        $this->assertCount(2, $second['templates']);
 
-        // A fresh instance sees both.
+        // A fresh instance agrees.
         $this->assertCount(2, $this->registry()->discover()['templates']);
     }
 

@@ -53,8 +53,9 @@ div.hb-tb  [data-hb-toolbar]  role="toolbar"
 │   └── ≡▾ align             [data-tb-popover="align"]   gated: supports.align non-empty
 │
 ├── GROUP: action
-│   ├── ✦ AI                 [data-tb-popover="ai"]      gated: rich-text
 │   └── ⋯ more               [data-tb-popover="more"]    always present
+│       (the AI trigger was removed 2026-08-06 — it shipped visible with no backing
+│        popover/runtime; it returns with the AI feature)
 │
 └── POPOVERS
     ├── [data-tb-pop="type"]   → toolbar/type-menu
@@ -84,7 +85,6 @@ $has = fn ($key) => Arr::get($supports, $key, null) !== null
 | Text colour | `supports.color.text \|\| supports.color.background` | `supports.color` |
 | Align | `Array.isArray(supports.align) && supports.align.length > 0` | `supports.align` |
 | handle, save, more | always | — |
-| AI | rich-text (Blade layer only) | as Format |
 
 Note the asymmetry worth knowing when authoring: the Format group keys off the **template**, not
 off `supports`. A block with no rich-text node in its render template gets no formatting buttons
@@ -105,9 +105,8 @@ target.
 | Block-type pill | `hbEditor.setAttribute(id, 'level', n)` | ✅ |
 | Move up / down | `hbEditor.moveBlock(i, j)` | ✅ |
 | Drag | owned by `wireCanvasBlockDrag`'s `pointerdown` | ✅ |
-| Select parent | — | ❌ inert — no block nesting in the runtime |
+| Select parent | — | hidden until a block actually nests (`parentIdOf`) |
 | Save as block | — | ❌ inert — no reusable-block capability |
-| AI | — | ❌ inert — no popover content |
 | More (⋯) | Duplicate (`insertBlock` + copy attributes/supports) and Delete (`removeBlock`) via `[data-tb-pop="more"]` | ✅ |
 
 The remaining inert ones do nothing when clicked — the listener-less `hb:format` /
@@ -203,11 +202,13 @@ A block declaring none of the above still gets a usable toolbar: drag, move up/d
 
 ## 8. Known gaps
 
-1. **`select-parent` is inert** — no nesting in the runtime, though contracts can declare
-   `innerBlocks` and `BlockRenderer` renders them to depth 20. The editor is the missing half.
+1. **`select-parent` waits on real nesting UI** — the canvas now renders `innerBlocks`
+   children (read-only, depth 20, same cap as `BlockRenderer`), but there is no way to
+   CREATE nesting in the editor yet; the button stays hidden until `parentIdOf` finds one.
 2. **`save` (save as block) is inert** — no reusable-block/pattern capability in `hbEditor`.
    `heisenberg_patterns` is reserved in config with no model behind it.
-3. **AI has no popover content.** (More gained its Duplicate/Delete menu 2026-08-06.)
+3. ~~AI has no popover content~~ — the trigger was removed 2026-08-06 rather than shipped
+   dead; it returns with the AI feature. (More gained its Duplicate/Delete menu the same day.)
 4. **`supports.color.background` has no affordance anywhere.**
 5. **Align menu has no `wide`/`full` entries**, though renderer and stylesheet both support them.
 6. **Colour swatches ignore the saved theme.**

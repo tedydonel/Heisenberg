@@ -271,7 +271,11 @@
     }
 
     // ── the template walk ──────────────────────────────────────
-    function renderNode(node, model, contract, isRoot) {
+    // Depth cap in LOCKSTEP with BlockRenderer::MAX_NESTING_DEPTH — the canvas and the
+    // published page must drop the same over-deep subtrees.
+    const MAX_NESTING_DEPTH = 20;
+    function renderNode(node, model, contract, isRoot, depth) {
+        depth = depth || 0;
         if (!node || typeof node !== 'object') return null;
         const cls = node.class || '';
         if ((typeof cls === 'string' && cls.indexOf('__picker') !== -1) || (node.attributes && node.attributes['data-image-picker'])) return null;
@@ -282,18 +286,35 @@
         if (type === 'rich-text') {
             const span = document.createElement('span');
             if (node.class) span.className = subst(node.class, model);
-            span.classList.add('hb-ce');
-            span.setAttribute('contenteditable', 'true');
-            span.spellcheck = true;
-            span.setAttribute('data-hb-rt', node.attribute || '');
-            span.setAttribute('data-ph', 'Write something…');
             const val = model.attributes[node.attribute];
+            // Nested blocks preview read-only: an editable .hb-ce inside another block's
+            // wrapper would resolve closest('.hb-blk') to the PARENT and write edits into
+            // the wrong model. Child editing arrives with the container-block feature.
+            if (depth === 0) {
+                span.classList.add('hb-ce');
+                span.setAttribute('contenteditable', 'true');
+                span.spellcheck = true;
+                span.setAttribute('data-hb-rt', node.attribute || '');
+                span.setAttribute('data-ph', 'Write something…');
+            }
             span.innerHTML = (val == null ? '' : String(val));
             return span;
         }
 
-        // inner-blocks (columns) not supported in this pass — render nothing.
-        if (type === 'inner-blocks') return document.createDocumentFragment();
+        // inner-blocks: each child renders through its OWN contract, exactly like
+        // BlockRenderer::renderInnerBlocks() on the published page.
+        if (type === 'inner-blocks') {
+            const frag = document.createDocumentFragment();
+            const inner = Array.isArray(model.innerBlocks) ? model.innerBlocks : [];
+            for (let i = 0; i < inner.length; i++) {
+                const child = inner[i];
+                const childContract = child && child.name ? REGISTRY[child.name] : null;
+                if (!childContract || !childContract.template || depth >= MAX_NESTING_DEPTH) continue;
+                const el = renderNode(childContract.template, child, childContract, true, depth + 1);
+                if (el) frag.appendChild(el);
+            }
+            return frag;
+        }
 
         const el = document.createElement(resolveTag(node.tag || 'div', model, contract));
         if (node.class) { const c = subst(node.class, model); if (c) el.className = c; }
@@ -325,7 +346,7 @@
             el.setAttribute(an, raw);
         }
         const kids = node.children || [];
-        for (let i = 0; i < kids.length; i++) { const ch = renderNode(kids[i], model, contract, false); if (ch) el.appendChild(ch); }
+        for (let i = 0; i < kids.length; i++) { const ch = renderNode(kids[i], model, contract, false, depth); if (ch) el.appendChild(ch); }
         return el;
     }
 

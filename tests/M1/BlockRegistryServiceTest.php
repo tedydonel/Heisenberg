@@ -201,6 +201,28 @@ class BlockRegistryServiceTest extends TestCase
         $this->assertNull($registry->getBlock('heisenberg/nope'));
     }
 
+    public function test_scan_cache_invalidates_when_contract_files_change(): void
+    {
+        $this->writeContract('alpha');
+        $registry = $this->registry();
+
+        $this->assertTrue($registry->isBlockKnown('heisenberg/alpha'));
+        $this->assertFalse($registry->isBlockKnown('heisenberg/beta'));
+
+        // A NEW contract must become visible to the SAME instance (persistent workers
+        // never re-construct the singleton).
+        $this->writeContract('beta');
+        $this->assertTrue($registry->isBlockKnown('heisenberg/beta'));
+
+        // An EDIT must refresh the cached contents. (The override changes the file
+        // size, so the fingerprint flips even when both writes share an mtime second.)
+        $this->writeContract('alpha', ['keywords' => ['alpha', 'edited-after-first-scan']]);
+        $this->assertSame(
+            ['alpha', 'edited-after-first-scan'],
+            $registry->getBlock('heisenberg/alpha')['keywords']
+        );
+    }
+
     public function test_validate_path_rejects_files_outside_the_root(): void
     {
         $this->writeContract('paragraph');

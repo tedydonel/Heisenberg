@@ -1,6 +1,6 @@
 {{-- live/toolbar/block-toolbar — Composed of gated group
      components (like the inspector's sections): the handle + more groups are always present,
-     Format & AI load for rich-text blocks, and text-colour / align load per supports.color /
+     Format loads for rich-text blocks, and text-colour / align load per supports.color /
      supports.align. So a text block gets the full bar; an image only its handle / save / more.
 
      Live, against window.hbEditor (see block-runtime.blade.php):
@@ -9,9 +9,9 @@
        - Align/Color write through hbEditor.setSupport (their popovers are the two containers
          below); the type pill rewrites a heading's `level` via hbEditor.setAttribute.
        - move-up/move-down call hbEditor.moveBlock; drag is already wired natively by
-         block-runtime's wireCanvasBlockDrag (pointerdown on .hb-tb__btn--drag). select-parent (no
-         block nesting yet), save-as-block, and the AI/More triggers have no backing runtime
-         capability yet — see the boot() comments below.
+         block-runtime's wireCanvasBlockDrag (pointerdown on .hb-tb__btn--drag). The ⋯ More menu
+         (duplicate/delete) is live; select-parent shows once real nesting exists; save-as-block
+         still has no backing runtime capability — see the boot() comments below.
 
      Chrome sits on --hb-editing (square); the white icons/overlays are toolbar mechanics,
      not theme colours. --}}
@@ -35,7 +35,7 @@
     <x-live.toolbar.groups.action :rich-text="$richText" />
 
     {{-- anchored popovers: the type switcher, align, text colour, and the ⋯ more menu.
-         link builds its own popover from script; ai has no host content yet. --}}
+         link builds its own popover from script. --}}
     <div class="hb-tb__pop" data-tb-pop="type" hidden>
         <x-live.toolbar.type-menu :selected="$blockType" />
     </div>

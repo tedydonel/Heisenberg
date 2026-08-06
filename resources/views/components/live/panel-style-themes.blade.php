@@ -698,7 +698,8 @@
     </div>
 
     <div class="hb-panel-style__content" data-hb-panel-style-themes hidden>
-        <x-ui.search-field :placeholder="__('heisenberg::editor.panel_style_themes.search_themes')" />
+        <x-ui.search-field :placeholder="__('heisenberg::editor.panel_style_themes.search_themes')"
+            data-hb-filter="[data-hb-panel-style-themes]" data-hb-filter-item="[data-hb-saved-theme], [data-hb-theme-preset]" />
 
         <div class="hb-panel-style__scroll" data-hb-themes-scroll>
             <x-ui.category-head :label="__('heisenberg::editor.panel_style_themes.category_your_themes')" />

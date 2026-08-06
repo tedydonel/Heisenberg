@@ -166,7 +166,8 @@
     </div>
 
     <div class="hb-panel-ai__content" data-hb-panel-ai-tools hidden>
-        <x-ui.search-field :placeholder="__('heisenberg::editor.panel_ai_tools.search_tools')" />
+        <x-ui.search-field :placeholder="__('heisenberg::editor.panel_ai_tools.search_tools')"
+            data-hb-filter="[data-hb-panel-ai-tools]" data-hb-filter-item=".hb-panel-ai__grid > *" />
         <x-ui.category-head :label="__('heisenberg::editor.panel_ai_tools.category_writing')" />
         <div class="hb-panel-ai__toolsbody" data-hb-ai-tools-scroll>
             <div class="hb-panel-ai__grid">
