@@ -1,4 +1,4 @@
-{{-- live/canvas — the document canvas (mirrors the builder's canvas/Post). A white paper sheet
+{{-- live/canvas — the document canvas. A white paper sheet
      with the editable post title and the blocks area (empty-state = a single add-block button).
      The title is the source of truth and stays in sync with the inspector's Post tab title (both
      carry data-hb-title); rendering inserted blocks is the backend step. The sheet is ALWAYS a

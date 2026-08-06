@@ -1,6 +1,5 @@
-{{-- live/media/upload-dropzone — from Pencil Media Dialog - Upload Files (WO65C) Drop Zone (hwLcy):
-     centered cloud-arrow-up icon (56px, accent) + title + description, on bg-muted with a 1px border
-     and radius-lg. Text taken 1:1 from the .pen node. --}}
+{{-- live/media/upload-dropzone — centered cloud-arrow-up icon (56px, accent) + title +
+     description, on bg-muted with a 1px border and radius-lg. --}}
 @once
 <style>
     .hb-dropzone {

@@ -4,18 +4,17 @@
     {{-- The user theme's own `--hb-t-*` custom properties. Only preview.blade.php emitted these,
          so in the editor every token reference resolved to nothing: the Style/Themes panel could
          save tokens the canvas then could not display, and binding a block style to one was
-         pointless. Emitted first so everything below can reference them. (TODO 7.6)
+         pointless. Emitted first so everything below can reference them.
 
          This is the SAVED theme at render time. Live edits in the Style tab still only debounce a
-         PUT; nothing rewrites these properties in place, so an unsaved edit is not previewed until
-         reload — see TODO 7.6. --}}
+         PUT; nothing rewrites these properties in place, so an unsaved edit is not previewed
+         until reload. --}}
     <style id="hb-theme-vars">{!! $themeCss ?? '' !!}</style>
     <x-live.topbar class="hb-editor__topbar" :post-id="$postId ?? null" :content-version="$contentVersion ?? 0" />
     <x-live.sidebar class="hb-editor__sidebar" />
     {{-- All 4 panel pairs live in the DOM simultaneously; only one is visible at a time.
          Switching is driven by sidebar nav clicks — see live/sidebar's script, which toggles
-         [hidden] here and activates the matching internal panel-tabs tab. Not sourced from
-         Pencil (the design shows static state per screen, not a live switcher). --}}
+         [hidden] here and activates the matching internal panel-tabs tab. --}}
     <div class="hb-editor__panel">
         <x-live.panel-components-blocks :registry="$registry" />
         <x-live.panel-seo-social hidden />
@@ -24,7 +23,7 @@
             :themes-store-url="route('heisenberg.editor.themes.store')" :themes-destroy-url="route('heisenberg.editor.themes.destroy')" />
         <x-live.panel-ai-tools hidden />
         {{-- Navigator (List View | Outline) — hidden until the topbar Layers button opens it. --}}
-        <x-live.panel-navigator hidden />
+        <x-live.panel-navigator hidden :registry="$registry" />
     </div>
     <div class="hb-editor__canvas">
         <x-live.canvas :title="$postTitle ?? ''" :page-padding-x="$postPagePaddingX ?? 56" :page-padding-y="$postPagePaddingY ?? 56" />
@@ -33,6 +32,7 @@
              block runtime moves it above the selected block and gates it by that block's supports. --}}
         <div class="hb-blk-toolbar-holder" hidden>
             <x-live.toolbar.block-toolbar data-hb-block-toolbar :rich-text="true" :block-type="'Text'" :active-formats="[]"
+                :theme-tokens="$themeTokens['color'] ?? []"
                 :supports="['color' => ['text' => true, 'background' => true], 'align' => ['left', 'center', 'right']]" />
         </div>
     </div>

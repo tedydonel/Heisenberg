@@ -71,7 +71,7 @@
                  therefore be the FIRST chip render on /editor, putting the @once blocks inside
                  template.content, where browsers neither apply the CSS nor run the script. Every
                  chip on the page would render unstyled. This is the same trap
-                 ui/theme-preset-card hit (TODO 6.7); there the fix was ordering, here it is
+                 ui/theme-preset-card hit; there the fix was ordering, here it is
                  avoiding <template> altogether.
 
                  It sits OUTSIDE .hb-classchips so chipValues() — which scans [data-hb-chip]

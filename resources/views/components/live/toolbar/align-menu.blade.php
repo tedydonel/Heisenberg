@@ -1,5 +1,4 @@
-{{-- live/toolbar/align-menu — the Style group's Align popover content (Pencil Block Toolbar,
-     cPGss). Options are the block's own `supports.align` values — block-runtime's own
+{{-- live/toolbar/align-menu — the Style group's Align popover content. Options are the block's own `supports.align` values — block-runtime's own
      alignmentValuesFor(name) helper reads the identical registry array, so this stays in lockstep
      with what actually renders. Every registered block that supports align today (heading,
      paragraph) declares the same left/center/right set; justify is not offered here because no

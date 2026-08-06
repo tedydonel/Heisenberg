@@ -332,6 +332,12 @@ $this->app->singleton(AuditSink::class,     fn () => new NullAuditSink());      
 $this->app->singleton(IconProvider::class,  fn () => new LucideIconProvider());      // optional dep
 // HeisenbergUser is not bound — resolved as config('heisenberg.user_model').
 ```
+
+> **As-built drift note (2026-08-05):** the listing above is the original M0 scope only. The real
+> `HeisenbergServiceProvider::registerContracts()` additionally binds the four post-template
+> adapter contracts (`PostViewsProvider`, `PostCommentProvider`, `RelatedPostsProvider`,
+> `PostSeoMetaProvider`), and `registerMedia()` binds `VirusScanner` + `MediaLibraryService`.
+> The provider source is the authority for the current full graph.
 `BlockRenderer` and `BlogBuilderService` constructors gain a `MediaResolver` and (renderer) an `IconProvider`; `BlogBlockService`/`PostTransitionAction` gain a `RoleGate`; `LogPostAuditEvent` writes through `AuditSink`.
 
 ## 1.5 Registration of config, views, lang, migrations, policies, commands, schedules

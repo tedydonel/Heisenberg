@@ -85,30 +85,16 @@
         (() => {
             const boot = () => {
                 document.querySelectorAll('[data-hb-custom-scrollbar]').forEach((bar) => {
-                    // A bar that boots while its container is inside a [hidden] ancestor (a
-                    // not-yet-active tab/panel) measures a 0-height track and renders the thumb
-                    // pinned accordingly. The ResizeObserver below is SUPPOSED to catch it becoming
-                    // visible later and recompute — in practice that doesn't always fire in time, so
-                    // every hb:refresh (dispatched on every tab/panel switch — see sidebar.blade.php's
-                    // showPanel() and ui/partials/tablist-script.blade.php's activate()) also forces
-                    // an already-booted bar to recheck its now-possibly-different dimensions directly,
-                    // rather than only scanning for brand-new bars.
+                    // A bar booted inside a [hidden] ancestor measures a 0-height track; the
+                    // ResizeObserver doesn't always fire in time when it becomes visible, so every
+                    // hb:refresh also forces an already-booted bar to re-measure.
                     if (bar.__hbScrollbar) { bar.__hbScrollbar.refresh(); return; }
 
                     const containerSelector = bar.dataset.hbScrollContainer || '';
-                    // Falls back to window-level scrolling when no container is given (original
-                    // behavior, used by the gallery page). With a container, every window-scoped call
-                    // below is replaced by the container's own scrollTop/scrollHeight/clientHeight so
-                    // this scrollbar only ever drives ITS container, not the page.
-                    // Resolution order matters once a page has MORE THAN ONE instance of the same
-                    // component. The bar is normally a SIBLING of its scroll container (see
-                    // ui/combobox, panel-navigator, the inspector's sub-tabs), so `closest` misses
-                    // and the old code fell straight through to document.querySelector — which
-                    // returns the FIRST match anywhere on the page. Every combobox's scrollbar
-                    // then drove the first combobox's list, so the others appeared unscrollable.
-                    // Checking the bar's own parent subtree first keeps each instance on its own
-                    // container; the document lookup stays as the last resort for layouts where
-                    // the bar is neither inside nor beside its container.
+                    // No container = window-level scrolling (the gallery page). With one, the bar
+                    // drives ITS container only. Resolution order is load-bearing: the bar is
+                    // usually a SIBLING of its container, so check the parent subtree before the
+                    // document-wide lookup — otherwise every instance drives the FIRST match.
                     const container = containerSelector
                         ? (bar.closest(containerSelector)
                             || bar.parentElement?.querySelector(containerSelector)

@@ -2,7 +2,7 @@
      supports.align). Distinct from Typography's Horizontal/Vertical pair, which places the text
      inside the block — see docs/inspector-composition.md §4.1.
 
-     Wired 2026-08-05 (TODO 7.1). Only the three horizontal options render: `supports.align`
+     Wired 2026-08-05. Only the three horizontal options render: `supports.align`
      accepts left|center|right|wide|full (BlockContractValidator::ALIGN_VALUES) and
      BlockRenderer::resolveClass() emits `hb-align-<value>` only for those. The design's three
      vertical options (top/middle/bottom) have no model path — vertical self-alignment needs a

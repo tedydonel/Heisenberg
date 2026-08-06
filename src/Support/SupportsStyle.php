@@ -5,8 +5,8 @@ declare(strict_types=1);
 namespace Heisenberg\Support;
 
 /**
- * The shared "supports capabilities" stylesheet — Phase 1 of the builder
- * full-kit overhaul. Mirrors {@see AnimationCatalog}: a GENERATED stylesheet
+ * The shared "supports capabilities" stylesheet. Mirrors {@see AnimationCatalog}:
+ * a GENERATED stylesheet
  * (no hand-authored per-block CSS) that reads generic `--hb-*` inline vars
  * a contract's `style.variables` sets on the block root, each var already
  * sanitized by {@see \Heisenberg\Services\BlockRenderer} through one of the
@@ -28,21 +28,18 @@ namespace Heisenberg\Support;
  *     bare attribute selector (`.hb-block-pullquote` and `[data-block-id]`
  *     are both one-selector/0,1,0). Without the extra marker, which stylesheet
  *     wins would depend on `<link>`/`<style>` order — exactly the kind of
- *     fragility the "additive only, never touch the 8 working blocks" rule
- *     forbids. None of the 8 contracts carry `hb-supports`, so gating behind
- *     it makes the sheet UNREACHABLE for them regardless of load order —
- *     genuinely a no-op until a (future, Phase 4+) contract opts in by adding
- *     `hb-supports` to `style.className`/`style.classNames`;
+ *     fragility the "additive only" rule forbids. A contract opts in by adding
+ *     `hb-supports` to `style.className` — both shipped contracts (heading,
+ *     paragraph) carry it;
  *   - structural, boolean-shaped capabilities (flex container, fill/hug
  *     width or height, clip) are additionally gated behind their OWN
  *     dedicated classes (`hb-flex-layout`, `hb-size-fill-w`, …) rather than
  *     vars, because a bare var can't safely flip `display` — `display`'s
  *     CSS-spec initial value is `inline`, not "whatever the tag defaults
  *     to", so a var-with-fallback can't express "leave display alone";
- *   - `hb-align-wide` / `hb-align-full` (block width breakout) ride on the
- *     EXISTING `supports.align` mechanism (`BlockRenderer::resolveClass()`),
- *     not on `.hb-supports` — same activation path as the already-shipped
- *     `hb-align-left/center/right` (declared in `resources/css/builder.css`);
+ *   - the `hb-align-*` classes (`supports.align` via
+ *     `BlockRenderer::resolveClass()` / the canvas runtime) are NOT gated
+ *     on `.hb-supports` — see alignBreakoutRules();
  *   - unset vars fall back to safe defaults (the property's effective
  *     browser default for that value), so the whole sheet is inert until a
  *     contract actually sets a var / adds a capability class.
@@ -93,9 +90,8 @@ final class SupportsStyle
     {
         $css = [
             '/* Heisenberg supports-capabilities stylesheet — generated from SupportsStyle.',
-            '   Additive-only (Phase 1 of the builder full-kit overhaul): a block root only',
-            '   picks up a rule below once it carries the matching capability class, so this',
-            '   sheet is a no-op for every contract that predates it. */',
+            '   Additive-only: a block root only picks up a rule below once it carries the',
+            '   matching capability class. */',
         ];
 
         $css[] = self::baseCapabilitiesRule();
@@ -171,15 +167,20 @@ final class SupportsStyle
     }
 
     /**
-     * Block-alignment breakout (`hb-align-wide` / `hb-align-full`) — the
-     * `resolveClass()` dead-branch fix. Rides on the SAME activation path as
-     * the already-shipped `hb-align-left/center/right` (a block declares
-     * `wide`/`full` in `supports.align` and an instance picks it), so it is
-     * intentionally NOT gated behind `.hb-supports`.
+     * Block-PLACEMENT rules for the `hb-align-<value>` classes both renderers
+     * emit from `supports.align`: left/center/right place the block box in its
+     * parent via margins (visible once the block is narrower than its parent —
+     * hug/fixed width); wide/full are width breakouts. Text alignment is NOT
+     * this mechanism — it is Typography's `--hb-text-align` variable. Text
+     * contracts (heading, paragraph) deliberately declare no `align`.
+     * Intentionally NOT gated behind `.hb-supports`.
      */
     private static function alignBreakoutRules(): string
     {
         return implode("\n", [
+            '[data-block-id].hb-align-left { margin-left: 0; margin-right: auto; }',
+            '[data-block-id].hb-align-center { margin-left: auto; margin-right: auto; }',
+            '[data-block-id].hb-align-right { margin-left: auto; margin-right: 0; }',
             '[data-block-id].hb-align-wide { width: min(100%, 1200px); max-width: 1200px; margin-left: 50%; transform: translateX(-50%); }',
             '[data-block-id].hb-align-full { width: 100vw; max-width: none; margin-left: 50%; transform: translateX(-50%); }',
         ]);

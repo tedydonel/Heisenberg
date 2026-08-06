@@ -1,4 +1,4 @@
-{{-- live/media/media-dialog — from Pencil Media Dialog - Upload Files (WO65C) / Media Library (Krcma):
+{{-- live/media/media-dialog —
      one 900x640 fixed-size modal (2026-08-04: height was previously unset, so the dialog visibly
      resized itself switching Upload -> Library or as the library grid's item count changed —
      .hb-mediadialog__body fills the fixed frame and scrolls internally instead, same as before),

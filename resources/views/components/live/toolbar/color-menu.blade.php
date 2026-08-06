@@ -1,16 +1,15 @@
-{{-- live/toolbar/color-menu — the Style group's text-colour popover content (Pencil Block
-     Toolbar, cPGss). The "A" trigger is specifically Text colour (see groups/style.blade.php's own
-     aria-label) — this menu writes supports.color.text only; supports.color.background has no
-     toolbar affordance and is left unwired (see block-toolbar.blade.php's report notes). Options
-     come from config('heisenberg.tokens.color') — the same design-token registry block-runtime's
-     own isSafeColorToken()/cssValueValid('color-value') already allow, and the one the inspector's
-     future colour controls are documented to read from (docs/block-schema.md). The Builder's
-     ThemeRepository merges a saved theme over this config for its own pages; the Editor has no such
-     merge wiring, so this ships the config defaults as-is — a real palette is a follow-up, not a
-     toolbar-file concern. Selecting a swatch writes through
-     window.hbEditor.setSupport(id, 'color.text', value) — see block-toolbar.blade.php's
-     `colorselect` listener. --}}
-@php $colorTokens = (array) config('heisenberg.tokens.color', ['' => 'Default']); @endphp
+{{-- live/toolbar/color-menu — the Style group's text-colour popover. Writes supports.color.text
+     only (color.background has no toolbar affordance). Options are the live THEME colour tokens
+     (ThemeRepository::tokens(), var(--hb-t-*) refs the page's hb-theme-vars style resolves),
+     falling back to config('heisenberg.tokens.color') when no theme tokens exist.
+     Selecting a swatch writes through window.hbEditor.setSupport(id, 'color.text', value) via
+     block-toolbar.blade.php's `colorselect` listener. --}}
+@props(['tokens' => []])
+@php
+    $colorTokens = is_array($tokens) && count($tokens) > 1
+        ? $tokens
+        : (array) config('heisenberg.tokens.color', ['' => 'Default']);
+@endphp
 <div class="hb-pop hb-colormenu" data-hb-colormenu>
     <div class="hb-varmenu__list">
         @foreach ($colorTokens as $value => $label)
@@ -35,6 +34,13 @@
                 btn.classList.add('hb-vmi--on');
                 menu.dispatchEvent(new CustomEvent('colorselect', { bubbles: true, detail: { value: btn.dataset.colorValue } }));
             }));
+
+            // Check the swatch matching the newly-selected block's current text colour.
+            document.addEventListener('hb:block-selected', (e) => {
+                const model = e.detail && e.detail.model;
+                const current = (model && model.supports && model.supports.color && model.supports.color.text) || '';
+                options.forEach((btn) => btn.classList.toggle('hb-vmi--on', btn.dataset.colorValue === current));
+            });
         });
         if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', boot, { once: true });
         else boot();

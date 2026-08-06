@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Heisenberg\Http\Controllers;
 
+use Heisenberg\Adapters\GuestActor;
 use Heisenberg\Models\Post;
 use Heisenberg\Services\BlockRenderer;
 use Heisenberg\Services\BlockRegistryService;
@@ -13,6 +14,7 @@ use Heisenberg\Support\BlockViewData;
 use Illuminate\Contracts\View\View;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Gate;
 
 /**
  * "Preview in another page" — the toolbar's external button. Two flows,
@@ -78,20 +80,21 @@ class PreviewController
 
     /**
      * Post-scoped preview (GET /editor/{post}/preview) — renders directly
-     * from the DB's saved block tree, no session round-trip. Deliberately
-     * runs no PostPolicy authorization check: same rationale as
-     * EditorController::show(), which this mirrors — this only renders a
-     * read-only page, and the whole /editor surface it sits under is
-     * already gated (or not) as a unit by config('heisenberg.middleware.editor').
+     * from the DB's saved block tree, no session round-trip. Runs the same
+     * PostPolicy view check as PostController::show() and EditorController::show():
+     * this page ships the post's full rendered content, so an anonymous
+     * visitor must not be able to read drafts by ID.
      * `Post` has no SEO fields of its own yet, so $seo is always empty here
      * — the title-only head fallback in preview.blade.php applies, same as
      * the "nothing in the session yet" branch of show() above.
      */
-    public function showPost(string $post): View
+    public function showPost(Request $request, string $post): View
     {
         /** @var class-string<Post> $class */
         $class = (string) config('heisenberg.models.post', Post::class);
         $model = $class::query()->with('blocks')->findOrFail($post);
+
+        Gate::forUser($request->user() ?? new GuestActor())->authorize('view', $model);
 
         return $this->renderDoc(
             blocks: $model->blocks->map(fn ($block) => $block->content)->values()->all(),

@@ -506,27 +506,20 @@ class StylePanelGatingTest extends TestCase
         $this->assertStringContainsString('data-hb-control-off=""', $html);
     }
 
-    public function test_alignment_offers_only_values_the_contract_declares(): void
+    public function test_alignment_section_is_gated_off_for_text_contracts(): void
     {
         $html = $this->editorHtml();
 
-        // The section is the BLOCK's placement in its parent, wired to `align` — which needs no
-        // style variable, since resolveClass() emits hb-align-<value> directly.
-        $this->assertMatchesRegularExpression(
+        // The Alignment section is the BLOCK's placement in its parent (`supports.align` →
+        // hb-align-* class). Text contracts deliberately declare no `align` — text alignment
+        // is Typography's textAlign/textAlignVertical — so the section must not mount.
+        $this->assertDoesNotMatchRegularExpression(
             '/data-hb-control="align"[^>]*data-hb-control-type="segmented"/',
             $html,
         );
 
-        // The design's three vertical options are NOT rendered: `align` accepts only
-        // left|center|right|wide|full, so top/middle/bottom would write a value resolveClass()
-        // discards — three controls on screen writing nowhere, the defect this phase removes.
-        foreach (['top', 'middle', 'bottom'] as $vertical) {
-            $this->assertStringNotContainsString('data-hb-tab="' . $vertical . '"', $html);
-        }
-
-        // And it offers exactly what the contract declares.
-        $declared = app(BlockRegistryService::class)->getBlock('heisenberg/heading')['supports']['align'] ?? [];
-        $this->assertSame(['left', 'center', 'right'], $declared);
+        $this->assertArrayNotHasKey('align', app(BlockRegistryService::class)->getBlock('heisenberg/heading')['supports']);
+        $this->assertArrayNotHasKey('align', app(BlockRegistryService::class)->getBlock('heisenberg/paragraph')['supports']);
     }
 
     public function test_theme_token_edits_repaint_immediately(): void

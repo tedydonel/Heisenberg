@@ -54,14 +54,14 @@
     <style>
         * { box-sizing: border-box; }
         body {
-            margin: 0; background: #fff; color: #0a0a0a;
+            margin: 0; background: var(--paper, #fff); color: var(--ink, #0a0a0a);
             font-family: var(--font-sans, 'Rubik'), -apple-system, sans-serif;
             -webkit-font-smoothing: antialiased;
         }
         .hb-preview-page { max-width: 760px; margin: 0 auto; padding: 56px 24px 96px; }
         .hb-preview-title { font-size: 40px; font-weight: 700; letter-spacing: -0.02em; line-height: 1.15; margin: 0 0 10px; }
         .hb-preview-bar {
-            position: sticky; top: 0; background: #0a0a0a; color: #fff;
+            position: sticky; top: 0; background: var(--ink, #0a0a0a); color: var(--on-ink, #fff);
             font: 12px/1 var(--font-sans, 'Rubik'), sans-serif; letter-spacing: 0.04em;
             padding: 8px 16px; display: flex; align-items: center; gap: 8px;
         }
@@ -82,8 +82,8 @@
     <div class="hb-preview-bar"><b>Preview</b><span>— sanitized public rendering; close this tab to return to the editor.</span></div>
     <main class="hb-preview-page">
         @if (($hasDoc ?? true) === false)
-            <div style="padding:56px 16px;text-align:center;color:#9a9a9a;font-size:14px;line-height:1.6">
-                <p style="font-size:17px;color:#0a0a0a;font-weight:600;margin:0 0 6px">Nothing to preview yet</p>
+            <div style="padding:56px 16px;text-align:center;color:var(--muted,#9a9a9a);font-size:var(--fs-md,14px);line-height:1.6">
+                <p style="font-size:17px;color:var(--ink,#0a0a0a);font-weight:600;margin:0 0 6px">Nothing to preview yet</p>
                 <p style="margin:0">Save your post in the editor (or use the ↗ preview button) and this page will show the rendered result.</p>
             </div>
         @else

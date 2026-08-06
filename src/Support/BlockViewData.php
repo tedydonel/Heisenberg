@@ -10,9 +10,6 @@ use Illuminate\Support\Facades\Log;
 /**
  * View data the editor needs from the live block registry: the client-side contract
  * payload and each enabled block's own CSS, concatenated. Builder-only concerns
- * (starter documents, the inserter's category grouping, editorial chrome like
- * turn-into/quick-inserter lists) lived here too before the builder was removed
- * (2026-08-02) — see git history if any of that is ever needed again.
  */
 final class BlockViewData
 {
@@ -85,7 +82,7 @@ final class BlockViewData
      * shadow, overflow, flex, per-side border — was unreachable in the canvas no matter
      * what a contract declared. It is prepended rather than appended so a block's own
      * CSS still wins on equal specificity, and it is inert until a contract opts in by
-     * carrying `hb-supports` on its root (TODO 7.1).
+     * carrying `hb-supports` on its root.
      */
     public static function blocksCss(BlockRegistryService $registry, ?array $enabled = null): string
     {

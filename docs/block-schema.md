@@ -99,7 +99,9 @@ fills keep reusing `color-value`.
 
 Opt-in features the style system reads. Recognized groups: `color`, `typography`,
 `spacing`, `border`, `dimensions`, `layout`, `size`, `animation`, `appearance`, `position`,
-`effects`, plus `align` (special-cased).
+`effects`, plus `align` and `states` (both special-cased). `states` accepts only the
+`hover`/`active`/`focus` keys and feeds `BlockRenderer::stateStylesCss()` plus the
+inspector's State tabs.
 
 ```jsonc
 "supports": {
@@ -109,11 +111,13 @@ Opt-in features the style system reads. Recognized groups: `color`, `typography`
 }
 ```
 
-`align` values are constrained to `left|center|right|wide|full`. `custom` color is not
-permitted (`false`). A block declaring `wide`/`full` (and an instance picking one) renders
-with class `hb-align-wide`/`hb-align-full` (`BlockRenderer::resolveClass()`), styled by the
-generated `SupportsStyle` sheet — the same activation path as the already-shipped
-`hb-align-left/center/right` (`resources/css/builder.css`).
+`align` values are constrained to `left|center|right|wide|full` and mean block PLACEMENT:
+an instance's pick renders as class `hb-align-<value>` (`BlockRenderer::resolveClass()`
+server-side, the canvas runtime client-side), styled by `SupportsStyle::alignBreakoutRules()`
+— left/center/right place the block box via margins, wide/full are width breakouts. Text
+alignment is NOT `align`; it is `supports.typography.textAlign`/`textAlignVertical`, which is
+why the text contracts (heading, paragraph) declare no `align` at all. `custom` color is not
+permitted (`false`).
 
 The validator stays **shape-tolerant** for group internals (it only checks the group name
 is recognized); the shapes below are the *documented convention* every contract should
@@ -195,13 +199,13 @@ The extra marker (rather than a bare `[data-block-id]` rule) is deliberate: two 
 already-shipped blocks (`pullquote`, `code`) set `text-align`/`border-top-width`/
 `border-bottom-width`/`overflow-x` directly on their OWN root class, at the *same* CSS
 specificity as a bare attribute selector — a bare `[data-block-id]` rule would make the
-outcome depend on `<link>`/`<style>` load order. Gating behind `hb-supports` (which none of
-the 8 contracts declare) makes the sheet unreachable for them regardless of order — a true
-no-op until a contract opts in. Structural capabilities layer further class gates on top:
-`hb-flex-layout` (flex container), `hb-size-fill-w/h`, `hb-size-hug-w/h`, `hb-size-clip`.
-`hb-align-wide`/`hb-align-full` are the exception — they ride on the same activation path as
-the existing `hb-align-left/center/right` (declared in `resources/css/builder.css`) and are
-NOT gated behind `hb-supports`.
+outcome depend on `<link>`/`<style>` load order. Gating behind `hb-supports` (a contract
+opts in via `style.className` — heading and paragraph both do) keeps the sheet a no-op for
+everything else regardless of order. Structural capabilities layer further class gates on
+top: `hb-flex-layout` (flex container), `hb-size-fill-w/h`, `hb-size-hug-w/h`,
+`hb-size-clip`. The `hb-align-*` classes (left/center/right/wide/full) are the exception —
+their rules live in `SupportsStyle::alignBreakoutRules()` and are NOT gated behind
+`hb-supports`.
 
 Phase 1 does not migrate the 8 working blocks onto this sheet — that is Phase 4.
 
@@ -232,7 +236,7 @@ attribute (or `false` to hide it from the inspector):
 
 ```jsonc
 "control": {
-  "type": "media",            // force a widget (any of the 11 control types)
+  "type": "media",            // force a widget (any of the 16 control types)
   "section": "hover",         // inspector panel grouping (default "settings")
   "min": 1, "max": 100, "step": 1,
   "showWhen": { "attribute": "level", "in": [2, 3] },
@@ -253,7 +257,9 @@ condition for controls that require dependent state. The inspector honors these 
 it is built once, not twice.
 
 Control types: `text`, `textarea`, `rich-text`, `select`, `toggle`, `range`, `number`,
-`media`, `link`, `button-group`, `repeater`.
+`media`, `link`, `button-group`, `repeater`, `checkbox`, `chips`, `unit`, `color`, `font`
+(the full `BlockContractValidator::CONTROL_TYPES` list — e.g. heading's `extraClasses`
+uses `chips`).
 
 ### Panels derived from `supports`
 
@@ -322,7 +328,10 @@ change to rendered HTML).
 ```jsonc
 "style": {
   "css": "./paragraph.css",        // safe relative .css path
-  "className": "hb-block-paragraph",
+  "className": "hb-block-paragraph hb-supports",
+  "classNames": [                  // conditional classes — same predicate grammar as showWhen
+    { "class": "hb-size-fill-w", "when": { "attribute": "fillWidth", "equals": true } }
+  ],
   "variables": {
     "--hb-paragraph-color": {
       "source": "supports.color.text",   // must reference attributes.* or supports.*
@@ -334,7 +343,11 @@ change to rendered HTML).
 ```
 
 `style.variables` are materialized by `BlockRenderer` into an inline `style="…"` on the
-block root, each value validated by its `sanitize` token.
+block root, each value validated by its `sanitize` token. `style.classNames` is an array of
+`{class, when}` bindings validated by `BlockContractValidator::validateStyle()`: the class is
+added to the block root when the predicate (same `equals`/`in` grammar as
+`showWhen`/`disableWhen`/`forceWhen`) matches, both server-side (`resolveClass()`) and in the
+canvas runtime. heading.json uses these for its `hb-hide-*` and `hb-size-*` gates.
 
 ## `render.template`
 

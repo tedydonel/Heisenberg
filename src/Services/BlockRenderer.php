@@ -275,9 +275,7 @@ class BlockRenderer
             if (is_array($allowedAlignments)
                 && is_string($alignment)
                 && in_array($alignment, $allowedAlignments, true)
-                // Full-kit overhaul 2026-07-19 (Phase 1) — wide/full were
-                // advertised by ALIGN_VALUES but never actually emitted;
-                // this list now matches the validator's allow-list exactly.
+                // Matches the validator's ALIGN_VALUES allow-list exactly.
                 && in_array($alignment, ['left', 'center', 'right', 'wide', 'full'], true)) {
                 $class = trim($class . ' hb-align-' . $alignment);
             }
@@ -635,15 +633,34 @@ class BlockRenderer
 
     private function sanitizeCssValue(string $value, string $sanitizer, string $fallback): string
     {
-        $value = trim($value);
+        $value = $this->normalizeCssNumber(trim($value), $sanitizer);
 
         if ($this->cssValueValid($value, $sanitizer)) {
             return $value;
         }
 
-        $fallback = trim($fallback);
+        $fallback = $this->normalizeCssNumber(trim($fallback), $sanitizer);
 
         return $this->cssValueValid($fallback, $sanitizer) ? $fallback : '';
+    }
+
+    /**
+     * A bare number carries no CSS unit and would fail its sanitizer; resolve the implied
+     * unit (px for lengths, deg for angles, % for 0-100 opacity). Lockstep with the JS
+     * normalizeCssNumber() in block-runtime.blade.php.
+     */
+    private function normalizeCssNumber(string $value, string $sanitizer): string
+    {
+        if (preg_match('/^-?\d+(\.\d+)?$/', $value) !== 1) {
+            return $value;
+        }
+
+        return match ($sanitizer) {
+            'size-value', 'length-signed' => $value . 'px',
+            'angle' => $value . 'deg',
+            'opacity' => (float) $value > 1 ? $value . '%' : $value,
+            default => $value,
+        };
     }
 
     private function cssValueValid(string $value, string $sanitizer): bool
@@ -657,16 +674,14 @@ class BlockRenderer
             'color-token-or-transparent' => $value === 'transparent' || $this->isSafeColorValue($value),
             'border-style' => in_array($value, ['none', 'solid', 'dashed', 'dotted'], true),
             'font-token' => preg_match('/^var\(--[a-z0-9-]+\)$/i', $value) === 1,
-            // Overhaul 2026-07-18 — validated raw values from the .pen kit.
             'size-value' => preg_match('/^(var\(--[a-z0-9-]+\)|-?\d+(\.\d+)?(px|rem|em|%|vw|vh))$/i', $value) === 1,
             'color-value' => $value === 'transparent' || preg_match('/^var\(--[a-z0-9-]+\)$/i', $value) === 1 || $this->isSafeColorValue($value),
             'font-family' => preg_match('/^(var\(--[a-z0-9-]+\)|[a-z0-9][a-z0-9 \-]{0,80})$/i', $value) === 1,
             'font-weight' => preg_match('/^(var\(--[a-z0-9-]+\)|[1-9]00)$/i', $value) === 1,
             'size-token' => preg_match('/^(0|auto|100%|var\(--[a-z0-9-]+(,\s*var\(--[a-z0-9-]+\))?\)|calc\([a-z0-9\s().,%*\/+-]+\)|-?\d+(\.\d+)?(px|rem|em|vw|%)?)$/i', $value) === 1,
             'integer' => preg_match('/^-?\d+$/', $value) === 1,
-            // Full-kit overhaul 2026-07-19 (Phase 1) — the supports-capabilities
-            // kinds. Lockstep with BlockContractValidator::SANITIZERS; every kind
-            // gets its OWN explicit case (never the permissive default below).
+            // Supports-capability kinds. LOCKSTEP with BlockContractValidator::SANITIZERS and
+            // the JS cssValueValid(); every kind gets its OWN case, never the permissive default.
             'opacity' => preg_match('/^(0|1|0?\.\d{1,3}|(100|[1-9]?\d)%)$/', $value) === 1,
             'angle' => preg_match('/^-?\d{1,3}(\.\d+)?deg$/i', $value) === 1,
             'length-signed' => $this->isSafeLengthSignedValue($value),

@@ -1,8 +1,5 @@
-{{-- live/footer — from Pencil Footer (b22jFd): 32px bar. The base component itself has no stroke, but
-     the real page composition (bTaeD -> R34fC, the actual Footer instance) overrides it with a top
-     border: stroke $border, strokeWidth {top:1} — that's what's used here, not the borderless base. Two
-     zones pushed to opposite ends: a connection status pill (left) and language + code-editor pills
-     (right).
+{{-- live/footer — 32px bar with a 1px top border. Two zones pushed to opposite ends:
+     a connection status pill (left) and language + code-editor pills (right).
 
      The connection-status pill now reflects real state — Saved / Saving… / Unsaved changes /
      Offline / Conflict / Error — via [data-state] on the pill itself. Connectivity comes from
@@ -12,10 +9,10 @@
      itself. All six state icons are pre-rendered (see the icon spans below) and toggled purely
      via the CSS below, keyed off the pill's own [data-state] attribute.
 
-     The right zone's language pill is also the locale switcher: a native <form method="POST"> that
-     POSTs to `heisenberg.locale.switch` and bounces back to the referer via `session->pull`. Hosts
-     that want a richer UI (e.g. a flag picker) replace this surface; the form action is the only
-     contract. The drop-up menu lists every locale shipped with the package (`heisenberg::editor.locales`),
+     The right zone's language pill is also the locale switcher: a native <form method="POST"> to
+     `heisenberg.locale.switch`, whose validated `return` field bounces back to the current page.
+     Hosts that want a richer UI replace this surface; the form action is the only contract.
+     The drop-up menu lists every locale shipped with the package (`heisenberg::editor.locales`),
      and the current locale is read from `app()->getLocale()` (which EditorLocaleMiddleware set
      before this view rendered). --}}
 @once
@@ -76,10 +73,8 @@
     .hb-footer__pill--status[data-state="saving"] .hb-footer__icon[data-hb-status-icon="saving"] { animation: hb-status-spin 1s linear infinite; }
     @keyframes hb-status-spin { to { transform: rotate(360deg); } }
 
-    /* Flat right-zone buttons (language switcher + code editor) — plain text labels on the
-       bar, no pill background, no border, no fill. Mirrors the original builder/partials/
-       footer.blade.php's `.hb-foot-chip` styling. The hidden locale POST forms inherit the
-       browser-default button look but they're `hidden`, so it never paints. */
+    /* Flat right-zone buttons (language switcher + code editor) — plain text labels, no pill
+       background, no border. The hidden locale POST forms never paint. */
     .hb-foot-chip {
         display: inline-flex; align-items: center;
         height: 100%; padding: 0 var(--hb-space-2, 8px);
@@ -99,7 +94,7 @@
         position: fixed; z-index: 60;
         min-width: 140px; padding: 4px;
         background: var(--hb-bg, #fff); border: 1px solid var(--hb-border, #E4E4E4);
-        border-radius: var(--hb-radius-md, 6px);
+        border-radius: var(--hb-radius-md, 5px);
         box-shadow: 0 -8px 28px rgba(0, 0, 0, .14);
         display: flex; flex-direction: column; gap: 2px;
     }
@@ -206,9 +201,7 @@
         </span>
     </div>
     <div class="hb-footer__zone">
-        {{-- Locale switcher + code editor — plain text buttons, no pill background, no border.
-             The Pencil Footer source (b22jFd) shows these as flat labels sitting on the bar's
-             right edge; the muted-fill chip treatment would add weight the source doesn't have. --}}
+        {{-- Locale switcher + code editor — plain text buttons, no pill background, no border. --}}
         <div class="hb-locale" data-hb-locale>
             <button type="button" class="hb-foot-chip" data-hb="lang-toggle" aria-haspopup="menu" title="{{ __('heisenberg::editor.footer.aria_lang') }}" data-hb-locale-toggle>
                 <span>{{ $localeNames[$current] ?? $current }}</span>
@@ -229,8 +222,8 @@
             <span>{{ __('heisenberg::editor.footer.code_editor_label') }}</span>
         </button>
         {{-- Hidden POST forms — one per locale — submitted on click of the matching menu option.
-             The route reads `session('heisenberg.locale_return')` (set by the inline script
-             below right before submit) to bounce back to the same page. --}}
+             The `return` input (set to the current URL right before submit) is what
+             LocaleController::safeReturnUrl() bounces back to. --}}
         @foreach ($locales as $code)
             <form method="POST" action="{{ route('heisenberg.locale.switch', ['locale' => $code]) }}" data-hb-locale-form="{{ $code }}" hidden>
                 @csrf

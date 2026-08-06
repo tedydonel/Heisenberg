@@ -100,8 +100,8 @@ class EditorRendersTest extends TestCase
         // it would write into the model and change nothing on the canvas, which is
         // indistinguishable from a working control until you reload.
         //
-        // Both shipped contracts declare: align, color, typography, size, spacing, animation.
-        // Neither declares: position, layout, effects, appearance, border.
+        // Both shipped contracts declare: color, typography, size, spacing, animation,
+        // position, appearance, effects. Neither declares: align, layout, border.
         //
         // `border` was removed from both 2026-08-05 (TODO 7.2): text blocks do not support
         // borders or corner radius. That drops Stroke, and Appearance with it — radius was the
@@ -111,14 +111,15 @@ class EditorRendersTest extends TestCase
         // SECTION still being mounted.
         $header = fn (string $section): string => '<span class="hb-section__title">' . $section . '</span>';
 
-        // Position and Effects joined as of TODO 7.1, once their controls were actually wired.
         // Appearance is here for `appearance.opacity`, not corner radius — text has no border.
-        foreach (['State', 'Alignment', 'Typography', 'Dimensions', 'Fill', 'Appearance', 'Position', 'Effects'] as $section) {
+        foreach (['State', 'Typography', 'Dimensions', 'Fill', 'Appearance', 'Position', 'Effects'] as $section) {
             $this->assertStringContainsString($header($section), $html);
         }
         // Flex Layout gates on being a CONTAINER, not on supports.layout — a flex container lays
         // out children, and neither text block can have any (innerBlocks.enabled false).
-        foreach (['Flex Layout', 'Stroke'] as $section) {
+        // Alignment is block PLACEMENT (`supports.align`), which text contracts deliberately
+        // do not declare — text alignment lives in Typography.
+        foreach (['Flex Layout', 'Stroke', 'Alignment'] as $section) {
             $this->assertStringNotContainsString(
                 $header($section),
                 $html,
@@ -136,7 +137,9 @@ class EditorRendersTest extends TestCase
         $this->assertStringContainsString('data-icon-name="style-padding-left"', $html);
         // The corner-radius glyphs belong to Appearance, which goes with `border` (TODO 7.2).
         $this->assertStringNotContainsString('data-icon-name="style-corner-radius-top-left"', $html);
-        $this->assertStringContainsString('data-icon-name="align-left-fill"', $html);
+        // The align-*-fill glyphs belong to the Alignment section, gated away with `align`
+        // for text contracts (block placement; text alignment is Typography's).
+        $this->assertStringNotContainsString('data-icon-name="align-left-fill"', $html);
         $this->assertStringContainsString('data-hb-style-layer-template="fill"', $html);
         // Stroke's layer template goes with the Stroke section.
         $this->assertStringNotContainsString('data-hb-style-layer-template="stroke"', $html);
@@ -339,9 +342,11 @@ class EditorRendersTest extends TestCase
         $this->assertStringContainsString("window.hbEditor.setAttribute(ctx.id, 'level'", $html);
         $this->assertStringContainsString("window.hbEditor.setSupport(ctx.id, 'align'", $html);
         $this->assertStringContainsString("window.hbEditor.setSupport(ctx.id, 'color.text'", $html);
-        // Still emits the pre-existing events for any other listener — additive, not a rewrite.
-        $this->assertStringContainsString("new CustomEvent('hb:format'", $html);
-        $this->assertStringContainsString("new CustomEvent('hb:toolbar-action'", $html);
+        // The listener-less hb:format / hb:toolbar-action / hb:toolbar-popover broadcast
+        // events were removed (2026-08-05 review) — real behaviour only, no dead dispatches.
+        $this->assertStringNotContainsString("new CustomEvent('hb:format'", $html);
+        $this->assertStringNotContainsString("new CustomEvent('hb:toolbar-action'", $html);
+        $this->assertStringNotContainsString("new CustomEvent('hb:toolbar-popover'", $html);
     }
 
     public function test_type_menu_switches_heading_level_not_a_fake_type_list(): void
@@ -385,6 +390,34 @@ class EditorRendersTest extends TestCase
 
     public function test_an_existing_posts_categories_and_tags_render_pre_checked(): void
     {
+        // GET /editor/{post} runs PostPolicy::view (the anti-IDOR check). A GuestActor is
+        // denied outside the local env no matter what the RoleGate says (LocalDevRoleGate
+        // decides guests by environment alone), so act as a real user and grant it the
+        // authors tier so the rendering assertions below are reachable.
+        $this->actingAs(new \Illuminate\Auth\GenericUser(['id' => 7]));
+        $this->app->instance(\Heisenberg\Contracts\RoleGate::class, new class implements \Heisenberg\Contracts\RoleGate
+        {
+            public function is(\Illuminate\Contracts\Auth\Authenticatable $user, string $tier): bool
+            {
+                return true;
+            }
+
+            public function isAny(\Illuminate\Contracts\Auth\Authenticatable $user, array $tiers): bool
+            {
+                return true;
+            }
+
+            public function rolesOf(\Illuminate\Contracts\Auth\Authenticatable $user): array
+            {
+                return ['authors'];
+            }
+
+            public function systemActor(): ?\Illuminate\Contracts\Auth\Authenticatable
+            {
+                return null;
+            }
+        });
+
         $post = \Heisenberg\Models\Post::create(['title_en' => 'X', 'status' => 'draft']);
         $category = \Heisenberg\Models\Category::create(['name_en' => 'Field Notes']);
         $tag = \Heisenberg\Models\Tag::create(['name_en' => 'Featured']);
@@ -397,6 +430,15 @@ class EditorRendersTest extends TestCase
         // as separate attribute lines, not a fixed one-line fragment.
         $this->assertMatchesRegularExpression('/value="' . $category->id . '"\s*checked/', $html);
         $this->assertMatchesRegularExpression('/value="' . $tag->id . '"\s*checked/', $html);
+    }
+
+    public function test_editor_and_preview_pages_for_a_post_require_view_authorization(): void
+    {
+        $post = \Heisenberg\Models\Post::create(['title_en' => 'Secret draft', 'status' => 'draft']);
+
+        // An anonymous visitor must not be able to read a draft by enumerating IDs.
+        $this->get("/editor/{$post->id}")->assertForbidden();
+        $this->get("/editor/{$post->id}/preview")->assertForbidden();
     }
 
     public function test_discussion_and_page_layout_sections_are_no_longer_inert(): void

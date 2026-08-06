@@ -461,15 +461,9 @@ class BlockRegistryService
             return [];
         }
 
-        // Panel order mirrors the design's Block.style component (LtsDN):
-        // Alignment → Position → Flex Layout → Appearance → Typography → Size
+        // Panel order: Alignment → Position → Flex Layout → Appearance → Typography → Size
         // → Color → Margin → Padding → Border → Stroke → Border radius → Effects.
-        // (Color is ours — the design tucks color into Border only; the
-        // engine keeps text/background color as a first-class panel.)
-        // The first four + Stroke + Effects are the Phase 1 full-kit overhaul
-        // additions (2026-07-19) — emitted only when a contract declares the
-        // matching new `supports.*` group, so the 8 pre-overhaul blocks (which
-        // don't) see an unchanged panel list.
+        // Each panel is emitted only when the contract declares its supports group.
         $groups = [
             'align' => [
                 'title' => 'Alignment',
@@ -579,10 +573,8 @@ class BlockRegistryService
             ];
         }
 
-        // Full-kit overhaul 2026-07-19 (Phase 1) — fill/hug are boolean per
-        // axis (no magnitude), rendered as toggles bound straight to their
-        // supports path; SupportsStyle consumes them as utility classes
-        // (hb-size-fill-w/h, hb-size-hug-w/h), not vars (see its docblock).
+        // fill/hug are boolean per axis; SupportsStyle consumes them as utility classes
+        // (hb-size-fill-w/h, hb-size-hug-w/h), not vars.
         foreach (['fill' => 'Fill', 'hug' => 'Hug'] as $mode => $modeLabel) {
             $declared = $size[$mode] ?? null;
             if (! is_array($declared)) {
@@ -858,7 +850,6 @@ class BlockRegistryService
             ];
         }
 
-        // Full-kit overhaul 2026-07-19 (Phase 1).
         if (($typography['letterSpacing'] ?? false) === true) {
             $controls[] = [
                 'type' => 'unit', 'sanitize' => 'length-signed', 'half' => true,
@@ -896,10 +887,8 @@ class BlockRegistryService
     }
 
     /**
-     * Alignment rows (design toolbar's align control, surfaced in the
-     * inspector too): one `segmented` control listing exactly the block's
-     * declared `supports.align` values. New control type — Phase 2 builds
-     * the segmented widget.
+     * Alignment rows: one `segmented` control listing exactly the block's
+     * declared `supports.align` values.
      *
      * @return list<array<string, mixed>>
      */
@@ -956,7 +945,6 @@ class BlockRegistryService
             ];
         }
         if (($position['x'] ?? false) === true || ($position['y'] ?? false) === true) {
-            // New control type — a linked X/Y pair; Phase 2 builds the widget.
             $controls[] = [
                 'type' => 'xy-pair', 'sanitize' => 'length-signed',
                 'xSource' => 'supports.position.x',
@@ -1004,7 +992,6 @@ class BlockRegistryService
             ];
         }
         if (($layout['justify'] ?? false) === true) {
-            // New control type — a 2D flex-alignment grid; Phase 2 builds the widget.
             $controls[] = [
                 'type' => 'align-grid', 'sanitize' => 'flex-justify', 'half' => true,
                 'source' => 'supports.layout.justify',
@@ -1071,7 +1058,6 @@ class BlockRegistryService
 
     /**
      * Effects rows: a box-shadow builder, opt-in via `supports.effects.shadow`.
-     * New control type — Phase 2 builds the shadow-layer widget.
      *
      * @return list<array<string, mixed>>
      */

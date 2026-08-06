@@ -182,14 +182,17 @@ class BlockRendererTest extends TestCase
         $this->assertStringNotContainsString('has-drop-cap', $disabled);
     }
 
-    public function test_supported_alignment_is_emitted_on_the_block_root(): void
+    public function test_alignment_is_not_emitted_for_contracts_without_align_support(): void
     {
+        // Text contracts deliberately declare no `align` (text alignment is Typography's
+        // --hb-text-align); a stale saved align value must not emit a class.
         $html = $this->renderer()->renderBlock(
             $this->block('heisenberg/paragraph', ['content' => 'Alpha'], ['align' => 'center']),
             'en'
         );
 
-        $this->assertStringContainsString('class="hb-block hb-block-paragraph hb-supports hb-ease-smooth hb-align-center"', $html);
+        $this->assertStringContainsString('class="hb-block hb-block-paragraph hb-supports hb-ease-smooth"', $html);
+        $this->assertStringNotContainsString('hb-align-', $html);
     }
 
     public function test_unknown_alignment_is_not_emitted(): void

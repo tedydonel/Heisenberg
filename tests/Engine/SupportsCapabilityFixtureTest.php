@@ -131,7 +131,13 @@ class SupportsCapabilityFixtureTest extends TestCase
             $this->assertStringContainsString("--hb-fix-opacity: {$good}", $html, "opacity should accept '{$good}'");
         }
 
-        foreach (['101%', '2', '-0.5', '1.5', 'abc', '1;}body{color:red'] as $bad) {
+        // Bare numbers above 1 resolve to percent (the 0-100 UI scale) instead of being discarded.
+        foreach (['2' => '2%', '37' => '37%'] as $bare => $normalized) {
+            $html = $this->renderer()->renderBlock($this->block(['opacityAttr' => (string) $bare]), 'en');
+            $this->assertStringContainsString("--hb-fix-opacity: {$normalized}", $html, "bare '{$bare}' should normalize to {$normalized}");
+        }
+
+        foreach (['101%', '-0.5', 'abc', '1;}body{color:red'] as $bad) {
             $html = $this->renderer()->renderBlock($this->block(['opacityAttr' => $bad]), 'en');
             $this->assertStringNotContainsString($bad, $html, "opacity should reject '{$bad}'");
             $this->assertStringNotContainsString('--hb-fix-opacity: ' . $bad, $html);
@@ -145,7 +151,11 @@ class SupportsCapabilityFixtureTest extends TestCase
             $this->assertStringContainsString("--hb-fix-angle: {$good}", $html, "angle should accept '{$good}'");
         }
 
-        foreach (['1000deg', '45', '45rad', 'expression(alert(1))', '45deg;}body{background:red'] as $bad) {
+        // A bare number resolves its implied unit instead of being silently discarded.
+        $html = $this->renderer()->renderBlock($this->block(['angleAttr' => '45']), 'en');
+        $this->assertStringContainsString('--hb-fix-angle: 45deg', $html, "bare '45' should normalize to 45deg");
+
+        foreach (['1000deg', '45rad', 'expression(alert(1))', '45deg;}body{background:red'] as $bad) {
             $html = $this->renderer()->renderBlock($this->block(['angleAttr' => $bad]), 'en');
             $this->assertStringNotContainsString($bad, $html, "angle should reject '{$bad}'");
         }
@@ -157,6 +167,10 @@ class SupportsCapabilityFixtureTest extends TestCase
             $html = $this->renderer()->renderBlock($this->block(['lengthAttr' => $good]), 'en');
             $this->assertStringContainsString("--hb-fix-length: {$good}", $html, "length-signed should accept '{$good}'");
         }
+
+        // A bare number resolves its implied unit instead of being silently discarded.
+        $html = $this->renderer()->renderBlock($this->block(['lengthAttr' => '12']), 'en');
+        $this->assertStringContainsString('--hb-fix-length: 12px', $html, "bare '12' should normalize to 12px");
 
         foreach (['10xyz', 'calc(10px)', '10px;}body{background:url(javascript:alert(1))', 'javascript:alert(1)'] as $bad) {
             $html = $this->renderer()->renderBlock($this->block(['lengthAttr' => $bad]), 'en');

@@ -34,17 +34,10 @@ class BlockContractValidator
         'text', 'rich-text-inline', 'rich-text-block', 'url', 'color-token',
         'color-token-or-transparent', 'size-token', 'integer', 'boolean', 'html-safe',
         'border-style', 'font-token',
-        // Overhaul 2026-07-18 — the .pen control kit writes validated raw
-        // values as well as tokens. Each kind stays a strict allowlist:
-        //   size-value  '' | var(--…) | <number><px|rem|em|%|vw|vh>
-        //   color-value '' | var(--…) | #hex | rgb()/rgba() | hsl()/hsla()
-        //   font-family '' | var(--…) | letters/digits/spaces/hyphens only
-        //   font-weight '' | var(--…) | 100..900 hundreds
+        // Raw-value kinds — each a strict allowlist (grammars in BlockRenderer::cssValueValid()).
         'size-value', 'color-value', 'font-family', 'font-weight',
-        // Full-kit overhaul 2026-07-19 (Phase 1) — new raw-value + enum kinds
-        // for the supports capabilities SupportsStyle serves. Lockstep with
-        // BlockRenderer::cssValueValid(); never fall back to the permissive
-        // default case for any of these. See BlockRenderer for the regexes.
+        // Supports-capability kinds. LOCKSTEP with BlockRenderer::cssValueValid() and the JS
+        // cssValueValid() in block-runtime.blade.php; never let these hit a permissive fallback.
         'opacity', 'angle', 'length-signed', 'shadow',
         'text-align', 'align-3', 'position-mode',
         'flex-direction', 'flex-justify', 'flex-align', 'overflow',
@@ -53,7 +46,6 @@ class BlockContractValidator
     /** Allowed style-system support groups (align is special-cased). */
     private const SUPPORT_KEYS = [
         'color', 'typography', 'spacing', 'border', 'dimensions', 'layout', 'size', 'animation',
-        // Full-kit overhaul 2026-07-19 (Phase 1).
         'appearance', 'position', 'effects',
     ];
 
@@ -61,7 +53,7 @@ class BlockContractValidator
     private const ALIGN_VALUES = ['left', 'center', 'right', 'wide', 'full'];
 
     /**
-     * Interaction states a contract may declare under `supports.states` (TODO 7.3). Must stay in
+     * Interaction states a contract may declare under `supports.states`. Must stay in
      * lockstep with {@see \Heisenberg\Services\BlockRenderer::INTERACTION_STATES} — a state this
      * accepts but the renderer cannot compile would validate and then never emit any CSS.
      */
@@ -218,7 +210,7 @@ class BlockContractValidator
             // the same state names — so the contract side is a plain name => bool map, exactly
             // like `color`/`typography` declare which of their keys are available. Restricted to
             // the states the renderer can actually compile; anything else would validate and then
-            // silently never emit. (TODO 7.3)
+            // silently never emit.
             if ($group === 'states') {
                 if (! is_array($value)) {
                     $errors[] = 'supports.states must be an object';

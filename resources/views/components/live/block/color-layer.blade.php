@@ -1,9 +1,6 @@
 {{-- live/block/color-layer — Fill and Stroke layer row.
 
-     Markup is the .pen composition as extracted (see Documents/head-ui.html: swatch, hex text,
-     selection-all-fill icon, then the opacity value + percent icon, then the remove minus).
-     Only behaviour hooks are added here — an earlier pass rewrote the swatch into a <button> and
-     the opacity into an <input>, which was a redesign, not a wiring change. Reverted.
+     Markup: swatch, hex text, selection-all-fill icon, opacity value + percent icon, remove minus.
 
      Two affordances, deliberately distinct:
        - the SWATCH opens the colour picker (pick a literal colour, alpha included)

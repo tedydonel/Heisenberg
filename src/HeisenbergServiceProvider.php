@@ -147,7 +147,6 @@ class HeisenbergServiceProvider extends ServiceProvider
             $app->make(BlockRegistryService::class),
         ));
 
-        // Overhaul 2026-07-18 — user theme storage + public font catalog.
         $this->app->singleton(\Heisenberg\Services\ThemeRepository::class, fn ($app) => new \Heisenberg\Services\ThemeRepository(
             $app['config']->get('heisenberg.theme_path'),
         ));
@@ -166,9 +165,6 @@ class HeisenbergServiceProvider extends ServiceProvider
             $this->registerLocaleMiddleware();
             $this->loadMigrationsFrom(__DIR__ . '/../database/migrations');
 
-            // Drift detection for the two on-disk contract systems. Both are console-only, and
-            // an Artisan command is unreachable by name until it is registered here — without
-            // this, `php artisan templates:verify` / `blocks:verify` simply don't exist.
             if ($this->app->runningInConsole()) {
                 $this->commands([
                     \Heisenberg\Console\Commands\TemplatesVerifyCommand::class,
@@ -188,11 +184,8 @@ class HeisenbergServiceProvider extends ServiceProvider
          */
         protected function registerLocaleMiddleware(): void
         {
-            // `web` already runs before any of our package routes via the route
-            // group's middleware — that guarantees the session exists. We push
-            // our middleware onto the global 'web' group's stack so it applies
-            // to every page (not only /editor/*), letting host apps that share
-            // a session see a consistent locale too.
+            // Pushed onto the global 'web' group (not a package group) so host apps sharing
+            // the session see a consistent locale on every page, not only /editor/*.
             $this->app['router']->pushMiddlewareToGroup('web', \Heisenberg\Http\Middleware\EditorLocaleMiddleware::class);
         }
 

@@ -1,4 +1,4 @@
-{{-- live/inspector — from Pencil Block (BfaTx): the right sidebar, 260px, border-left. Structure:
+{{-- live/inspector — the right sidebar, 260px, border-left. Structure:
      Insp Tabs (Post|Block, reuses ui/panel-tabs — verified its existing active/inactive CSS already
      handles either tab being active, no changes needed), a block-preview header row (icon+name+
      description, synced from the selected block's contract — see the script below), then
@@ -23,14 +23,11 @@
      are supports-keyed (e.g. `supports.color.text`) and go through its counterpart
      `window.hbEditor.setSupport(id, path, value)`, which walks the dotted path. Both own their own
      re-render and fire `hb:block-updated` + `hb:blocks-changed`, so nothing here mutates a model
-     directly and the two branches cannot drift. KNOWN GAP: several
-     Style panels (Position, Flex Layout, Appearance-opacity, Effects, per-side Border overrides) write
-     to a `supports.*` path with no matching `contract.style.variable` and no bespoke handling in
-     block-runtime's renderer (only `contract.style.variables` and the `align` support are read back
-     into the live canvas preview) — those writes succeed but the canvas does not visibly update.
-     Flagged per-panel in `live/block/style/*.blade.php`.
+     directly and the two branches cannot drift. Style writes paint via the contract's
+     `style.variables` plus the SupportsStyle capability stylesheet (gated on the `hb-supports`
+     class from `style.className`, which the runtime applies to the block root).
 
-     Post tab (from Pencil Post, vcSGe) — title field, Featured image (collapsible, reuses
+     Post tab — title field, Featured image (collapsible, reuses
      ui/disclosure-row), Summary (collapsible: 6 label/value meta rows), Pending-review + Stick-to-top
      toggles (reuse ui/toggle — the source instances these in their OFF state, with a real fill/knob-x
      override that corrects/confirms ui/toggle's previously-inferred off-state styling), Move to trash,
@@ -65,7 +62,7 @@
     .hb-inspector__icon[hidden] { display: none; }
     .hb-inspector__name {
         font-family: var(--hb-font-sans, Rubik, sans-serif);
-        font-size: 15px;
+        font-size: var(--hb-fs-md, 14px);
         font-weight: 500;
         color: var(--hb-text-primary, #0A0A0A);
     }
@@ -126,7 +123,7 @@
     }
     .hb-post-title__eyebrow {
         font-family: var(--hb-font-sans, Rubik, sans-serif);
-        font-size: 10px;
+        font-size: var(--hb-fs-xs, 11px);
         font-weight: 500;
         letter-spacing: .5px;
         color: var(--hb-text-muted, #9A9A9A);
@@ -237,10 +234,8 @@
     ],
     'postPendingReview' => false,
     'postStickToTop' => false,
-    // Post tab Categories/Tags (Phase 3.1; reworked 2026-08-03 into a shared multi-select
-    // checklist — see EditorController::sharedViewData()'s own docblock on the attach/detach URL
-    // templates' __ID__/__ITEM_ID__ placeholder convention) plus Page layout/Discussion (also new
-    // 2026-08-03 — see PostSettingsController).
+    // Post tab Categories/Tags (shared multi-select checklist; attach/detach URLs use the
+    // __ID__/__ITEM_ID__ placeholder convention) plus Page layout/Discussion.
     'postId' => null,
     'postCategoryIds' => [],
     'postTagIds' => [],
@@ -362,11 +357,8 @@
             </button>
         </div>
 
-        {{-- Categories/Tags (Phase 3.1, 2026-08-04; reworked 2026-08-03 into ONE shared checklist —
-             both Post::categories() and Post::tags() are now BelongsToMany via a real pivot, so
-             there's no more single-vs-multi asymmetry to justify two different widgets (an earlier
-             pass used a single-select checklist for Categories and a chip list for Tags; both are
-             now the SAME multi-select ui/checkbox list, wired by the one wirePostTaxonomy()
+        {{-- Categories/Tags — ONE shared multi-select checklist widget for both (each is
+             BelongsToMany via a real pivot, wired by the one wirePostTaxonomy()
              function below). Chevron is "down" (inline expansion, matching Featured Image/Summary
              above) rather than "right" (navigation to nowhere) now that there's real content.
              Checking a box POSTs an attach; unchecking DELETEs. The add-input above each list
@@ -558,9 +550,8 @@
         </script>
         @endonce
 
-        {{-- Categories/Tags/Discussion/Page-layout field behavior (Phase 3.1, 2026-08-04;
-             reworked/added 2026-08-03) — CategoryController/TagController/PostCategoryController/
-             PostTagController/PostSettingsController. Scoped to [data-hb-post-taxonomy-field]/
+        {{-- Categories/Tags/Discussion/Page-layout field behavior — backed by the taxonomy and
+             PostSettings controllers. Scoped to [data-hb-post-taxonomy-field]/
              [data-hb-post-discussion-field]/[data-hb-post-layout-field] so this never touches the
              Block-tab region below, same convention as the featured-image block above. --}}
         @once
@@ -574,9 +565,8 @@
             .hb-post-taxonomy-hint { font-family: var(--hb-font-sans, Rubik, sans-serif); font-size: var(--hb-fs-xs, 11px); color: var(--hb-text-muted, #9A9A9A); }
             .hb-post-taxonomy-hint[hidden] { display: none; }
 
-            {{-- Two-layer scroll shell — see live/panel-components-blocks.blade.php's own note on
-                 why the scrollbar's `container` can't double as the bar's own direct parent. Shared
-                 by BOTH Categories and Tags now that they're the same widget shape. `max-height`
+            {{-- Two-layer scroll shell (the scrollbar's `container` can't double as the bar's own
+                 direct parent). Shared by BOTH Categories and Tags. `max-height`
                  (not a fixed `height`) on -scroll, and no explicit height at all on -wrap: a list
                  shorter than the cap shrink-wraps to its real content height (no dead space when a
                  post only has 2-3 categories) — the wrap simply matches whatever height -scroll
@@ -957,7 +947,7 @@
     // ── tiny dotted-path helpers (mirrors block-runtime.blade.php's own dataGet — that copy is
     //    private to its closure and not part of window.hbEditor, so this is a deliberate, small,
     //    read-only-in-spirit reimplementation, not a divergent one) ─────────────────────────────
-    // ── Interaction states (TODO 7.3) ────────────────────────────────────────────────
+    // ── Interaction states ────────────────────────────────────────────────
     // The Style panel's State tabs retarget where every supports-keyed control reads and writes.
     // On `default` a control addresses `supports.<path>` as before; on hover/active/focus it
     // addresses `supports.states.<state>.<path>` — the exact shape
@@ -1059,16 +1049,13 @@
             const source = kind === 'supports' ? (model.supports || {}) : (model.attributes || {});
             // On a non-default state tab a supports control reads its own override, not the base
             // value — otherwise every state would open showing the default and overwrite it on
-            // the first edit (TODO 7.3).
+            // the first edit.
             const value = kind === 'supports'
                 ? hbGet(source, hbStatePath(mountedStyleRoot(el) || el.closest('.hb-blockstyle'), key))
                 : hbGet(source, key);
 
-            // Block.style is a complete Pencil composition, including fields not represented on
-            // every selected model. An absent source value must not erase the component's extracted
-            // visual default on mount; that was what left the mounted sidebar looking half-empty.
-            // Explicit null/empty values still sync normally — only a genuinely missing path keeps
-            // the rendered source value.
+            // An absent source value must not erase the field's rendered visual default on mount;
+            // explicit null/empty values still sync — only a genuinely missing path keeps it.
             if (root.querySelector('.hb-blockstyle') && value === undefined) return;
 
             if (type === 'toggle') {
@@ -1140,10 +1127,13 @@
         // Runs after the values are in, so each trigger reads the block's real state rather
         // than the component's rendered default. Idempotent — it skips fields already decorated.
         hbDecorateVarTriggers(root);
-        // Colour layers carry a server-rendered trigger and no data-hb-control (the stack owns
-        // the write), so they need syncing explicitly or their indicator stays unstyled.
+        // Fill/Stroke rows are DOM in a panel shared by every block of the same TYPE — rebuild
+        // them from this block's model or they show whichever block was edited last (and show
+        // nothing after a reload or a toolbar colour write).
+        hbRebuildLayerLists(root, model);
         root.querySelectorAll('[data-hb-control], .hb-colorlayer').forEach(hbSyncVarTrigger);
         refreshConditionals(root, model);
+        hbSyncFonts(root, model);
     }
 
     function showBlockPanels(inspector, name, model) {
@@ -1280,7 +1270,7 @@
             // Style controls are keyed by dotted paths into `supports` (e.g. "color.text"), which
             // setAttribute cannot address — setSupport is its counterpart, and like setAttribute it
             // owns the re-render and both events, so the model has exactly one write path per branch.
-            // The active State tab prefixes the path (TODO 7.3); on `default` it is unchanged.
+            // The active State tab prefixes the path; on `default` it is unchanged.
             window.hbEditor.setSupport(id, hbStatePath(el.closest('.hb-blockstyle'), key), raw);
             return;
         }
@@ -1293,10 +1283,9 @@
     document.addEventListener('input', (event) => handleControlEvent(event, false));
     document.addEventListener('change', (event) => handleControlEvent(event, true));
 
-    // Pencil-specific Style compositions have local visual states that sit above the reusable
-    // inputs: a 3x3 flex target, gap radios, linked padding, expandable side grids, and layer
-    // stacks. Keep those transitions inside the mounted sidebar so selecting another block never
-    // leaves the visible controls frozen in the previous presentation.
+    // Style compositions with local visual state above the reusable inputs (3x3 flex target,
+    // gap radios, linked padding, expandable side grids, layer stacks) — keep their transitions
+    // inside the mounted sidebar so selecting another block never freezes the presentation.
     function mountedStyleRoot(target) {
         const root = target.closest('.hb-blockstyle');
         return root && !root.closest('[hidden]') ? root : null;
@@ -1537,13 +1526,31 @@
     // layer, not just the flattened result) and the scalar path is the composited colour the
     // renderer already knows how to sanitize. Nothing in the engine had to change for this.
     function hbParseColour(value) {
-        const raw = String(value || '').trim().replace(/^#/, '');
+        let str = String(value || '').trim();
+        // A theme-token binding (var(--hb-t-…)) resolves to its computed value so it can
+        // participate in compositing; resolve against the canvas page so the block-content
+        // palette's own scope (--accent-*, --ink) is visible too.
+        const ref = /^var\((--[a-z0-9-]+)\)$/i.exec(str);
+        if (ref) {
+            const scope = document.querySelector('.hb-page') || document.documentElement;
+            str = getComputedStyle(scope).getPropertyValue(ref[1]).trim();
+            if (!str) return null;
+        }
+        const rgbFn = /^rgba?\(\s*(\d{1,3})\s*,\s*(\d{1,3})\s*,\s*(\d{1,3})/i.exec(str);
+        if (rgbFn) return [Number(rgbFn[1]), Number(rgbFn[2]), Number(rgbFn[3])];
+        const raw = str.replace(/^#/, '');
         const full = raw.length === 3 ? raw.split('').map((c) => c + c).join('') : raw;
-        if (!/^[0-9a-f]{6}$/i.test(full)) return null;
+        if (!/^[0-9a-f]{6}$/i.test(full.slice(0, 6)) || (raw.length !== 3 && raw.length !== 6 && raw.length !== 8)) return null;
         return [parseInt(full.slice(0, 2), 16), parseInt(full.slice(2, 4), 16), parseInt(full.slice(4, 6), 16)];
     }
 
     function hbCompositeLayers(layers) {
+        // One fully-opaque token binding passes through verbatim — preserving the var()
+        // reference keeps the colour live with the theme instead of a flattened snapshot.
+        if (layers.length === 1 && /^var\(--[a-z0-9-]+\)$/i.test(layers[0].color)
+            && (!layers[0].opacity || Number(layers[0].opacity) >= 100)) {
+            return layers[0].color;
+        }
         let out = null;
         layers.forEach((layer) => {
             const rgb = hbParseColour(layer.color);
@@ -1580,6 +1587,47 @@
     // `fill` -> the block's own colour; `stroke` -> its border colour.
     const HB_LAYER_PATHS = { fill: 'color.text', stroke: 'border.color' };
 
+    // Rebuild the Fill/Stroke stacks from the model. Skipped when the rows already match
+    // (covers the echo from hbCommitLayers' own hb:block-updated) and while the user is
+    // editing inside the list. A scalar written with no stack (the toolbar colour path)
+    // synthesizes one layer so the UI reflects it.
+    function hbRebuildLayerLists(root, model) {
+        const sroot = root.matches?.('.hb-blockstyle') ? root : root.querySelector('.hb-blockstyle');
+        if (!sroot) return;
+        Object.entries(HB_LAYER_PATHS).forEach(([group, path]) => {
+            const list = sroot.querySelector(`[data-hb-style-layer-list="${group}"]`);
+            const template = sroot.querySelector(`template[data-hb-style-layer-template="${group}"]`);
+            if (!list || !template?.content) return;
+            const sup = (model.supports || {})[path.split('.')[0]] || {};
+            let layers = Array.isArray(sup.layers) ? sup.layers.filter((l) => l && l.color) : [];
+            const scalar = hbGet(model.supports || {}, path);
+            if (!layers.length && scalar != null && String(scalar) !== '') {
+                layers = [{ color: String(scalar), opacity: '100' }];
+            }
+            const state = JSON.stringify(layers.map((l) => [String(l.color || ''), String(l.opacity ?? '100')]));
+            if (list.dataset.hbLayersState === state && list.children.length === layers.length) return;
+            if (list.contains(document.activeElement)) return;
+            list.textContent = '';
+            layers.forEach((layer) => {
+                const frag = template.content.cloneNode(true);
+                const row = frag.querySelector('.hb-colorlayer');
+                if (!row) return;
+                const value = String(layer.color || '');
+                const label = hbVarLabelOf(sroot, value);
+                if (label) row.dataset.hbVarBound = value; else delete row.dataset.hbVarBound;
+                const hex = row.querySelector('.hb-colorlayer__hex');
+                if (hex) hex.value = label || value;
+                const swatch = row.querySelector('.hb-colorlayer__swatch');
+                if (swatch) swatch.style.background = value || 'transparent';
+                const opacity = row.querySelector('[data-hb-style-layer-opacity]');
+                if (opacity) opacity.textContent = String(layer.opacity ?? '100');
+                list.appendChild(frag);
+                hbSyncVarTrigger(row);
+            });
+            list.dataset.hbLayersState = state;
+        });
+    }
+
     function hbCommitLayers(root, group) {
         if (!window.hbEditor) return;
         const id = window.hbEditor.getSelectedId();
@@ -1608,7 +1656,7 @@
         if (root && group) hbCommitLayers(root, group);
     }));
 
-    // ── Effects: compose one box-shadow from the editor's five fields (TODO 7.1) ──────
+    // ── Effects: compose one box-shadow from the editor's five fields ──────
     // The model holds the composed CSS string, not five separate paths — that is the shape
     // BlockRenderer's `shadow` sanitizer validates (optional inset, 2-4 signed lengths, exactly
     // one colour) and the only thing box-shadow can consume. Opacity folds into the colour as
@@ -1704,19 +1752,45 @@
         button.dataset.hbVarState = hbVarStateOf(input?.value);
     }
 
+    const HB_AGGREGATE_FIELDS = '[data-hb-style-all-value], [data-hb-style-padding-axis], [data-hb-style-margin-axis]';
+
+    // Assembled, not a literal — the wiring tests count `data-hb-control="…"` occurrences in
+    // the page source to assert each control renders once per block type.
+    const hbControlSelector = (path) => '[data-hb-control=' + JSON.stringify(path) + ']';
+
+    // The side controls a spacing aggregate covers: all four for the One-value field, a pair
+    // for an H/V axis field. Null when the element is not an aggregate at all.
+    function hbAggregateSideControls(root, field) {
+        if (!field || !field.matches?.(HB_AGGREGATE_FIELDS)) return null;
+        const group = field.getAttribute('data-hb-style-all-value')
+            || (field.hasAttribute('data-hb-style-padding-axis') ? 'padding' : 'margin');
+        const axis = field.getAttribute('data-hb-style-padding-axis') || field.getAttribute('data-hb-style-margin-axis');
+        const sides = axis ? (axis === 'horizontal' ? ['left', 'right'] : ['top', 'bottom']) : ['top', 'right', 'bottom', 'left'];
+        return sides
+            .map((side) => root.querySelector(hbControlSelector(['spacing', group, side].join('.'))))
+            .filter(Boolean);
+    }
+
     function hbDecorateVarTriggers(root) {
         const prototype = root.querySelector('[data-hb-style-var-prototype] [data-hb-style-var-trigger]');
         if (!prototype) return;
-        root.querySelectorAll('[data-hb-control]').forEach((control) => {
+        const decorate = (control) => {
             if (control.closest('[data-hb-style-var-prototype]')) return;
-            if (!HB_VAR_TYPES.includes(control.getAttribute('data-hb-control-type'))) return;
             if (control.querySelector('[data-hb-style-var-trigger]')) return;
             const button = prototype.cloneNode(true);
             button.removeAttribute('hidden');
             control.appendChild(button);
             control.classList.add('hb-has-varbtn');
             hbSyncVarTrigger(control);
+        };
+        root.querySelectorAll('[data-hb-control]').forEach((control) => {
+            if (!HB_VAR_TYPES.includes(control.getAttribute('data-hb-control-type'))) return;
+            decorate(control);
         });
+        // The One-value and H/V spacing fields carry no data-hb-control (they fan into the
+        // side inputs), so they need decorating explicitly or the trigger vanishes the
+        // moment the user leaves four-sides mode.
+        root.querySelectorAll(HB_AGGREGATE_FIELDS).forEach(decorate);
     }
 
     document.addEventListener('click', (event) => {
@@ -1734,13 +1808,16 @@
         // null and the handler bailed before opening anything.
         const named = trigger.getAttribute('data-hb-style-var-for');
         const layer = trigger.closest('.hb-colorlayer');
+        const aggregate = trigger.closest(HB_AGGREGATE_FIELDS);
         const control = named ? root.querySelector('[data-hb-control="' + named + '"]')
-            : (layer || trigger.closest('[data-hb-control]'));
+            : (layer || aggregate || trigger.closest('[data-hb-control]'));
         if (!control) return;
         event.stopPropagation();
         root.__hbVarTarget = control;
-        // A layer always binds a colour, whatever section it belongs to.
-        const menu = layer ? 'var-color' : hbVarMenuFor(control.getAttribute('data-hb-control') || '');
+        // A layer always binds a colour, whatever section it belongs to; a spacing
+        // aggregate always binds a length token.
+        const menu = layer ? 'var-color'
+            : (aggregate && !named ? 'var-number' : hbVarMenuFor(control.getAttribute('data-hb-control') || ''));
         showStylePopup(root, menu, trigger);
     });
 
@@ -1760,6 +1837,32 @@
         // handler ignores events whose target is not the combobox root, so the model would never
         // see the change either.
         const label = hbVarLabelOf(root, value);
+
+        // A spacing aggregate fans the token into its covered side controls — they carry the
+        // real data-hb-control write paths — then mirrors the binding on itself so the field
+        // shows the token name (not "Mixed") and its trigger reads bound.
+        const aggregateSides = hbAggregateSideControls(root, control);
+        if (aggregateSides) {
+            aggregateSides.forEach((side) => {
+                const input = side.querySelector('input');
+                if (!input) return;
+                if (label) side.dataset.hbVarBound = value; else delete side.dataset.hbVarBound;
+                input.value = label || value;
+                input.dispatchEvent(new Event('input', { bubbles: true }));
+                input.dispatchEvent(new Event('change', { bubbles: true }));
+                hbSyncVarTrigger(side);
+            });
+            const aggregateInput = control.querySelector('input');
+            if (aggregateInput) {
+                if (label) control.dataset.hbVarBound = value; else delete control.dataset.hbVarBound;
+                aggregateInput.value = label || value;
+                aggregateInput.classList.remove('hb-field__value--mixed');
+                control.dataset.hbStyleMixed = 'false';
+            }
+            hbSyncVarTrigger(control);
+            closeStylePopups(root);
+            return;
+        }
 
         // A colour layer holds its value in its own hex field and commits through its stack, so
         // the write goes there rather than to a control path.
@@ -1817,7 +1920,7 @@
         hbSyncVarTrigger(control);
     }, true);
 
-    // ── Typography font family: paged search against the vendored catalog (TODO 7.5) ──
+    // ── Typography font family: paged search against the vendored catalog ──
     // The field is ui/combobox; this only answers the `search`/`loadmore` events it dispatches
     // and hands results back through its own replaceOptions()/appendOptions(). Deliberately the
     // same contract panel-style-themes.blade.php uses for the left sidebar's Fonts rows — one
@@ -1882,6 +1985,110 @@
         const combobox = event.target.closest('[data-hb-style-font-family]');
         if (!combobox) return;
         hbLoadMoreFonts(combobox, event.detail?.query || '');
+    });
+
+    // ── Canvas font loading + real per-family weights ─────────────────────────────────
+    // The editor page ships no content fonts of its own (only preview does, via css2Url),
+    // so a picked family must be fetched here or the canvas silently keeps the fallback.
+    // The same catalog lookup also yields the family's REAL weights for the Weight select.
+    const hbFontMetaCache = new Map();
+
+    function hbFontMeta(family) {
+        const key = String(family || '').trim().toLowerCase();
+        const url = hbFontsUrl();
+        if (!key || !url) return Promise.resolve(null);
+        if (!hbFontMetaCache.has(key)) {
+            hbFontMetaCache.set(key, window.fetch(url + '?q=' + encodeURIComponent(family) + '&limit=8', { headers: { Accept: 'application/json' } })
+                .then((res) => (res.ok ? res.json() : { fonts: [] }))
+                .then((body) => (body.fonts || []).find((f) => String(f.family).toLowerCase() === key) || null)
+                .catch(() => null));
+        }
+        return hbFontMetaCache.get(key);
+    }
+
+    function hbDocFontFamilies() {
+        const families = new Set();
+        (window.hbEditor?.getDoc().blocks || []).forEach((block) => {
+            const family = block.supports?.typography?.fontFamily;
+            if (typeof family === 'string' && family.trim() !== '' && family.indexOf('var(') === -1) {
+                families.add(family.trim());
+            }
+        });
+        return [...families];
+    }
+
+    function hbSyncCanvasFonts() {
+        Promise.all(hbDocFontFamilies().map(hbFontMeta)).then((metas) => {
+            // Same URL shape FontCatalogService::css2Url() builds for the published page,
+            // with each family's real catalog weights so every pickable weight renders.
+            const parts = metas.filter(Boolean).map((meta) => {
+                const weights = (meta.weights || []).map(Number).filter(Boolean).sort((a, b) => a - b);
+                let spec = 'family=' + String(meta.family).replace(/ /g, '+');
+                if (weights.length && weights.join(';') !== '400') spec += ':wght@' + weights.join(';');
+                return spec;
+            });
+            let link = document.getElementById('hb-canvas-fonts');
+            if (!parts.length) { link?.remove(); return; }
+            const href = 'https://fonts.googleapis.com/css2?' + parts.join('&') + '&display=swap';
+            if (!link) {
+                link = document.createElement('link');
+                link.id = 'hb-canvas-fonts';
+                link.rel = 'stylesheet';
+                document.head.appendChild(link);
+            }
+            if (link.href !== href) link.href = href;
+        });
+    }
+
+    const HB_WEIGHT_NAMES = {
+        100: 'Thin', 200: 'Extra light', 300: 'Light', 400: 'Regular', 500: 'Medium',
+        600: 'Semi bold', 700: 'Bold', 800: 'Extra bold', 900: 'Black',
+    };
+
+    function hbSyncWeightOptions(root, model) {
+        const select = root.querySelector(hbControlSelector(['typography', 'fontWeight'].join('.')));
+        const menu = select?.querySelector('[data-hb-select-menu]');
+        if (!select || !menu) return;
+        const current = String(model.supports?.typography?.fontWeight ?? '');
+        const apply = (weights) => {
+            const list = (weights && weights.length ? weights : [100, 200, 300, 400, 500, 600, 700, 800, 900]).map(String);
+            const values = ['', ...list];
+            if (current !== '' && !values.includes(current)) values.push(current);
+            if (menu.dataset.hbWeights === values.join(',')) return;
+            const prototype = menu.querySelector('[data-hb-select-option]');
+            if (!prototype) return;
+            const blueprint = prototype.cloneNode(true);
+            menu.dataset.hbWeights = values.join(',');
+            menu.textContent = '';
+            values.forEach((value) => {
+                const option = blueprint.cloneNode(true);
+                option.dataset.hbSelectOption = value;
+                option.setAttribute('aria-selected', value === current ? 'true' : 'false');
+                option.removeAttribute('data-highlighted');
+                const span = option.querySelector('span');
+                if (span) span.textContent = value === '' ? 'Default' : (HB_WEIGHT_NAMES[value] || value);
+                // ui/select binds option clicks at boot only — rebuilt options wire themselves.
+                option.addEventListener('click', () => select.__hbSelect?.select(option));
+                menu.appendChild(option);
+            });
+        };
+        const family = model.supports?.typography?.fontFamily;
+        if (typeof family === 'string' && family.trim() !== '' && family.indexOf('var(') === -1) {
+            hbFontMeta(family).then((meta) => apply(meta && Array.isArray(meta.weights) ? meta.weights.map(Number) : null));
+        } else {
+            apply(null);
+        }
+    }
+
+    function hbSyncFonts(root, model) {
+        hbSyncCanvasFonts();
+        hbSyncWeightOptions(root, model);
+    }
+
+    // Hydration and structural changes can carry font families without a selection sync.
+    document.addEventListener('hb:blocks-changed', () => {
+        clearTimeout(hbSyncFonts.__timer);
+        hbSyncFonts.__timer = setTimeout(hbSyncCanvasFonts, 200);
     });
 
     // ── extraClasses chips (Content → General, 2026-08-04) ────────────────────────────
@@ -2090,7 +2297,7 @@
             return;
         }
 
-        // The clear-font `x` button was replaced by the theme-variable trigger (TODO 7.7); its
+        // The clear-font `x` button was replaced by the theme-variable trigger; its
         // handler is gone with it. Clearing now happens by picking the font menu's empty
         // "Default" row, which writes '' exactly as the x did.
     });

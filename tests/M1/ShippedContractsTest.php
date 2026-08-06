@@ -74,7 +74,9 @@ class ShippedContractsTest extends TestCase
         $extraClasses = collect($paragraph['controls'])->firstWhere('attribute', 'extraClasses');
         $this->assertSame('general', $extraClasses['section'] ?? null, 'extraClasses lives in the Content tab General section');
         $this->assertFalse($paragraph['attributes']['dropCap']['default']);
-        $this->assertSame(['left', 'center', 'right'], $paragraph['supports']['align']);
+        // Text contracts declare no `align`: the Alignment section/toolbar popover are block
+        // PLACEMENT, and text alignment is Typography's textAlign/textAlignVertical.
+        $this->assertArrayNotHasKey('align', $paragraph['supports']);
         // textAlign/textAlignVertical/letterSpacing added 2026-08-05 (TODO 7.1/7.4) — the Style
         // panel already offered all three; the contract now backs them via SupportsStyle's
         // --hb-text-align / --hb-text-align-v / --hb-letter-spacing. No lineHeight: paragraph
@@ -83,9 +85,7 @@ class ShippedContractsTest extends TestCase
             ['fontFamily' => true, 'fontWeight' => true, 'fontSize' => true, 'textAlign' => true, 'textAlignVertical' => true, 'letterSpacing' => true],
             $paragraph['supports']['typography'],
         );
-        // Full-kit overhaul 2026-07-19 (Phase 1) — the new Alignment panel is
-        // derived from supports.align, which paragraph already declares.
-        $this->assertSame(['align', 'position', 'appearance', 'typography', 'size', 'color', 'margin', 'padding', 'effects'], array_column($paragraph['panels'], 'key')); // no border/radius (7.2); appearance from opacity (7.1)
+        $this->assertSame(['position', 'appearance', 'typography', 'size', 'color', 'margin', 'padding', 'effects'], array_column($paragraph['panels'], 'key')); // no align (text contracts), no border/radius
 
         $dropCap = collect($paragraph['controls'])->firstWhere('attribute', 'dropCap');
         $this->assertSame('toggle', $dropCap['type'] ?? null);
@@ -109,8 +109,7 @@ class ShippedContractsTest extends TestCase
             ['fontFamily' => true, 'fontWeight' => true, 'fontSize' => true, 'lineHeight' => true, 'textAlign' => true, 'textAlignVertical' => true, 'letterSpacing' => true],
             $heading['supports']['typography'],
         );
-        // Full-kit overhaul 2026-07-19 (Phase 1) — see the paragraph test above.
-        $this->assertSame(['align', 'position', 'appearance', 'typography', 'size', 'color', 'margin', 'padding', 'effects'], array_column($heading['panels'], 'key')); // no border/radius (7.2); appearance from opacity (7.1)
+        $this->assertSame(['position', 'appearance', 'typography', 'size', 'color', 'margin', 'padding', 'effects'], array_column($heading['panels'], 'key')); // no align (text contracts), no border/radius
 
         $level = collect($heading['controls'])->firstWhere('attribute', 'level');
         $this->assertSame('select', $level['type'] ?? null);

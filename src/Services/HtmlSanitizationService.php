@@ -109,7 +109,7 @@ class HtmlSanitizationService
     /**
      * Config B — strict inline, for all non-`html_raw` (§5.3).
      *
-     * 2026-07-18 deliberate extension for the block-toolbar formats:
+     * Deliberate extension for the block-toolbar formats:
      * u/s/code/mark tags, plus span[style] with CSS confined to
      * color/background-color (text color + highlight). Reviewed against
      * BlockRenderer::sanitizeRichText, which enforces the same envelope

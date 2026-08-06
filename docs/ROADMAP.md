@@ -40,15 +40,15 @@
 
 - **M0** — package skeleton (provider, config, 5 decoupling contracts + adapters, Testbench).
 - **M1 — contract core** — `BlockType` enum, `BlockContractValidator`, `BlockRegistryService`,
-  the 9 shipped contracts + EN lang labels.
+  shipped contracts + EN lang labels (pruned to `heading` + `paragraph` in the 2026-08-02 reset;
+  the other contracts return as they are rebuilt on the editor).
 - **Engine ring-1** — `HtmlSanitizationService` (HTMLPurifier configs), `BlockRenderer` (one
   generic contract-template walk → safe HTML), `BlocksPayloadService` (validates instances vs
   the live registry).
-- **Builder (shell + chrome)** — served as a real Blade page (`GET /builder` → controller →
-  `editor.blade.php`, assets `builder.css`/`builder.js` via routes). Chrome interactivity
-  (sidebars, device **icon dropdown**, tabs, list/outline), contract-driven inspector
-  (rendering + interactive sections/toggles/sliders), editable title. **Boots empty** (no
-  sample data).
+- **Builder (shell + chrome)** — *deleted in the 2026-08-02 reset*, superseded by the `/editor`
+  surface (which reimplemented its chrome, inspector, and toolbar). Kept here as history: it was
+  a real Blade page at `GET /builder` with sidebars, device dropdown, tabs, list/outline, a
+  contract-driven inspector, and an editable title.
 - **Persistence foundation** — `Post` + `Block` models + migrations on MySQL (JSON `content`,
   ordered scope, `content_version` lock).
 - **98 tests green.**

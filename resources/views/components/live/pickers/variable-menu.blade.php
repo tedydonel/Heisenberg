@@ -1,5 +1,4 @@
-{{-- live/pickers/variable-menu — from Pencil Color variable (I42Ho) / Number variable (qWlAu),
-     rows = Var Menu Item (ejrry): a searchable menu that binds a field to a design token. `mode`
+{{-- live/pickers/variable-menu — a searchable menu that binds a field to a design token. `mode`
      (color|number) switches the trailing affordance (swatch vs value) and the token set. The token
      names + values come from the theme (data), rendered via --hb-* only for chrome. --}}
 {{-- `tokens` is `displayName => swatch-or-value` — the NAME the user gave the token in the Style

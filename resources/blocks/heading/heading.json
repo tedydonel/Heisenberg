@@ -189,11 +189,6 @@
         }
     },
     "supports": {
-        "align": [
-            "left",
-            "center",
-            "right"
-        ],
         "color": {
             "text": true,
             "background": true,

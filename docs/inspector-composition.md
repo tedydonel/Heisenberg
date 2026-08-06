@@ -197,39 +197,36 @@ all**, and neither does Appearance's opacity field or Typography's letter-spacin
 
 ### 4.2 Full section inventory
 
+> Inventory updated 2026-08-05, after the TODO 7.x wiring wave and the review remediation
+> (unit normalization, `hb-supports` reaching the canvas, `hb-align-*` CSS restored).
+
 | # | Section | Controls | Writes to | Status |
 |---|---|---|---|---|
-| 1 | **State** | Default / Hover / Active / Focus tabs | — | ❌ inert — see §6 |
-| 2 | **Alignment** | 6-way self-align segmented | — | ❌ inert (no `data-hb-control`) |
+| 1 | **State** | Default / Hover / Active / Focus tabs | retargets every supports control to `supports.states.<state>.<path>` | ✅ wired — `hbStatePath()` + canvas `previewState()` (§6) |
+| 2 | **Alignment** | 3-way segmented (left/center/right) | `align` | 🚫 gated off for text contracts — `align` is block PLACEMENT (margin rules in `SupportsStyle::alignBreakoutRules()`); text alignment is Typography's textAlign/textAlignVertical |
 | 3 | **Typography** | Font family | `typography.fontFamily` | ✅ wired + renders |
 | | | Font weight | `typography.fontWeight` | ✅ wired + renders |
-| | | Font size | `typography.fontSize` | ✅ wired + renders |
+| | | Font size | `typography.fontSize` | ✅ wired + renders (bare numbers normalize to `px`) |
 | | | Line height | `typography.lineHeight` | ✅ **heading only** — gated off for paragraph |
-| | | Letter spacing | `typography.letterSpacing` | 🚫 gated off — declared by neither contract |
-| | | Horizontal / vertical align | — | ❌ inert |
-| 4 | **Position** | X / Y / Rotation | `position.x` `.y` `.rotation` | 🚫 **whole section gated off** — no contract declares `position` |
-| | | Absolute Position | — | 🚫 gated off with the section |
-| 5 | **Flex Layout** | direction, 3×3 align grid, space-between/around | — | 🚫 **whole section gated off** — no contract declares `layout` |
-| | | Gap | `layout.gap` | 🚫 gated off with the section |
-| 6 | **Spacing** | padding / margin, per side | `spacing.{group}.{side}` | ✅ wired + renders |
+| | | Letter spacing | `typography.letterSpacing` | ✅ wired + renders (both contracts declare it) |
+| | | Text horizontal / vertical | `typography.textAlign` / `.textAlignVertical` | ✅ wired + renders via SupportsStyle |
+| 4 | **Position** | X / Y / Rotation / mode | `position.x` `.y` `.rotation` `.mode` | ✅ wired + renders (both contracts declare `position`) |
+| 5 | **Flex Layout** | direction, 3×3 align grid, space-between/around, Gap | `layout.*` | 🚫 **whole section gated off** — needs a container contract (`isContainer`) |
+| 6 | **Spacing** | padding / margin, per side | `spacing.{group}.{side}` | ✅ wired + renders (bare numbers normalize to `px`) |
 | | | padding / margin, "one value" + "H/V" modes | same four paths, fanned out | ✅ wired + renders — see below |
 | 7 | **Dimensions** | W / H | `size.width` `size.height` | ✅ wired + renders |
-| | | Fill / Hug / Clip checkboxes | — | ❌ inert |
-| 8 | **Appearance** | Opacity | `appearance.opacity` | 🚫 field gated off — no contract declares `appearance` |
-| | | Corner radius ×4 | `border.radius.{corner}` | ✅ wired + renders — this is what keeps the section |
+| | | Fill / Hug / Clip checkboxes | `fillWidth`/`fillHeight`/`hugWidth`/`hugHeight`/`clipContent` attributes | ✅ wired + renders via `style.classNames` → `hb-size-*` |
+| 8 | **Appearance** | Opacity | `appearance.opacity` | ✅ wired + renders |
+| | | Corner radius ×4 | `border.radius.{corner}` | 🚫 gated off — both contracts dropped `border` (2026-08-05, TODO 7.2) |
 | 9 | **Fill** | colour layer → colour picker | `color.text` | ✅ wired + renders |
-| 10 | **Stroke** | colour layer | `border.color` | ✅ wired + renders |
-| | | Weight (all) | `border.width` | ✅ wired + renders |
-| | | Weight per side | `border.width.{side}` | ⚠️ writes; contract's `border.width` is a **scalar**, so the per-side write shadows it and renders nothing |
-| | | Position / Join / Cap | — | ❌ inert |
-| 11 | **Effects** | shadow stack + editor | — | 🚫 **whole section gated off** — no contract declares `effects` |
+| 10 | **Stroke** | colour layer, weights, position/join/cap | `border.*` | 🚫 **whole section gated off** — no contract declares `border` |
+| 11 | **Effects** | shadow stack + editor | `effects.shadow` (one composed `box-shadow` string) | ✅ wired + renders |
 
-Legend: ✅ writes and renders · ⚠️ writes to the model but nothing reads it back · ❌ renders but no
-write at all · 🚫 not rendered for either shipped contract (§4.1)
+Legend: ✅ writes and renders · 🚫 not rendered for either shipped contract (§4.1)
 
-Net for the two shipped contracts: **Position, Flex Layout and Effects do not render**, and
-neither does Appearance's opacity field nor Typography's letter-spacing field. Everything else
-in the table renders.
+Net for the two shipped contracts: **only Flex Layout, Stroke, and Appearance's corner radius do
+not render** — all three because no shipped contract declares the gating support (`layout` +
+container, `border`). Every section that renders also paints the canvas live.
 
 ### 4.3 Spacing's three modes and one write
 
@@ -304,13 +301,13 @@ generic `--hb-*` variables:
 [data-block-id].hb-align-full { width: 100vw; max-width: none; … }
 ```
 
-It is gated behind an opt-in `.hb-supports` class **that no shipped contract carries**, so the
-whole sheet is currently inert by design (it was built additively, so it could not disturb the
-blocks that existed at the time).
+It is gated behind an opt-in `.hb-supports` class carried in a contract's `style.className` —
+**both shipped contracts (heading, paragraph) carry it**, and since 2026-08-05 the canvas
+runtime applies `style.className` to the block root too, so the sheet is live in the editor
+canvas as well as in preview/publish.
 
-**So the ⚠️ rows in §4.2 are not unimplemented — they are unclaimed.** To light up Position on a
-new block you do not write CSS. You add `hb-supports` to the contract's `style.className` and
-declare the variables the sheet already reads:
+To light up these capabilities on a new block you do not write CSS. You add `hb-supports` to
+the contract's `style.className` and declare the variables the sheet already reads:
 
 ```json
 "style": {
@@ -332,12 +329,13 @@ opacity, position, per-side border weight, letter spacing or flex gap.
 
 The structural capabilities (flex container, fill/hug/clip) are class-gated rather than
 var-gated, because a CSS variable cannot safely express "leave `display` alone" — `display`'s
-initial value is `inline`, not the tag's default. They need `style.classNames` predicate rules,
-and the checkboxes that would drive them are currently inert.
+initial value is `inline`, not the tag's default. They ride on `style.classNames` predicate
+rules; both shipped contracts declare the `hb-size-*` bindings and the Dimensions checkboxes
+drive them.
 
 ---
 
-## 6. Interaction states — the renderer supports them, the editor cannot author them
+## 6. Interaction states — supported by the renderer AND authorable in the editor
 
 `BlockRenderer::INTERACTION_STATES` is real and tested:
 
@@ -362,16 +360,16 @@ editor can force the look), sanitizes every value through the variable's own kin
 }
 ```
 
-**But:** `stateStylesCss()` is called by `PreviewController` only. Nothing in the editor writes
-`supports.states`, and block-runtime's canvas renderer reads `contract.style.variables` for the
-base values only — it has no state branch. The State tabs at the top of the Style panel
-(Default / Hover / Active / Focus) carry no `data-hb-control` and no listener.
+The editor front-end was wired 2026-08-05 (TODO 7.3): selecting a non-default State tab makes
+`hbStatePath()` retarget every supports-keyed control to `supports.states.<state>.<path>`, and
+`window.hbEditor.previewState(id, state)` forces the canvas to render with that state's
+overrides merged over the base (`styleDeclarations()` reads `previewStates`), plus a
+`.hb-state-preview-<state>` class for any contract CSS keyed off it. Both shipped contracts
+declare `supports.states: {hover, active, focus}`.
 
-So, to answer the question directly: **states work end-to-end for anything that goes through
-`BlockRenderer` — preview and public render — and are unauthorable in the editor.** A contract can
-ship state overrides today by hand-writing them into a block's saved `supports.states`; the
-editor will round-trip them untouched, render the base state on the canvas, and show the states
-correctly in Preview.
+So states now work end-to-end: authored in the inspector under a State tab, previewed live on
+the canvas, and rendered as real `:hover`/`:active`/`:focus-within` CSS by
+`stateStylesCss()` in preview/publish.
 
 Only style-bearing supports can be overridden per state — `stateDeclarations()` skips any
 variable whose `source` doesn't start with `supports.`, so an `attributes.*`-sourced variable is
@@ -450,25 +448,14 @@ omitting the declaration — it never reaches the page.
 
 ## 9. Known defects, in priority order
 
-1. **Per-side border width shadows the scalar** — panel writes `border.width.{side}` over a
-   contract whose `border.width` is a scalar; neither shape then renders. Gating cannot help
-   here: the section legitimately declares `border`, so it renders, and only the four per-side
-   fields are dead. Fixing it means deciding whether `border.width` becomes an object.
-2. **State tabs inert** — the renderer's state system has no editor front-end (§6).
-3. **Advanced animation writes undeclared attributes** — `animate*` is written by the panel and
+1. **Advanced animation writes undeclared attributes** — `animate*` is written by the panel and
    declared by no contract; `AnimationCatalog` is built and unreferenced. The Advanced tab is
-   hardcoded and reads no contract at all, so it gates nothing.
-4. **`color.background`, `size.min*`/`max*` unreachable** — declared with variables, no control.
-5. **Inert decorative controls in sections that DO render** — Alignment's 6-way bar, stroke
-   join/cap, Fill/Hug/Clip, typography's horizontal/vertical align. These sit inside sections
-   their contract legitimately supports, so gating leaves them visible; each needs either a
-   control hook or removal.
-
-> **The open question behind 1–5.** Most of these are unclaimed rather than unimplemented — the
-> CSS already exists in `SupportsStyle` (§5), gated behind an opt-in `hb-supports` class no
-> contract carries. Gating hides the affordances a block does not support; the alternative is to
-> make the contracts declare those groups so the affordances *work*. That is the "content editor
-> vs site builder" fork, still unsettled.
+   hardcoded and reads no contract at all, so it gates nothing. Wire it or remove the section.
+2. **`color.background`, `size.min*`/`max*` unreachable** — declared with variables, no control.
+3. **Stroke / corner radius currently unreachable** — both contracts dropped `border`
+   (2026-08-05, TODO 7.2), so the Stroke section and Appearance's corner fields never mount.
+   The old "per-side width shadows the scalar" defect is moot until a contract re-declares
+   `border`; decide the object-vs-scalar `border.width` shape when that happens.
 
 ### Fixed
 
@@ -476,6 +463,16 @@ omitting the declaration — it never reaches the page.
   individual fields, now render only when the contract declares them.
 - ~~Spacing writes nothing~~ — wired 2026-08-04 (§4.3). All eight paths, all three modes.
 - ~~General section unwired~~ — wired 2026-08-04 (§3). `anchor`, `titleAttr`, `extraClasses`.
+- ~~State tabs inert~~ — wired 2026-08-05 (TODO 7.3, §6): state-scoped writes + canvas preview.
+- ~~Alignment / Position / Effects / Opacity / Fill-Hug-Clip / Typography H-V + letter-spacing
+  inert or gated~~ — wired 2026-08-05 (TODO 7.1): both contracts declared the groups,
+  variables, and `hb-supports`.
+- ~~Style edits update the model but not the pixels~~ — 2026-08-05 review remediation: the
+  canvas runtime now applies `contract.style.className` (so `hb-supports` reaches canvas block
+  roots), the `hb-align-left/center/right` rules were restored in
+  `SupportsStyle::alignBreakoutRules()`, bare numeric field values are unit-normalized
+  (`px`/`deg`) at render time by both engines, and the JS `cssValueValid()` was brought to
+  full sanitizer parity with `BlockRenderer` (see `CODE_REVIEW.md`).
 
 Regression coverage: `tests/Editor/StylePanelGatingTest.php` and
 `tests/Editor/InspectorWiringTest.php`.

@@ -3,7 +3,7 @@
      This section straddles two supports groups: opacity writes `appearance.opacity`, the four
      corner fields write `border.radius.*`. style-panel shows the section when EITHER group is
      supported and passes both flags, so each half gates on its own key. Text blocks are exactly
-     the case that needs it: they declare `appearance` (opacity) but not `border` (TODO 7.1/7.2),
+     the case that needs it: they declare `appearance` (opacity) but not `border`,
      so this renders as an opacity-only section. See docs/inspector-composition.md §4.2.
 
      The "all corners" field and its expand toggle belong to the corner group, not to opacity —

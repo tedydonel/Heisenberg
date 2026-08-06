@@ -1,6 +1,5 @@
-{{-- live/media/media-library — from Pencil Media Dialog - Media Library (Krcma) body: a search field
-     over a card grid (the .pen lays out manual rows of 3; here a responsive auto-fill grid). Reuses
-     ui/search-field (hpjIt) and live/media/media-card (NVDCV + variants).
+{{-- live/media/media-library — a search field over a responsive auto-fill card grid. Reuses
+     ui/search-field and live/media/media-card.
 
      When `select-url` is given (media-dialog.blade.php threads through route('media.select'), see
      routes/media.php + MediaLibraryController::select), the search field and grid are live: search

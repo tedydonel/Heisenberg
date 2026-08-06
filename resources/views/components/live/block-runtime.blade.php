@@ -2,9 +2,8 @@
      contracts) the controller passes in, and brings the canvas to life: insert → render → select →
      edit, plus a public runtime API other editor components build against.
 
-     It ports the pure core of the builder's contract-driven runtime (resources/js/builder/
-     04-render-contract.js): a tiny document model + a render.template walk that mirrors the PHP
-     BlockRenderer (element / text / rich-text nodes, {{token}} substitution, dynamic-tag allow-list,
+     A tiny document model + a render.template walk that mirrors the PHP BlockRenderer
+     (element / text / rich-text nodes, {{token}} substitution, dynamic-tag allow-list,
      style-variable resolution, the same cssValueValid grammars). Each block renders into a `.hb-blk`
      wrapper carrying data-block / data-block-name (so the Navigator lists it) and, for headings,
      data-level (so the Outline nests it). Selecting a block docks the floating toolbar above it,
@@ -18,12 +17,11 @@
      Public API — `window.hbEditor` (see the object literal at the bottom of the IIFE for the
      authoritative shape): getDoc/getSelectedId/getModel/getContract/indexOf, insertBlock (now
      index-aware), setAttribute (writes an attribute, re-renders that block in place, fires
-     hb:block-updated), moveBlock, removeBlock, selectById, reRenderBlock. The two legacy globals
-     (window.hbEditorInsertBlock, window.__hbEditorDoc) keep working unchanged. Integration events on
+     hb:block-updated), moveBlock, removeBlock, selectById, reRenderBlock. Integration events on
      `document`: hb:block-selected / hb:block-deselected (detail carries the model + contract),
      hb:block-updated (setAttribute), hb:blocks-changed (insert/remove/move/rich-text edit — the
      Navigator listens for it), and hb:pick-image (cancelable, fired by the image block's empty-state
-     placeholder — no media dialog lives here, another component owns that). setAttribute/
+     placeholder — no consumer is wired yet; the media dialog will own it). setAttribute/
      reRenderBlock preserve rich-text caret position across the re-render (capture the offset within
      the focused `.hb-ce`, rebuild, restore by walking text nodes).
 
@@ -135,8 +133,57 @@
             || /^hsla?\(\s*(360|3[0-5]\d|[12]?\d?\d)\s*,\s*(100|\d?\d)%\s*,\s*(100|\d?\d)%(\s*,\s*(0|1|0?\.\d+))?\s*\)$/i.test(value);
     }
     function isSafeLengthSignedValue(value) { return /^(0|-?\d+(\.\d+)?(px|rem|em|%|vw|vh))$/i.test(value); }
+    // Split on a delimiter only at paren-depth 0, keeping rgba(0, 0, 0, .2) etc. intact.
+    function splitTopLevel(value, delimiter) {
+        const parts = []; let current = ''; let depth = 0;
+        const s = String(value);
+        for (let i = 0; i < s.length; i++) {
+            const ch = s[i];
+            if (ch === '(') depth++;
+            else if (ch === ')') depth = Math.max(0, depth - 1);
+            if (depth === 0 && ch === delimiter) { parts.push(current); current = ''; continue; }
+            current += ch;
+        }
+        parts.push(current);
+        return parts.map((p) => p.trim());
+    }
+    function isSafeShadowLayer(layer) {
+        const normalized = String(layer).trim().replace(/\s+/g, ' ');
+        if (!normalized) return false;
+        const tokens = splitTopLevel(normalized, ' ').filter((t) => t !== '');
+        if (!tokens.length) return false;
+        let inset = 0; const colors = []; const lengths = [];
+        for (const token of tokens) {
+            if (token.toLowerCase() === 'inset') { inset++; continue; }
+            if (isSafeColorToken(token)) { colors.push(token); continue; }
+            lengths.push(token);
+        }
+        if (inset > 1 || colors.length !== 1) return false;
+        if (lengths.length < 2 || lengths.length > 4) return false;
+        return lengths.every(isSafeLengthSignedValue);
+    }
+    function isSafeShadowValue(value) {
+        if (value === 'none') return true;
+        const layers = splitTopLevel(value, ',');
+        if (!layers.length) return false;
+        return layers.every(isSafeShadowLayer);
+    }
+    // A bare number carries no CSS unit and would fail its sanitizer; resolve the implied
+    // unit (px for lengths, deg for angles, % for 0-100 opacity). Lockstep with
+    // BlockRenderer::normalizeCssNumber().
+    function normalizeCssNumber(value, sanitizer) {
+        if (!/^-?\d+(\.\d+)?$/.test(value)) return value;
+        if (sanitizer === 'size-value' || sanitizer === 'length-signed') return value + 'px';
+        if (sanitizer === 'angle') return value + 'deg';
+        if (sanitizer === 'opacity' && Number(value) > 1) return value + '%';
+        return value;
+    }
+    // Lockstep with BlockRenderer::cssValueValid() — every sanitizer kind gets its own explicit
+    // branch; the permissive fallback is only for legacy free-text kinds.
     function cssValueValid(value, sanitizer) {
         if (!value) return false;
+        if (sanitizer === 'color-token') return isSafeColorToken(value);
+        if (sanitizer === 'color-token-or-transparent') return value === 'transparent' || isSafeColorToken(value);
         if (sanitizer === 'border-style') return ['none', 'solid', 'dashed', 'dotted'].indexOf(value) >= 0;
         if (sanitizer === 'font-token') return /^var\(--[a-z0-9-]+\)$/i.test(value);
         if (sanitizer === 'size-value') return /^(var\(--[a-z0-9-]+\)|-?\d+(\.\d+)?(px|rem|em|%|vw|vh))$/i.test(value);
@@ -148,14 +195,23 @@
         if (sanitizer === 'font-weight') return /^(var\(--[a-z0-9-]+\)|[1-9]00)$/i.test(value);
         if (sanitizer === 'size-token') return /^(0|auto|100%|var\(--[a-z0-9-]+(,\s*var\(--[a-z0-9-]+\))?\)|calc\([a-z0-9\s().,%*\/+-]+\)|-?\d+(\.\d+)?(px|rem|em|vw|%)?)$/i.test(value);
         if (sanitizer === 'integer') return /^-?\d+$/.test(value);
+        if (sanitizer === 'opacity') return /^(0|1|0?\.\d{1,3}|(100|[1-9]?\d)%)$/.test(value);
+        if (sanitizer === 'angle') return /^-?\d{1,3}(\.\d+)?deg$/i.test(value);
         if (sanitizer === 'length-signed') return isSafeLengthSignedValue(value);
+        if (sanitizer === 'shadow') return isSafeShadowValue(value);
         if (sanitizer === 'text-align') return ['left', 'center', 'right', 'justify'].indexOf(value) >= 0;
+        if (sanitizer === 'align-3') return ['start', 'center', 'end'].indexOf(value) >= 0;
+        if (sanitizer === 'position-mode') return ['static', 'relative', 'absolute'].indexOf(value) >= 0;
+        if (sanitizer === 'flex-direction') return ['row', 'column', 'row-reverse', 'column-reverse'].indexOf(value) >= 0;
+        if (sanitizer === 'flex-justify') return ['start', 'center', 'end', 'space-between', 'space-around'].indexOf(value) >= 0;
+        if (sanitizer === 'flex-align') return ['start', 'center', 'end', 'stretch'].indexOf(value) >= 0;
+        if (sanitizer === 'overflow') return ['visible', 'hidden', 'clip'].indexOf(value) >= 0;
         return /^[a-z0-9\s().,%_\/-]+$/i.test(value);
     }
     // Which interaction state the canvas is forcing, per block id. Set by previewState() when the
     // inspector's State tab changes; `default` (or absent) means the base values. This mirrors
     // BlockRenderer::stateStylesCss()'s `.hb-state-preview-<state>` hook, which exists precisely
-    // so an editor can force a state's look while it is being edited (TODO 7.3).
+    // so an editor can force a state's look while it is being edited.
     const previewStates = {};
 
     function styleDeclarations(model, contract) {
@@ -181,9 +237,9 @@
             }
             else if (source.indexOf('attributes.') === 0) value = dataGet(model.attributes || {}, source.slice(11));
             if (value == null || value === '') value = definition.default == null ? '' : String(definition.default);
-            value = String(value).trim();
-            const fallback = definition.default == null ? '' : String(definition.default).trim();
             const sanitizer = String(definition.sanitize || 'text');
+            value = normalizeCssNumber(String(value).trim(), sanitizer);
+            const fallback = normalizeCssNumber(definition.default == null ? '' : String(definition.default).trim(), sanitizer);
             const safe = cssValueValid(value, sanitizer) ? value : (cssValueValid(fallback, sanitizer) ? fallback : '');
             if (safe) declarations.push(name + ': ' + safe);
         }
@@ -242,6 +298,9 @@
         const el = document.createElement(resolveTag(node.tag || 'div', model, contract));
         if (node.class) { const c = subst(node.class, model); if (c) el.className = c; }
         if (isRoot && contract && contract.style) {
+            // style.className carries the capability markers (e.g. hb-supports) that gate the
+            // SupportsStyle stylesheet; BlockRenderer::resolveClass() applies it server-side.
+            String(contract.style.className || '').split(/\s+/).forEach(function (t) { if (t) el.classList.add(t); });
             const conditional = contract.style.classNames || [];
             for (let ci = 0; ci < conditional.length; ci++) {
                 if (conditional[ci] && predicateMatches(conditional[ci].when, model, contract)) el.classList.add(conditional[ci].class);
@@ -397,7 +456,7 @@
     // level. Walks the tree rather than assuming the document is flat: it IS flat today (nothing
     // nests yet), so this returns null for every block and the select-parent button stays hidden —
     // which is the correct answer now and stays correct once containers exist, instead of a
-    // hardcoded false that would have to be found and changed later. (TODO 7.8)
+    // hardcoded false that would have to be found and changed later.
     function parentIdOf(id, list, parent) {
         const blocks = list || doc.blocks;
         for (let i = 0; i < blocks.length; i++) {
@@ -420,7 +479,7 @@
         show(tb.querySelector('[data-tb-popover="color"]'), !!(color.text || color.background));
         show(tb.querySelector('[data-tb-popover="align"]'), Array.isArray(supports.align) && supports.align.length > 0);
         // Select-parent is only meaningful for a block that HAS a parent; save-as-reusable-block
-        // only for a container. Both were rendered unconditionally and inert. (TODO 7.8)
+        // only for a container. Both were rendered unconditionally and inert.
         show(tb.querySelector('[data-tb-action="select-parent"]'), parentIdOf(model.id) !== null);
         show(tb.querySelector('[data-tb-action="save"]'), !!(c.innerBlocks && c.innerBlocks.enabled));
     }
@@ -557,7 +616,7 @@
     }
 
     // Force a block to render as it would in one of its interaction states, so an override being
-    // authored in the inspector is visible on the canvas (TODO 7.3). Re-rendering is enough:
+    // authored in the inspector is visible on the canvas. Re-rendering is enough:
     // styleDeclarations() reads previewStates and merges supports.states.<state> over the base.
     // The `.hb-state-preview-<state>` class rides along for any contract CSS keyed off it — the
     // same hook BlockRenderer::stateStylesCss() emits for the public page.
@@ -804,11 +863,12 @@
     }
 
     // ── wiring ─────────────────────────────────────────────────
-    let wired = false;
     function boot() {
         const wrap = wrapEl();
-        if (!wrap || wired) return;
-        wired = true;
+        // Flag on the element (house convention) so a replaced canvas wrap re-wires on the
+        // next hb:refresh; the document-level listeners below carry their own flags.
+        if (!wrap || wrap.__hbWired) return;
+        wrap.__hbWired = true;
 
         // Select on mousedown (so the caret still lands where clicked).
         wrap.addEventListener('mousedown', (e) => {
@@ -879,10 +939,6 @@
     if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', boot, { once: true });
     else boot();
     document.addEventListener('hb:refresh', boot);
-
-    // Expose a tiny surface for other components / tests (kept working unchanged).
-    window.hbEditorInsertBlock = insertBlock;
-    window.__hbEditorDoc = doc;
 
     // The documented public runtime API other editor components (inspector, navigator, media
     // dialog, …) build against. See the file header for the event contract that goes with it.

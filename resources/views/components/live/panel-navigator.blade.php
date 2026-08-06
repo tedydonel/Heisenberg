@@ -1,13 +1,10 @@
-{{-- live/panel-navigator — the Navigator, mirroring the builder's left "nav" panel (designs
-     gYENv / OHLwj). Two flush tabs: List View (a flat list of the canvas blocks) and Outline
-     (document stats + a heading tree). It lives in the left child panel and is opened by the
-     topbar Layers button (data-hb-layers) — see live/topbar's script — swapping whatever panel
-     was shown, exactly as the builder's Layers toolbar button swaps to its nav panel.
+{{-- live/panel-navigator — the Navigator. Two flush tabs: List View (a flat list of the canvas
+     blocks) and Outline (document stats + a heading tree). It lives in the left child panel and
+     is opened by the topbar Layers button (data-hb-layers), swapping whatever panel was shown.
 
-     Built live off the canvas DOM: List View rows come from .hb-page__blocks, and the Outline's
-     title/stats/headings from the document title (data-hb-title) and block text. The canvas boots
-     empty, so both tabs open on their empty states just like the builder's. Selection + scroll-to-
-     block work; so does List View drag-to-reorder.
+     List View rows come from window.hbEditor's doc model; the Outline reads the canvas DOM for
+     the rendered title/stats/heading text. Selection + scroll-to-block and List View
+     drag-to-reorder all work.
 
      Drag-to-reorder: each row's `.grab` grip (Pointer Events + setPointerCapture, no HTML5 DnD) is
      the handle — rows are plain buttons rebuilt wholesale by buildList() on every hb:blocks-changed
@@ -22,6 +19,7 @@
      Keyboard reordering: with a row focused, Alt+ArrowUp / Alt+ArrowDown move it one position (same
      moveBlock commit), refocus the row at its new position after the rebuild, and announce the move
      via a visually-hidden aria-live region (.hb-nav__sr) — there is no mouse-only way to reorder. --}}
+@props(['registry' => []])
 @once
 <style>
     .hb-nav { display: flex; flex-direction: column; width: 240px; height: 100%; background: var(--hb-bg, #fff); border-right: 1px solid var(--hb-border, #E4E4E4); flex: none; }
@@ -110,12 +108,19 @@
         const buildList = (root) => {
             const host = root.querySelector('[data-hb-nav-list-body]');
             if (!host) return;
-            const rows = blocks().map((blk) => {
-                const name = blk.getAttribute('data-block-name') || '';
-                const id = blk.getAttribute('data-block') || '';
+            // Rows read the model (the runtime's source of truth); the Outline below reads the
+            // DOM instead because it needs each block's *rendered* text, not raw innerHTML.
+            const docBlocks = window.hbEditor ? window.hbEditor.getDoc().blocks : [];
+            const iconFor = (name) => {
+                const t = document.querySelector('[data-hb-nav-icon="' + cssId(name) + '"]');
+                return t && t.innerHTML.trim() ? t.innerHTML : BLOCK;
+            };
+            const rows = docBlocks.map((b) => {
+                const name = b.name || '';
+                const id = b.id == null ? '' : String(b.id);
                 return '<button type="button" class="hb-nav-row" data-nav-row="' + esc(id) + '" aria-keyshortcuts="Alt+ArrowUp Alt+ArrowDown">'
                     + '<span class="twist"></span>'
-                    + '<span class="ic">' + BLOCK + '</span>'
+                    + '<span class="ic">' + iconFor(name) + '</span>'
                     + '<span class="nm">' + esc(labelFor(name)) + '</span>'
                     + '<span class="grab">' + GRIP + '</span>'
                     + '</button>';
@@ -347,6 +352,14 @@
 
     <div class="hb-nav__content" data-hb-nav-list>
         <div class="hb-nav__body hb-nav__body--list" data-hb-nav-list-body></div>
+        {{-- Per-block icons for the List View rows, pre-rendered from each contract's own icon
+             (same resolution as the Components palette) and cloned by buildList() per row. --}}
+        <div hidden data-hb-nav-icon-templates>
+            @foreach (($registry ?? []) as $name => $block)
+                @php $navIcon = \Heisenberg\Editor\EditorIcon::resolveSlug((string) ($block['icon'] ?? '')) !== null ? (string) $block['icon'] : 'cube'; @endphp
+                <template data-hb-nav-icon="{{ $name }}">@include('heisenberg::components.ui.icon', ['name' => $navIcon, 'size' => 13])</template>
+            @endforeach
+        </div>
         <x-ui.custom-scrollbar container=".hb-nav__body--list" />
     </div>
 

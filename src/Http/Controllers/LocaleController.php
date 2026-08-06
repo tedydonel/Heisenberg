@@ -31,8 +31,28 @@ final class LocaleController
 
         $request->session()->put('heisenberg.locale', $locale);
 
-        return redirect()->to(
-            $request->session()->pull('heisenberg.locale_return', $request->headers->get('referer') ?? '/editor')
-        );
+        return redirect()->to($this->safeReturnUrl($request));
+    }
+
+    /**
+     * The footer's switcher form submits the current page as `return`. Accept it only
+     * when it is a site-relative path or an absolute URL on this host — anything else
+     * would be an open redirect. Falls back to the Referer, then /editor.
+     */
+    private function safeReturnUrl(Request $request): string
+    {
+        $candidate = trim((string) $request->input('return', ''));
+
+        if ($candidate !== '') {
+            if (str_starts_with($candidate, '/') && ! str_starts_with($candidate, '//') && ! str_starts_with($candidate, '/\\')) {
+                return $candidate;
+            }
+            $host = parse_url($candidate, PHP_URL_HOST);
+            if (is_string($host) && strcasecmp($host, $request->getHost()) === 0) {
+                return $candidate;
+            }
+        }
+
+        return (string) ($request->headers->get('referer') ?? '/editor');
     }
 }

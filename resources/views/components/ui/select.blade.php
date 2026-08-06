@@ -1,7 +1,6 @@
-{{-- ui/select — from Pencil Select (LoLqi, closed trigger) + Select — Open (sCHNz, open trigger + menu).
-     One component, open state driven by data-open. Menu option styling sourced exactly from sCHNz's
-     4 "Opt" rows: selected = bg-muted + text-primary + trailing check icon, unselected = transparent +
-     text-secondary, no icon. Open trigger swaps caret-down -> caret-up (text-secondary, not text-muted)
+{{-- ui/select — one component, open state driven by data-open. Menu options: selected =
+     bg-muted + text-primary + trailing check icon, unselected = transparent + text-secondary,
+     no icon. Open trigger swaps caret-down -> caret-up (text-secondary, not text-muted)
      and border -> border-focus. No Alpine on this page yet (see icon/tab notes) — vanilla JS,
      same self-contained @once <script> pattern as ui/custom-scrollbar. --}}
 @once

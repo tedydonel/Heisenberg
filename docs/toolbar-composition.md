@@ -100,7 +100,7 @@ target.
 | Bold / Italic / Underline / Strikethrough | `document.execCommand` on the live selection inside `.hb-ce` | — (mutates the editable; `input` fires natively, runtime writes it back to `attributes.content`) |
 | Code | manual `<code>` wrap/unwrap + synthetic `input` | — (no `execCommand` exists for it) |
 | Link | dynamic popover → `execCommand('createLink')` | — |
-| Align | `hbEditor.setSupport(id, 'align', value)` | ✅ |
+| Align | `hbEditor.setSupport(id, 'align', value)` — block PLACEMENT (margins), hidden for text contracts (they declare no `align`; text alignment is Typography's) | ✅ |
 | Text colour | `hbEditor.setSupport(id, 'color.text', value)` | ✅ |
 | Block-type pill | `hbEditor.setAttribute(id, 'level', n)` | ✅ |
 | Move up / down | `hbEditor.moveBlock(i, j)` | ✅ |
@@ -108,14 +108,12 @@ target.
 | Select parent | — | ❌ inert — no block nesting in the runtime |
 | Save as block | — | ❌ inert — no reusable-block capability |
 | AI | — | ❌ inert — no popover content |
-| More | — | ❌ inert — no popover content |
+| More (⋯) | Duplicate (`insertBlock` + copy attributes/supports) and Delete (`removeBlock`) via `[data-tb-pop="more"]` | ✅ |
 
-The four inert ones still dispatch their `hb:toolbar-action` / `hb:toolbar-popover` events, so a
-listener can pick them up; they are deliberately left as events rather than faked behaviour.
-
-Every control also emits its original event (`hb:format`, `hb:toolbar-action`,
-`hb:toolbar-popover`, `blocktype`, `alignselect`, `colorselect`) alongside the new behaviour, so
-existing listeners keep working.
+The remaining inert ones do nothing when clicked — the listener-less `hb:format` /
+`hb:toolbar-action` / `hb:toolbar-popover` broadcast events were removed (2026-08-05 review) so
+a dead dispatch can no longer be mistaken for working integration. The popovers' own local
+events (`blocktype`, `alignselect`, `colorselect`) remain, each consumed inside the toolbar.
 
 ---
 
@@ -209,7 +207,7 @@ A block declaring none of the above still gets a usable toolbar: drag, move up/d
    `innerBlocks` and `BlockRenderer` renders them to depth 20. The editor is the missing half.
 2. **`save` (save as block) is inert** — no reusable-block/pattern capability in `hbEditor`.
    `heisenberg_patterns` is reserved in config with no model behind it.
-3. **AI and More have no popover content.**
+3. **AI has no popover content.** (More gained its Duplicate/Delete menu 2026-08-06.)
 4. **`supports.color.background` has no affordance anywhere.**
 5. **Align menu has no `wide`/`full` entries**, though renderer and stylesheet both support them.
 6. **Colour swatches ignore the saved theme.**

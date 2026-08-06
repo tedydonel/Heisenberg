@@ -1,4 +1,4 @@
-{{-- live/sidebar — from Pencil Sidebar (U5wHwo): logo zone (bottom border) + vertical nav list of 8
+{{-- live/sidebar — logo zone (bottom border) + vertical nav list of 8
      ui/nav-item instances, reused as-is (not duplicated). "Components" carries the real active-state
      override from the source, which is what corrected ui/nav-item's active styling.
 
@@ -7,9 +7,8 @@
      200px. Three different numbers. Used the concrete node's own value (180) since that's what this
      specific component instance is built at — still needs confirming which is authoritative.
 
-     Collapse behavior is NOT sourced from Pencil — no collapsed state exists in the design, this is
-     new interaction design added on request. Icon-rail width (52px) and the label-hiding treatment are
-     a judgment call, not extracted from anything. Toggled by the topbar's "Toggle left panel" button via
+     Collapse behavior is our own addition (no collapsed state exists in the design); the icon-rail
+     width (52px) and label-hiding treatment are judgment calls. Toggled by the topbar's "Toggle left panel" button via
      a class on the closest .hb-editor ancestor (see live/topbar's script) — vanilla JS, same reasoning
      as elsewhere: Alpine isn't loaded on this page yet. --}}
 @once
@@ -66,7 +65,7 @@
     .hb-editor--sidebar-collapsed .hb-navitem { justify-content: center; }
 </style>
 <script>
-    {{-- Nav → middle-panel switcher. NOT sourced from Pencil — the design shows each screen's static
+    {{-- Nav → middle-panel switcher. Our own addition — the design shows each screen's static
          state, not a live switcher; this is new interaction wiring on request. Each nav item carries
          data-hb-nav="<panel-key>:<tab-index>"; clicking it hides every panel root, shows the matching
          one, and activates its internal panel-tabs tab via the tablist's own exposed activate() API

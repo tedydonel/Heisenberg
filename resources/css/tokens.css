@@ -25,11 +25,18 @@
     --hb-editing: #3D68F5;
     --hb-editing-soft: #607EE0;
 
-    /* radius */
+    /* radius (swatch/control are off-scale .pen steps, kept 1:1 with the design source) */
     --hb-radius-xs: 2px;
     --hb-radius-sm: 3px;
+    --hb-radius-swatch: 4px;
     --hb-radius-md: 5px;
+    --hb-radius-control: 6px;
     --hb-radius-lg: 8px;
+
+    /* elevation */
+    --hb-shadow-sm: 0 1px 3px rgba(0, 0, 0, .25);
+    --hb-shadow-md: 0 6px 18px rgba(0, 0, 0, .18);
+    --hb-shadow-lg: 0 8px 28px rgba(0, 0, 0, .14);
 
     /* spacing */
     --hb-space-1: 4px;

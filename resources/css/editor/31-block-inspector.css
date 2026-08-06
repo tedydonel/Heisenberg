@@ -15,7 +15,7 @@
    the attribute, but without this override the row would stay laid out despite being "hidden". */
 .hb-irow[hidden], .hb-icol[hidden] { display: none; }
 .hb-ilbl { font-family: var(--hb-font-sans, Rubik, sans-serif); font-size: var(--hb-fs-xs, 11px); color: var(--hb-text-muted, #9A9A9A); }
-.hb-itrail { display: inline-flex; align-items: center; justify-content: center; width: 26px; height: 26px; padding: 0; border: 0; background: none; cursor: pointer; color: var(--hb-text-muted, #9A9A9A); border-radius: 4px; }
+.hb-itrail { display: inline-flex; align-items: center; justify-content: center; width: 26px; height: 26px; padding: 0; border: 0; background: none; cursor: pointer; color: var(--hb-text-muted, #9A9A9A); border-radius: var(--hb-radius-swatch, 4px); }
 .hb-itrail:hover { background: var(--hb-surface-hover, #F7F7F7); color: var(--hb-text-primary, #0A0A0A); }
 .hb-itrail svg { width: 16px; height: 16px; }
 .hb-itrail--bare { width: 16px; height: 16px; border-radius: 0; }
@@ -29,7 +29,7 @@
 .hb-icol .hb-textarea { width: 100%; }
 
 /* 3x3 flex-align grid (Flex Layout) — the one bit with no atom equivalent */
-.hb-agrid { width: 96px; height: 72px; flex: none; background: var(--hb-bg-inset, #EEEEEE); border-radius: 5px; padding: 8px; display: flex; flex-direction: column; justify-content: space-between; }
+.hb-agrid { width: 96px; height: 72px; flex: none; background: var(--hb-bg-inset, #EEEEEE); border-radius: var(--hb-radius-md, 5px); padding: 8px; display: flex; flex-direction: column; justify-content: space-between; }
 .hb-agrid__row { display: flex; justify-content: space-between; }
 .hb-agrid__dot { width: 16px; height: 16px; display: inline-flex; align-items: center; justify-content: center; border: 0; background: none; padding: 0; cursor: pointer; }
 .hb-agrid__dot::before { content: ""; width: 5px; height: 5px; border-radius: 50%; background: var(--hb-border-strong, #C8C8C8); }
@@ -60,8 +60,8 @@
 
 /* Effects is a 159px inset item with a separate right-edge minus in Pencil. */
 .hb-effectrow { display: flex; align-items: center; justify-content: space-between; width: 100%; }
-.hb-fxlayer { display: flex; align-items: center; width: 159px; height: 26px; padding: 0 4px; box-sizing: border-box; background: var(--hb-bg-inset, #EEEEEE); border-radius: 5px; }
-.hb-fxlayer__name { flex: 0 0 75px; min-width: 0; margin: 0 20px; font-family: var(--hb-font-sans, Rubik, sans-serif); font-size: 12px; color: var(--hb-text-primary, #0A0A0A); white-space: nowrap; }
+.hb-fxlayer { display: flex; align-items: center; width: 159px; height: 26px; padding: 0 4px; box-sizing: border-box; background: var(--hb-bg-inset, #EEEEEE); border-radius: var(--hb-radius-md, 5px); }
+.hb-fxlayer__name { flex: 0 0 75px; min-width: 0; margin: 0 20px; font-family: var(--hb-font-sans, Rubik, sans-serif); font-size: var(--hb-fs-sm, 12px); color: var(--hb-text-primary, #0A0A0A); white-space: nowrap; }
 .hb-fxlayer__ic, .hb-fxlayer__rm { display: inline-flex; align-items: center; justify-content: center; width: 14px; height: 14px; padding: 0; border: 0; background: none; cursor: pointer; color: var(--hb-text-muted, #9A9A9A); flex: none; }
 .hb-fxlayer__ic:hover, .hb-fxlayer__rm:hover { color: var(--hb-text-primary, #0A0A0A); }
 
@@ -70,14 +70,14 @@
 .hb-iradio__dot { width: 14px; height: 14px; flex: none; border-radius: 50%; background: var(--hb-bg, #fff); border: 1px solid var(--hb-border-strong, #C8C8C8); display: inline-flex; align-items: center; justify-content: center; }
 .hb-iradio__dot--on { border-color: var(--hb-accent, #000); }
 .hb-iradio__dot--on::after { content: ""; width: 7px; height: 7px; border-radius: 50%; background: var(--hb-accent, #000); }
-.hb-iradio__label { font-family: var(--hb-font-sans, Rubik, sans-serif); font-size: 12px; color: var(--hb-text-secondary, #5A5A5A); }
+.hb-iradio__label { font-family: var(--hb-font-sans, Rubik, sans-serif); font-size: var(--hb-fs-sm, 12px); color: var(--hb-text-secondary, #5A5A5A); }
 
 /* Toggle row (label left, ui/toggle right) — shared by every toggle-type control across
    Content/Style/Advanced (control-row.blade.php); moved here from live/block/advanced's own
    @once so it's guaranteed loaded regardless of which panel renders first. */
 .hb-tglrow { display: flex; align-items: center; justify-content: space-between; gap: var(--hb-space-2, 8px); }
 .hb-tglrow[hidden] { display: none; } /* same [hidden]-vs-author-display fix as .hb-irow/.hb-icol above */
-.hb-tglrow__l { font-family: var(--hb-font-sans, Rubik, sans-serif); font-size: 12px; color: var(--hb-text-secondary, #5A5A5A); }
+.hb-tglrow__l { font-family: var(--hb-font-sans, Rubik, sans-serif); font-size: var(--hb-fs-sm, 12px); color: var(--hb-text-secondary, #5A5A5A); }
 
 /* A range control's live numeric readout (control-row.blade.php's `range` case). */
 .hb-range-readout { font-family: var(--hb-font-sans, Rubik, sans-serif); font-size: var(--hb-fs-xs, 11px); color: var(--hb-text-muted, #9A9A9A); flex: none; }
@@ -90,10 +90,10 @@
 
 /* Mounted Style-only layer rows and anchored popups. */
 .hb-colorlayer { position: relative; display: flex; align-items: center; justify-content: space-between; gap: 0; width: 100%; }
-.hb-colorlayer__fill { flex: 0 0 184px; display: flex; align-items: center; height: 26px; background: var(--hb-bg-inset, #EEEEEE); border-radius: 5px; overflow: hidden; }
+.hb-colorlayer__fill { flex: 0 0 184px; display: flex; align-items: center; height: 26px; background: var(--hb-bg-inset, #EEEEEE); border-radius: var(--hb-radius-md, 5px); overflow: hidden; }
 .hb-colorlayer__l { width: 135px; height: 26px; padding: 0 4px; display: inline-flex; align-items: center; gap: 20px; min-width: 0; box-sizing: border-box; }
 .hb-colorlayer__swatch { width: 18px; height: 18px; border-radius: 3px; flex: none; box-shadow: inset 0 0 0 1px var(--hb-border-strong, #C8C8C8); }
-.hb-colorlayer__hex { width: 55px; flex: 0 0 55px; min-width: 0; border: 0; outline: 0; padding: 0; background: none; font-family: var(--hb-font-sans, Rubik, sans-serif); font-size: 12px; color: var(--hb-text-primary, #0A0A0A); }
+.hb-colorlayer__hex { width: 55px; flex: 0 0 55px; min-width: 0; border: 0; outline: 0; padding: 0; background: none; font-family: var(--hb-font-sans, Rubik, sans-serif); font-size: var(--hb-fs-sm, 12px); color: var(--hb-text-primary, #0A0A0A); }
 .hb-colorlayer__open { width: 14px; height: 14px; padding: 0; border: 0; background: none; color: var(--hb-text-muted, #9A9A9A); cursor: pointer; flex: none; }
 .hb-colorlayer__op { width: 49px; height: 26px; padding: 0 4px; display: inline-flex; align-items: center; justify-content: space-between; box-sizing: border-box; font-family: var(--hb-font-sans, Rubik, sans-serif); font-size: var(--hb-fs-xs, 11px); color: var(--hb-text-muted, #9A9A9A); flex: none; }
 .hb-colorlayer__rm { display: inline-flex; align-items: center; justify-content: center; width: 14px; height: 14px; padding: 0; border: 0; background: none; cursor: pointer; color: var(--hb-text-muted, #9A9A9A); flex: none; }

@@ -1,4 +1,4 @@
-{{-- live/panel-style-themes — from Pencil Styles (Q3h5D) + Themes (Qcba6). Middle panel, 240px (same
+{{-- live/panel-style-themes — Middle panel, 240px (same
      240-vs-260 note as live/panel-components-blocks).
      Style tab: 5 token-editor sections (Colors/Radius/Spacing/Fonts/Font sizes), each a real repeated
      row pattern from the source — Colors uses ui/swatch + ui/input (name only); Radius/Spacing/Font
@@ -9,9 +9,9 @@
      differ per section in the source itself (not my choice) — Radius/Fonts/Font-sizes: name=70,
      value=fill; Spacing: name=fill, value=80. Font sizes is the last section and has no border-bottom
      + a wider padding (space-4 not space-3) in the source — kept as-is, not treated as a copy-paste
-     oversight. A "Save to Themes" bar follows it (2026-08-03, no Pencil source — see below).
-     2026-08-03: rows are real ThemeRepository data (TODO 6.7), not fixture arrays — every field reads
-     from and writes back to GET/PUT /editor/theme (ThemeController). The single visible text field
+     oversight. A "Save to Themes" bar follows it (our own addition, not in the design).
+     Rows are real ThemeRepository data — every field reads from and writes back to
+     GET/PUT /editor/theme (ThemeController). The single visible text field
      per row (Fonts excepted) edits the token's human `label`; its machine `name` (the `--hb-t-*` CSS
      variable, kebab-case, must stay stable so nothing referencing it silently breaks) rides along in
      data-hb-token-name and is generated once, at Add time. Colors' swatch opens the app's OWN color
@@ -58,13 +58,13 @@
     .hb-token-saveform[hidden] { display: none; }
     .hb-token-saveform__confirm, .hb-token-saveform__cancel { display: inline-flex; align-items: center; justify-content: center; width: 26px; height: 26px; padding: 0; border: 1px solid var(--hb-border, #E4E4E4); border-radius: var(--hb-radius-md, 5px); background: var(--hb-bg, #fff); color: var(--hb-text-muted, #9A9A9A); cursor: pointer; flex: none; }
     .hb-token-saveform__confirm:hover, .hb-token-saveform__cancel:hover { border-color: var(--hb-border-strong, #C8C8C8); }
-    .hb-token-saveform__error { font-family: var(--hb-font-sans, Rubik, sans-serif); font-size: var(--hb-fs-xs, 11px); color: #C0392B; }
+    .hb-token-saveform__error { font-family: var(--hb-font-sans, Rubik, sans-serif); font-size: var(--hb-fs-xs, 11px); color: var(--hb-danger, #D4191A); }
     .hb-token-saveform__error[hidden] { display: none; }
 
     .hb-panel-style__scroll { flex: 1 1 auto; min-height: 0; overflow: hidden; position: relative; display: flex; flex-direction: column; }
     .hb-panel-style__grid { display: grid; grid-template-columns: 1fr 1fr; align-content: start; gap: 8px; padding: var(--hb-space-3, 12px); }
     .hb-themepresetcard-wrap { position: relative; }
-    .hb-saved-theme-delete { position: absolute; top: 4px; right: 4px; display: inline-flex; align-items: center; justify-content: center; width: 18px; height: 18px; padding: 0; border: 0; border-radius: 999px; background: var(--hb-bg, #fff); box-shadow: 0 1px 3px rgba(0,0,0,.2); color: var(--hb-text-muted, #9A9A9A); cursor: pointer; opacity: 0; transition: opacity .12s ease; }
+    .hb-saved-theme-delete { position: absolute; top: 4px; right: 4px; display: inline-flex; align-items: center; justify-content: center; width: 18px; height: 18px; padding: 0; border: 0; border-radius: 999px; background: var(--hb-bg, #fff); box-shadow: var(--hb-shadow-sm, 0 1px 3px rgba(0, 0, 0, .25)); color: var(--hb-text-muted, #9A9A9A); cursor: pointer; opacity: 0; transition: opacity .12s ease; }
     .hb-themepresetcard-wrap:hover .hb-saved-theme-delete, .hb-saved-theme-delete:focus-visible { opacity: 1; }
 
 </style>

@@ -1,4 +1,4 @@
-{{-- live/panel-ai-tools — from Pencil Ai (v23BF) + Tools (IrAUK). Middle panel, 240px (same
+{{-- live/panel-ai-tools — Middle panel, 240px (same
      240-vs-260 note as live/panel-components-blocks).
      Ai tab: header (badge + title, new small assembly), subtitle, 4 ui/suggestion-row instances (icon
      colors vary per row in the source — editing/success/accent/danger — passed through iconColor,

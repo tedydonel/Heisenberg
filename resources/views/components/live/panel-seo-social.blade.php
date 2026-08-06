@@ -1,4 +1,4 @@
-{{-- live/panel-seo-social — from Pencil SEO (QLO1w) + Socials (CpbAX). Middle panel, 240px (same
+{{-- live/panel-seo-social — Middle panel, 240px (same
      240-vs-260 note as live/panel-components-blocks).
      SEO tab: title/meta-description/URL-slug/focus-keyphrase fields (ui/input, ui/text-area — both
      reused at their real sourced widths/heights now that those are props), a search-result preview

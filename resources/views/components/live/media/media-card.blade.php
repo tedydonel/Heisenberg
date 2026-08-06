@@ -1,8 +1,6 @@
-{{-- live/media/media-card — from Pencil Media Card (NVDCV) and its state variants:
-     Hover (HSZIQ), Focus/selected (DMz0m), Uploading (QPTbJ), Error (dmrjL). One component;
-     the `state` prop selects the variant. 200px vertical card: thumbnail (190px) + name +
-     (meta | progress | status row). Values taken 1:1 from the .pen nodes.
-     Styles live in resources/css/editor/30-media.css (shared with the Livewire library's
+{{-- live/media/media-card — one component; the `state` prop selects the variant
+     (default/hover/selected/uploading/error). 200px vertical card: thumbnail (190px) + name +
+     (meta | progress | status row). Styles in 30-media.css (shared with the Livewire library's
      optimistic uploading cards). --}}
 @props([
     'state' => 'default',

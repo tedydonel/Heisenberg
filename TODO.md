@@ -503,15 +503,12 @@ install/DX bugs nothing in this repo can catch.
   `align-self` (`align-3`), not top/middle/bottom.
   Quote: *"there is the alignment section on its own, and for text, components, they have their own
   alignment within the typography section."*
-  **[interpretation]** These are two different properties and both are legitimate: the standalone
-  Alignment section is the block's placement in its parent (`supports.align` → `hb-align-*` class,
-  already working via `BlockRenderer::resolveClass()`), while Typography's Horizontal/Vertical
-  segmenteds are text placement inside the block (`text-align`). `SupportsStyle` already ships
-  `--hb-text-align` and `--hb-text-align-v`. Neither Typography segmented carries a
-  `data-hb-control` today, so both are decorative.
-  *Confirm the reading before acting.* If correct: wire Typography's to
-  `typography.textAlign`/`textAlignVertical` and leave the Alignment section on `align`, and make
-  the labels say which is which.
+  **[interpretation]** These are two different properties, both legitimate and both wired: the
+  standalone Alignment section is the block's placement (`supports.align` → `hb-align-*` class —
+  the left/center/right CSS rules were missing until 2026-08-05, when they were restored in
+  `SupportsStyle::alignBreakoutRules()`), while Typography's segmenteds are text placement inside
+  the block (`typography.textAlign`/`textAlignVertical`, compiled through SupportsStyle's
+  `--hb-text-align`/`--hb-text-align-v`).
 
 - [x] **7.5 Typography font picker must use internet fonts, not a hardcoded list** — done 2026-08-05.
   Quote: *"the font type ui in the typography section still uses hard coded fonts instead of

@@ -1,23 +1,21 @@
-{{-- live/toolbar/block-toolbar — from Pencil Block Toolbar (cPGss). Composed of gated group
+{{-- live/toolbar/block-toolbar — Composed of gated group
      components (like the inspector's sections): the handle + more groups are always present,
      Format & AI load for rich-text blocks, and text-colour / align load per supports.color /
      supports.align. So a text block gets the full bar; an image only its handle / save / more.
 
      Live, against window.hbEditor (see block-runtime.blade.php):
        - Format (bold/italic/underline/strikethrough/code/link) apply to the current selection
-         inside the block's .hb-ce via document.execCommand, still emitting `hb:format`.
+         inside the block's .hb-ce via document.execCommand.
        - Align/Color write through hbEditor.setSupport (their popovers are the two containers
          below); the type pill rewrites a heading's `level` via hbEditor.setAttribute.
        - move-up/move-down call hbEditor.moveBlock; drag is already wired natively by
          block-runtime's wireCanvasBlockDrag (pointerdown on .hb-tb__btn--drag). select-parent (no
          block nesting yet), save-as-block, and the AI/More triggers have no backing runtime
-         capability and are left as inert event dispatches — see the boot() comments below.
-       - Everything still emits its original `hb:format` / `hb:toolbar-action` / `hb:toolbar-popover`
-         / `blocktype` event, alongside the new behaviour, for any other listener already watching.
+         capability yet — see the boot() comments below.
 
-     Chrome sits on --hb-editing (square, per the .pen); the white icons/overlays are toolbar
-     mechanics, not theme colours. --}}
-@props(['supports' => [], 'richText' => true, 'blockType' => 'Text', 'activeFormats' => ['bold']])
+     Chrome sits on --hb-editing (square); the white icons/overlays are toolbar mechanics,
+     not theme colours. --}}
+@props(['supports' => [], 'richText' => true, 'blockType' => 'Text', 'activeFormats' => ['bold'], 'themeTokens' => []])
 @php
     $has = fn ($key) => \Illuminate\Support\Arr::get($supports, $key, null) !== null
         && \Illuminate\Support\Arr::get($supports, $key) !== false;
@@ -36,9 +34,8 @@
     <span class="hb-tb__sep"></span>
     <x-live.toolbar.groups.action :rich-text="$richText" />
 
-    {{-- anchored popovers: the type switcher, align, and text colour. The remaining triggers
-         (link, ai, more) either manage their own popover from script (link, dynamically — see
-         below) or have no host content yet (ai, more). --}}
+    {{-- anchored popovers: the type switcher, align, text colour, and the ⋯ more menu.
+         link builds its own popover from script; ai has no host content yet. --}}
     <div class="hb-tb__pop" data-tb-pop="type" hidden>
         <x-live.toolbar.type-menu :selected="$blockType" />
     </div>
@@ -46,7 +43,10 @@
         <x-live.toolbar.align-menu />
     </div>
     <div class="hb-tb__pop" data-tb-pop="color" hidden>
-        <x-live.toolbar.color-menu />
+        <x-live.toolbar.color-menu :tokens="$themeTokens" />
+    </div>
+    <div class="hb-tb__pop" data-tb-pop="more" hidden>
+        <x-live.toolbar.more-menu />
     </div>
 </div>
 @once
@@ -87,9 +87,7 @@
             return ce;
         }
 
-        // Nearest ancestor of the caret matching a tag, bounded by the editable — mirrors the
-        // house builder's inlineAncestor (resources/js/builder/02-toolbar.js) so Code's toggle/
-        // state logic matches the one other formatting toolbar in this codebase.
+        // Nearest ancestor of the caret matching a tag, bounded by the editable.
         function inlineAncestor(tag) {
             const sel = window.getSelection();
             if (!sel || !sel.anchorNode) return null;
@@ -102,12 +100,9 @@
             return null;
         }
 
-        // execCommand mutations inside .hb-ce fire `input` natively — verified against this
-        // codebase's own builder toolbar (resources/js/builder/02-toolbar.js), whose own comment
-        // documents exactly this and which only ever synthesizes `input` for the one case that
-        // ISN'T an execCommand: manual <code> wrap/unwrap, immediately below. Manual DOM surgery
-        // needs the synthetic nudge so block-runtime's delegated `input` listener on
-        // .hb-ce[data-hb-rt] picks the change up and writes it back to the model.
+        // execCommand mutations inside .hb-ce fire `input` natively; only manual DOM surgery
+        // (the <code> wrap/unwrap below) needs this synthetic nudge so block-runtime's delegated
+        // `input` listener picks the change up and writes it back to the model.
         function fireEditableInput() {
             const ce = editableInBlock();
             if (ce) ce.dispatchEvent(new InputEvent('input', { bubbles: true }));
@@ -178,11 +173,8 @@
                 if (closeLink) { closeLink(); closeLink = null; }
             };
 
-            // Format buttons and the link trigger need the live text selection to survive the
-            // click — clicking a plain button outside the editable would otherwise shift focus
-            // there first, and browsers can collapse/drop the selection before the click handler
-            // ever runs. Blocking the mousedown's default action is the standard fix for this
-            // (also used by resources/js/builder/02-toolbar.js for the same set of buttons).
+            // Blocking mousedown's default keeps the live text selection alive through the
+            // click — browsers can collapse it before the click handler ever runs.
             tb.addEventListener('mousedown', (e) => {
                 if (e.target.closest('[data-tb-format], [data-tb-popover="link"]')) e.preventDefault();
             });
@@ -196,20 +188,14 @@
                     try { document.execCommand(FORMAT_EXEC[key]); } catch (err) { /* unsupported in this engine */ }
                 }
                 syncFormatStates(tb);
-                tb.dispatchEvent(new CustomEvent('hb:format', { bubbles: true, detail: { format: key, active: btn.getAttribute('aria-pressed') === 'true' } }));
             }));
 
-            // Link — no static popover container is authorized for this pass, so this builds a
-            // tiny one on demand (mirrors the builder's openLinkPopover/applyLink), positioned at
-            // the selection and cleaned up on Apply/Escape/outside-click. The Range is cloned up
-            // front and restored right before createLink, so focus moving into the popover's own
-            // input never risks the original text selection.
+            // Link — a tiny popover built on demand, positioned at the selection and cleaned up
+            // on Apply/Escape/outside-click. The Range is cloned up front and restored right
+            // before createLink, so focus moving into the popover's input never drops the selection.
             tb.querySelectorAll('[data-tb-popover="link"]').forEach((btn) => btn.addEventListener('click', () => {
                 const sel = window.getSelection();
-                if (!sel || sel.rangeCount === 0 || sel.isCollapsed) {
-                    tb.dispatchEvent(new CustomEvent('hb:toolbar-popover', { bubbles: true, detail: { popover: 'link', open: false } }));
-                    return;
-                }
+                if (!sel || sel.rangeCount === 0 || sel.isCollapsed) return;
                 closeAll();
                 const liveRange = sel.getRangeAt(0);
                 const range = liveRange.cloneRange();
@@ -252,7 +238,6 @@
                 input.addEventListener('keydown', (e) => { if (e.key === 'Enter') { e.preventDefault(); doApply(); } });
                 closeLink = cleanup;
                 setTimeout(() => input.focus(), 0);
-                tb.dispatchEvent(new CustomEvent('hb:toolbar-popover', { bubbles: true, detail: { popover: 'link', open: true } }));
             }));
 
             tb.querySelectorAll('[data-tb-action]').forEach((btn) => btn.addEventListener('click', () => {
@@ -269,18 +254,47 @@
                 // which suppresses the compatibility click this handler would otherwise see — there
                 // is nothing left for a click handler to do for it).
                 //
-                // `select-parent` now selects the containing block when there is one. It is gated
-                // off entirely today (gateToolbar hides it unless parentIdOf() finds a parent, and
-                // nothing nests yet), so this is unreachable rather than wrong — written against
-                // the real API so it works the moment containers exist. `save` stays an inert
-                // dispatch: there is no reusable-block capability anywhere in window.hbEditor, and
-                // it is gated to containers only (TODO 7.8/7.9).
+                // `select-parent` is unreachable today (gateToolbar hides it until blocks nest)
+                // but written against the real API so it works the moment containers exist.
+                // `save` has no runtime capability yet — a no-op until reusable blocks land.
                 if (ctx && window.hbEditor && action === 'select-parent') {
                     const parent = window.hbEditor.parentIdOf?.(ctx.id);
                     if (parent) window.hbEditor.selectById(parent);
                 }
-                tb.dispatchEvent(new CustomEvent('hb:toolbar-action', { bubbles: true, detail: { action: action } }));
             }));
+
+            // ⋯ menu actions — everything through the public runtime API.
+            tb.addEventListener('click', (e) => {
+                const item = e.target.closest('[data-more-action]');
+                if (!item) return;
+                closeAll();
+                const ctx = currentBlock();
+                if (!ctx || !window.hbEditor) return;
+                if (item.dataset.moreAction === 'delete') {
+                    window.hbEditor.removeBlock(ctx.id);
+                    return;
+                }
+                if (item.dataset.moreAction === 'duplicate') {
+                    // Deep-copy first: attribute/supports values can be arrays/objects, and the
+                    // new model must never share references with the source.
+                    const copy = JSON.parse(JSON.stringify({
+                        attributes: ctx.model.attributes || {},
+                        supports: ctx.model.supports || {},
+                    }));
+                    const el = window.hbEditor.insertBlock(ctx.model.name, window.hbEditor.indexOf(ctx.id) + 1);
+                    if (!el) return;
+                    const nid = el.getAttribute('data-block');
+                    Object.keys(copy.attributes).forEach((k) => window.hbEditor.setAttribute(nid, k, copy.attributes[k]));
+                    const walk = (node, prefix) => Object.keys(node || {}).forEach((k) => {
+                        const path = prefix ? prefix + '.' + k : k;
+                        const v = node[k];
+                        if (v !== null && typeof v === 'object' && !Array.isArray(v)) walk(v, path);
+                        else window.hbEditor.setSupport(nid, path, v);
+                    });
+                    walk(copy.supports, '');
+                    window.hbEditor.selectById(nid);
+                }
+            });
 
             tb.querySelectorAll('[data-tb-popover]').forEach((btn) => btn.addEventListener('click', (e) => {
                 e.stopPropagation();
@@ -290,7 +304,6 @@
                 const willOpen = pop ? pop.hidden : false;
                 closeAll();
                 if (pop && willOpen) { pop.style.left = btn.offsetLeft + 'px'; pop.hidden = false; btn.setAttribute('aria-expanded', 'true'); }
-                tb.dispatchEvent(new CustomEvent('hb:toolbar-popover', { bubbles: true, detail: { popover: name, open: willOpen } }));
             }));
 
             // The type-menu dispatches this for a heading level pick — see type-menu.blade.php's

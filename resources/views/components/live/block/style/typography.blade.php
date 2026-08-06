@@ -19,7 +19,7 @@
 @endphp
 <x-ui.panel-section title="Typography">
     @if ($on('fontFamily'))
-        {{-- ui/combobox against the vendored Google Fonts catalog (TODO 7.5), NOT a static list.
+        {{-- ui/combobox against the vendored Google Fonts catalog, NOT a static list.
              This was a ui/select with five literal families (Default/Rubik/Inter/Georgia/JetBrains
              Mono). The left sidebar's Style tab already does this properly — same component, same
              GET /editor/fonts endpoint, same paged search/loadmore contract — so this reuses that
@@ -30,7 +30,7 @@
                 placeholder="Default" empty-label="No fonts found" aria-label="Font family"
                 data-hb-style-font-family
                 data-hb-control="typography.fontFamily" data-hb-control-kind="supports" data-hb-control-type="combobox" />
-            {{-- The `x` clear-font button is REPLACED by the theme-variable trigger (TODO 7.7):
+            {{-- The `x` clear-font button is REPLACED by the theme-variable trigger:
                  "since on the typography font combobox does not support input, please the x icon
                  in line with it for that 'selection-all-fill' icon".
 
@@ -78,8 +78,8 @@
     @endif
     {{-- TEXT alignment — distinct from the standalone Alignment section, which places the BLOCK
          within its parent (`supports.align` → `hb-align-*` class). These place the text inside the
-         block, via SupportsStyle's --hb-text-align / --hb-text-align-v. Both were decorative
-         (no data-hb-control) until TODO 7.4; the labels now say which is which. --}}
+         block, via SupportsStyle's --hb-text-align / --hb-text-align-v; the labels say which
+         is which. --}}
     @if ($on('textAlign') || $on('textAlignVertical'))
         <div class="hb-irow hb-irow--top">
             @if ($on('textAlign'))

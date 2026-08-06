@@ -1,4 +1,4 @@
-{{-- live/panel-components-blocks — from Pencil Components (KExNj) + Blocks (GKZ0P). Middle panel,
+{{-- live/panel-components-blocks — Middle panel,
      240px (real page composition override — see live/side-panel's note; base components are 260px).
      Components tab: search (ui/search-field), "BASE" category head (ui/category-head, now wired to
      collapse the grid below via its [data-hb-category-body] contract) and a grid of ui/tool-card

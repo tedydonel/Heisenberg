@@ -19,7 +19,7 @@ use Illuminate\Http\Request;
  * Routed at `GET`/`PUT /editor/theme` (routes/editor.php) under the editor's own
  * config('heisenberg.middleware.editor') gate — its original home was the builder's
  * route group (`PUT`/`GET /builder/theme`), removed with the builder (2026-08-02);
- * re-mounted here 2026-08-03 (TODO 6.7) as the Style/Themes panel's real backend.
+ * re-mounted here 2026-08-03 as the Style/Themes panel's real backend.
  *
  * SECURITY: writes the single, global site theme and used to carry no
  * authorization at all. `update()` now requires the `admins` role tier (see

@@ -4,7 +4,7 @@
         <x-ui.field prefix="W" value="Auto" data-hb-control="size.width" data-hb-control-kind="supports" data-hb-control-type="text" />
         <x-ui.field prefix="H" value="Auto" data-hb-control="size.height" data-hb-control-kind="supports" data-hb-control-type="text" />
     </div>
-    {{-- Fill/Hug/Clip are ATTRIBUTES, not supports (TODO 7.1). They are class-based capabilities
+    {{-- Fill/Hug/Clip are ATTRIBUTES, not supports. They are class-based capabilities
          in SupportsStyle — `hb-size-fill-w` sets width:100%, and a bare custom property cannot
          flip width/display the way a variable-driven declaration can. Classes come from
          style.classNames, whose predicates BlockRenderer::predicateMatches() resolves against

@@ -1,4 +1,4 @@
-{{-- live/pickers/gradient-stop-row — from Pencil Gradient Stop Row (u1QGS1): select handle +
+{{-- live/pickers/gradient-stop-row — select handle +
      swatch, hex, opacity %, position %, remove.
 
      Static/prop-driven reference rendering for the component gallery. The live picker does NOT

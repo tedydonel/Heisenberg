@@ -1,4 +1,4 @@
-{{-- live/topbar — from Pencil Header (c0DYcJ): 32px bar, bottom border, 3 zones (TL fixed / TC centered,
+{{-- live/topbar — 32px bar, bottom border, 3 zones (TL fixed / TC centered,
      grows / TR fixed). All icon buttons here are 28x28 (26x26 in the right cluster), cornerRadius 3,
      transparent by default — a header-specific treatment, deliberately NOT the same shape as ui/icon-button
      (which is 40x26 with an always-visible bg-muted fill), so it isn't force-reused here.
@@ -66,14 +66,14 @@
         background: var(--hb-accent, #000);
         color: var(--hb-accent-fg, #fff);
         font-family: var(--hb-font-sans, Rubik, sans-serif);
-        font-size: 12px;
+        font-size: var(--hb-fs-sm, 12px);
         font-weight: 600;
         cursor: pointer;
     }
     .hb-topbar__save:hover { background: var(--hb-accent-hover, #1A1A1A); }
     .hb-topbar__save[aria-busy="true"] { opacity: .6; cursor: default; }
-    /* device preview — a dropdown (Desktop / Tablet / Mobile), mirroring the builder's devsel.
-       The trigger shows only the icon of the current device; labels live in the menu. */
+    /* device preview — a dropdown (Desktop / Tablet / Mobile). The trigger shows only the
+       current device's icon; labels live in the menu. */
     .hb-topbar__devsel { position: relative; display: inline-flex; align-items: center; }
     .hb-topbar__device .hb-dev { display: none; }
     .hb-topbar__device[data-device="desktop"] .hb-dev--desktop,
@@ -84,14 +84,14 @@
         position: absolute; top: calc(100% + 5px); right: 0; z-index: 60;
         width: max-content; padding: 4px;
         background: var(--hb-bg, #fff); border: 1px solid var(--hb-border, #E4E4E4);
-        border-radius: var(--hb-radius-md, 6px); box-shadow: 0 8px 28px rgba(0, 0, 0, .14);
+        border-radius: var(--hb-radius-md, 5px); box-shadow: var(--hb-shadow-lg, 0 8px 28px rgba(0, 0, 0, .14));
         display: flex; flex-direction: column; gap: 2px;
     }
     .hb-topbar__devsel-menu[hidden] { display: none; }
     .hb-topbar__devsel-opt {
         display: inline-flex; align-items: center; gap: 8px; height: 28px; padding: 0 8px;
         border: 0; background: none; border-radius: var(--hb-radius-sm, 3px);
-        font-family: var(--hb-font-sans, Rubik, sans-serif); font-size: 12px; font-weight: 400;
+        font-family: var(--hb-font-sans, Rubik, sans-serif); font-size: var(--hb-fs-sm, 12px); font-weight: 400;
         color: var(--hb-text-secondary, #5A5A5A); text-align: left; cursor: pointer;
         white-space: nowrap;
     }
@@ -178,10 +178,8 @@
             try { window.history.replaceState({ hbPostId: hbPostId }, '', target); } catch (e) { /* cross-origin/file:// — harmless */ }
         };
 
-        // Autosave never CREATES a post on its own — it only starts once a post id exists, i.e.
-        // after the user's first explicit Save. Rationale (see the task report for the full
-        // version): a debounce timer firing before any deliberate save would silently spawn a
-        // new draft row for every stray keystroke session that's abandoned before ever saving.
+        // Autosave never CREATES a post — it starts only once a post id exists (after the first
+        // explicit Save), so an abandoned keystroke session can't spawn a stray draft row.
         function hbScheduleAutosave() {
             if (hbConflicted || hbPostId === null) return;
             clearTimeout(hbAutosaveTimer);
@@ -344,9 +342,8 @@
                     document.querySelectorAll('.hb-editor').forEach((sh) => sh.classList.toggle('hb-editor--fs', on));
                 });
             }
-            // Layers — open the Navigator (List View | Outline) in the left child panel, mirroring
-            // the builder's Layers toolbar button. Toggles: clicking it while the Navigator is
-            // already showing (and the panel open) collapses the panel again.
+            // Layers — open the Navigator (List View | Outline) in the left child panel.
+            // Clicking it while the Navigator is already showing collapses the panel again.
             document.querySelectorAll('[data-hb-layers]').forEach((btn) => {
                 if (btn.__hbLayers) return; btn.__hbLayers = true;
                 btn.addEventListener('click', () => {
@@ -476,7 +473,6 @@
     $rightButtons = [
         ['icon' => 'moon', 'label' => __('heisenberg::editor.topbar.aria_theme'), 'theme' => true],
         // Preview lives here now, not on a separate eye icon in the centre group: "open in a new
-        // tab" IS what preview does, so one button carries it instead of two competing affordances.
         ['icon' => 'arrow-square-out', 'label' => __('heisenberg::editor.topbar.aria_preview'), 'theme' => false, 'preview' => true],
         ['icon' => 'device-mobile', 'label' => __('heisenberg::editor.topbar.aria_device'), 'device' => true],
     ];

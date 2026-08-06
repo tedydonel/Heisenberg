@@ -9,7 +9,7 @@
 .hb-tb__group { display: inline-flex; align-items: center; height: 100%; gap: 1px; }
 .hb-tb__group--handle { gap: 3px; padding: 0 2px; }
 .hb-tb__sep { width: 1px; height: 18px; flex: none; background: rgba(255, 255, 255, .24); }
-.hb-tb__btn { display: inline-flex; align-items: center; justify-content: center; width: 28px; height: 100%; padding: 0; border: 0; background: none; cursor: pointer; color: #fff; border-radius: 6px; }
+.hb-tb__btn { display: inline-flex; align-items: center; justify-content: center; width: 28px; height: 100%; padding: 0; border: 0; background: none; cursor: pointer; color: #fff; border-radius: var(--hb-radius-control, 6px); }
 .hb-tb__btn:hover { background: rgba(255, 255, 255, .16); }
 .hb-tb__btn--on { background: rgba(255, 255, 255, .16); }
 .hb-tb__btn svg { width: 18px; height: 18px; }
@@ -17,21 +17,21 @@
 .hb-tb__btn--drag svg { width: 16px; height: 16px; }
 .hb-tb__cv { opacity: .8; flex: none; }
 /* filled pills (type switcher, AI) */
-.hb-tb__pill { display: inline-flex; align-items: center; gap: 6px; height: 100%; padding: 0 8px; border: 0; background: rgba(255, 255, 255, .12); color: #fff; border-radius: 6px; cursor: pointer; font-family: inherit; font-size: var(--hb-fs-sm, 12px); }
+.hb-tb__pill { display: inline-flex; align-items: center; gap: 6px; height: 100%; padding: 0 8px; border: 0; background: rgba(255, 255, 255, .12); color: #fff; border-radius: var(--hb-radius-control, 6px); cursor: pointer; font-family: inherit; font-size: var(--hb-fs-sm, 12px); }
 .hb-tb__pill:hover { background: rgba(255, 255, 255, .2); }
 .hb-tb__pill svg { width: 14px; height: 14px; }
-.hb-tb__ai { display: inline-flex; align-items: center; gap: 5px; height: 100%; padding: 0 9px 0 8px; border: 0; background: rgba(255, 255, 255, .15); color: #fff; border-radius: 6px; cursor: pointer; font-family: inherit; font-size: var(--hb-fs-sm, 12px); font-weight: 600; }
+.hb-tb__ai { display: inline-flex; align-items: center; gap: 5px; height: 100%; padding: 0 9px 0 8px; border: 0; background: rgba(255, 255, 255, .15); color: #fff; border-radius: var(--hb-radius-control, 6px); cursor: pointer; font-family: inherit; font-size: var(--hb-fs-sm, 12px); font-weight: 600; }
 .hb-tb__ai:hover { background: rgba(255, 255, 255, .24); }
 .hb-tb__ai svg { width: 14px; height: 14px; }
 /* align: transparent button with a small trailing caret (.pen fill is transparent) */
-.hb-tb__align { display: inline-flex; align-items: center; gap: 3px; height: 100%; padding: 0 5px; border: 0; background: none; color: #fff; border-radius: 6px; cursor: pointer; }
+.hb-tb__align { display: inline-flex; align-items: center; gap: 3px; height: 100%; padding: 0 5px; border: 0; background: none; color: #fff; border-radius: var(--hb-radius-control, 6px); cursor: pointer; }
 .hb-tb__align:hover { background: rgba(255, 255, 255, .16); }
 .hb-tb__align svg { width: 18px; height: 18px; }
 .hb-tb__align .hb-tb__cv svg { width: 10px; height: 10px; }
 /* text colour A + underline bar */
 .hb-tb__color { flex-direction: column; gap: 2px; }
 .hb-tb__color b { font-size: 13px; font-weight: 700; line-height: 1; color: #fff; }
-.hb-tb__color i { display: block; width: 14px; height: 3px; border-radius: 2px; background: var(--hb-tb-color, #FFD166); }
+.hb-tb__color i { display: block; width: 14px; height: 3px; border-radius: var(--hb-radius-xs, 2px); background: var(--hb-tb-color, #FFD166); }
 /* the .pen toolbar + its controls are square — no border radius (declared last so it wins) */
 .hb-tb, .hb-tb__btn, .hb-tb__pill, .hb-tb__ai, .hb-tb__align { border-radius: 0; }
 
@@ -41,7 +41,7 @@
 .hb-typemenu__search input { flex: 1 1 auto; min-width: 0; border: 0; outline: 0; background: none; font-family: inherit; font-size: var(--hb-fs-base, 13px); color: var(--hb-text-primary, #0A0A0A); }
 .hb-typemenu__search input::placeholder { color: var(--hb-text-muted, #9A9A9A); }
 .hb-typemenu__list { display: flex; flex-direction: column; gap: 1px; padding: 6px; max-height: 320px; overflow: auto; }
-.hb-typemenu__item { display: flex; align-items: center; gap: 10px; height: 32px; padding: 0 10px; border: 0; background: none; cursor: pointer; border-radius: 6px; text-align: left; }
+.hb-typemenu__item { display: flex; align-items: center; gap: 10px; height: 32px; padding: 0 10px; border: 0; background: none; cursor: pointer; border-radius: var(--hb-radius-control, 6px); text-align: left; }
 .hb-typemenu__item:hover, .hb-typemenu__item--on { background: var(--hb-bg-muted, #F4F4F4); }
 .hb-typemenu__item .ic { display: inline-flex; width: 18px; height: 18px; flex: none; color: var(--hb-text-secondary, #5A5A5A); }
 .hb-typemenu__item .lb { flex: 1 1 auto; min-width: 0; font-size: var(--hb-fs-base, 13px); color: var(--hb-text-primary, #0A0A0A); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
@@ -54,6 +54,9 @@
 /* align popover — reuses the variable-menu's .hb-vmi row (32-pickers.css); only the icon slot
    (a plain glyph, not a colour swatch) and the popover's own width are new here. */
 .hb-alignmenu { width: 160px; }
+.hb-moremenu { width: 160px; }
+.hb-moremenu .hb-vmi--danger .hb-vmi__name,
+.hb-moremenu .hb-vmi--danger .hb-vmi__ic { color: var(--hb-danger, #D4191A); }
 .hb-vmi__ic { display: inline-flex; width: 16px; height: 16px; flex: none; color: var(--hb-text-secondary, #5A5A5A); }
 
 /* colour popover — swatches straight off config('heisenberg.tokens.color'); the row/swatch/check

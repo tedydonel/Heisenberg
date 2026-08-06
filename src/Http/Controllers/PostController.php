@@ -15,33 +15,16 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Gate;
 
 /**
- * HTTP save/load layer for the post + block-tree aggregate (blueprint §2.3,
- * §7) — the surface `routes/editor.php` was entirely missing before this.
- * Thin adapter over the Post/Block Eloquent models: every action authorizes
- * via {@see PostPolicy} (registered against Post::class in
- * HeisenbergServiceProvider), then persists inside a single transaction.
- * Modeled on MediaLibraryController (thin, delegates, authorizes every
- * action, JSON throughout) and ThemeController (the local-dev authorization
- * bypass — see actor() below).
+ * HTTP save/load layer for the post + block-tree aggregate. Every action
+ * authorizes via {@see PostPolicy}, then persists inside a single transaction.
  *
- * CONCURRENCY: the client sends back the `content_version` it loaded (made
- * required by SavePostRequest on an update). save() locks the row `FOR
- * UPDATE` for the lifetime of the transaction, compares versions, and
- * returns 409 on a mismatch — nothing is written when stale. A successful
- * write always ends with Post::bumpContentVersion().
+ * CONCURRENCY: the client echoes the `content_version` it loaded; save() locks
+ * the row FOR UPDATE, compares versions, and 409s on a mismatch — nothing is
+ * written when stale. A successful write ends with Post::bumpContentVersion().
  *
- * LIFECYCLE GUARD: status/published_at/scheduled_at are never mass-assigned
- * (see contentAttributes()) — a requested status transition is validated
- * against config('heisenberg.lifecycle.transitions') (is the edge legal from
- * the post's CURRENT status?) and config('heisenberg.lifecycle.role_permissions')
- * via PostPolicy::transitionAllowed() (does this actor hold the tier the
- * TARGET status requires?) in applyTransition(), before either column is
- * ever written. `autosave: true` payloads skip this block entirely, even if a
- * stray `status` rides along — see save().
- *
- * REVISIONS: out of scope here — a second agent owns the Revision model and
- * migration concurrently. The seam is marked inline in save(), immediately
- * before the old block tree is discarded.
+ * LIFECYCLE: status/published_at/scheduled_at are never mass-assigned — a status
+ * intent is validated in applyTransition() (legal edge + actor tier) before
+ * either column is written; autosave payloads skip transitions entirely.
  */
 class PostController
 {
@@ -74,18 +57,12 @@ class PostController
         $actor = $this->actor($request);
         $class = $this->postClass();
 
-        // A brand-new row is "owned" by whoever creates it — PostPolicy::update()
-        // allows an `authors`-tier actor to save their OWN post without needing
-        // the `admins` tier its ownership branch otherwise falls back to. A
-        // GuestActor's identifier is null, so this is a no-op for local dev.
+        // A new row is owned by its creator, so an authors-tier actor can save their own
+        // post; GuestActor's null identifier makes this a no-op for local dev.
         $subject = $existing ?? new $class(['author_id' => $actor->getAuthIdentifier()]);
         if ($existing === null) {
-            // Mirror the posts table's own column default explicitly. A
-            // freshly `save()`d model does not reflect a DB-level column
-            // default until it is re-read, so without this a same-request
-            // lifecycle transition below (e.g. an initial `status:
-            // pending_review` intent on creation) would see a blank/null
-            // "current" status and reject every transition as invalid.
+            // A fresh model doesn't reflect the DB column default until re-read; without this,
+            // a same-request lifecycle transition would see a null status and reject every edge.
             $subject->status = 'draft';
         }
 
@@ -106,9 +83,8 @@ class PostController
                 $post->fill($this->contentAttributes($request));
                 $post->save();
             } else {
-                // Locked for the lifetime of the transaction — the actual
-                // optimistic-concurrency gate: nothing else can read-then-write
-                // this row between the version check and our own write below.
+                // Row lock for the transaction's lifetime — the optimistic-concurrency gate:
+                // nothing can read-then-write between the version check and our write.
                 $post = $existing->newQuery()->lockForUpdate()->findOrFail($existing->getKey());
 
                 if ((int) $request->input('content_version') !== (int) $post->content_version) {
@@ -128,12 +104,8 @@ class PostController
                 }
             }
 
-            // --- Revision seam ---------------------------------------------
-            // A second agent owns the Revision model/migration (explicitly out
-            // of scope for this change). Once it exists, snapshot $post's PRIOR
-            // state + its OLD block tree HERE, before replaceBlocks() discards
-            // it, e.g.: Revision::snapshot($post, $post->blocks()->get());
-            // -----------------------------------------------------------------
+            // Revisions, when they land, must snapshot the OLD tree here — before
+            // replaceBlocks() discards it.
 
             $this->replaceBlocks($post, (array) $request->input('blocks', []));
             $post->bumpContentVersion();
@@ -203,14 +175,8 @@ class PostController
     {
         $attributes = $request->only(['title_en', 'title_fr', 'slug', 'locale', 'excerpt_en', 'excerpt_fr']);
 
-        // An untitled draft is legitimate — you can start writing before naming a post, and the
-        // editor sends whatever the title field currently holds (often ''). But `title_en` is
-        // NOT NULL with no DB default, AND Laravel's stock `ConvertEmptyStringsToNull` web
-        // middleware rewrites '' to null before we ever see it — so an untitled save reached the
-        // DB as NULL and blew up with an integrity-constraint 500 on update (and was rejected by
-        // a `required` rule on create). Normalise to the same visible placeholder the canvas
-        // shows, mirroring Post::booted()'s own 'untitled' slug fallback for this exact case.
-        // Only when the key was actually sent: an absent key must still leave the column alone.
+        // title_en is NOT NULL with no DB default, and the web middleware nulls '' — normalize
+        // a sent-but-empty title to the canvas placeholder. An absent key leaves the column alone.
         if (array_key_exists('title_en', $attributes) && trim((string) $attributes['title_en']) === '') {
             $attributes['title_en'] = (string) __('heisenberg::editor.canvas.ph_untitled_post');
         }
@@ -250,11 +216,8 @@ class PostController
     }
 
     /**
-     * The shape the editor's client runtime consumes to rehydrate a document:
-     * each block is returned exactly as received/stored — id/name/
-     * schemaVersion/attributes/supports/innerBlocks, see newBlockModel() in
-     * resources/views/components/live/block-runtime.blade.php — in `order`
-     * (guaranteed by the `blocks()` relation's ordered() scope).
+     * The shape the client runtime consumes to rehydrate a document: each block
+     * exactly as stored, in `order`.
      *
      * @return array<string, mixed>
      */
@@ -281,12 +244,8 @@ class PostController
     }
 
     /**
-     * The acting Authenticatable, or a {@see GuestActor} stand-in — same
-     * "no logged-in user at all" convention ThemeController and
-     * Livewire\MediaLibrary use, since /editor's save endpoints sit behind
-     * config('heisenberg.middleware.editor') (default ['web']), i.e.
-     * unauthenticated by default. PostPolicy wraps its RoleGate in
-     * LocalDevRoleGate for exactly this reason — see that class's docblock.
+     * The acting Authenticatable, or a {@see GuestActor} stand-in for "no logged-in
+     * user" — decided by PostPolicy's LocalDevRoleGate wrapper (local env only).
      */
     private function actor(Request $request): Authenticatable
     {

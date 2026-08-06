@@ -5,11 +5,8 @@
      included, none of which either shipped contract supports. Those sections wrote into the model
      and rendered nothing, which is indistinguishable from a working control until you reload.
 
-     This reverses tests/Editor/EditorRendersTest.php's earlier
-     `test_style_panel_keeps_the_complete_pencil_section_stack_mounted`, which pinned the opposite
-     rule ("mounting a selected block must not remove designed sections"). That rule predates the
-     decision that the inspector loads only what the active block needs; the .pen composition is
-     the design's full vocabulary, not a per-block contract.
+     The inspector loads only what the active block needs — the design shows the full section
+     vocabulary, not a per-block contract.
 
      GATING RULE — deliberately identical to live/toolbar/block-toolbar.blade.php's `$has`, so the
      two surfaces cannot drift: a group counts as supported when the key is present and not `false`.
@@ -35,7 +32,7 @@
     $isContainer = (bool) ($innerBlocks['enabled'] ?? false);
 
     /*
-     * Theme-variable menus (TODO 7.6). Built from the raw theme rather than
+     * Theme-variable menus. Built from the raw theme rather than
      * ThemeRepository::tokens(), because the two maps are keyed opposite ways: tokens() returns
      * `var(--hb-t-name) => Label`, and variable-menu keys by the DISPLAY name. Passing tokens()
      * straight through made every row read as "var(--hb-t-accent-1)" instead of "Accent".
@@ -98,7 +95,7 @@
         'fontSize' => $has('typography.fontSize'),
         'lineHeight' => $has('typography.lineHeight'),
         'letterSpacing' => $has('typography.letterSpacing'),
-        // Text placement inside the block (TODO 7.4) — not the standalone Alignment section,
+        // Text placement inside the block — not the standalone Alignment section,
         // which places the block itself within its parent.
         'textAlign' => $has('typography.textAlign'),
         'textAlignVertical' => $has('typography.textAlignVertical'),
@@ -143,7 +140,7 @@
     {{-- Flex Layout gates on being a CONTAINER, not on `supports.layout`. A flex container lays
          out its children, so the control is incoherent on a block that cannot have any — both
          shipped contracts set innerBlocks.enabled false. Same rule the toolbar's save-as-block
-         button uses (TODO 7.8), and it means the section appears automatically the moment a real
+         button uses, and it means the section appears automatically the moment a real
          container contract exists rather than needing `layout` remembered separately. --}}
     @if ($isContainer && $has('layout'))
         <x-live.block.style.flex-layout />
@@ -189,7 +186,7 @@
         </div>
     @endif
 
-    {{-- Theme-variable pickers (TODO 7.6). live/pickers/variable-menu existed but was mounted
+    {{-- Theme-variable pickers. live/pickers/variable-menu existed but was mounted
          ONLY in the components gallery, never in the inspector — and its token list was a
          hardcoded array in the component, so wiring it without passing real tokens would have
          offered names that do not exist. These are fed ThemeRepository::tokens(), which merges
@@ -210,7 +207,7 @@
         <x-live.pickers.variable-menu mode="number" selected="" :tokens="$hbFontTokens" :values="$hbFontValues" />
     </div>
 
-    {{-- Trigger prototype, cloned into every Block.style text field's right edge (TODO 7.7).
+    {{-- Trigger prototype, cloned into every Block.style text field's right edge.
          Injected from script rather than added to each of the eight style/*.blade.php files:
          the requirement is "only for the Block.style sub-tab", and one decorator over
          [data-hb-control] inside .hb-blockstyle expresses exactly that scope — adding a prop to

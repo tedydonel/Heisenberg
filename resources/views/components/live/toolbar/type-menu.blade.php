@@ -1,5 +1,5 @@
 {{-- live/toolbar/type-menu — the block-type switcher dropdown from the toolbar's type pill
-     (Pencil Block Toolbar states, r5URVn). The only rewrite the runtime API can do safely today is
+    . The only rewrite the runtime API can do safely today is
      a heading's own `level` attribute (1-6) — heisenberg/heading stores it as a single integer
      attribute, not as three separate block types, so "Heading 1/2/3" are level values, not distinct
      blocks. Turning a block into a genuinely different contract (e.g. Paragraph -> List) has no
