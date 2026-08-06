@@ -1,4 +1,4 @@
-{{-- ui/tabs — from Pencil "tabs" (DUmaG): pill segments on a bg-inset track. The source shows the
+{{-- ui/tabs — pill segments on a bg-inset track. The source shows the
      same first segment 4 times labeled Default/Hover/Active/Focus — this is the design documenting one
      tab's look per interaction state (see the task rule on side-by-side state variants), not 4 real
      tabs. Collapsed to props: one active pill (fill bg, text accent) among transparent siblings

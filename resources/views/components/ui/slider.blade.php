@@ -1,4 +1,4 @@
-{{-- ui/slider — from Pencil Slider (OVvVU): 6px track (bg-inset), 6px accent fill, 16px surface handle
+{{-- ui/slider — 6px track (bg-inset), 6px accent fill, 16px surface handle
      with drop shadow, handle vertically centered on the track ((16-6)/2 = 5px, matches source's -5 y
      offset). Native <input type="range"> under custom styling — gives real dragging, keyboard steps,
      and change events for free instead of hand-rolled pointer-event code. A tiny script paints the

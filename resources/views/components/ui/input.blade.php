@@ -1,4 +1,4 @@
-{{-- ui/input — from Pencil UI/Input (Iq6wP): 100x26 default, value w/ optional trailing chevron.
+{{-- ui/input — 100x26 default, value w/ optional trailing chevron.
      Distinct from ui/field (compound leading-icon/prefix/unit field) and ui/number-field per the
      source's own separation of these three. Real editable text input.
      Width is a prop (default 100px, matching the source's own instance) — other panels reuse this

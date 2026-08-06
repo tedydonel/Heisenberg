@@ -1,4 +1,4 @@
-{{-- ui/chip — from Pencil Chip (WsGE4): pill, asymmetric padding 4/6/4/10 (top/right/bottom/left, as
+{{-- ui/chip — pill, asymmetric padding 4/6/4/10 (top/right/bottom/left, as
      specified in the source), bg-muted, 16px round close button with an 11px X icon. "selected" isn't
      in the source (only the default instance exists) — inferred as a solid-accent treatment, matching
      the same accent inference used for ui/badge. Real remove behavior: closing dispatches a cancelable

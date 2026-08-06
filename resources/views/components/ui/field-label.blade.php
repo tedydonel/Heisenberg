@@ -1,4 +1,4 @@
-{{-- ui/field-label — from Pencil Field Label (u8oit): uppercase eyebrow label used above inputs. --}}
+{{-- ui/field-label — uppercase eyebrow label used above inputs. --}}
 @once
 <style>
     .hb-field-label {

@@ -1,4 +1,4 @@
-{{-- ui/field — from Pencil UI/Field (ucmzp): compound field, 120x26. L-group (optional leading icon +
+{{-- ui/field — compound field, 120x26. L-group (optional leading icon +
      optional prefix + value) justified against an R-group (optional unit + optional chevron).
      cornerRadius 4 in the source is a literal, not bound to any $radius-* variable — kept as-is. --}}
 @once

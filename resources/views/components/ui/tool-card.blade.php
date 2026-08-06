@@ -1,4 +1,4 @@
-{{-- ui/tool-card — from Pencil Tool Card (oZbI5): vertical card, padding 12/6, centered 22px icon +
+{{-- ui/tool-card — vertical card, padding 12/6, centered 22px icon +
      centered wrapping fs-xs label. --}}
 @once
 <style>

@@ -1,4 +1,4 @@
-{{-- ui/search-field — from Pencil Search Field (hpjIt): 36px inline row, bottom border only (no full
+{{-- ui/search-field — 36px inline row, bottom border only (no full
      box), leading 13px search icon. Real editable text input, not a static hint. --}}
 @once
 <style>

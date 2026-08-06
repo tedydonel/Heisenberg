@@ -1,4 +1,4 @@
-{{-- ui/checkbox — from Pencil UI/CheckRow (teCah): 15x15 box, cornerRadius 3, stroke border-strong,
+{{-- ui/checkbox — 15x15 box, cornerRadius 3, stroke border-strong,
      check icon (11px, accent-fg) present but disabled=hidden in the unchecked reference. The checked
      box fill ($accent) is inferred — not shown separately in source — because an accent-fg (white)
      check glyph needs a filled background to be visible; unchecked stays $bg per source.

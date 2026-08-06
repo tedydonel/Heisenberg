@@ -1,4 +1,4 @@
-{{-- ui/number-field — from Pencil Number Field (v6pBPE): 72x26, centered value on an inset fill.
+{{-- ui/number-field — 72x26, centered value on an inset fill.
      Real <input type="number"> — native stepping/arrow-key behavior covers "keyboard steps". --}}
 @once
 <style>

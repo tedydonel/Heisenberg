@@ -1,4 +1,4 @@
-{{-- ui/button — from Pencil: Button / Primary (s5A5OK), Button / Secondary (BU00m), Button / Ghost (mB12t).
+{{-- ui/button —
      Three variants collapsed into one component (variant prop) per shared geometry: gap 6, radius-md,
      fs-sm/500 label, optional 14px leading icon (hidden unless leadingIcon is set).
      Hover/disabled are inferred CSS states — the source shows one static frame per variant, no hover swatch.

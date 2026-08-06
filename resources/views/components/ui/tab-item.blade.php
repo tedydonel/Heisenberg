@@ -1,4 +1,4 @@
-{{-- ui/tab-item — from Pencil Tab Item (k2vCI): standalone bordered chip tab (bg, border, radius-sm,
+{{-- ui/tab-item — standalone bordered chip tab (bg, border, radius-sm,
      padding 5/12, fs-xs). Distinct from the pill segments inside ui/tabs — the source defines this as
      its own bordered-chip look, not reused as-is inside the Tabs track, so it's kept as a separate atom
      per the task's rule to not force unrelated-looking things into one component. --}}

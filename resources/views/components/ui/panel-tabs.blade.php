@@ -1,4 +1,4 @@
-{{-- ui/panel-tabs — from Pencil Panel Tabs (Mnu2L): 2-up flush header tabs, 32px tall. Active tab is
+{{-- ui/panel-tabs — 2-up flush header tabs, 32px tall. Active tab is
      transparent (merges with the content panel below) with a right divider against its neighbor;
      inactive tab is bg-muted with a full bottom border, muted text. Fixed to exactly 2 items per source.
      flex: none is load-bearing: this sits above a scrolling sibling inside a flex column (see the

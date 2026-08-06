@@ -1,4 +1,4 @@
-{{-- ui/text-area — from Pencil Text Area (MewqO): 176x80 default, placeholder shown muted at
+{{-- ui/text-area — 176x80 default, placeholder shown muted at
      fs-sm/1.4 line-height. Width/height are props — other panels reuse this same node at
      fill_container width and 56-64px heights, per their own descendant overrides. --}}
 @once

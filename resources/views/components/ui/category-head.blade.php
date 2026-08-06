@@ -1,4 +1,4 @@
-{{-- ui/category-head — from Pencil Category Head Cmp (R6fIG3): 28px row, uppercase eyebrow label +
+{{-- ui/category-head — 28px row, uppercase eyebrow label +
      chevron. Source shows the expanded instance (caret-up); collapsed flips to caret-down, the standard
      pairing. Click flips the `collapsed` visual state, dispatches a 'toggle' CustomEvent (bubbles, with
      `detail.collapsed` = the state being left), AND — same contract as ui/disclosure-row — toggles a

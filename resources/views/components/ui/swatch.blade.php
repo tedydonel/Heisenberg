@@ -1,4 +1,4 @@
-{{-- ui/swatch — from Pencil Swatch (cOXoD): 28x28, radius-sm, border-strong stroke, fill stack of
+{{-- ui/swatch — 28x28, radius-sm, border-strong stroke, fill stack of
      [checkerboard shader, color]. Real CSS checkerboard painted behind the color layer so alpha colors
      (e.g. rgba()/#RRGGBBAA) show the checker through, per the task's explicit requirement. --}}
 @once

@@ -1,4 +1,4 @@
-{{-- ui/section — inspector section (from the .pen section frames in LtsDN/cQkqr/wt2Gk):
+{{-- ui/section — inspector section:
      a $space-3-padded block with a 13px/600 secondary-colored title and an optional
      right-hand action slot, divided from the previous section by a top hairline.
      `collapsible` adds a caret and hides the body (Content/Advanced tabs use it; the

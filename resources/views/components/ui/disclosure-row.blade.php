@@ -1,4 +1,4 @@
-{{-- ui/disclosure-row — from Pencil Post (vcSGe): a row pattern repeated 7x in that one panel —
+{{-- ui/disclosure-row — a row pattern repeated 7x in that one panel —
      icon + label left, chevron right, optional top border. Two chevron directions carry different
      semantics in the source: "down" = collapsible section header (this component toggles a
      sibling [data-hb-disclosure-body] closed/open, chevron flips) — every Post-tab row now uses

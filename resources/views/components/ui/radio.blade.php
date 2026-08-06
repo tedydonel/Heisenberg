@@ -1,4 +1,4 @@
-{{-- ui/radio — from Pencil UI/RadioRow (m4Yha): 15x15 circular box, stroke border-strong, 7px accent
+{{-- ui/radio — 15x15 circular box, stroke border-strong, 7px accent
      dot. Source shows only the selected instance (dot visible, no enabled:false flag); unselected is
      inferred by hiding the dot, mirroring the sibling Checkbox's enabled/disabled icon pattern.
      Real <input type="radio"> — group multiple with the same `name` to form a radiogroup. --}}

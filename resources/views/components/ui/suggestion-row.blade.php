@@ -1,4 +1,4 @@
-{{-- ui/suggestion-row — from Pencil Suggestion Row (HqzPt): 30px row, icon color is its own prop
+{{-- ui/suggestion-row — 30px row, icon color is its own prop
      (source instance uses $editing for a "text" suggestion, but the task calls out iconColor as
      independently settable, so it's exposed as a raw color/token value rather than hardcoded). --}}
 @once

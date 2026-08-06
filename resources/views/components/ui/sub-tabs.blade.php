@@ -1,4 +1,4 @@
-{{-- ui/sub-tabs — from Pencil Block Sub-Tabs (wiFej): 3 icon-only tabs, 44px tall, underline style.
+{{-- ui/sub-tabs — 3 icon-only tabs, 44px tall, underline style.
      Inactive tabs get a bottom border only; the active tab gets top+left+right border (no bottom, so
      it visually merges with the panel below) plus accent-colored, heavier-weight icon. Fixed to 3 items. --}}
 @once

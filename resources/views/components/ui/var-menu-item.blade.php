@@ -1,4 +1,4 @@
-{{-- ui/var-menu-item — from Pencil Var Menu Item (ejrry): 34px row, cornerRadius 6 (literal, no exact
+{{-- ui/var-menu-item — 34px row, cornerRadius 6 (literal, no exact
      matching token — radius-md is 5, radius-lg is 8, neither matches, so the literal is kept). Leading
      check icon is present but transparent/hidden until selected. Trailing is a union: the source's
      color-type instance shows a swatch with the value hidden; a number-type var would show the value

@@ -1,4 +1,4 @@
-{{-- ui/status-check-row — from Pencil Status Check Row (smM4t): icon + wrapping label, lineHeight 1.4.
+{{-- ui/status-check-row — icon + wrapping label, lineHeight 1.4.
      Source only has the "pass" instance (check-circle/success); "fail" is inferred as the standard
      paired icon (x-circle) in $danger, following the same success/danger pairing used in ui/status-tag. --}}
 @once
