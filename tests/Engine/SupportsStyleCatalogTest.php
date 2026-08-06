@@ -76,6 +76,17 @@ class SupportsStyleCatalogTest extends TestCase
         $this->assertStringContainsString('width: 100vw', $css);
     }
 
+    public function test_css_contains_the_align_left_center_right_placement_rules(): void
+    {
+        // Block PLACEMENT via margins, not text-align — text alignment is Typography's
+        // --hb-text-align variable.
+        $css = SupportsStyle::css();
+
+        $this->assertStringContainsString('.hb-align-left { margin-left: 0; margin-right: auto; }', $css);
+        $this->assertStringContainsString('.hb-align-center { margin-left: auto; margin-right: auto; }', $css);
+        $this->assertStringContainsString('.hb-align-right { margin-left: auto; margin-right: 0; }', $css);
+    }
+
     public function test_every_always_on_rule_requires_both_the_data_block_id_hook_and_the_hb_supports_marker(): void
     {
         // The [data-block-id] hook alone is the SAME specificity as a working
