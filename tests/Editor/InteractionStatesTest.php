@@ -105,7 +105,9 @@ class InteractionStatesTest extends TestCase
         $html = $this->editorHtml();
 
         $this->assertStringContainsString('data-hb-style-state', $html);
-        $this->assertStringContainsString("root.dataset.hbStyleState = event.detail.value || 'default'", $html);
+        // The write is ALLOWLISTED (2026-08-06): only real states may retarget the panel —
+        // a bubbling select change with a look-alike detail.value must never become one.
+        $this->assertStringContainsString("root.dataset.hbStyleState = ['default', 'hover', 'active', 'focus'].indexOf(value) !== -1 ? value : 'default'", $html);
         $this->assertStringContainsString('window.hbEditor.previewState?.(id, root.dataset.hbStyleState)', $html);
     }
 

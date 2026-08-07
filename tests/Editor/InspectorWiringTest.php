@@ -53,16 +53,24 @@ class InspectorWiringTest extends TestCase
             }
         }
 
-        // 8 paths — but the Block tab pre-renders one panel PER REGISTERED BLOCK TYPE and hides
-        // all but the selected one (see inspector.blade.php's docblock), so the whole set repeats
-        // per contract. Derived from the registry rather than hardcoded, or adding a block type
-        // would fail this test for no real reason.
-        $blockCount = count(app(BlockRegistryService::class)->registry()['blocks']);
-        $this->assertGreaterThan(0, $blockCount);
+        // The Block tab pre-renders one panel PER REGISTERED BLOCK TYPE and hides all but the
+        // selected one (see inspector.blade.php's docblock) — and since 2026-08-06 the spacing
+        // section gates per GROUP (column declares only padding, embed only margin), so the
+        // expected count is 4 side fields per declared group per contract, derived from the
+        // registry rather than hardcoded.
+        $expected = 0;
+        foreach (app(BlockRegistryService::class)->registry()['blocks'] as $block) {
+            foreach (['padding', 'margin'] as $group) {
+                if (! empty($block['supports']['spacing'][$group] ?? null)) {
+                    $expected += 4;
+                }
+            }
+        }
+        $this->assertGreaterThan(0, $expected);
         $this->assertSame(
-            8 * $blockCount,
+            $expected,
             substr_count($html, 'data-hb-control="spacing.'),
-            'Expected the 8 per-side spacing controls once per registered block type',
+            'Expected 4 per-side spacing controls per declared group per block type',
         );
     }
 

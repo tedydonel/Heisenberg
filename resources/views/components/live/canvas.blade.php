@@ -11,7 +11,7 @@
 <div class="hb-canvas" data-hb-canvas>
     <div class="hb-page" style="--hb-page-padding-x: {{ (int) $pagePaddingX }}px; --hb-page-padding-y: {{ (int) $pagePaddingY }}px;">
         <h1 class="hb-page__title" contenteditable="true" spellcheck="false" data-ph="{{ __('heisenberg::editor.canvas.ph_untitled_post') }}" data-hb-title>{{ $title }}</h1>
-        <div class="hb-page__blocks">
+        <div class="hb-page__blocks" data-hb-add-label="{{ __('heisenberg::editor.common.add_block') }}">
             {{-- Boots empty; on insert the runtime renders contract blocks here (backend wiring). --}}
             <button type="button" class="hb-appender" data-hb-insert aria-label="{{ __('heisenberg::editor.common.add_block') }}">
                 @include('heisenberg::components.ui.icon', ['name' => 'plus', 'size' => 16])

@@ -250,6 +250,7 @@
     'postLayoutUrlTemplate' => '',
     'postAllowComments' => true,
     'postDiscussionUrlTemplate' => '',
+    'postRevisionsUrlTemplate' => '',
     'blockIcon' => '',
     'blockName' => __('heisenberg::editor.common.no_block_selected_title'),
     'blockDescription' => __('heisenberg::editor.common.no_block_selected_desc'),
@@ -356,6 +357,15 @@
                 <span class="hb-post-trash__label">{{ __('heisenberg::editor.inspector.post_move_trash') }}</span>
             </button>
         </div>
+
+        {{-- Revisions — opens the history dialog (live/revisions-dialog.blade.php). The row
+             carries the URL template + current post id; hb:post-id updates it after a new
+             document's first save, same contract as the taxonomy bodies below. --}}
+        <x-ui.disclosure-row icon="arrow-counter-clockwise" :label="__('heisenberg::editor.revisions.title')" chevron="right"
+            data-hb-revisions-open
+            :data-hb-post-id="$postId ?? ''"
+            :data-hb-revisions-url-template="$postRevisionsUrlTemplate" />
+        <x-live.revisions-dialog />
 
         {{-- Categories/Tags — ONE shared multi-select checklist widget for both (each is
              BelongsToMany via a real pivot, wired by the one wirePostTaxonomy()
@@ -1090,13 +1100,20 @@
             }
             // ui/combobox owns its own display state (the input doubles as the search field), so
             // writing input.value directly would be overwritten the next time it re-renders.
-            // Font families are their own label, hence setValue(v, v).
+            // Show the matching option's LABEL when one exists (e.g. animate 'fade-up' reads
+            // "Fade up"); values outside the loaded options (fonts) fall back to themselves.
             if (type === 'combobox') {
                 const text = value == null ? '' : String(value);
-                if (el.__hbCombobox?.setValue) el.__hbCombobox.setValue(text, text);
+                let optionLabel = null;
+                el.querySelectorAll('[data-hb-combobox-option]').forEach((option) => {
+                    if (optionLabel === null && option.dataset.hbComboboxOption === text) {
+                        optionLabel = option.querySelector('span')?.textContent.trim() || null;
+                    }
+                });
+                if (el.__hbCombobox?.setValue) el.__hbCombobox.setValue(text, optionLabel || text);
                 else {
                     const field = el.querySelector('[data-hb-combobox-input]');
-                    if (field) field.value = text;
+                    if (field) field.value = optionLabel || text;
                     el.dataset.value = text;
                 }
                 return;
@@ -1134,6 +1151,7 @@
         root.querySelectorAll('[data-hb-control], .hb-colorlayer').forEach(hbSyncVarTrigger);
         refreshConditionals(root, model);
         hbSyncFonts(root, model);
+        syncFlexControls(root, model);
     }
 
     function showBlockPanels(inspector, name, model) {
@@ -1332,6 +1350,24 @@
         allInput.value = value;
     }
 
+    // Aggregates whose per-side fields carry their OWN data-hb-control (Stroke's
+    // stroke-sides, Appearance's appearance-corners) commit by replaying the shared
+    // control path on each side — no second write path, so var-binding and state tabs
+    // keep working. Spacing is the exception: its sides commit as one object through
+    // commitSpacingGroup(), which is why it isn't routed here.
+    function commitLinkedSides(root, group) {
+        styleFields(root, `[data-hb-style-side-value="${group}"]`).forEach((field) => {
+            if (!field.hasAttribute('data-hb-control')) return;
+            const input = styleFieldInput(field);
+            if (!input) return;
+            input.dispatchEvent(new Event('input', { bubbles: true }));
+            input.dispatchEvent(new Event('change', { bubbles: true }));
+        });
+    }
+
+    // The non-spacing linked groups, kept in one place so sync and commit agree.
+    const HB_LINKED_GROUPS = ['stroke-sides', 'appearance-corners'];
+
     function closeStylePopups(root, except = null) {
         root?.querySelectorAll('[data-hb-style-popup]').forEach((popup) => {
             if (popup !== except) popup.hidden = true;
@@ -1496,18 +1532,88 @@
     // synced side inputs, or re-selecting a block would show its real per-side values under a
     // stale "all sides" summary.
     function syncSpacingAggregates(root) {
-        if (!root.querySelector('[data-hb-style-padding-side]')) return;
-        syncPaddingControls(root);
-        syncMarginControls(root);
+        // Guarded per group: a contract may declare only one of padding/margin
+        // (column has no margin, embed no padding) and the other's DOM is absent.
+        if (root.querySelector('[data-hb-style-padding-side]')) syncPaddingControls(root);
+        if (root.querySelector('[data-hb-style-margin-side]')) syncMarginControls(root);
+        // Stroke weight + corner radius: their per-side fields were just filled from the
+        // model by syncControls, so the "all" field summarises them (or reads Mixed).
+        HB_LINKED_GROUPS.forEach((group) => {
+            if (root.querySelector(`[data-hb-style-side-value="${group}"]`)) syncStyleLinkedValue(root, group);
+        });
+    }
+
+    // Flex mode segmented (the extracted wrap/column/row control): ONE control, TWO model
+    // paths — wrap ≡ direction=row + flex-wrap=wrap; column/row set that direction, wrap off.
+    document.addEventListener('change', (event) => {
+        const mode = event.target.closest('[data-hb-style-flexmode]');
+        if (!mode || event.target !== mode || !event.detail) return;
+        if (!mountedStyleRoot(mode) || !window.hbEditor) return;
+        const id = window.hbEditor.getSelectedId();
+        if (!id) return;
+        const value = String(event.detail.value || '');
+        if (['wrap', 'column', 'row'].indexOf(value) === -1) return;
+        const style = mode.closest('.hb-blockstyle');
+        window.hbEditor.setSupport(id, hbStatePath(style, 'layout.direction'), value === 'column' ? 'column' : 'row');
+        window.hbEditor.setSupport(id, hbStatePath(style, 'layout.wrap'), value === 'wrap' ? 'wrap' : '');
+    });
+
+    // Sync the flex section's bespoke controls (mode segmented, 3×3 grid, spacing radios)
+    // from the model — the counterpart of syncControls' generic branches for controls that
+    // address two paths at once and therefore carry no data-hb-control.
+    function syncFlexControls(root, model) {
+        const grid = root.querySelector('[data-hb-style-alignment-grid]');
+        const mode = root.querySelector('[data-hb-style-flexmode]');
+        const radios = root.querySelectorAll('[data-hb-flex-spacing]');
+        if (!grid && !mode && !radios.length) return;
+        const style = root.querySelector('.hb-blockstyle') || root.closest('.hb-blockstyle');
+        const read = (path) => {
+            const value = hbGet(model.supports || {}, hbStatePath(style, path));
+            return value == null ? '' : String(value);
+        };
+        const direction = read('layout.direction');
+        const wrap = read('layout.wrap');
+        const justify = read('layout.justify');
+        const align = read('layout.align');
+        if (mode) {
+            const value = wrap === 'wrap' ? 'wrap' : direction;
+            mode.querySelectorAll('[data-hb-tab]').forEach((tab) => {
+                tab.setAttribute('aria-selected', value !== '' && tab.dataset.hbTab === value ? 'true' : 'false');
+            });
+        }
+        if (grid) {
+            const spacing = justify === 'space-between' || justify === 'space-around';
+            grid.querySelectorAll('[data-hb-style-alignment]').forEach((dot) => {
+                const on = align !== '' && dot.dataset.hbFlexAlign === align
+                    && (spacing ? dot.dataset.hbFlexJustify === 'center' : (justify !== '' && dot.dataset.hbFlexJustify === justify));
+                dot.classList.toggle('hb-agrid__dot--on', on);
+                dot.classList.toggle('is-active', on);
+                dot.setAttribute('aria-pressed', on ? 'true' : 'false');
+            });
+        }
+        radios.forEach((radio) => {
+            const key = radio.dataset.hbFlexSpacing;
+            const on = key === 'packed' ? (justify !== 'space-between' && justify !== 'space-around') : justify === key;
+            radio.classList.toggle('hb-iradio--on', on);
+            radio.classList.toggle('is-active', on);
+            radio.setAttribute('aria-checked', on ? 'true' : 'false');
+            const dotEl = radio.querySelector('.hb-iradio__dot');
+            if (dotEl) dotEl.classList.toggle('hb-iradio__dot--on', on);
+        });
     }
 
     // State tab switch: retarget the panel, re-read every control against the new state, and ask
     // the canvas to force that state's look on the selected block so the edit is visible.
     document.addEventListener('change', (event) => {
         const tabs = event.target.closest('[data-hb-style-state]');
-        const root = tabs ? mountedStyleRoot(tabs) : null;
+        // Only the state tablist's OWN change may retarget — selects and segmented controls
+        // bubble a look-alike change (detail.value) that must never become a "state" — and
+        // the value is allowlisted so nothing else can ever be written as one.
+        if (!tabs || event.target !== tabs) return;
+        const root = mountedStyleRoot(tabs);
         if (!root || !event.detail) return;
-        root.dataset.hbStyleState = event.detail.value || 'default';
+        const value = String(event.detail.value || 'default');
+        root.dataset.hbStyleState = ['default', 'hover', 'active', 'focus'].indexOf(value) !== -1 ? value : 'default';
 
         if (!window.hbEditor) return;
         const id = window.hbEditor.getSelectedId();
@@ -1584,8 +1690,12 @@
         })).filter((layer) => layer.color !== '');
     }
 
-    // `fill` -> the block's own colour; `stroke` -> its border colour.
+    // Default layer targets: `fill` -> the block's own colour, `stroke` -> its border colour.
+    // A panel may OVERRIDE fill's path via data-hb-layer-path on the list (a container's fill
+    // is its background, not text colour — see live/block/style/fill.blade.php), so always
+    // resolve through hbLayerPathOf() rather than reading this map directly.
     const HB_LAYER_PATHS = { fill: 'color.text', stroke: 'border.color' };
+    const hbLayerPathOf = (list, group) => (list && list.dataset.hbLayerPath) || HB_LAYER_PATHS[group];
 
     // Rebuild the Fill/Stroke stacks from the model. Skipped when the rows already match
     // (covers the echo from hbCommitLayers' own hb:block-updated) and while the user is
@@ -1594,10 +1704,11 @@
     function hbRebuildLayerLists(root, model) {
         const sroot = root.matches?.('.hb-blockstyle') ? root : root.querySelector('.hb-blockstyle');
         if (!sroot) return;
-        Object.entries(HB_LAYER_PATHS).forEach(([group, path]) => {
+        Object.keys(HB_LAYER_PATHS).forEach((group) => {
             const list = sroot.querySelector(`[data-hb-style-layer-list="${group}"]`);
             const template = sroot.querySelector(`template[data-hb-style-layer-template="${group}"]`);
             if (!list || !template?.content) return;
+            const path = hbLayerPathOf(list, group);
             const sup = (model.supports || {})[path.split('.')[0]] || {};
             let layers = Array.isArray(sup.layers) ? sup.layers.filter((l) => l && l.color) : [];
             const scalar = hbGet(model.supports || {}, path);
@@ -1631,9 +1742,9 @@
     function hbCommitLayers(root, group) {
         if (!window.hbEditor) return;
         const id = window.hbEditor.getSelectedId();
-        const path = HB_LAYER_PATHS[group];
-        if (!id || !path) return;
         const list = root.querySelector(`[data-hb-style-layer-list="${group}"]`);
+        const path = hbLayerPathOf(list, group);
+        if (!id || !path) return;
         const layers = hbReadLayers(list);
         window.hbEditor.setSupport(id, hbStatePath(root, path), hbCompositeLayers(layers));
         // Sibling of the scalar, so the stack survives a reload while the renderer keeps reading
@@ -2232,18 +2343,48 @@
         const alignment = event.target.closest('[data-hb-style-alignment]');
         if (alignment) {
             const grid = alignment.closest('[data-hb-style-alignment-grid]');
+            const wasActive = alignment.classList.contains('is-active');
             grid?.querySelectorAll('[data-hb-style-alignment]').forEach((item) => {
-                const active = item === alignment;
+                const active = item === alignment && !wasActive;
                 item.classList.toggle('hb-agrid__dot--on', active);
                 item.classList.toggle('is-active', active);
                 item.setAttribute('aria-pressed', active ? 'true' : 'false');
             });
+            // Flex wiring: a dot carries its justify×align pair and writes BOTH paths in one
+            // gesture (re-clicking the active dot clears them). While a spacing radio owns
+            // justify (space-between/around), the grid only writes align.
+            if (alignment.dataset.hbFlexJustify && window.hbEditor) {
+                const id = window.hbEditor.getSelectedId();
+                if (id) {
+                    const style = alignment.closest('.hb-blockstyle');
+                    const spacingActive = root.querySelector('[data-hb-flex-spacing="space-between"].is-active, [data-hb-flex-spacing="space-around"].is-active');
+                    if (!spacingActive) {
+                        window.hbEditor.setSupport(id, hbStatePath(style, 'layout.justify'), wasActive ? '' : alignment.dataset.hbFlexJustify);
+                    }
+                    window.hbEditor.setSupport(id, hbStatePath(style, 'layout.align'), wasActive ? '' : alignment.dataset.hbFlexAlign);
+                }
+            }
             return;
         }
 
         const radio = event.target.closest('[data-hb-style-radio]');
         if (radio) {
             activateStyleRadio(radio);
+            // Flex wiring: the radio column is justify's spacing mode. Space Between/Around
+            // write themselves; the Gap (packed) row hands justify back to the grid's column.
+            const spacing = radio.dataset.hbFlexSpacing;
+            if (spacing && window.hbEditor) {
+                const id = window.hbEditor.getSelectedId();
+                if (id) {
+                    const style = radio.closest('.hb-blockstyle');
+                    let justify = spacing;
+                    if (spacing === 'packed') {
+                        const dot = root.querySelector('[data-hb-style-alignment-grid] .is-active');
+                        justify = dot ? dot.dataset.hbFlexJustify : '';
+                    }
+                    window.hbEditor.setSupport(id, hbStatePath(style, 'layout.justify'), justify);
+                }
+            }
             return;
         }
 
@@ -2322,11 +2463,13 @@
 
         const all = event.target.closest('[data-hb-style-all-value]');
         if (all) {
-            setStyleLinkedValue(root, all.dataset.hbStyleAllValue, event.target.value);
-            // stroke-sides / appearance-corners also use data-hb-style-all-value; only the two
-            // spacing groups have a `spacing.*` model path to commit.
-            if (all.dataset.hbStyleAllValue === 'padding') { syncPaddingControls(root); commitSpacingGroup(root, 'padding'); }
-            else if (all.dataset.hbStyleAllValue === 'margin') { syncMarginControls(root); commitSpacingGroup(root, 'margin'); }
+            const group = all.dataset.hbStyleAllValue;
+            setStyleLinkedValue(root, group, event.target.value);
+            // Spacing commits its four sides as one object; stroke-sides/appearance-corners
+            // commit through each side's own control hook.
+            if (group === 'padding') { syncPaddingControls(root); commitSpacingGroup(root, 'padding'); }
+            else if (group === 'margin') { syncMarginControls(root); commitSpacingGroup(root, 'margin'); }
+            else if (HB_LINKED_GROUPS.indexOf(group) !== -1) commitLinkedSides(root, group);
             return;
         }
 

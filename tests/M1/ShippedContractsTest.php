@@ -15,10 +15,17 @@ use Heisenberg\Tests\TestCase;
  *
  * Pruned to heading + paragraph only (2026-08-02, alongside the builder's removal —
  * see TODO.md). The other 13 shipped contracts existed for the builder; deleted with it.
+ * Re-added 2026-08-06 as fresh contracts: `embed` (video URL -> privacy-enhanced
+ * iframe, see tests/Engine/EmbedBlockTest.php) and the container set
+ * `group`/`columns`/`column`. EXPECTED is compared against a sorted list.
  */
 class ShippedContractsTest extends TestCase
 {
     private const EXPECTED = [
+        'heisenberg/column',
+        'heisenberg/columns',
+        'heisenberg/embed',
+        'heisenberg/group',
         'heisenberg/heading',
         'heisenberg/paragraph',
     ];

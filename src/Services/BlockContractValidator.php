@@ -40,7 +40,7 @@ class BlockContractValidator
         // cssValueValid() in block-runtime.blade.php; never let these hit a permissive fallback.
         'opacity', 'angle', 'length-signed', 'shadow',
         'text-align', 'align-3', 'position-mode',
-        'flex-direction', 'flex-justify', 'flex-align', 'overflow',
+        'flex-direction', 'flex-justify', 'flex-align', 'flex-wrap', 'overflow',
     ];
 
     /** Allowed style-system support groups (align is special-cased). */
@@ -73,7 +73,7 @@ class BlockContractValidator
             'maxWidth' => 'bool', 'maxHeight' => 'bool',
             'fill' => 'axes', 'hug' => 'axes', 'clip' => 'bool',
         ],
-        'layout' => ['direction' => 'bool', 'justify' => 'bool', 'align' => 'bool', 'gap' => 'bool', 'padding' => 'bool'],
+        'layout' => ['direction' => 'bool', 'wrap' => 'bool', 'justify' => 'bool', 'align' => 'bool', 'gap' => 'bool', 'padding' => 'bool'],
         'position' => ['mode' => 'bool', 'x' => 'bool', 'y' => 'bool', 'rotation' => 'bool'],
         'appearance' => ['opacity' => 'bool'],
         'effects' => ['shadow' => 'bool'],

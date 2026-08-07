@@ -27,6 +27,20 @@ class StylePanelGatingTest extends TestCase
 {
     use RefreshDatabase;
 
+    protected function setUp(): void
+    {
+        parent::setUp();
+
+        // The user theme is a JSON file the RUNNING APP writes (the Style/Themes panel
+        // persists every token edit), and phpunit shares testbench's storage with
+        // `testbench serve`. Tests below assert the DEFAULT tokens, so anyone who renamed
+        // or added a colour in the browser used to turn this suite red — a failure that
+        // says nothing about the code. Point the repository at a path that does not exist:
+        // ThemeRepository::load() falls back to defaults, and the developer's own theme is
+        // left untouched.
+        config()->set('heisenberg.theme_path', sys_get_temp_dir() . '/hb-theme-defaults-' . uniqid() . '.json');
+    }
+
     private function editorHtml(): string
     {
         return $this->get('/editor')->getContent();
@@ -42,42 +56,66 @@ class StylePanelGatingTest extends TestCase
         return substr_count($html, 'data-hb-control="' . $path . '"');
     }
 
-    public function test_sections_with_no_supports_group_do_not_render_at_all(): void
+    /**
+     * How many registered contracts DECLARE a supports feature (dotted path under a
+     * group; `true` at the leaf). This replaced blockCount() in the count assertions
+     * when the registry stopped being two identical text contracts (2026-08-06:
+     * group/columns/column/embed each declare different subsets) — a control must
+     * render once per contract that declares its feature, not once per contract.
+     */
+    private function declaring(string $group, ?string $feature = null): int
+    {
+        $count = 0;
+        foreach (app(BlockRegistryService::class)->registry()['blocks'] as $block) {
+            $value = $block['supports'][$group] ?? null;
+            if ($feature === null) {
+                if ($value !== null && $value !== false) {
+                    $count++;
+                }
+                continue;
+            }
+            $leaf = is_array($value) ? data_get($value, $feature) : null;
+            if ($leaf === true || (is_array($leaf) && $leaf !== [])) {
+                $count++;
+            }
+        }
+
+        return $count;
+    }
+
+    public function test_sections_render_only_for_contracts_declaring_their_features(): void
     {
         $html = $this->editorHtml();
 
-        // `layout` is the remaining unsupported group. Its controls must be absent entirely —
-        // not merely disabled, since a rendered-but-dead control is the exact failure this
-        // change exists to remove.
-        $this->assertSame(0, $this->controlCount($html, 'layout.gap'), 'layout.gap is unsupported and must not render');
-        $this->assertStringNotContainsString('<span class="hb-section__title">Flex Layout</span>', $html);
-
-        // Position and Effects were in this list until their controls were wired (TODO 7.1) —
-        // declaring a group whose section writes nothing just recreates the problem, so they
-        // were declared only once they could actually do something.
-        $this->assertSame($this->blockCount(), $this->controlCount($html, 'position.x'));
+        // Every count is per-DECLARING-contract: a control renders exactly as many times as
+        // there are contracts declaring its feature — never once per registered block, and
+        // never for a contract that didn't opt in (a rendered-but-dead control is the exact
+        // failure this suite exists to remove).
+        $this->assertGreaterThan(0, $this->declaring('layout', 'gap'), 'containers declare layout.gap now');
+        $this->assertSame($this->declaring('layout', 'gap'), $this->controlCount($html, 'layout.gap'));
+        $this->assertSame($this->declaring('position', 'x'), $this->controlCount($html, 'position.x'));
         $this->assertStringContainsString('<span class="hb-section__title">Position</span>', $html);
         $this->assertStringContainsString('<span class="hb-section__title">Effects</span>', $html);
     }
 
-    public function test_supported_sections_render_once_per_registered_block_type(): void
+    public function test_supported_sections_render_once_per_declaring_block_type(): void
     {
         $html = $this->editorHtml();
-        $n = $this->blockCount();
-        $this->assertGreaterThan(0, $n);
 
-        // Declared by BOTH contracts, so one instance per pre-rendered panel. color.text is
-        // absent by design — Fill is a layer stack that composites and writes once (§Fill).
+        // One instance per contract DECLARING the feature. color.text is absent by design —
+        // Fill is a layer stack that composites and writes once (§Fill).
         foreach ([
-            'typography.fontFamily',
-            'typography.fontWeight',
-            'typography.fontSize',
-            'size.width',
-            'size.height',
-            'spacing.padding.top',
-            'spacing.margin.top',
-        ] as $path) {
-            $this->assertSame($n, $this->controlCount($html, $path), "{$path} should render once per block type");
+            'typography.fontFamily' => ['typography', 'fontFamily'],
+            'typography.fontWeight' => ['typography', 'fontWeight'],
+            'typography.fontSize' => ['typography', 'fontSize'],
+            'size.width' => ['size', 'width'],
+            'size.height' => ['size', 'height'],
+            'spacing.padding.top' => ['spacing', 'padding.top'],
+            'spacing.margin.top' => ['spacing', 'margin.top'],
+        ] as $path => [$group, $feature]) {
+            $expected = $this->declaring($group, $feature);
+            $this->assertGreaterThan(0, $expected, "{$path} should be declared by at least one contract");
+            $this->assertSame($expected, $this->controlCount($html, $path), "{$path} should render once per declaring block type");
         }
     }
 
@@ -96,15 +134,16 @@ class StylePanelGatingTest extends TestCase
         }
 
         $this->assertStringContainsString('<span class="hb-section__title">Dimensions</span>', $html);
-        $this->assertSame($this->blockCount(), $this->controlCount($html, 'size.width'));
+        $this->assertSame($this->declaring('size', 'width'), $this->controlCount($html, 'size.width'));
     }
 
-    public function test_text_blocks_support_no_border_so_stroke_and_appearance_both_disappear(): void
+    public function test_stroke_and_the_corner_fields_follow_border_which_text_blocks_still_never_declare(): void
     {
         $html = $this->editorHtml();
 
         // TODO 7.2: text blocks do not support borders or corner radius. Both contracts had
         // `border` removed 2026-08-05 along with their seven border-sourced style variables.
+        // That half is unchanged and still asserted the same way.
         foreach (['heisenberg/heading', 'heisenberg/paragraph'] as $name) {
             $contract = app(BlockRegistryService::class)->getBlock($name);
             $this->assertArrayNotHasKey('border', $contract['supports'] ?? []);
@@ -115,16 +154,38 @@ class StylePanelGatingTest extends TestCase
             }
         }
 
-        // Stroke follows `border` directly and is gone. Appearance is NOT — TODO 7.1 declared
-        // `appearance.opacity`, that section's other control, so it renders for opacity alone
-        // while its four corner-radius fields stay gone with `border`.
-        $this->assertStringNotContainsString('<span class="hb-section__title">Stroke</span>', $html);
-        $this->assertStringContainsString('<span class="hb-section__title">Appearance</span>', $html);
+        // The other half is obsolete as of 2026-08-07. This test used to assert that NOTHING on
+        // the page mentioned Stroke or a corner field, which was only true while no contract at
+        // all declared `border`. The container contracts (group/columns/column) now do, and
+        // SupportsStyle backs the corners with --hb-border-radius-{tl,tr,br,bl}, so both mount —
+        // for THOSE panels only. Counting per declaring contract keeps the real claim (a section
+        // renders exactly where its support is declared) and would still catch the original bug:
+        // a leak onto a text block's panel makes the count exceed declaring('border').
+        $declarers = $this->declaring('border');
+        $this->assertGreaterThan(0, $declarers, 'the container contracts declare border now');
+        $this->assertSame($declarers, substr_count($html, '<span class="hb-section__title">Stroke</span>'));
 
-        foreach (['border.color', 'border.width', 'border.radius.topLeft'] as $path) {
-            $this->assertSame(0, $this->controlCount($html, $path), "{$path} must not render");
+        // Appearance is NOT gated on border alone — TODO 7.1 declared `appearance.opacity`, so it
+        // renders for opacity even on a text block, with its four corner fields absent there.
+        $this->assertStringContainsString('<span class="hb-section__title">Appearance</span>', $html);
+        $this->assertSame($this->declaring('appearance', 'opacity'), $this->controlCount($html, 'appearance.opacity'));
+
+        // Per-side/per-corner paths are the ones the fields actually write, and the contracts map
+        // each to the --hb-border-* variable SupportsStyle consumes.
+        foreach (['border.width.top', 'border.radius.topLeft'] as $path) {
+            $this->assertSame($declarers, $this->controlCount($html, $path), "{$path} renders once per declaring contract");
         }
-        $this->assertSame($this->blockCount(), $this->controlCount($html, 'appearance.opacity'));
+
+        // Paths with NO control by design, all of which must stay at zero:
+        //  - `border.width`/`border.color` are scalar aggregates — the Weight "all" field fans
+        //    out to the four sides (a scalar write would clobber the side map) and the colour is
+        //    committed by the composited layer stack (a per-row hook would make the last row win).
+        //  - `border.style` lost its control 2026-08-07: the design's Cap select was removed at
+        //    the user's request. The contracts still default the style variable to `solid`, so a
+        //    Weight the user types paints without a control to set it.
+        foreach (['border.width', 'border.color', 'border.style'] as $path) {
+            $this->assertSame(0, $this->controlCount($html, $path), "{$path} must not gain a control hook");
+        }
     }
 
     public function test_typography_gates_per_control_not_only_per_section(): void
@@ -140,11 +201,14 @@ class StylePanelGatingTest extends TestCase
         $this->assertArrayHasKey('lineHeight', $heading);
         $this->assertArrayNotHasKey('lineHeight', $paragraph);
 
-        $this->assertSame(1, $this->controlCount($html, 'typography.lineHeight'), 'line height is heading-only');
         $this->assertSame(
-            $this->blockCount(),
+            $this->declaring('typography', 'lineHeight'),
+            $this->controlCount($html, 'typography.lineHeight'),
+            'line height renders only for declaring contracts (heading today)',
+        );
+        $this->assertSame(
+            $this->declaring('typography', 'letterSpacing'),
             $this->controlCount($html, 'typography.letterSpacing'),
-            'letter spacing is declared by both',
         );
     }
 
@@ -266,13 +330,12 @@ class StylePanelGatingTest extends TestCase
     public function test_typography_text_alignment_is_wired_and_distinct_from_block_alignment(): void
     {
         $html = $this->editorHtml();
-        $n = $this->blockCount();
 
         // TODO 7.4: the standalone Alignment section places the BLOCK in its parent
         // (supports.align -> hb-align-* class, no style variable); Typography's segmenteds place
         // the TEXT inside the block. Both were decorative; the text pair is now wired.
-        $this->assertSame($n, $this->controlCount($html, 'typography.textAlign'));
-        $this->assertSame($n, $this->controlCount($html, 'typography.textAlignVertical'));
+        $this->assertSame($this->declaring('typography', 'textAlign'), $this->controlCount($html, 'typography.textAlign'));
+        $this->assertSame($this->declaring('typography', 'textAlignVertical'), $this->controlCount($html, 'typography.textAlignVertical'));
         $this->assertStringContainsString('data-hb-control-type="segmented"', $html);
 
         // Vertical alignment compiles through align-self, whose sanitizer is `align-3`
@@ -471,17 +534,29 @@ class StylePanelGatingTest extends TestCase
         $html = $this->editorHtml();
 
         // A flex container lays out its children; the control is incoherent on a block that
-        // cannot have any. Gating on innerBlocks.enabled means the section appears automatically
-        // when a real container contract exists, rather than needing `layout` remembered too.
-        // Asserted against the Blade source — the gate is server-side and never reaches the page.
+        // cannot have any. Gating on innerBlocks.enabled means the section appeared
+        // automatically the day the container contracts landed (2026-08-06: group/columns/
+        // column), with nothing to remember. Asserted against the Blade source — the gate is
+        // server-side and never reaches the page.
         $panel = file_get_contents(__DIR__ . '/../../resources/views/components/live/block/style-panel.blade.php');
         $this->assertStringContainsString("\$isContainer = (bool) (\$innerBlocks['enabled'] ?? false);", $panel);
         $this->assertStringContainsString('@if ($isContainer && $has(\'layout\'))', $panel);
 
+        $containers = 0;
+        foreach (app(BlockRegistryService::class)->registry()['blocks'] as $block) {
+            if (($block['innerBlocks']['enabled'] ?? false) === true) {
+                $containers++;
+            }
+        }
+        $this->assertGreaterThanOrEqual(3, $containers, 'group/columns/column are containers');
         foreach (['heisenberg/heading', 'heisenberg/paragraph'] as $name) {
             $this->assertFalse(app(BlockRegistryService::class)->getBlock($name)['innerBlocks']['enabled'] ?? false);
         }
-        $this->assertStringNotContainsString('<span class="hb-section__title">Flex Layout</span>', $html);
+        // The section mounts once per CONTAINER panel and never for a text block's.
+        $this->assertSame(
+            $containers,
+            substr_count($html, '<span class="hb-section__title">Flex Layout</span>'),
+        );
     }
 
     public function test_absolute_position_checkbox_writes_a_css_keyword_not_a_boolean(): void
@@ -506,16 +581,24 @@ class StylePanelGatingTest extends TestCase
         $this->assertStringContainsString('data-hb-control-off=""', $html);
     }
 
-    public function test_alignment_section_is_gated_off_for_text_contracts(): void
+    public function test_alignment_section_mounts_only_for_contracts_declaring_align(): void
     {
         $html = $this->editorHtml();
 
         // The Alignment section is the BLOCK's placement in its parent (`supports.align` →
         // hb-align-* class). Text contracts deliberately declare no `align` — text alignment
-        // is Typography's textAlign/textAlignVertical — so the section must not mount.
-        $this->assertDoesNotMatchRegularExpression(
-            '/data-hb-control="align"[^>]*data-hb-control-type="segmented"/',
-            $html,
+        // is Typography's textAlign/textAlignVertical. Containers (group/columns) DO declare
+        // it, and they mount the SAME extracted section, never a parallel UI.
+        $declarers = 0;
+        foreach (app(BlockRegistryService::class)->registry()['blocks'] as $block) {
+            if (is_array($block['supports']['align'] ?? null) && ($block['supports']['align'] ?? []) !== []) {
+                $declarers++;
+            }
+        }
+        $this->assertGreaterThanOrEqual(2, $declarers, 'group and columns declare align');
+        $this->assertSame(
+            $declarers,
+            preg_match_all('/data-hb-control="align"[^>]*data-hb-control-type="segmented"/', $html),
         );
 
         $this->assertArrayNotHasKey('align', app(BlockRegistryService::class)->getBlock('heisenberg/heading')['supports']);
@@ -621,12 +704,15 @@ class StylePanelGatingTest extends TestCase
         // rendered control that is not there.
         $markup = preg_replace('#<script\b[^>]*>.*?</script>#is', '', $html);
 
+        // This list shrinks as extracted controls get WIRED, never as they get replaced:
+        // hb-agrid + hb-iradio left it 2026-08-06 (the Flex Layout grid writes
+        // layout.justify×align, the radios layout.justify); stroke-sides and
+        // appearance-corners left it 2026-08-07 (their per-side/corner fields carry
+        // border.width.*/border.radius.* hooks and the "all" field fans out to them).
+        // Stroke's Position/Join selects stay listed: they are vector-editor concepts with
+        // no CSS border equivalent, so they render only behind the `vectorControls` flag.
         $inert = [
-            'hb-agrid' => 'Flex Layout 3x3 alignment grid',
-            'hb-iradio' => 'Flex Layout space-between/around radios',
-            'stroke-sides' => 'Stroke per-side width fields',
             'hb-style-stroke__position' => 'Stroke position select',
-            'appearance-corners' => 'Appearance corner-radius fields',
         ];
 
         foreach ($inert as $marker => $what) {

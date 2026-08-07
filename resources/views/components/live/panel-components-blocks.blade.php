@@ -64,6 +64,12 @@
 @php
     $blockCards = [];
     foreach ($registry as $blockName => $block) {
+        // A parent-constrained block (e.g. `column`, which only lives inside `columns`)
+        // never appears as a standalone palette card — it arrives via its parent's seed
+        // template or in-container insertion.
+        if (! empty($block['innerBlocks']['parent'])) {
+            continue;
+        }
         $lucideIcon = (string) ($block['icon'] ?? '');
         $icon = \Heisenberg\Editor\EditorIcon::resolveSlug($lucideIcon) !== null ? $lucideIcon : 'cube';
         $slug = str_contains($blockName, '/') ? explode('/', $blockName, 2)[1] : $blockName;

@@ -52,6 +52,7 @@ aside.hb-editor__inspector
 ├── POST TAB ─────────────────── document-level; not contract-driven
 │   ├── Summary            (author/date/status meta rows — decorative, TODO 6.8)
 │   ├── Featured image     → media dialog
+│   ├── Revisions          → history dialog, GET /editor/posts/{id}/revisions[/{rev}]
 │   ├── Categories         → checklist, POST/DELETE /editor/posts/{id}/categories/{cat}
 │   ├── Tags               → checklist, POST/DELETE /editor/posts/{id}/tags/{tag}
 │   ├── Discussion         → "Allow comments" toggle, PUT …/discussion
@@ -60,6 +61,18 @@ aside.hb-editor__inspector
 └── BLOCK TAB ────────────────── contract-driven; empty until a block is selected
     └── Sub-tabs: [ Content | Style | Advanced ]
 ```
+
+**The Revisions row** (`[data-hb-revisions-open]`, added 2026-08-06) is the Post tab's one
+non-form affordance: it opens `live/revisions-dialog.blade.php`, which lists the post's snapshots
+(written by `PostController::captureRevision()` on every update — a rolling `auto_save` row plus
+every manual save, trimmed to `config('heisenberg.revisions.keep')`, `null` = unbounded).
+Restoring fetches that revision's
+client-shaped blocks and applies them with `hbEditor.replaceDoc()`, so a restore is an **ordinary
+document swap and is itself undoable** — it is not a separate history mechanism, and nothing is
+written back to the post until the next save. The row carries the URL template and the current
+post id (learned from `hb:post-id` after a new document's first save, same contract as the
+taxonomy bodies); with no id yet the dialog still opens and says so, since a never-saved document
+has no history to show.
 
 **How the Block tab is built.** One instance of each panel is pre-rendered *per registered block
 type* at page load (`@foreach ($registry …)`), all hidden. Selecting a block unhides the panel
@@ -211,7 +224,7 @@ all**, and neither does Appearance's opacity field or Typography's letter-spacin
 | | | Letter spacing | `typography.letterSpacing` | ✅ wired + renders (both contracts declare it) |
 | | | Text horizontal / vertical | `typography.textAlign` / `.textAlignVertical` | ✅ wired + renders via SupportsStyle |
 | 4 | **Position** | X / Y / Rotation / mode | `position.x` `.y` `.rotation` `.mode` | ✅ wired + renders (both contracts declare `position`) |
-| 5 | **Flex Layout** | direction, 3×3 align grid, space-between/around, Gap | `layout.*` | 🚫 **whole section gated off** — needs a container contract (`isContainer`) |
+| 5 | **Flex Layout** | mode segmented (wrap/column/row), 3×3 align grid, space-between/around radios, Gap | `layout.*` | ✅ mounts for the container contracts (group/columns/column, 2026-08-06) — the EXTRACTED composition, wired: the mode segmented writes direction+wrap as a pair, one grid dot writes justify×align, the radios own justify's distribution values; per-feature gating via the `:layout` prop |
 | 6 | **Spacing** | padding / margin, per side | `spacing.{group}.{side}` | ✅ wired + renders (bare numbers normalize to `px`) |
 | | | padding / margin, "one value" + "H/V" modes | same four paths, fanned out | ✅ wired + renders — see below |
 | 7 | **Dimensions** | W / H | `size.width` `size.height` | ✅ wired + renders |
@@ -385,7 +398,7 @@ Catalog-driven since Phase G (2026-08-06): the Animate section renders straight 
 | Control | Writes to (attribute) | Status |
 |---|---|---|
 | Hide on XS/SM/MD/LG/XL/XXL | `hideXs` … `hideXxl` | ✅ both shipped contracts declare these + matching `style.classNames` → `hb-hide-*` |
-| Animation type | `animate` | ✅ options = the full `AnimationCatalog::options()` list |
+| Animation type | `animate` | ✅ options = the full `AnimationCatalog::options()` list — a **searchable static `ui/combobox`** (`data-hb-control-type="combobox"`), not a `ui/select`: the catalog is ~40 presets, and static mode filters the Blade-rendered options itself, so no consumer wiring is needed |
 | Duration / Delay | `animateDuration` / `animateDelay` | ✅ real ms ranges (100–3000 / 0–3000, step 50) |
 | Easing | `animateEasing` | ✅ `AnimationCatalog::easingOptions()` |
 | Play once | `animateOnce` | ✅ toggle |

@@ -90,10 +90,29 @@ docs/                               # this file, BLUEPRINT, schemas, composition
 
 `components/live/block-runtime.blade.php` owns the single document model (`doc.blocks`) and
 exposes the public API `window.hbEditor` (getDoc/getModel/insertBlock/setAttribute/
-setSupport/moveBlock/removeBlock/selectById/reRenderBlock/previewState/buildSavePayload).
-All mutations go through it; it re-renders the touched block and fires the `hb:*`
-integration events (`hb:block-selected`, `hb:block-updated`, `hb:blocks-changed`, …) that
-the inspector, toolbar, and navigator listen for.
+setSupport/moveBlock/removeBlock/selectById/reRenderBlock/replaceDoc/previewState/
+buildSavePayload/undo/redo/canUndo/canRedo). All mutations go through it; it re-renders the
+touched block and fires the `hb:*` integration events (`hb:block-selected`,
+`hb:block-updated`, `hb:blocks-changed`, …) that the inspector, toolbar, and navigator
+listen for.
+
+History lives in the runtime too, because `doc.blocks` does. It is **snapshot-based**: the
+mutation events schedule a debounced (400 ms) commit of the serialized document, so rapid
+typing coalesces into one undo step, and undo/redo replay a snapshot through the same
+render path with block ids preserved. Every stack change fires `hb:history` with
+`{ canUndo, canRedo }` — that event, not polling, is what drives the topbar's
+`data-hb-undo`/`data-hb-redo` buttons (which ship `disabled`). `replaceDoc(blocks,
+{ baseline: true })` resets the stack, so saved-post hydration cannot be undone back to an
+empty canvas.
+
+`components/live/code-editor.blade.php` is the second editing surface over the same model:
+a shortcode dialect of the block contracts (see `docs/code-view.md`), toggled by the
+footer's Code Editor chip, applying only clean parses via `hbEditor.replaceDoc()`.
+`components/live/revisions-dialog.blade.php` is a third read-only-until-restore path over
+it: opened from the inspector's Post tab, it lists a post's saved revisions
+(`PostRevisionsController`, snapshotted on every update by
+`PostController::captureRevision()`) and restores one through `hbEditor.replaceDoc()` — so
+a restore is an ordinary, undoable document swap.
 
 ## Buildless asset serving
 

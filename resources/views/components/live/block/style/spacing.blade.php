@@ -40,10 +40,17 @@
     .hb-spacing-group { gap: 10px; }
 </style>
 @endonce
+{{-- Per-group gating on the contract's `supports.spacing` map (same idiom as
+     dimensions/flex-layout): `column` declares only padding, `embed` only margin —
+     the undeclared group must not render a section that writes into the void.
+     Absent/empty prop = render both (back-compat). --}}
+@props(['spacing' => null])
 @php
     $hbSpacingModeOptions = ['One value for all sides', 'Horizontal/Vertical', 'Top/Right/Bottom/Left'];
+    $hbSpacingOn = fn (string $key): bool => $spacing === null || $spacing === [] || ! empty($spacing[$key]);
 @endphp
 
+@if ($hbSpacingOn('padding'))
 <x-ui.panel-section title="Padding">
     <div class="hb-icol hb-spacing-group">
         <div class="hb-irow" style="justify-content:space-between;">
@@ -71,7 +78,9 @@
         </div>
     </div>
 </x-ui.panel-section>
+@endif
 
+@if ($hbSpacingOn('margin'))
 <x-ui.panel-section title="Margin">
     <div class="hb-icol hb-spacing-group">
         <div class="hb-irow" style="justify-content:space-between;">
@@ -99,11 +108,13 @@
         </div>
     </div>
 </x-ui.panel-section>
+@endif
 
 {{-- Mode-switcher popups (formerly live/pickers/padding-values-menu.blade.php +
      margin-values-menu.blade.php, registered centrally in style-panel.blade.php) — inlined here so
      nothing about Padding/Margin lives outside this file. Default selection (index 2 = "Top/Right/
      Bottom/Left") matches the "four" mode both panels default to above. --}}
+@if ($hbSpacingOn('padding'))
 <div class="hb-style-popup" data-hb-style-popup="padding" hidden>
     <div class="hb-pop hb-padmenu" role="radiogroup" aria-label="Padding Values">
         <span class="hb-padmenu__title">Padding Values</span>
@@ -116,7 +127,9 @@
         </div>
     </div>
 </div>
+@endif
 
+@if ($hbSpacingOn('margin'))
 <div class="hb-style-popup" data-hb-style-popup="margin" hidden>
     <div class="hb-pop hb-padmenu" role="radiogroup" aria-label="Margin Values">
         <span class="hb-padmenu__title">Margin Values</span>
@@ -129,3 +142,4 @@
         </div>
     </div>
 </div>
+@endif

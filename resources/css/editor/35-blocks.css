@@ -85,6 +85,30 @@
 .hb-blk.is-selected { box-shadow: 0 0 0 .6px var(--hb-editing, #3D68F5); }
 .hb-blk > .hb-block { outline: none; }
 
+/* Nested children (inside a container's inner-blocks slot): the wrapper is
+   display:contents so the container's flex layout sees the REAL child root as
+   its item — selection/hover paint on that root via child combinators, and
+   the toolbar anchors to it through the host class (block-runtime docks it
+   there because a boxless wrapper can't anchor an absolute). */
+.hb-blk--nested { display: contents; margin: 0; }
+.hb-blk--nested:hover:not(.is-selected) { box-shadow: none; }
+.hb-blk--nested.is-selected { box-shadow: none; }
+.hb-blk--nested:hover:not(.is-selected) > [data-block-id] { box-shadow: 0 0 0 .6px var(--hb-border-strong, #C8C8C8); }
+.hb-blk--nested.is-selected > [data-block-id] { box-shadow: 0 0 0 .6px var(--hb-editing, #3D68F5); }
+
+/* Editor-only click-to-add target inside an empty container. */
+.hb-inner-appender {
+    display: flex; align-items: center; justify-content: center;
+    min-height: 44px; width: 100%; flex: 1 1 auto;
+    border: 1px dashed var(--hb-border-strong, #C8C8C8);
+    border-radius: var(--hb-radius-md, 5px);
+    background: transparent; cursor: pointer;
+    font-family: var(--hb-font-sans, Rubik, sans-serif);
+    font-size: var(--hb-fs-sm, 12px);
+    color: var(--hb-text-muted, #9A9A9A);
+}
+.hb-inner-appender:hover { border-color: var(--hb-editing, #3D68F5); color: var(--hb-editing, #3D68F5); }
+
 /* Rich-text editables (.hb-ce) show a placeholder when empty. */
 .hb-ce:empty::before { content: attr(data-ph); color: var(--ghost, #C4C4C4); pointer-events: none; }
 .hb-ce { outline: none; }
@@ -114,6 +138,19 @@
 .hb-blk.is-drop-before::before { top: -2px; }
 .hb-blk.is-drop-after::after { bottom: -2px; }
 
+/* Container drops (palette → container): the dashed outline marks the RECEIVING
+   container; the insertion line paints on a nested child's ROOT element — its
+   .hb-blk--nested wrapper is display:contents and can't paint anything. */
+.is-drop-inside { outline: 1.5px dashed var(--hb-editing, #3D68F5); outline-offset: 2px; }
+[data-block-id].is-drop-before, [data-block-id].is-drop-after { position: relative; }
+[data-block-id].is-drop-before::before,
+[data-block-id].is-drop-after::after {
+    content: ""; position: absolute; left: 0; right: 0; height: 2px;
+    background: var(--hb-editing, #3D68F5); pointer-events: none;
+}
+[data-block-id].is-drop-before::before { top: -2px; }
+[data-block-id].is-drop-after::after { bottom: -2px; }
+
 /* The floating chip that follows the pointer while dragging a Components card onto the canvas.
    pointer-events: none is load-bearing — without it, elementFromPoint(pointerX, pointerY) would hit
    the ghost itself (it's positioned exactly there) instead of the block/canvas underneath it. */
@@ -132,6 +169,18 @@
     transform: translate(14px, -50%);
 }
 .hb-drag-ghost .hb-icon, .hb-drag-ghost svg { width: 16px; height: 16px; flex: none; }
+
+/* Third-party embedded content is INERT on the canvas. A loaded iframe owns its own
+   document, so a click inside it is delivered to THAT document and the editor never sees
+   a mousedown — the block can't be selected, moved or edited (its settings live in the
+   inspector, which needs the selection). Disabling pointer events lets every click fall
+   through to the block wrapper. Editor-only chrome: the published page (and the preview)
+   never loads this stylesheet, so the real embed stays fully interactive there. */
+.hb-canvas .hb-blk iframe,
+.hb-canvas .hb-blk video,
+.hb-canvas .hb-blk audio,
+.hb-canvas .hb-blk object,
+.hb-canvas .hb-blk embed { pointer-events: none; }
 
 /* Empty image block — a click-to-pick placeholder instead of a broken <img>. */
 .hb-blk .hb-img-empty { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 8px; min-height: 160px; width: 100%; border: 1px dashed var(--line-strong, #C8C8C8); border-radius: var(--r-md, 5px); background: var(--subtle, #FAFAFA); color: var(--muted, #9A9A9A); cursor: pointer; font-family: var(--hb-font-sans, Rubik, sans-serif); font-size: 13px; }

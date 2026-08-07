@@ -103,6 +103,15 @@
 
     $showFill = $has('color');
     $showStroke = $has('border');
+    /*
+     * A Fill is the fill of the thing you selected (the design source's own semantics):
+     * a text block's fill is its text colour, a CONTAINER's fill is its background. Writing
+     * `color.text` on a group tinted nothing — the frame paints no text of its own — which
+     * read as "fill doesn't work on containers".
+     */
+    $hbFillPath = ($isContainer && ($supports['color']['background'] ?? false) === true)
+        ? 'color.background'
+        : 'color.text';
     $showEffects = $has('effects');
     // Corner radius lives under border; opacity under appearance. Either one earns the section.
     $showAppearance = $showStroke || $has('appearance');
@@ -143,15 +152,17 @@
          button uses, and it means the section appears automatically the moment a real
          container contract exists rather than needing `layout` remembered separately. --}}
     @if ($isContainer && $has('layout'))
-        <x-live.block.style.flex-layout />
+        {{-- Per-control gating: `columns` pins direction in CSS and declares no
+             layout.direction, so that control must not render for it. --}}
+        <x-live.block.style.flex-layout :layout="is_array($supports['layout'] ?? null) ? $supports['layout'] : []" />
     @endif
 
     @if ($has('spacing'))
-        <x-live.block.style.spacing />
+        <x-live.block.style.spacing :spacing="is_array($supports['spacing'] ?? null) ? $supports['spacing'] : []" />
     @endif
 
     @if ($has('size'))
-        <x-live.block.style.dimensions />
+        <x-live.block.style.dimensions :size="is_array($supports['size'] ?? null) ? $supports['size'] : []" />
     @endif
 
     @if ($showAppearance)
@@ -159,7 +170,7 @@
     @endif
 
     @if ($showFill)
-        <x-live.block.style.fill />
+        <x-live.block.style.fill :path="$hbFillPath" />
     @endif
 
     @if ($showStroke)

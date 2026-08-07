@@ -40,10 +40,10 @@
      Navigator's own List View drag (its `.grab` grip) is self-contained in panel-navigator.blade.php
      and commits through this same moveBlock, so canvas and Navigator can never disagree about order.
 
-     Deliberately NOT ported yet (separable follow-ups): undo/redo history, server persistence,
-     inner-block nesting (columns), animation playback, and the inspector's live Style/Advanced
-     control rendering (the header reflects the selection; controls call window.hbEditor.setAttribute
-     to write values back — building those controls is the next step). --}}
+     Nesting (2026-08-06): container children render inside display:contents .hb-blk--nested
+     wrappers — selectable, editable, movable via moveById, inserted via the in-container
+     appender or by inserting while a container is selected. Undo/redo history lives here too
+     (snapshot-based; see the history block). --}}
 @props(['registry' => [], 'blocksCss' => '', 'registryHash' => ''])
 
 {{-- Each block is styled by its own contract stylesheet (resources/blocks/<slug>/<slug>.css),
@@ -74,20 +74,58 @@
     const wrapEl = () => document.querySelector('.hb-page__blocks');
     const appenderEl = () => document.querySelector('.hb-appender');
 
-    function findModel(id) {
-        for (let i = 0; i < doc.blocks.length; i++) { if (doc.blocks[i].id === id) return doc.blocks[i]; }
+    function findModelIn(list, id) {
+        for (let i = 0; i < list.length; i++) {
+            if (list[i].id === id) return list[i];
+            const inner = list[i].innerBlocks;
+            if (Array.isArray(inner) && inner.length) {
+                const hit = findModelIn(inner, id);
+                if (hit) return hit;
+            }
+        }
+        return null;
+    }
+    function findModel(id) { return findModelIn(doc.blocks, id); }
+
+    // Where a block lives: its siblings array, its index there, and the owning parent
+    // model (null at top level). The nesting-aware counterpart of indexOf().
+    function locateBlock(id, list, parent) {
+        const blocks = list || doc.blocks;
+        for (let i = 0; i < blocks.length; i++) {
+            if (blocks[i].id === id) return { list: blocks, index: i, parent: parent || null };
+            const inner = blocks[i].innerBlocks;
+            if (Array.isArray(inner) && inner.length) {
+                const hit = locateBlock(id, inner, blocks[i]);
+                if (hit) return hit;
+            }
+        }
         return null;
     }
 
-    function newBlockModel(name) {
+    function newBlockModel(name, depth) {
         const c = REGISTRY[name];
         if (!c) return null;
         const attrs = {}, defs = c.attributes || {};
         for (const k in defs) { if (Object.prototype.hasOwnProperty.call(defs, k)) attrs[k] = defs[k] == null ? '' : defs[k]; }
-        return {
+        const model = {
             id: 'hb' + (++blockSeq), name: name, schemaVersion: c.version == null ? null : c.version,
             attributes: attrs, supports: {}, innerBlocks: [],
         };
+        // Seed the contract's innerBlocks.template ([name, attributes?] entries) — how a
+        // fresh `columns` arrives already holding its two columns.
+        const seed = c.innerBlocks && Array.isArray(c.innerBlocks.template) ? c.innerBlocks.template : [];
+        if ((depth || 0) < MAX_NESTING_DEPTH) {
+            seed.forEach(function (entry) {
+                const childName = Array.isArray(entry) ? entry[0] : entry;
+                if (typeof childName !== 'string') return;
+                const child = newBlockModel(childName, (depth || 0) + 1);
+                if (!child) return;
+                const preset = Array.isArray(entry) && entry[1] && typeof entry[1] === 'object' ? entry[1] : null;
+                if (preset) { for (const k in preset) { if (Object.prototype.hasOwnProperty.call(preset, k)) child.attributes[k] = preset[k]; } }
+                model.innerBlocks.push(child);
+            });
+        }
+        return model;
     }
 
     // ── pure helpers (ported 1:1 from the builder render engine) ─
@@ -205,6 +243,7 @@
         if (sanitizer === 'flex-direction') return ['row', 'column', 'row-reverse', 'column-reverse'].indexOf(value) >= 0;
         if (sanitizer === 'flex-justify') return ['start', 'center', 'end', 'space-between', 'space-around'].indexOf(value) >= 0;
         if (sanitizer === 'flex-align') return ['start', 'center', 'end', 'stretch'].indexOf(value) >= 0;
+        if (sanitizer === 'flex-wrap') return ['wrap', 'nowrap', 'wrap-reverse'].indexOf(value) >= 0;
         if (sanitizer === 'overflow') return ['visible', 'hidden', 'clip'].indexOf(value) >= 0;
         return /^[a-z0-9\s().,%_\/-]+$/i.test(value);
     }
@@ -264,6 +303,107 @@
         const scheme = /^([a-z][a-z0-9+.-]*):/i.exec(url);
         return !scheme || /^(https?|mailto|tel)$/i.test(scheme[1]) ? url : '';
     }
+
+    // LOCKSTEP with BlockRenderer::embedSrcFor()/embedFileSrcFor() — same rules in the same
+    // order, same normalization, same fail-closed ''. The canvas must preview exactly what
+    // the published page renders; a divergence means the editor lies about what embeds.
+    // The two final gates below mirror EMBED_SRC_PATTERN / EMBED_FILE_SRC_PATTERN.
+    const EMBED_SRC_PATTERN = /^https:\/\/(?:www\.youtube(?:-nocookie)?\.com\/embed\/|player\.vimeo\.com\/video\/|www\.dailymotion\.com\/embed\/video\/|www\.loom\.com\/embed\/|fast\.wistia\.net\/embed\/iframe\/|streamable\.com\/e\/|www\.tiktok\.com\/embed\/v2\/|customer-[a-z0-9]{1,40}\.cloudflarestream\.com\/)[A-Za-z0-9_/?=&.-]+$/;
+    const EMBED_FILE_SRC_PATTERN = /^https:\/\/[A-Za-z0-9](?:[A-Za-z0-9.-]{0,251}[A-Za-z0-9])?(?::[0-9]{1,5})?\/[A-Za-z0-9._~%!$&()*+,;=:/-]*\.(?:mp4|webm|ogg|ogv|mov)(?:\?[A-Za-z0-9._~%!$&()*+,;=:/?-]*)?(?:#[A-Za-z0-9._~%!$&()*+,;=:/?-]*)?$/i;
+    const EMBED_RULES = [
+        // YouTube — watch / shorts / live / v / embed / youtu.be, on www, m and music.
+        { re: /^(?:(?:https?:)?\/\/)?(?:www\.|m\.|music\.)?youtube\.com\/watch\?(?:[^#]*&)?v=([A-Za-z0-9_-]{5,20})(?:[&#].*)?$/i, out: 'yt' },
+        { re: /^(?:(?:https?:)?\/\/)?(?:www\.|m\.|music\.)?youtube\.com\/shorts\/([A-Za-z0-9_-]{5,20})(?:[/?#].*)?$/i, out: 'yt' },
+        { re: /^(?:(?:https?:)?\/\/)?(?:www\.|m\.|music\.)?youtube\.com\/live\/([A-Za-z0-9_-]{5,20})(?:[/?#].*)?$/i, out: 'yt' },
+        { re: /^(?:(?:https?:)?\/\/)?(?:www\.|m\.|music\.)?youtube\.com\/v\/([A-Za-z0-9_-]{5,20})(?:[/?#].*)?$/i, out: 'yt' },
+        { re: /^(?:(?:https?:)?\/\/)?(?:www\.|m\.|music\.)?youtube(?:-nocookie)?\.com\/embed\/([A-Za-z0-9_-]{5,20})(?:[/?#].*)?$/i, out: 'yt' },
+        { re: /^(?:(?:https?:)?\/\/)?(?:www\.)?youtu\.be\/([A-Za-z0-9_-]{5,20})(?:[/?#].*)?$/i, out: 'yt' },
+
+        // Vimeo — group 2 is the optional privacy hash of an unlisted video.
+        { re: /^(?:(?:https?:)?\/\/)?(?:www\.)?vimeo\.com\/([0-9]{1,15})(?:\/([A-Za-z0-9]{6,32}))?(?:[/?#].*)?$/i, out: 'vimeo' },
+        { re: /^(?:(?:https?:)?\/\/)?player\.vimeo\.com\/video\/([0-9]{1,15})(?:[/?#].*)?$/i, out: 'vimeo' },
+        { re: /^(?:(?:https?:)?\/\/)?(?:www\.)?vimeo\.com\/channels\/[A-Za-z0-9_-]{1,64}\/([0-9]{1,15})(?:[/?#].*)?$/i, out: 'vimeo' },
+        { re: /^(?:(?:https?:)?\/\/)?(?:www\.)?vimeo\.com\/groups\/[A-Za-z0-9_-]{1,64}\/videos\/([0-9]{1,15})(?:[/?#].*)?$/i, out: 'vimeo' },
+        { re: /^(?:(?:https?:)?\/\/)?(?:www\.)?vimeo\.com\/showcase\/[0-9]{1,15}\/video\/([0-9]{1,15})(?:[/?#].*)?$/i, out: 'vimeo' },
+
+        // Dailymotion — the id runs to the first `_` of the SEO slug.
+        { re: /^(?:(?:https?:)?\/\/)?(?:www\.)?dailymotion\.com\/video\/([A-Za-z0-9]{5,20})(?:[_/?#].*)?$/i, out: 'dm' },
+        { re: /^(?:(?:https?:)?\/\/)?(?:www\.)?dailymotion\.com\/embed\/video\/([A-Za-z0-9]{5,20})(?:[_/?#].*)?$/i, out: 'dm' },
+        { re: /^(?:(?:https?:)?\/\/)?dai\.ly\/([A-Za-z0-9]{5,20})(?:[_/?#].*)?$/i, out: 'dm' },
+
+        // Loom.
+        { re: /^(?:(?:https?:)?\/\/)?(?:www\.)?loom\.com\/share\/([A-Za-z0-9]{16,64})(?:[/?#].*)?$/i, out: 'loom' },
+        { re: /^(?:(?:https?:)?\/\/)?(?:www\.)?loom\.com\/embed\/([A-Za-z0-9]{16,64})(?:[/?#].*)?$/i, out: 'loom' },
+
+        // Wistia — one bounded subdomain label only (no dot in the class).
+        { re: /^(?:(?:https?:)?\/\/)?(?:[A-Za-z0-9-]{1,63}\.)?wistia\.com\/medias\/([A-Za-z0-9]{6,20})(?:[/?#].*)?$/i, out: 'wistia' },
+        { re: /^(?:(?:https?:)?\/\/)?(?:[A-Za-z0-9-]{1,63}\.)?wistia\.net\/(?:medias|embed\/iframe)\/([A-Za-z0-9]{6,20})(?:[/?#].*)?$/i, out: 'wistia' },
+        { re: /^(?:(?:https?:)?\/\/)?wi\.st\/medias\/([A-Za-z0-9]{6,20})(?:[/?#].*)?$/i, out: 'wistia' },
+
+        // Streamable.
+        { re: /^(?:(?:https?:)?\/\/)?(?:www\.)?streamable\.com\/(?:e\/)?([A-Za-z0-9]{3,12})(?:[/?#].*)?$/i, out: 'streamable' },
+
+        // TikTok — the numeric video id, never the @handle.
+        { re: /^(?:(?:https?:)?\/\/)?(?:www\.|m\.)?tiktok\.com\/@[A-Za-z0-9._-]{1,30}\/video\/([0-9]{5,25})(?:[/?#].*)?$/i, out: 'tiktok' },
+        { re: /^(?:(?:https?:)?\/\/)?(?:www\.)?tiktok\.com\/embed\/v2\/([0-9]{5,25})(?:[/?#].*)?$/i, out: 'tiktok' },
+
+        // Cloudflare Stream — group 1 the customer subdomain, group 2 the video uid.
+        { re: /^(?:(?:https?:)?\/\/)?customer-([A-Za-z0-9]{1,40})\.cloudflarestream\.com\/([A-Za-z0-9]{8,64})\/(?:watch|iframe)(?:[/?#].*)?$/i, out: 'cfstream' },
+    ];
+    // A pasted start offset in whole seconds (`t=`/`start=`, as 90 | 90s | 1m30s | 1h2m3s).
+    // Captured loosely, validated strictly: only an int ever reaches the built src.
+    function embedStartSeconds(url) {
+        const m = /[?&#](?:t|start)=([A-Za-z0-9]{1,16})/i.exec(url);
+        if (!m) return 0;
+        const value = m[1].toLowerCase();
+        let seconds;
+        if (/^[0-9]{1,6}$/.test(value)) seconds = parseInt(value, 10);
+        else {
+            const p = /^(?:([0-9]{1,3})h)?(?:([0-9]{1,3})m)?(?:([0-9]{1,3})s)?$/.exec(value);
+            if (!p || !((p[1] || '') + (p[2] || '') + (p[3] || ''))) return 0;
+            seconds = (parseInt(p[1] || 0, 10) * 3600) + (parseInt(p[2] || 0, 10) * 60) + parseInt(p[3] || 0, 10);
+        }
+        return (seconds > 0 && seconds <= 86400) ? seconds : 0;
+    }
+    // The Vimeo privacy hash carried in the query rather than the path.
+    function vimeoQueryHash(url) {
+        const m = /[?&]h=([A-Za-z0-9]{6,32})(?:[&#]|$)/i.exec(url);
+        return m ? m[1] : '';
+    }
+    function embedClean(url) {
+        // Browsers strip C0 controls + DEL while resolving URLs — match that, or a URL the
+        // browser happily loads would be rejected here.
+        return String(url == null ? '' : url).trim().replace(/[\x00-\x1F\x7F]+/g, '').trim();
+    }
+    function embedSrcFor(url) {
+        const clean = embedClean(url);
+        if (!clean) return '';
+        let src = '';
+        for (let i = 0; i < EMBED_RULES.length; i++) {
+            const m = EMBED_RULES[i].re.exec(clean);
+            if (!m) continue;
+            const start = embedStartSeconds(clean);
+            const hash = (m[2] || '') !== '' ? m[2] : vimeoQueryHash(clean);
+            const out = EMBED_RULES[i].out;
+            if (out === 'yt') src = 'https://www.youtube-nocookie.com/embed/' + m[1] + (start > 0 ? '?start=' + start : '');
+            else if (out === 'vimeo') src = 'https://player.vimeo.com/video/' + m[1] + (hash !== '' ? '?h=' + hash : '');
+            else if (out === 'dm') src = 'https://www.dailymotion.com/embed/video/' + m[1];
+            else if (out === 'loom') src = 'https://www.loom.com/embed/' + m[1];
+            else if (out === 'wistia') src = 'https://fast.wistia.net/embed/iframe/' + m[1];
+            else if (out === 'streamable') src = 'https://streamable.com/e/' + m[1];
+            else if (out === 'tiktok') src = 'https://www.tiktok.com/embed/v2/' + m[1];
+            else if (out === 'cfstream') src = 'https://customer-' + String(m[1]).toLowerCase() + '.cloudflarestream.com/' + m[2] + '/iframe';
+            break;
+        }
+        return EMBED_SRC_PATTERN.test(src) ? src : '';
+    }
+    // A SELF-HOSTED video file is a media element, not an iframe. Nothing is normalized:
+    // a media URL is opaque (signed CDN links carry required query params), so this is a
+    // pure allow-list decision.
+    function embedFileSrcFor(url) {
+        const clean = embedClean(url);
+        return clean !== '' && EMBED_FILE_SRC_PATTERN.test(clean) ? clean : '';
+    }
     function alignmentValuesFor(name) {
         const values = REGISTRY[name] && REGISTRY[name].supports && REGISTRY[name].supports.align;
         if (!Array.isArray(values)) return [];
@@ -287,31 +427,39 @@
             const span = document.createElement('span');
             if (node.class) span.className = subst(node.class, model);
             const val = model.attributes[node.attribute];
-            // Nested blocks preview read-only: an editable .hb-ce inside another block's
-            // wrapper would resolve closest('.hb-blk') to the PARENT and write edits into
-            // the wrong model. Child editing arrives with the container-block feature.
-            if (depth === 0) {
-                span.classList.add('hb-ce');
-                span.setAttribute('contenteditable', 'true');
-                span.spellcheck = true;
-                span.setAttribute('data-hb-rt', node.attribute || '');
-                span.setAttribute('data-ph', 'Write something…');
-            }
+            // Editable at EVERY depth: a nested child renders inside its own .hb-blk--nested
+            // wrapper, so closest('.hb-blk[data-block]') resolves to the CHILD's model.
+            span.classList.add('hb-ce');
+            span.setAttribute('contenteditable', 'true');
+            span.spellcheck = true;
+            span.setAttribute('data-hb-rt', node.attribute || '');
+            span.setAttribute('data-ph', 'Write something…');
             span.innerHTML = (val == null ? '' : String(val));
             return span;
         }
 
-        // inner-blocks: each child renders through its OWN contract, exactly like
-        // BlockRenderer::renderInnerBlocks() on the published page.
+        // inner-blocks: each child renders through its OWN contract (same recursion as
+        // BlockRenderer::renderInnerBlocks() on the published page), wrapped in a
+        // display:contents .hb-blk--nested shell so it is selectable/editable while the
+        // container's flex layout still sees the real child root as its item.
         if (type === 'inner-blocks') {
             const frag = document.createDocumentFragment();
             const inner = Array.isArray(model.innerBlocks) ? model.innerBlocks : [];
             for (let i = 0; i < inner.length; i++) {
-                const child = inner[i];
-                const childContract = child && child.name ? REGISTRY[child.name] : null;
-                if (!childContract || !childContract.template || depth >= MAX_NESTING_DEPTH) continue;
-                const el = renderNode(childContract.template, child, childContract, true, depth + 1);
+                if (depth >= MAX_NESTING_DEPTH) break;
+                const el = renderBlockEl(inner[i], depth + 1);
                 if (el) frag.appendChild(el);
+            }
+            // Editor-only affordance — an empty container shows a click-to-add target.
+            // The published page renders nothing here (canvas chrome, like .hb-appender).
+            if (!inner.length && depth < MAX_NESTING_DEPTH) {
+                const add = document.createElement('button');
+                add.type = 'button';
+                add.className = 'hb-inner-appender';
+                add.setAttribute('data-hb-inner-appender', model.id);
+                const label = (wrapEl() && wrapEl().dataset.hbAddLabel) || 'Add block';
+                add.textContent = '+ ' + label;
+                frag.appendChild(add);
             }
             return frag;
         }
@@ -337,6 +485,20 @@
             let raw = attrs[an];
             if (raw && typeof raw === 'object') {
                 if ('boolean' in raw) { if (truthy(subst(raw.boolean, model))) el.setAttribute(an, ''); continue; }
+                // The `embed` attribute-object key (its value is a template expression for
+                // the pasted URL) — normalize to the privacy-enhanced embed form; fail
+                // closed by omitting the attribute entirely.
+                if ('embed' in raw) {
+                    const src = embedSrcFor(subst(raw.embed, model));
+                    if (src !== '') el.setAttribute(an, src);
+                    continue;
+                }
+                // Self-hosted media: the same shape for the <video> element's src.
+                if ('embedFile' in raw) {
+                    const file = embedFileSrcFor(subst(raw.embedFile, model));
+                    if (file !== '') el.setAttribute(an, file);
+                    continue;
+                }
                 const omit = raw.omitWhenEmpty === true || raw.omitEmpty === true; raw = subst(raw.value || '', model); if (omit && raw === '') continue;
             } else { raw = subst(raw, model); }
             if (an === 'src' || an === 'href' || an === 'srcset' || an === 'poster') {
@@ -350,13 +512,13 @@
         return el;
     }
 
-    function renderBlockEl(model) {
+    function renderBlockEl(model, depth) {
         const c = REGISTRY[model.name];
         if (!c || !c.template) return null;
-        const root = renderNode(c.template, model, c, true);
+        const root = renderNode(c.template, model, c, true, depth || 0);
         if (!root) return null;
         const wrap = document.createElement('div');
-        wrap.className = 'hb-blk';
+        wrap.className = (depth || 0) > 0 ? 'hb-blk hb-blk--nested' : 'hb-blk';
         wrap.setAttribute('data-block', model.id);
         wrap.setAttribute('data-block-name', model.name);
         if (model.name.indexOf('heading') !== -1) wrap.setAttribute('data-level', String(model.attributes.level || 2));
@@ -435,11 +597,36 @@
     }
 
     // ── insert ─────────────────────────────────────────────────
+    /** True when `container`'s contract accepts a child of `name`. */
+    function containerAllows(containerModel, name) {
+        const c = containerModel ? REGISTRY[containerModel.name] : null;
+        if (!c || !c.innerBlocks || !c.innerBlocks.enabled) return false;
+        const allowed = c.innerBlocks.allowedBlocks;
+        return allowed === '*' || (Array.isArray(allowed) && allowed.indexOf(name) !== -1);
+    }
+
     // atIndex is optional — omitted (or out of range) appends, exactly like before it existed.
+    // With a CONTAINER selected and no explicit index, the new block lands INSIDE it — the
+    // palette and appender read as "add here" while a group/column is active.
     function insertBlock(name, atIndex) {
         const model = newBlockModel(name);
         if (!model) return null;
         const wrap = wrapEl();
+
+        if (typeof atIndex !== 'number' && selected) {
+            const selModel = findModel(selected.getAttribute('data-block'));
+            if (selModel && containerAllows(selModel, name)) {
+                selModel.innerBlocks.push(model);
+                reRenderBlock(selModel.id);
+                selectById(model.id);
+                const childEl = findBlockEl(model.id);
+                const childCe = childEl && childEl.querySelector('.hb-ce');
+                if (childCe) { childCe.focus(); placeCaretEnd(childCe); }
+                document.dispatchEvent(new CustomEvent('hb:blocks-changed'));
+                return childEl;
+            }
+        }
+
         const hasIndex = typeof atIndex === 'number' && atIndex >= 0 && atIndex <= doc.blocks.length;
         if (hasIndex) doc.blocks.splice(atIndex, 0, model); else doc.blocks.push(model);
         const el = renderBlockEl(model);
@@ -451,7 +638,7 @@
         const app = appenderEl();
         let ref = null;
         if (hasIndex) {
-            const siblings = wrap ? wrap.querySelectorAll('.hb-blk') : [];
+            const siblings = wrap ? wrap.querySelectorAll(':scope > .hb-blk') : [];
             ref = siblings[atIndex] || null;
         }
         if (ref) wrap.insertBefore(el, ref);
@@ -505,12 +692,29 @@
         show(tb.querySelector('[data-tb-action="save"]'), !!(c.innerBlocks && c.innerBlocks.enabled));
     }
 
+    // Where the floating toolbar anchors for a selected block. A nested wrapper is
+    // display:contents (flex containers must see the real child root as their item) so it
+    // cannot anchor an absolute — and anchoring to the child's own ROOT put the 32px bar
+    // *inside* the container's content box, covering sibling text and swallowing the clicks
+    // meant for it (a nested child then read as "not editable"). So a nested selection
+    // anchors to its TOP-LEVEL ancestor, exactly where a top-level block's toolbar sits:
+    // never over container content, and the bar still reflects the selected child.
+    function toolbarHost(blk) {
+        if (!blk.classList.contains('hb-blk--nested')) return blk;
+        let top = blk, parent = blk.parentElement ? blk.parentElement.closest('.hb-blk') : null;
+        while (parent) {
+            top = parent;
+            parent = parent.parentElement ? parent.parentElement.closest('.hb-blk') : null;
+        }
+        return top;
+    }
     function dockToolbar(blk, model) {
         const tb = document.querySelector('[data-hb-block-toolbar]');
         if (!tb) return;
         gateToolbar(tb, model);
         tb.hidden = false;
-        blk.insertBefore(tb, blk.firstChild);
+        const host = toolbarHost(blk);
+        host.insertBefore(tb, host.firstChild);
     }
     function stowToolbar() {
         const tb = document.querySelector('[data-hb-block-toolbar]');
@@ -584,16 +788,25 @@
         const wasSelected = selected === old;
         const tb = document.querySelector('[data-hb-block-toolbar]');
         const tbWasDocked = !!(wasSelected && tb && old.contains(tb));
+        // A re-rendered PARENT swallows its selected child's DOM — re-select it after.
+        const selectedId = selected && old.contains(selected) && selected !== old
+            ? selected.getAttribute('data-block') : null;
 
-        const next = renderBlockEl(model);
+        const nested = old.classList.contains('hb-blk--nested');
+        const next = renderBlockEl(model, nested ? 1 : 0);
         if (!next) return false;
         if (!old.parentNode) return false;
+        // The toolbar must survive the swap — it lives inside `old` while docked.
+        if (tb && old.contains(tb)) stowToolbar();
         old.parentNode.replaceChild(next, old);
 
         if (wasSelected) {
             selected = next;
             next.classList.add('is-selected');
-            if (tbWasDocked) { gateToolbar(tb, model); next.insertBefore(tb, next.firstChild); }
+            if (tbWasDocked) { dockToolbar(next, model); }
+        } else if (selectedId) {
+            selected = null; // the old child element is gone; re-select its fresh DOM
+            selectById(selectedId);
         }
 
         restoreCaret(next, caret);
@@ -623,6 +836,13 @@
         if (!model) return false;
         const parts = String(path || '').split('.');
         if (!parts.length || parts[0] === '') return false;
+        // The model gate for interaction states: only the states the renderer can compile
+        // may ever be written, no matter which surface (inspector, toolbar, code view)
+        // asked — a bogus "state" would serialize, save, and then never emit any CSS.
+        if (parts[0] === 'states' && ['hover', 'active', 'focus'].indexOf(parts[1]) === -1) {
+            console.warn('hbEditor.setSupport: invalid state "' + parts[1] + '" rejected (' + path + ')');
+            return false;
+        }
         if (!model.supports || typeof model.supports !== 'object') model.supports = {};
         let node = model.supports;
         for (let i = 0; i < parts.length - 1; i++) {
@@ -678,15 +898,71 @@
         return true;
     }
 
+    // Insert a NEW block into a container at an optional child index — the palette-drop,
+    // inner-appender and quick-inserter path. Refuses children the contract doesn't allow.
+    function insertInto(containerId, name, atIndex) {
+        const owner = findModel(containerId);
+        if (!owner || !containerAllows(owner, name)) return null;
+        const model = newBlockModel(name, 1);
+        if (!model) return null;
+        const list = owner.innerBlocks;
+        const hasIndex = typeof atIndex === 'number' && atIndex >= 0 && atIndex <= list.length;
+        if (hasIndex) list.splice(atIndex, 0, model); else list.push(model);
+        reRenderBlock(containerId);
+        selectById(model.id);
+        const el = findBlockEl(model.id);
+        const ce = el && el.querySelector('.hb-ce');
+        if (ce) { ce.focus(); placeCaretEnd(ce); }
+        document.dispatchEvent(new CustomEvent('hb:blocks-changed'));
+        return el;
+    }
+
     function removeBlock(id) {
-        const i = indexOf(id);
-        if (i === -1) return false;
+        const loc = locateBlock(id);
+        if (!loc) return false;
         const el = findBlockEl(id);
         if (selected === el) deselect(); // stow the toolbar while the node is still in the document
-        doc.blocks.splice(i, 1);
-        if (el && el.parentNode) el.parentNode.removeChild(el);
+        loc.list.splice(loc.index, 1);
+        if (loc.parent) reRenderBlock(loc.parent.id);
+        else if (el && el.parentNode) el.parentNode.removeChild(el);
         document.dispatchEvent(new CustomEvent('hb:blocks-changed'));
         return true;
+    }
+
+    // Nested-aware sibling move (the toolbar's up/down): swaps within whichever
+    // siblings array the block lives in.
+    function moveById(id, delta) {
+        const loc = locateBlock(id);
+        if (!loc) return false;
+        const j = loc.index + (delta < 0 ? -1 : 1);
+        if (j < 0 || j >= loc.list.length) return false;
+        if (!loc.parent) return moveBlock(loc.index, j);
+        const moved = loc.list.splice(loc.index, 1)[0];
+        loc.list.splice(j, 0, moved);
+        reRenderBlock(loc.parent.id);
+        selectById(id);
+        document.dispatchEvent(new CustomEvent('hb:blocks-changed'));
+        return true;
+    }
+
+    // Nested-aware duplicate: deep-clones the model (normalizeModel assigns fresh ids
+    // through the whole subtree and re-merges contract defaults) as the next sibling.
+    function duplicateBlock(id) {
+        const loc = locateBlock(id);
+        const source = loc ? loc.list[loc.index] : null;
+        if (!source) return null;
+        const copy = normalizeModel(JSON.parse(JSON.stringify(source)));
+        if (!copy) return null;
+        loc.list.splice(loc.index + 1, 0, copy);
+        if (loc.parent) reRenderBlock(loc.parent.id);
+        else {
+            const el = renderBlockEl(copy);
+            const srcEl = findBlockEl(id);
+            if (el && srcEl && srcEl.parentNode) srcEl.parentNode.insertBefore(el, srcEl.nextSibling);
+        }
+        selectById(copy.id);
+        document.dispatchEvent(new CustomEvent('hb:blocks-changed'));
+        return copy.id;
     }
 
     // ── drag & drop reorder / insert (Pointer Events, no HTML5 DnD) ────
@@ -759,6 +1035,9 @@
             const blk = selected; // the toolbar is only ever docked inside the selected block
             const wrap = wrapEl();
             if (!blk || !wrap) return;
+            // Nested blocks reorder via the toolbar's up/down (moveById) — their
+            // display:contents wrappers have no geometry for the drop-line math.
+            if (blk.classList.contains('hb-blk--nested')) return;
             e.preventDefault(); // also suppresses the compat mousedown/click for this gesture
             try { grip.setPointerCapture(e.pointerId); } catch (err) { /* older engines */ }
             const startY = e.clientY;
@@ -773,11 +1052,11 @@
                     blk.classList.add('is-dragging');
                     startAutoScroll();
                 }
-                const found = resolveDropItem(wrap, '.hb-blk', blk, ev.clientX, ev.clientY);
+                const found = resolveDropItem(wrap, ':scope > .hb-blk', blk, ev.clientX, ev.clientY);
                 if (!found) return;
                 if (hover && hover.el === found.el && hover.below === found.below) return;
                 hover = found;
-                clearDropMarks(wrap, '.hb-blk');
+                clearDropMarks(wrap, ':scope > .hb-blk');
                 found.el.classList.add(found.below ? 'is-drop-after' : 'is-drop-before');
             }
             function cleanup() {
@@ -785,7 +1064,7 @@
                 grip.removeEventListener('pointerup', onUp);
                 grip.removeEventListener('pointercancel', onCancel);
                 blk.classList.remove('is-dragging');
-                clearDropMarks(wrap, '.hb-blk');
+                clearDropMarks(wrap, ':scope > .hb-blk');
                 stopAutoScroll();
             }
             function onUp() {
@@ -809,6 +1088,33 @@
     // Palette → canvas — dragging a Components card onto the canvas inserts it at the drop
     // position; a plain click (no movement past the threshold) still appends via the existing click
     // handler in boot(), untouched.
+    // The deepest container under the pointer that accepts `name` — walks the .hb-blk
+    // chain upward from the hit, so a drop over a paragraph inside a column targets the
+    // column, and a drop over bare group space targets the group.
+    function containerAt(x, y, name) {
+        const hit = document.elementFromPoint(x, y);
+        let blk = hit && hit.closest ? hit.closest('.hb-blk') : null;
+        while (blk) {
+            const model = findModel(blk.getAttribute('data-block'));
+            if (model && containerAllows(model, name)) return { blk: blk, model: model };
+            blk = blk.parentElement ? blk.parentElement.closest('.hb-blk') : null;
+        }
+        return null;
+    }
+
+    // Child-index resolution inside a container: nested wrappers are display:contents
+    // (empty rects), so geometry reads each child's ROOT element instead.
+    function resolveInsideDrop(rootEl, y) {
+        const items = Array.prototype.slice.call(rootEl.querySelectorAll(':scope > .hb-blk'));
+        const rootOf = (w) => w.querySelector(':scope > [data-block-id]') || w;
+        if (!items.length) return { index: 0, markEl: null, below: false };
+        for (let i = 0; i < items.length; i++) {
+            const r = rootOf(items[i]).getBoundingClientRect();
+            if (y < r.top + r.height / 2) return { index: i, markEl: rootOf(items[i]), below: false };
+        }
+        return { index: items.length, markEl: rootOf(items[items.length - 1]), below: true };
+    }
+
     function wirePaletteDrag() {
         function makeGhost(card) {
             const g = document.createElement('div');
@@ -832,8 +1138,15 @@
             const startX = e.clientX, startY = e.clientY;
             let active = false;
             let hover = null;
+            let inside = null;     // { id, index } when hovering INSIDE a container
+            let insideEl = null;   // the container root carrying is-drop-inside
+            let insideMark = null; // the child root carrying the insertion line
             let ghost = null;
 
+            function clearInsideMarks() {
+                if (insideEl) { insideEl.classList.remove('is-drop-inside'); insideEl = null; }
+                if (insideMark) { insideMark.classList.remove('is-drop-before', 'is-drop-after'); insideMark = null; }
+            }
             function onMove(ev) {
                 if (!active) {
                     if (Math.abs(ev.clientX - startX) + Math.abs(ev.clientY - startY) < 5) return;
@@ -846,8 +1159,27 @@
                 ghost.style.left = ev.clientX + 'px';
                 ghost.style.top = ev.clientY + 'px';
                 const wrap = wrapEl();
-                clearDropMarks(wrap, '.hb-blk');
-                hover = wrap && overCanvas(ev.clientX, ev.clientY) ? resolveDropItem(wrap, '.hb-blk', null, ev.clientX, ev.clientY) : null;
+                clearDropMarks(wrap, ':scope > .hb-blk');
+                clearInsideMarks();
+                hover = null;
+                inside = null;
+                if (!wrap || !overCanvas(ev.clientX, ev.clientY)) return;
+                // Containers first: a drop over one lands INSIDE it, at the child slot
+                // under the pointer.
+                const target = containerAt(ev.clientX, ev.clientY, name);
+                if (target) {
+                    const rootEl = target.blk.querySelector(':scope > [data-block-id]') || target.blk;
+                    insideEl = rootEl;
+                    rootEl.classList.add('is-drop-inside');
+                    const slot = resolveInsideDrop(rootEl, ev.clientY);
+                    inside = { id: target.model.id, index: slot.index };
+                    if (slot.markEl) {
+                        insideMark = slot.markEl;
+                        insideMark.classList.add(slot.below ? 'is-drop-after' : 'is-drop-before');
+                    }
+                    return;
+                }
+                hover = resolveDropItem(wrap, ':scope > .hb-blk', null, ev.clientX, ev.clientY);
                 if (hover) hover.el.classList.add(hover.below ? 'is-drop-after' : 'is-drop-before');
             }
             function cleanup() {
@@ -855,7 +1187,8 @@
                 card.removeEventListener('pointerup', onUp);
                 card.removeEventListener('pointercancel', onCancel);
                 if (ghost) { ghost.remove(); ghost = null; }
-                clearDropMarks(wrapEl(), '.hb-blk');
+                clearDropMarks(wrapEl(), ':scope > .hb-blk');
+                clearInsideMarks();
                 stopAutoScroll();
             }
             function onUp(ev) {
@@ -865,7 +1198,9 @@
                     // handler against treating this as a second, separate insert.
                     card.__hbDragSuppressClick = true;
                     if (overCanvas(ev.clientX, ev.clientY)) {
-                        if (hover) {
+                        if (inside) {
+                            insertInto(inside.id, name, inside.index);
+                        } else if (hover) {
                             const hoverIndex = indexOf(hover.el.getAttribute('data-block'));
                             insertBlock(name, hoverIndex === -1 ? undefined : (hover.below ? hoverIndex + 1 : hoverIndex));
                         } else {
@@ -897,6 +1232,32 @@
             if (blk) select(blk);
         });
 
+        // An empty container's click-to-add target (renderNode's inner-blocks branch renders
+        // it). Dispatches the cancelable hb:quick-insert first — the Gutenberg-style quick
+        // inserter (live/quick-inserter.blade.php) claims it by preventDefault and drives
+        // insertInto() itself; with no inserter mounted the default is the first allowed block.
+        wrap.addEventListener('click', (e) => {
+            const add = e.target.closest('[data-hb-inner-appender]');
+            if (!add) return;
+            e.stopPropagation();
+            const owner = findModel(add.getAttribute('data-hb-inner-appender'));
+            if (!owner) return;
+            const quick = new CustomEvent('hb:quick-insert', {
+                cancelable: true,
+                detail: { containerId: owner.id, anchor: add },
+            });
+            document.dispatchEvent(quick);
+            if (quick.defaultPrevented) return;
+            let childName = 'heisenberg/paragraph';
+            if (!containerAllows(owner, childName)) {
+                const c = REGISTRY[owner.name];
+                const allowed = c && c.innerBlocks ? c.innerBlocks.allowedBlocks : null;
+                if (Array.isArray(allowed) && allowed.length) childName = allowed[0];
+                else return;
+            }
+            insertInto(owner.id, childName);
+        });
+
         // An empty image block's click-to-pick placeholder — fire a cancelable event for another
         // component (the media dialog) to handle. No dialog lives here; this just signals intent.
         // setAttribute(id, 'url', …) is how the picker's result comes back into the model.
@@ -922,11 +1283,20 @@
             document.dispatchEvent(new CustomEvent('hb:blocks-changed'));
         });
 
-        // The + appender adds a paragraph — the default text block. Structured blocks are added
-        // from the Components panel; this is the quick "write something" affordance.
+        // The + appender. Dispatches the cancelable hb:quick-insert first — the quick
+        // inserter popup claims it (preventDefault) and offers every block; the fallback
+        // stays the classic "write something" paragraph insert.
         document.querySelectorAll('[data-hb-insert]').forEach((btn) => {
             if (btn.__hbIns2) return; btn.__hbIns2 = true;
-            btn.addEventListener('click', (e) => { e.stopPropagation(); insertBlock('heisenberg/paragraph'); });
+            btn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                const quick = new CustomEvent('hb:quick-insert', {
+                    cancelable: true,
+                    detail: { containerId: null, anchor: btn },
+                });
+                document.dispatchEvent(quick);
+                if (!quick.defaultPrevented) insertBlock('heisenberg/paragraph');
+            });
         });
 
         // Components panel cards / any [data-hb-insert-block] insert that block directly.
@@ -961,6 +1331,142 @@
     else boot();
     document.addEventListener('hb:refresh', boot);
 
+    // ── whole-document swap (code view apply + saved-post hydration) ──
+    // Accepts models in the SAVE shape ({name, attributes, supports, innerBlocks}) with or
+    // without ids: every model gets a fresh id (stale/duplicate incoming ids could collide
+    // with live ones), attributes are merged over the contract's defaults (a saved or
+    // hand-written doc may omit attributes added to the contract since), and unknown block
+    // names are dropped — same rule as insertBlock returning null.
+    function normalizeModel(raw) {
+        const c = raw && raw.name ? REGISTRY[raw.name] : null;
+        if (!c) return null;
+        const attrs = {}, defs = c.attributes || {};
+        for (const k in defs) { if (Object.prototype.hasOwnProperty.call(defs, k)) attrs[k] = defs[k] == null ? '' : defs[k]; }
+        const given = raw.attributes || {};
+        for (const k in given) { if (Object.prototype.hasOwnProperty.call(given, k)) attrs[k] = given[k]; }
+        const inner = [];
+        (Array.isArray(raw.innerBlocks) ? raw.innerBlocks : []).forEach(function (child) {
+            const m = normalizeModel(child);
+            if (m) inner.push(m);
+        });
+        return {
+            id: 'hb' + (++blockSeq), name: raw.name, schemaVersion: c.version == null ? null : c.version,
+            attributes: attrs, supports: (raw.supports && typeof raw.supports === 'object') ? raw.supports : {},
+            innerBlocks: inner,
+        };
+    }
+    function renderDoc(models) {
+        const wrap = wrapEl();
+        if (!wrap) return false;
+        deselect();
+        doc.blocks = models;
+        wrap.querySelectorAll('.hb-blk').forEach(function (el) { el.remove(); });
+        const app = appenderEl();
+        models.forEach(function (model) {
+            const el = renderBlockEl(model);
+            if (!el) return;
+            if (app && app.parentNode === wrap) wrap.insertBefore(el, app);
+            else wrap.appendChild(el);
+        });
+        return true;
+    }
+    // opts.baseline: this swap IS the document's starting point (saved-post hydration) —
+    // history resets so nothing can be undone back past it to an empty canvas.
+    function replaceDoc(blocks, opts) {
+        const models = [];
+        (Array.isArray(blocks) ? blocks : []).forEach(function (raw) {
+            const m = normalizeModel(raw);
+            if (m) models.push(m);
+        });
+        if (!renderDoc(models)) return false;
+        if (opts && opts.baseline) historyReset();
+        document.dispatchEvent(new CustomEvent('hb:blocks-changed'));
+        return true;
+    }
+
+    // ── history (undo/redo) ────────────────────────────────────
+    // Snapshot-based: every mutation event schedules a debounced commit (rapid typing
+    // coalesces into one step); undo/redo swap serialized states through renderDoc with
+    // ids preserved. The stack lives here because doc.blocks lives here.
+    const HISTORY_CAP = 100;
+    const history = { past: [], future: [], current: '[]', timer: null, restoring: false };
+    function historyEmit() {
+        document.dispatchEvent(new CustomEvent('hb:history', {
+            detail: { canUndo: history.past.length > 0, canRedo: history.future.length > 0 },
+        }));
+    }
+    function historyCommit() {
+        if (history.restoring) return;
+        const json = JSON.stringify(doc.blocks);
+        if (json === history.current) return;
+        history.past.push(history.current);
+        if (history.past.length > HISTORY_CAP) history.past.shift();
+        history.current = json;
+        history.future = [];
+        historyEmit();
+    }
+    function historySchedule() {
+        if (history.restoring) return;
+        clearTimeout(history.timer);
+        history.timer = setTimeout(function () { history.timer = null; historyCommit(); }, 400);
+    }
+    function historyFlush() {
+        if (!history.timer) return;
+        clearTimeout(history.timer);
+        history.timer = null;
+        historyCommit();
+    }
+    function historyReset() {
+        clearTimeout(history.timer);
+        history.timer = null;
+        history.past = [];
+        history.future = [];
+        history.current = JSON.stringify(doc.blocks);
+        historyEmit();
+    }
+    function historyRestore(json) {
+        history.restoring = true;
+        renderDoc(JSON.parse(json));
+        document.dispatchEvent(new CustomEvent('hb:blocks-changed'));
+        history.restoring = false;
+        historyEmit();
+    }
+    function undo() {
+        historyFlush();
+        if (!history.past.length) return false;
+        history.future.push(history.current);
+        history.current = history.past.pop();
+        historyRestore(history.current);
+        return true;
+    }
+    function redo() {
+        historyFlush();
+        if (!history.future.length) return false;
+        history.past.push(history.current);
+        history.current = history.future.pop();
+        historyRestore(history.current);
+        return true;
+    }
+    document.addEventListener('hb:blocks-changed', historySchedule);
+    document.addEventListener('hb:block-updated', historySchedule);
+    // Ctrl/Cmd+Z / Shift+Z / Y. Native undo stays native inside real text fields (inputs,
+    // the code textarea); .hb-ce contenteditable is ours — its DOM is rebuilt per keystroke,
+    // so native undo is broken there and document history is the correct handler.
+    if (!document.__hbHistoryKeys) {
+        document.__hbHistoryKeys = true;
+        document.addEventListener('keydown', function (e) {
+            if (!(e.ctrlKey || e.metaKey)) return;
+            const k = (e.key || '').toLowerCase();
+            if (k !== 'z' && k !== 'y') return;
+            const t = e.target;
+            const tag = t && t.tagName ? t.tagName.toLowerCase() : '';
+            if (tag === 'input' || tag === 'textarea' || tag === 'select') return;
+            if (t && t.isContentEditable && !(t.classList && t.classList.contains('hb-ce'))) return;
+            e.preventDefault();
+            if (k === 'y' || (k === 'z' && e.shiftKey)) redo(); else undo();
+        });
+    }
+
     // The documented public runtime API other editor components (inspector, navigator, media
     // dialog, …) build against. See the file header for the event contract that goes with it.
     window.hbEditor = {
@@ -970,14 +1476,22 @@
         getContract: function (name) { return REGISTRY[name] || null; },
         indexOf: indexOf,
         insertBlock: insertBlock,
+        insertInto: insertInto,
         setAttribute: setAttribute,
         setSupport: setSupport,
+        moveById: moveById,
+        duplicateBlock: duplicateBlock,
         previewState: previewState,
         parentIdOf: function (id) { return parentIdOf(id); },
         moveBlock: moveBlock,
         removeBlock: removeBlock,
         selectById: selectById,
         reRenderBlock: reRenderBlock,
+        replaceDoc: replaceDoc,
+        undo: undo,
+        redo: redo,
+        canUndo: function () { return history.past.length > 0; },
+        canRedo: function () { return history.future.length > 0; },
         // Builds the exact envelope BlocksPayloadService::validatePayload() expects, so the
         // save wiring never has to reconstruct it (and can't drift from the validator):
         // payload-level schemaVersion is the integer 1 — NOT the per-block contract version

@@ -244,10 +244,16 @@
                 const action = btn.dataset.tbAction;
                 const ctx = currentBlock();
                 if (ctx && window.hbEditor && (action === 'move-up' || action === 'move-down')) {
-                    const i = window.hbEditor.indexOf(ctx.id);
-                    const n = window.hbEditor.getDoc().blocks.length;
-                    const j = action === 'move-up' ? i - 1 : i + 1;
-                    if (i !== -1 && j >= 0 && j < n) window.hbEditor.moveBlock(i, j);
+                    // moveById is nesting-aware (moves within whichever siblings array the
+                    // block lives in); the index pair path remains for older runtimes.
+                    if (window.hbEditor.moveById) {
+                        window.hbEditor.moveById(ctx.id, action === 'move-up' ? -1 : 1);
+                    } else {
+                        const i = window.hbEditor.indexOf(ctx.id);
+                        const n = window.hbEditor.getDoc().blocks.length;
+                        const j = action === 'move-up' ? i - 1 : i + 1;
+                        if (i !== -1 && j >= 0 && j < n) window.hbEditor.moveBlock(i, j);
+                    }
                 }
                 // `drag` is a pointer gesture block-runtime already owns end-to-end
                 // (wireCanvasBlockDrag's pointerdown on .hb-tb__btn--drag calls preventDefault,
@@ -275,8 +281,13 @@
                     return;
                 }
                 if (item.dataset.moreAction === 'duplicate') {
-                    // Deep-copy first: attribute/supports values can be arrays/objects, and the
-                    // new model must never share references with the source.
+                    // duplicateBlock is the runtime's own deep clone: nesting-aware (clones
+                    // innerBlocks with fresh ids) and lands as the next sibling. The manual
+                    // copy path remains for older runtimes.
+                    if (window.hbEditor.duplicateBlock) {
+                        window.hbEditor.duplicateBlock(ctx.id);
+                        return;
+                    }
                     const copy = JSON.parse(JSON.stringify({
                         attributes: ctx.model.attributes || {},
                         supports: ctx.model.supports || {},

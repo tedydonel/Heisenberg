@@ -122,6 +122,125 @@ class SupportsCapabilityFixtureTest extends TestCase
         $this->assertStringContainsString('--hb-shadow: none', $html);
     }
 
+    // ── Border: four sides + four corners ──────────────────────────────
+
+    public function test_fixture_declaring_border_sides_and_radius_renders_every_custom_property(): void
+    {
+        // The corner half is new (2026-08-07). SupportsStyle had NO radius backing at all, so
+        // Appearance's four corner fields wrote supports.border.radius.* and no stylesheet ever
+        // read it. The four --hb-border-radius-* vars are what SupportsStyle now consumes.
+        $html = $this->renderer()->renderBlock($this->block([], [
+            'border' => [
+                'width' => ['top' => '2px', 'right' => '3px', 'bottom' => '4px', 'left' => '5px'],
+                'color' => ['top' => 'var(--ink)'],
+                'style' => ['top' => 'dashed'],
+                'radius' => ['topLeft' => '8px', 'topRight' => '0', 'bottomRight' => '2rem', 'bottomLeft' => '50%'],
+            ],
+        ]), 'en');
+
+        foreach ([
+            '--hb-border-top-width: 2px',
+            '--hb-border-right-width: 3px',
+            '--hb-border-bottom-width: 4px',
+            '--hb-border-left-width: 5px',
+            '--hb-border-radius-tl: 8px',
+            // A bare 0 resolves its implied unit, like every other length kind.
+            '--hb-border-radius-tr: 0px',
+            '--hb-border-radius-br: 2rem',
+            '--hb-border-radius-bl: 50%',
+        ] as $needle) {
+            $this->assertStringContainsString($needle, $html, "missing expected declaration: {$needle}");
+        }
+    }
+
+    public function test_malformed_border_side_and_corner_values_never_reach_the_markup(): void
+    {
+        $html = $this->renderer()->renderBlock($this->block([], [
+            'border' => [
+                'width' => ['right' => '3px; } body { background: url(javascript:alert(1))'],
+                'radius' => [
+                    'topLeft' => 'expression(alert(1))',
+                    'topRight' => '8px" onload="alert(1)',
+                    'bottomRight' => 'calc(100% - 4px)',
+                    'bottomLeft' => '8xyz',
+                ],
+            ],
+        ]), 'en');
+
+        $this->assertStringNotContainsString('javascript:', $html);
+        $this->assertStringNotContainsString('expression(', $html);
+        $this->assertStringNotContainsString('onload=', $html);
+        $this->assertStringNotContainsString('calc(', $html);
+        $this->assertStringNotContainsString('8xyz', $html);
+
+        // Each rejected value falls back to ITS OWN contract-declared default, never to the
+        // neighbouring corner's value and never to nothing-at-all mid-declaration.
+        foreach ([
+            '--hb-border-right-width: 0px',
+            '--hb-border-radius-tl: 0px',
+            '--hb-border-radius-tr: 0px',
+            '--hb-border-radius-br: 0px',
+            '--hb-border-radius-bl: 0px',
+        ] as $needle) {
+            $this->assertStringContainsString($needle, $html, "missing fallback declaration: {$needle}");
+        }
+    }
+
+    public function test_a_container_contract_paints_all_four_edges_from_one_stroke_colour_scalar(): void
+    {
+        // The shipped container contracts (group/columns/column) declare border.color and
+        // border.style as SCALARS, because the inspector writes one value for the whole box:
+        // Stroke's colour is a composited layer stack committing to supports.border.color, and
+        // Cap writes supports.border.style. style.variables is var => {source}, so all four
+        // per-side vars read that single source — which is what makes one scalar paint four
+        // edges through SupportsStyle's existing per-side rule.
+        $registry = new BlockRegistryService(new BlockContractValidator('heisenberg'));
+        $renderer = new BlockRenderer($registry);
+
+        foreach (['heisenberg/group', 'heisenberg/columns', 'heisenberg/column'] as $name) {
+            $html = $renderer->renderBlock([
+                'id' => 'c1', 'name' => $name, 'attributes' => [], 'innerBlocks' => [],
+                'supports' => [
+                    'border' => [
+                        'width' => ['top' => '2px', 'right' => '2px', 'bottom' => '2px', 'left' => '2px'],
+                        'style' => 'dashed',
+                        'color' => '#ff0000',
+                        'radius' => ['topLeft' => '8px', 'topRight' => '8px', 'bottomRight' => '8px', 'bottomLeft' => '8px'],
+                    ],
+                ],
+            ], 'en');
+
+            foreach (['top', 'right', 'bottom', 'left'] as $side) {
+                $this->assertStringContainsString("--hb-border-{$side}-width: 2px", $html, $name);
+                $this->assertStringContainsString("--hb-border-{$side}-style: dashed", $html, $name);
+                $this->assertStringContainsString("--hb-border-{$side}-color: #ff0000", $html, $name);
+            }
+            foreach (['tl', 'tr', 'br', 'bl'] as $corner) {
+                $this->assertStringContainsString("--hb-border-radius-{$corner}: 8px", $html, $name);
+            }
+        }
+    }
+
+    public function test_a_container_with_no_stroke_set_stays_visually_unchanged(): void
+    {
+        // The style vars default to `solid` so a Weight the user types actually paints — the Cap
+        // select shows Solid, and an unset style would fall back to SupportsStyle's `none` and
+        // silently swallow the weight. That default must stay invisible on its own: with no
+        // width and no colour set, no width or colour var is emitted at all, so the capability
+        // rule keeps its 0-width/transparent fallbacks.
+        $renderer = new BlockRenderer(new BlockRegistryService(new BlockContractValidator('heisenberg')));
+
+        $html = $renderer->renderBlock([
+            'id' => 'c2', 'name' => 'heisenberg/group',
+            'attributes' => [], 'supports' => [], 'innerBlocks' => [],
+        ], 'en');
+
+        $this->assertStringContainsString('--hb-border-top-style: solid', $html);
+        foreach (['--hb-border-top-width', '--hb-border-top-color', '--hb-border-radius-tl'] as $var) {
+            $this->assertStringNotContainsString($var . ':', $html, "{$var} must stay unset until the user sets it");
+        }
+    }
+
     // ── Per-kind valid / invalid / adversarial (attribute-sourced probes) ──
 
     public function test_opacity_kind_valid_and_invalid_values(): void
@@ -375,9 +494,13 @@ class SupportsCapabilityFixtureTest extends TestCase
                 'typography' => ['letterSpacing' => true, 'textAlign' => true, 'textAlignVertical' => true],
                 'size' => ['clip' => true],
                 'border' => [
-                    'width' => ['top' => true],
+                    'width' => ['top' => true, 'right' => true, 'bottom' => true, 'left' => true],
                     'color' => ['top' => true],
                     'style' => ['top' => true],
+                    'radius' => [
+                        'topLeft' => true, 'topRight' => true,
+                        'bottomRight' => true, 'bottomLeft' => true,
+                    ],
                 ],
                 'effects' => ['shadow' => true],
             ],
@@ -415,6 +538,13 @@ class SupportsCapabilityFixtureTest extends TestCase
                     '--hb-border-top-width' => ['source' => 'supports.border.width.top', 'default' => '0', 'sanitize' => 'length-signed'],
                     '--hb-border-top-color' => ['source' => 'supports.border.color.top', 'default' => 'transparent', 'sanitize' => 'color-value'],
                     '--hb-border-top-style' => ['source' => 'supports.border.style.top', 'default' => 'none', 'sanitize' => 'border-style'],
+                    '--hb-border-right-width' => ['source' => 'supports.border.width.right', 'default' => '0', 'sanitize' => 'size-value'],
+                    '--hb-border-bottom-width' => ['source' => 'supports.border.width.bottom', 'default' => '0', 'sanitize' => 'size-value'],
+                    '--hb-border-left-width' => ['source' => 'supports.border.width.left', 'default' => '0', 'sanitize' => 'size-value'],
+                    '--hb-border-radius-tl' => ['source' => 'supports.border.radius.topLeft', 'default' => '0', 'sanitize' => 'size-value'],
+                    '--hb-border-radius-tr' => ['source' => 'supports.border.radius.topRight', 'default' => '0', 'sanitize' => 'size-value'],
+                    '--hb-border-radius-br' => ['source' => 'supports.border.radius.bottomRight', 'default' => '0', 'sanitize' => 'size-value'],
+                    '--hb-border-radius-bl' => ['source' => 'supports.border.radius.bottomLeft', 'default' => '0', 'sanitize' => 'size-value'],
                     '--hb-shadow' => ['source' => 'supports.effects.shadow', 'default' => 'none', 'sanitize' => 'shadow'],
                 ],
             ],

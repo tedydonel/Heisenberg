@@ -14,17 +14,17 @@ use PHPUnit\Framework\TestCase;
  */
 class BlockTypeTest extends TestCase
 {
-    /** The 20 documented block types, in blueprint order (§2.2). */
+    /** The blueprint's 20 types (§2.2) plus group/column/embed (2026-08-06), in declaration order. */
     private const ALL = [
         'paragraph', 'heading', 'image', 'quote', 'list', 'cta', 'gallery',
         'video', 'faq', 'separator', 'html_raw', 'testimonial', 'stat',
         'accordion', 'button', 'columns', 'section_head', 'takeaway',
-        'data_row', 'component',
+        'data_row', 'component', 'group', 'column', 'embed',
     ];
 
-    public function test_has_the_twenty_documented_cases_with_exact_values(): void
+    public function test_has_the_documented_cases_with_exact_values(): void
     {
-        $this->assertCount(20, BlockType::cases());
+        $this->assertCount(23, BlockType::cases());
         $this->assertSame(
             self::ALL,
             array_map(static fn (BlockType $t): string => $t->value, BlockType::cases())

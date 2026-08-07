@@ -1,0 +1,103 @@
+/* Embed (video). Border/radius intentionally absent: this contract declares no `border`
+   support, so no border-side or radius variables exist and no rule here reads them.
+   (NB: never write a literal star-slash sequence inside this comment — it terminates it
+   early and the CSS parser then swallows the entire base rule below. See CssIntegrityTest.) */
+.hb-block-embed {
+    width: var(--hb-embed-w, 100%);
+    max-width: var(--hb-embed-maxw, none);
+    margin: var(--hb-embed-mt, 12px) var(--hb-embed-mr, 0) var(--hb-embed-mb, 12px) var(--hb-embed-ml, 0);
+    transition: opacity 140ms ease, box-shadow 140ms ease, transform 140ms ease;
+}
+
+/* Responsive 16:9 box. It keeps its height whether or not the iframe got a src, so an
+   unset/unrecognized URL still occupies the layout instead of collapsing to nothing. */
+.hb-block-embed__frame {
+    position: relative;
+    width: 100%;
+    aspect-ratio: 16 / 9;
+    overflow: hidden;
+    background: var(--hb-embed-placeholder-bg, rgba(0, 0, 0, 0.04));
+    border-radius: var(--hb-embed-frame-radius, 4px);
+}
+
+/* Two players, one frame. A pasted URL is EITHER a provider page (iframe) or a
+   self-hosted media file (video); BlockRenderer resolves each src independently and
+   omits the one that doesn't apply, so "no src attribute" is what the CSS switches on.
+   Both are laid out identically and stacked in the same box. */
+.hb-block-embed__iframe,
+.hb-block-embed__video {
+    display: block;
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    border: 0;
+}
+
+.hb-block-embed__video {
+    background: #000;
+    object-fit: contain;
+}
+
+/* Exactly ONE of the three states is ever visible.
+   1. an element with no src is not a player at all — hide it outright;
+   2. belt-and-braces: should both ever resolve, the iframe wins (it comes first, so a
+      general-sibling rule can reach the video);
+   3. the note is the fallback, so any preceding sibling that DID get a src hides it. */
+.hb-block-embed__iframe:not([src]),
+.hb-block-embed__video:not([src]) {
+    display: none;
+}
+
+.hb-block-embed__iframe[src] ~ .hb-block-embed__video {
+    display: none;
+}
+
+.hb-block-embed__iframe[src] ~ .hb-block-embed__note,
+.hb-block-embed__video[src] ~ .hb-block-embed__note {
+    display: none;
+}
+
+/* Empty / unsupported state. Keeps the 16:9 box occupied instead of collapsing to
+   nothing, and — unlike the old bare dashed rectangle — SAYS why nothing is playing.
+   Styled with --hb-* vars + literal fallbacks so it reads correctly in the editor canvas
+   and in the published page alike. */
+.hb-block-embed__note {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 8px 12px;
+    border: 1px dashed var(--hb-border, #c9c9c9);
+    border-radius: var(--hb-embed-frame-radius, 4px);
+    background: transparent;
+    color: var(--hb-muted, #9a9a9a);
+    font-family: var(--hb-font-sans, Rubik, sans-serif);
+    font-size: 13px;
+    line-height: 1.4;
+    text-align: center;
+}
+
+/* Nothing pasted yet: the same dashed slot, but no message — an untouched block is not
+   an error. Driven by the `hb-embed-empty` class the contract binds to url === "". */
+.hb-block-embed.hb-embed-empty .hb-block-embed__note-text {
+    display: none;
+}
+
+/* The label itself comes from heisenberg::blocks.embed.unsupported, substituted by
+   BlockRenderer. The editor canvas walks the same template with a JS mirror that has no
+   translator, so there the span renders EMPTY — this literal keeps the canvas legible
+   (same var-plus-literal-fallback idea as the colours above). */
+.hb-block-embed__note-text:empty::before {
+    content: "Unsupported video link";
+}
+
+/* Device visibility — six breakpoint bands (Bootstrap-style ranges).
+   Published output hides the block for every enabled band. */
+@media (max-width: 575.98px) { .hb-block-embed.hb-hide-xs { display: none; } }
+@media (min-width: 576px) and (max-width: 767.98px) { .hb-block-embed.hb-hide-sm { display: none; } }
+@media (min-width: 768px) and (max-width: 991.98px) { .hb-block-embed.hb-hide-md { display: none; } }
+@media (min-width: 992px) and (max-width: 1199.98px) { .hb-block-embed.hb-hide-lg { display: none; } }
+@media (min-width: 1200px) and (max-width: 1399.98px) { .hb-block-embed.hb-hide-xl { display: none; } }
+@media (min-width: 1400px) { .hb-block-embed.hb-hide-xxl { display: none; } }

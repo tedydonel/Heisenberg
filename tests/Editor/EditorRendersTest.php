@@ -46,6 +46,42 @@ class EditorRendersTest extends TestCase
         $this->assertStringContainsString('name="csrf-token"', $html);
     }
 
+    public function test_editor_ships_the_code_view_and_its_footer_toggle(): void
+    {
+        $html = $this->get('/editor')->getContent();
+
+        // The Code view panel (shortcode source) and the whole-document swap it applies through.
+        $this->assertStringContainsString('data-hb-codeview', $html);
+        $this->assertStringContainsString('data-hb-cv-input', $html);
+        $this->assertStringContainsString('replaceDoc', $html);
+        // The footer chip is a real toggle now, not an inert label.
+        $this->assertStringContainsString('data-hb="code-editor" aria-pressed="false"', $html);
+    }
+
+    public function test_editor_ships_the_history_revisions_and_code_view_chrome(): void
+    {
+        $html = $this->get('/editor')->getContent();
+
+        // Undo/redo: the topbar's two centre buttons are the only surface for the runtime's history
+        // stack, and they must ship DISABLED — nothing is undoable on a freshly-opened document, and
+        // an enabled-by-default button that no-ops is indistinguishable from a broken one. The
+        // `hb:history` events flip them from there.
+        $this->assertStringContainsString('data-hb-undo disabled', $html);
+        $this->assertStringContainsString('data-hb-redo disabled', $html);
+
+        // Post revisions: the inspector's Post tab row that opens the history dialog, and the dialog
+        // itself. Matched with the trailing `hidden` rather than the bare attribute — `data-hb-revisions`
+        // is a prefix of `data-hb-revisions-open`, so the bare substring would pass on the ROW alone
+        // and never notice the dialog going missing.
+        $this->assertStringContainsString('data-hb-revisions-open', $html);
+        $this->assertStringContainsString('data-hb-revisions hidden', $html);
+
+        // Code view: the current-line band is the one piece of the editor's chrome that has to be in
+        // the DOM up front (the highlight overlay and gutter are built from the textarea's content,
+        // the band is positioned against it).
+        $this->assertStringContainsString('data-hb-cv-band', $html);
+    }
+
     public function test_client_registry_ships_contract_version_for_schema_version(): void
     {
         // BlocksPayloadService requires every block instance to carry a schemaVersion equal to
@@ -112,37 +148,47 @@ class EditorRendersTest extends TestCase
         $header = fn (string $section): string => '<span class="hb-section__title">' . $section . '</span>';
 
         // Appearance is here for `appearance.opacity`, not corner radius — text has no border.
-        foreach (['State', 'Typography', 'Dimensions', 'Fill', 'Appearance', 'Position', 'Effects'] as $section) {
+        //
+        // Flex Layout joined this list 2026-08-06: it gates on `$isContainer && $has('layout')`,
+        // and the container contracts (`group`/`columns`/`column`) are the first blocks to satisfy
+        // both — innerBlocks.enabled true AND a declared `layout` group backed by
+        // --hb-flex-direction/-justify/-align/-gap/-padding. The panel stack is pre-rendered once
+        // per registered block type, so one container contract is enough to put the section on the
+        // page; the text contracts still do not mount it.
+        foreach (['State', 'Typography', 'Dimensions', 'Fill', 'Appearance', 'Position', 'Effects', 'Flex Layout'] as $section) {
             $this->assertStringContainsString($header($section), $html);
         }
-        // Flex Layout gates on being a CONTAINER, not on supports.layout — a flex container lays
-        // out children, and neither text block can have any (innerBlocks.enabled false).
-        // Alignment is block PLACEMENT (`supports.align`), which text contracts deliberately
-        // do not declare — text alignment lives in Typography.
-        foreach (['Flex Layout', 'Stroke', 'Alignment'] as $section) {
-            $this->assertStringNotContainsString(
-                $header($section),
-                $html,
-                "'{$section}' has no supports group in either shipped contract and must not render",
-            );
-        }
+        // Alignment is block PLACEMENT (`supports.align`) — text contracts still don't declare
+        // it (text alignment lives in Typography), but the containers DO (2026-08-06): a group
+        // or columns places ITSELF via the same extracted Alignment section.
+        $this->assertStringContainsString($header('Alignment'), $html);
+        // Stroke follows `border`, which the CONTAINER contracts declare as of 2026-08-07
+        // (group/columns/column), so the section is on the page for their panels. Which panels
+        // mount it is asserted per declaring contract in StylePanelGatingTest; here it is enough
+        // that the extracted section renders at all.
+        $this->assertStringContainsString($header('Stroke'), $html);
 
         // Section-specific glyphs must resolve rather than falling back to generic arrows. Numeric
         // Style fields intentionally do not import arbitrary prefix/unit/caret chrome.
         $this->assertStringContainsString('data-icon-name="format_align_right"', $html);
         $this->assertStringContainsString('data-icon-name="gear-six"', $html);
-        // `arrows-horizontal` is the Flex Layout gap field's icon and is gated away with it —
-        // it appears nowhere else in the editor.
-        $this->assertStringNotContainsString('data-icon-name="arrows-horizontal"', $html);
+        // (`arrows-horizontal`, the Flex Layout gap field's icon, was asserted absent here as a
+        // second proxy for that section being gated away. Dropped 2026-08-06 with the container
+        // contracts: the section now mounts, so the glyph is expected on the page and the assertion
+        // proved nothing the section-header check above doesn't already cover — while pinning one
+        // specific icon choice inside a panel that is free to change its widgets.)
         $this->assertStringContainsString('data-icon-name="style-padding-left"', $html);
-        // The corner-radius glyphs belong to Appearance, which goes with `border` (TODO 7.2).
-        $this->assertStringNotContainsString('data-icon-name="style-corner-radius-top-left"', $html);
-        // The align-*-fill glyphs belong to the Alignment section, gated away with `align`
-        // for text contracts (block placement; text alignment is Typography's).
-        $this->assertStringNotContainsString('data-icon-name="align-left-fill"', $html);
+        // The corner-radius glyphs belong to Appearance's corner fields, which follow `border`.
+        // On the page since the containers declared it (2026-08-07) and SupportsStyle gained the
+        // per-corner radius capability that backs them; text contracts still gate them away.
+        $this->assertStringContainsString('data-icon-name="style-corner-radius-top-left"', $html);
+        // The align-*-fill glyphs belong to the Alignment section — on the page since the
+        // containers declared `align` (2026-08-06); text contracts still gate it away.
+        $this->assertStringContainsString('data-icon-name="align-left-fill"', $html);
         $this->assertStringContainsString('data-hb-style-layer-template="fill"', $html);
-        // Stroke's layer template goes with the Stroke section.
-        $this->assertStringNotContainsString('data-hb-style-layer-template="stroke"', $html);
+        // Stroke's layer template goes with the Stroke section, which the container contracts
+        // now mount (2026-08-07).
+        $this->assertStringContainsString('data-hb-style-layer-template="stroke"', $html);
         // Fill still triggers the colour picker, so the popup stays mounted.
         $this->assertStringContainsString('data-hb-style-popup="color"', $html);
         $this->assertStringContainsString('data-cp-gradient-add', $html);
@@ -313,7 +359,10 @@ class EditorRendersTest extends TestCase
         // real contract attributes (hideXs.../animate/animateDuration/animateDelay), not supports
         // paths, so they must route through setAttribute rather than setSupport.
         $this->assertStringContainsString('data-hb-control="hideXs" data-hb-control-kind="attributes" data-hb-control-type="toggle"', $html);
-        $this->assertStringContainsString('data-hb-control="animate" data-hb-control-kind="attributes" data-hb-control-type="select"', $html);
+        // `animate` is a ui/combobox in static (self-filtering) mode since the Animate section went
+        // catalog-driven — AnimationCatalog is ~40 presets, which is past what a select menu can be
+        // scanned for. The hook contract is unchanged; only the declared control TYPE moved.
+        $this->assertStringContainsString('data-hb-control="animate" data-hb-control-kind="attributes" data-hb-control-type="combobox"', $html);
         $this->assertStringContainsString('data-hb-control="animateDuration" data-hb-control-kind="attributes" data-hb-control-type="range"', $html);
     }
 

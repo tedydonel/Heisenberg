@@ -22,7 +22,9 @@
     <x-ui.panel-section :title="__('heisenberg::editor.advanced.section_animate')" collapsible>
         <div class="hb-icol">
             <span class="hb-ilbl">{{ __('heisenberg::editor.advanced.animation_type') }}</span>
-            <x-ui.select value="" :options="\Heisenberg\Support\AnimationCatalog::options()" data-hb-control="animate" data-hb-control-kind="attributes" data-hb-control-type="select" />
+            {{-- Searchable: the catalog is ~40 presets, so the static-mode combobox (typing
+                 filters the full list itself) beats scanning a select menu. --}}
+            <x-ui.combobox :static="true" value="" :options="\Heisenberg\Support\AnimationCatalog::options()" data-hb-control="animate" data-hb-control-kind="attributes" data-hb-control-type="combobox" />
         </div>
         <div class="hb-icol" data-hb-showwhen="{{ $hbAnimShow }}">
             <div class="hb-irow" style="justify-content:space-between;"><span class="hb-ilbl">{{ __('heisenberg::editor.advanced.duration') }}</span><span class="hb-tglrow__l"><span data-hb-range-readout>{{ \Heisenberg\Support\AnimationCatalog::DEFAULT_DURATION }}</span> ms</span></div>

@@ -5,7 +5,8 @@ declare(strict_types=1);
 namespace Heisenberg\Enums;
 
 /**
- * The 20 block types (blueprint §2.2). Stored as a raw varchar in the block row
+ * The block types: the blueprint's 20 (§2.2) plus group/column/embed (2026-08-06).
+ * Stored as a raw varchar in the block row
  * (`type`), never DB-cast to this enum — the enum is the canonical registry of
  * valid type slugs used by the validator, payload service, renderer, and the
  * `blocks:verify` parity command (§12).
@@ -37,6 +38,10 @@ enum BlockType: string
     case TAKEAWAY = 'takeaway';
     case DATA_ROW = 'data_row';
     case COMPONENT = 'component';
+    // Containers + embed (2026-08-06 — the first contracts beyond the blueprint's 20).
+    case GROUP = 'group';
+    case COLUMN = 'column';
+    case EMBED = 'embed';
 
     /**
      * All type slugs, in declaration order.
@@ -78,6 +83,9 @@ enum BlockType: string
             self::TAKEAWAY => 'Takeaway',
             self::DATA_ROW => 'Data Row',
             self::COMPONENT => 'Component',
+            self::GROUP => 'Group',
+            self::COLUMN => 'Column',
+            self::EMBED => 'Embed',
         };
     }
 
@@ -108,6 +116,9 @@ enum BlockType: string
             self::TAKEAWAY => 'lightbulb',
             self::DATA_ROW => 'table',
             self::COMPONENT => 'puzzle',
+            self::GROUP => 'frame',
+            self::COLUMN => 'rectangle-vertical',
+            self::EMBED => 'youtube',
         };
     }
 }

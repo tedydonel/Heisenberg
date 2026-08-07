@@ -1,0 +1,469 @@
+{
+    "$schema": "../../../docs/block-schema.md",
+    "apiVersion": 1,
+    "name": "heisenberg/column",
+    "title": "heisenberg::blocks.column.title",
+    "category": "design",
+    "icon": "square-half",
+    "description": "heisenberg::blocks.column.description",
+    "keywords": [
+        "column",
+        "cell",
+        "layout",
+        "container"
+    ],
+    "version": "1.0.0",
+    "attributes": {
+        "anchor": {
+            "type": "string",
+            "default": "",
+            "sanitize": "text",
+            "control": {
+                "type": "text",
+                "section": "general",
+                "half": true,
+                "placeholder": "unique-id"
+            }
+        },
+        "titleAttr": {
+            "type": "string",
+            "default": "",
+            "sanitize": "text",
+            "control": {
+                "type": "text",
+                "section": "general",
+                "half": true,
+                "placeholder": "Tooltip text"
+            }
+        },
+        "extraClasses": {
+            "type": "string",
+            "default": "",
+            "sanitize": "text",
+            "control": {
+                "type": "chips",
+                "section": "general",
+                "placeholder": "Add class…"
+            }
+        },
+        "hideXs": {
+            "type": "boolean",
+            "default": false,
+            "sanitize": "boolean",
+            "control": {
+                "type": "toggle",
+                "section": "visibility",
+                "half": true
+            }
+        },
+        "hideSm": {
+            "type": "boolean",
+            "default": false,
+            "sanitize": "boolean",
+            "control": {
+                "type": "toggle",
+                "section": "visibility",
+                "half": true
+            }
+        },
+        "hideMd": {
+            "type": "boolean",
+            "default": false,
+            "sanitize": "boolean",
+            "control": {
+                "type": "toggle",
+                "section": "visibility",
+                "half": true
+            }
+        },
+        "hideLg": {
+            "type": "boolean",
+            "default": false,
+            "sanitize": "boolean",
+            "control": {
+                "type": "toggle",
+                "section": "visibility",
+                "half": true
+            }
+        },
+        "hideXl": {
+            "type": "boolean",
+            "default": false,
+            "sanitize": "boolean",
+            "control": {
+                "type": "toggle",
+                "section": "visibility",
+                "half": true
+            }
+        },
+        "hideXxl": {
+            "type": "boolean",
+            "default": false,
+            "sanitize": "boolean",
+            "control": {
+                "type": "toggle",
+                "section": "visibility",
+                "half": true
+            }
+        },
+        "fillWidth": {
+            "type": "boolean",
+            "default": false,
+            "sanitize": "boolean",
+            "control": false
+        },
+        "fillHeight": {
+            "type": "boolean",
+            "default": false,
+            "sanitize": "boolean",
+            "control": false
+        },
+        "hugWidth": {
+            "type": "boolean",
+            "default": false,
+            "sanitize": "boolean",
+            "control": false
+        },
+        "hugHeight": {
+            "type": "boolean",
+            "default": false,
+            "sanitize": "boolean",
+            "control": false
+        },
+        "clipContent": {
+            "type": "boolean",
+            "default": false,
+            "sanitize": "boolean",
+            "control": false
+        }
+    },
+    "supports": {
+        "layout": {
+            "justify": true,
+            "align": true,
+            "gap": true,
+            "padding": true
+        },
+        "color": {
+            "text": true,
+            "background": true,
+            "custom": false
+        },
+        "size": {
+            "minWidth": true,
+            "minHeight": true,
+            "maxWidth": true,
+            "maxHeight": true
+        },
+        "spacing": {
+            "padding": {
+                "top": true,
+                "right": true,
+                "bottom": true,
+                "left": true
+            }
+        },
+        "border": {
+            "width": {
+                "top": true,
+                "right": true,
+                "bottom": true,
+                "left": true
+            },
+            "style": true,
+            "color": true,
+            "radius": {
+                "topLeft": true,
+                "topRight": true,
+                "bottomRight": true,
+                "bottomLeft": true
+            }
+        },
+        "animation": true,
+        "states": {
+            "hover": true,
+            "active": true,
+            "focus": true
+        }
+    },
+    "style": {
+        "css": "./column.css",
+        "className": "hb-block-column hb-supports hb-flex-layout",
+        "classNames": [
+            {
+                "class": "hb-hide-xs",
+                "when": {
+                    "attribute": "hideXs",
+                    "equals": true
+                }
+            },
+            {
+                "class": "hb-hide-sm",
+                "when": {
+                    "attribute": "hideSm",
+                    "equals": true
+                }
+            },
+            {
+                "class": "hb-hide-md",
+                "when": {
+                    "attribute": "hideMd",
+                    "equals": true
+                }
+            },
+            {
+                "class": "hb-hide-lg",
+                "when": {
+                    "attribute": "hideLg",
+                    "equals": true
+                }
+            },
+            {
+                "class": "hb-hide-xl",
+                "when": {
+                    "attribute": "hideXl",
+                    "equals": true
+                }
+            },
+            {
+                "class": "hb-hide-xxl",
+                "when": {
+                    "attribute": "hideXxl",
+                    "equals": true
+                }
+            },
+            {
+                "class": "hb-size-fill-w",
+                "when": {
+                    "attribute": "fillWidth",
+                    "equals": true
+                }
+            },
+            {
+                "class": "hb-size-fill-h",
+                "when": {
+                    "attribute": "fillHeight",
+                    "equals": true
+                }
+            },
+            {
+                "class": "hb-size-hug-w",
+                "when": {
+                    "attribute": "hugWidth",
+                    "equals": true
+                }
+            },
+            {
+                "class": "hb-size-hug-h",
+                "when": {
+                    "attribute": "hugHeight",
+                    "equals": true
+                }
+            },
+            {
+                "class": "hb-size-clip",
+                "when": {
+                    "attribute": "clipContent",
+                    "equals": true
+                }
+            }
+        ],
+        "variables": {
+            "--hb-column-color": {
+                "source": "supports.color.text",
+                "default": "",
+                "sanitize": "color-value"
+            },
+            "--hb-column-bg": {
+                "source": "supports.color.background",
+                "default": "",
+                "sanitize": "color-value"
+            },
+            "--hb-column-minw": {
+                "source": "supports.size.minWidth",
+                "default": "",
+                "sanitize": "size-value"
+            },
+            "--hb-column-minh": {
+                "source": "supports.size.minHeight",
+                "default": "",
+                "sanitize": "size-value"
+            },
+            "--hb-column-maxw": {
+                "source": "supports.size.maxWidth",
+                "default": "",
+                "sanitize": "size-value"
+            },
+            "--hb-column-maxh": {
+                "source": "supports.size.maxHeight",
+                "default": "",
+                "sanitize": "size-value"
+            },
+            "--hb-column-pt": {
+                "source": "supports.spacing.padding.top",
+                "default": "",
+                "sanitize": "size-value"
+            },
+            "--hb-column-pr": {
+                "source": "supports.spacing.padding.right",
+                "default": "",
+                "sanitize": "size-value"
+            },
+            "--hb-column-pb": {
+                "source": "supports.spacing.padding.bottom",
+                "default": "",
+                "sanitize": "size-value"
+            },
+            "--hb-column-pl": {
+                "source": "supports.spacing.padding.left",
+                "default": "",
+                "sanitize": "size-value"
+            },
+            "--hb-border-top-width": {
+                "source": "supports.border.width.top",
+                "default": "",
+                "sanitize": "size-value"
+            },
+            "--hb-border-right-width": {
+                "source": "supports.border.width.right",
+                "default": "",
+                "sanitize": "size-value"
+            },
+            "--hb-border-bottom-width": {
+                "source": "supports.border.width.bottom",
+                "default": "",
+                "sanitize": "size-value"
+            },
+            "--hb-border-left-width": {
+                "source": "supports.border.width.left",
+                "default": "",
+                "sanitize": "size-value"
+            },
+            "--hb-border-top-style": {
+                "source": "supports.border.style",
+                "default": "solid",
+                "sanitize": "border-style"
+            },
+            "--hb-border-right-style": {
+                "source": "supports.border.style",
+                "default": "solid",
+                "sanitize": "border-style"
+            },
+            "--hb-border-bottom-style": {
+                "source": "supports.border.style",
+                "default": "solid",
+                "sanitize": "border-style"
+            },
+            "--hb-border-left-style": {
+                "source": "supports.border.style",
+                "default": "solid",
+                "sanitize": "border-style"
+            },
+            "--hb-border-top-color": {
+                "source": "supports.border.color",
+                "default": "",
+                "sanitize": "color-value"
+            },
+            "--hb-border-right-color": {
+                "source": "supports.border.color",
+                "default": "",
+                "sanitize": "color-value"
+            },
+            "--hb-border-bottom-color": {
+                "source": "supports.border.color",
+                "default": "",
+                "sanitize": "color-value"
+            },
+            "--hb-border-left-color": {
+                "source": "supports.border.color",
+                "default": "",
+                "sanitize": "color-value"
+            },
+            "--hb-border-radius-tl": {
+                "source": "supports.border.radius.topLeft",
+                "default": "",
+                "sanitize": "size-value"
+            },
+            "--hb-border-radius-tr": {
+                "source": "supports.border.radius.topRight",
+                "default": "",
+                "sanitize": "size-value"
+            },
+            "--hb-border-radius-br": {
+                "source": "supports.border.radius.bottomRight",
+                "default": "",
+                "sanitize": "size-value"
+            },
+            "--hb-border-radius-bl": {
+                "source": "supports.border.radius.bottomLeft",
+                "default": "",
+                "sanitize": "size-value"
+            },
+            "--hb-flex-justify": {
+                "source": "supports.layout.justify",
+                "default": "",
+                "sanitize": "flex-justify"
+            },
+            "--hb-flex-align": {
+                "source": "supports.layout.align",
+                "default": "",
+                "sanitize": "flex-align"
+            },
+            "--hb-flex-gap": {
+                "source": "supports.layout.gap",
+                "default": "",
+                "sanitize": "size-value"
+            },
+            "--hb-flex-padding": {
+                "source": "supports.layout.padding",
+                "default": "",
+                "sanitize": "size-value"
+            }
+        }
+    },
+    "render": {
+        "template": {
+            "tag": "div",
+            "class": "hb-block hb-block-column {{attributes.extraClasses}}",
+            "attributes": {
+                "data-block-name": "{{name}}",
+                "data-block-id": "{{id}}",
+                "id": {
+                    "value": "{{attributes.anchor}}",
+                    "omitWhenEmpty": true
+                },
+                "title": {
+                    "value": "{{attributes.titleAttr}}",
+                    "omitWhenEmpty": true
+                }
+            },
+            "children": [
+                {
+                    "type": "inner-blocks"
+                }
+            ]
+        },
+        "publicPartial": "blocks.column",
+        "script": null
+    },
+    "innerBlocks": {
+        "enabled": true,
+        "allowedBlocks": "*",
+        "orientation": "vertical",
+        "parent": [
+            "heisenberg/columns"
+        ]
+    },
+    "serialization": {
+        "mode": "json",
+        "saveAttributes": true,
+        "saveSupports": true,
+        "saveInnerBlocks": true,
+        "migrations": []
+    },
+    "security": {
+        "richText": "none",
+        "allowRawHtml": false,
+        "allowCustomCss": false
+    }
+}

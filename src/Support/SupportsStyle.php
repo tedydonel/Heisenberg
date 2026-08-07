@@ -19,7 +19,8 @@ namespace Heisenberg\Support;
  *     uses `[data-block-id]` as its block-root selector too), so the sheet
  *     works identically in the editor canvas and the public/preview page;
  *   - the always-on declarations (opacity, letter-spacing, text-align,
- *     position/transform, box-shadow, overflow, per-side border) additionally
+ *     position/transform, box-shadow, overflow, per-side border, per-corner
+ *     radius) additionally
  *     require the `.hb-supports` marker class on the block root. This is
  *     deliberate, and stricter than a bare `[data-block-id]` selector would
  *     be: `pullquote` and `code` — two of the 8 already-working blocks —
@@ -72,6 +73,8 @@ final class SupportsStyle
 
     public const DEFAULT_BORDER_SIDE_COLOR = 'transparent';
 
+    public const DEFAULT_BORDER_RADIUS = '0';
+
     public const DEFAULT_FLEX_DIRECTION = 'row';
 
     public const DEFAULT_FLEX_JUSTIFY = 'flex-start';
@@ -85,6 +88,24 @@ final class SupportsStyle
     /** Every border side the per-side capability (Border → Stroke) covers. */
     public const BORDER_SIDES = ['top', 'right', 'bottom', 'left'];
 
+    /**
+     * Every corner the radius capability (Border → Appearance's corner fields)
+     * covers: variable suffix => the CSS longhand's corner name. Listed in the
+     * `border-radius` shorthand's own order so the sheet reads like the property.
+     *
+     * The suffix stays under the `--hb-border-` prefix rather than a bare
+     * `--hb-radius-*`: `--hb-radius-{xs,sm,swatch,md,control,lg}` are EDITOR CHROME
+     * design tokens declared on `:root` in resources/css/tokens.css, and those
+     * inherit into every block root in the canvas. Sharing that prefix would put a
+     * block capability one token-name collision away from the design system.
+     */
+    public const BORDER_CORNERS = [
+        'tl' => 'top-left',
+        'tr' => 'top-right',
+        'br' => 'bottom-right',
+        'bl' => 'bottom-left',
+    ];
+
     /** The shared stylesheet: capability rules, each var()'d with a safe, no-op default. */
     public static function css(): string
     {
@@ -94,6 +115,7 @@ final class SupportsStyle
             '   matching capability class. */',
         ];
 
+        $css[] = self::inheritanceResetRule();
         $css[] = self::baseCapabilitiesRule();
         $css[] = self::flexLayoutRule();
         $css[] = self::sizeUtilityRules();
@@ -103,10 +125,73 @@ final class SupportsStyle
     }
 
     /**
+     * Neutralise every capability variable on EVERY block root, before any capability
+     * rule reads one.
+     *
+     * CSS custom properties INHERIT. A container sets `--hb-border-top-width` in its own
+     * inline style; each nested child is also a block root carrying `.hb-supports`, so
+     * without this the child's `border-top-width: var(--hb-border-top-width, 0)` resolved
+     * the value it inherited from its PARENT — one border on a group drew a border around
+     * every block inside it. Same for the radius, shadow, opacity and transform families.
+     *
+     * Deliberately selected at `[data-block-id]` (0,1,0), NOT at the capability rule's
+     * `[data-block-id].hb-supports` (0,2,0): the reset must lose every tie it can. A block's
+     * own inline `style` beats it (that is how a real value still applies), and so do the
+     * interaction-state rules `BlockRenderer::stateStylesCss()` emits at
+     * `[data-block-id="…"]:hover` (0,2,0) — a hover override must keep winning. Setting the
+     * property explicitly is what stops inheritance; the specificity only decides who
+     * overrides the reset, and everything does.
+     */
+    private static function inheritanceResetRule(): string
+    {
+        // NOT reset: --hb-text-align and --hb-letter-spacing. `text-align` and
+        // `letter-spacing` are inherited CSS properties by nature — a container setting
+        // them SHOULD reach the text inside it, and neutralising those two would break
+        // ordinary typography rather than fix a bleed. Only box-shaped capabilities, which
+        // must never cascade, are listed here.
+        $declarations = [
+            '--hb-opacity: ' . self::DEFAULT_OPACITY,
+            '--hb-text-align-v: ' . self::DEFAULT_TEXT_ALIGN_VERTICAL,
+            '--hb-position-mode: ' . self::DEFAULT_POSITION_MODE,
+            '--hb-tx: ' . self::DEFAULT_TX,
+            '--hb-ty: ' . self::DEFAULT_TY,
+            '--hb-rotate: ' . self::DEFAULT_ROTATE,
+            '--hb-shadow: ' . self::DEFAULT_SHADOW,
+            '--hb-overflow: ' . self::DEFAULT_OVERFLOW,
+            // The flex family: a container's gap/padding/direction must not become its
+            // nested container children's, either.
+            '--hb-flex-direction: ' . self::DEFAULT_FLEX_DIRECTION,
+            '--hb-flex-wrap: nowrap',
+            '--hb-flex-justify: ' . self::DEFAULT_FLEX_JUSTIFY,
+            '--hb-flex-align: ' . self::DEFAULT_FLEX_ALIGN,
+            '--hb-flex-gap: ' . self::DEFAULT_FLEX_GAP,
+            '--hb-flex-padding: ' . self::DEFAULT_FLEX_PADDING,
+        ];
+
+        foreach (self::BORDER_SIDES as $side) {
+            $declarations[] = "--hb-border-{$side}-width: " . self::DEFAULT_BORDER_SIDE_WIDTH;
+            $declarations[] = "--hb-border-{$side}-style: " . self::DEFAULT_BORDER_SIDE_STYLE;
+            $declarations[] = "--hb-border-{$side}-color: " . self::DEFAULT_BORDER_SIDE_COLOR;
+        }
+
+        foreach (array_keys(self::BORDER_CORNERS) as $suffix) {
+            $declarations[] = "--hb-border-radius-{$suffix}: " . self::DEFAULT_BORDER_RADIUS;
+        }
+
+        return '[data-block-id] { ' . implode('; ', $declarations) . '; }';
+    }
+
+    /**
      * Appearance, typography (letter-spacing/align/vertical-align), position
-     * (mode + x/y/rotation transform), effects (shadow), overflow, and the
-     * per-side border (Border → Stroke) — one declaration block, gated
+     * (mode + x/y/rotation transform), effects (shadow), overflow, the
+     * per-side border (Border → Stroke) and the per-corner radius
+     * (Border → Appearance) — one declaration block, gated
      * behind `[data-block-id].hb-supports`.
+     *
+     * Radius is written as the four LONGHANDS, not the `border-radius`
+     * shorthand: a shorthand takes all four corners at once, so an unset corner
+     * would still be reset to the shorthand's own value rather than left alone.
+     * Longhand + var-with-fallback keeps each corner independently inert.
      */
     private static function baseCapabilitiesRule(): string
     {
@@ -127,6 +212,10 @@ final class SupportsStyle
             $declarations[] = "border-{$side}-color: var(--hb-border-{$side}-color, " . self::DEFAULT_BORDER_SIDE_COLOR . ')';
         }
 
+        foreach (self::BORDER_CORNERS as $suffix => $corner) {
+            $declarations[] = "border-{$corner}-radius: var(--hb-border-radius-{$suffix}, " . self::DEFAULT_BORDER_RADIUS . ')';
+        }
+
         return '[data-block-id].hb-supports { ' . implode('; ', $declarations) . '; }';
     }
 
@@ -141,6 +230,7 @@ final class SupportsStyle
         $declarations = [
             'display: flex',
             'flex-direction: var(--hb-flex-direction, ' . self::DEFAULT_FLEX_DIRECTION . ')',
+            'flex-wrap: var(--hb-flex-wrap, nowrap)',
             'justify-content: var(--hb-flex-justify, ' . self::DEFAULT_FLEX_JUSTIFY . ')',
             'align-items: var(--hb-flex-align, ' . self::DEFAULT_FLEX_ALIGN . ')',
             'gap: var(--hb-flex-gap, ' . self::DEFAULT_FLEX_GAP . ')',
