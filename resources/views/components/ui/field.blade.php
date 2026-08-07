@@ -5,6 +5,7 @@
 <style>
     .hb-field {
         display: inline-flex;
+        width: 100%;
         align-items: center;
         justify-content: space-between;
         gap: var(--hb-space-2, 8px);
@@ -46,9 +47,12 @@
     'unit' => null,
     'chevron' => false,
     'disabled' => false,
-    'width' => '120px',
+    // No default width: a fixed inline width beat every stylesheet rule that tries to make
+    // a field fill its row (.hb-irow .hb-field { width: 100% }), so fields were pinned at
+    // 120px inside panels far wider than that. Pass one only where a fixed size is meant.
+    'width' => null,
 ])
-<div {{ $attributes->merge(['class' => 'hb-field' . ($disabled ? ' hb-field--disabled' : ''), 'style' => "width:{$width};"]) }}>
+<div {{ $attributes->merge(array_filter(['class' => 'hb-field' . ($disabled ? ' hb-field--disabled' : ''), 'style' => $width ? "width:{$width};" : null])) }}>
     <span class="hb-field__leading">
         @if ($icon)
             <span class="hb-field__icon" aria-hidden="true">

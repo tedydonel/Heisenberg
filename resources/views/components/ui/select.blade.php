@@ -5,7 +5,7 @@
      same self-contained @once <script> pattern as ui/custom-scrollbar. --}}
 @once
 <style>
-    .hb-select { position: relative; display: inline-flex; width: 150px; font-family: var(--hb-font-sans, Rubik, sans-serif); }
+    .hb-select { position: relative; display: inline-flex; width: 100%; font-family: var(--hb-font-sans, Rubik, sans-serif); }
     .hb-select__trigger {
         display: flex;
         align-items: center;

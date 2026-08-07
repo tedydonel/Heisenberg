@@ -16,7 +16,7 @@
      dropdown its other consumers (color-picker's gradient type/shape/model) already rely on. --}}
 @once
 <style>
-    .hb-combobox { position: relative; display: inline-flex; width: 150px; font-family: var(--hb-font-sans, Rubik, sans-serif); }
+    .hb-combobox { position: relative; display: inline-flex; width: 100%; font-family: var(--hb-font-sans, Rubik, sans-serif); }
     .hb-combobox__field {
         display: flex;
         align-items: center;
@@ -272,6 +272,24 @@
                     }
                 }, { passive: true });
 
+                // Static mode (data-hb-combobox-static): the Blade-rendered options ARE the whole
+                // catalog, so the component answers its own `search` events by filtering that
+                // captured list — no consumer wiring needed. A query equal to the committed label
+                // (the just-focused, untouched field) shows the full list, not a one-row filter.
+                if (root.hasAttribute('data-hb-combobox-static')) {
+                    const master = options().map((o) => ({
+                        value: o.dataset.hbComboboxOption,
+                        label: o.querySelector('span')?.textContent.trim() || '',
+                    }));
+                    root.addEventListener('search', (event) => {
+                        const query = String(event.detail?.query || '').trim().toLowerCase();
+                        const untouched = query !== '' && query === (currentLabel || '').trim().toLowerCase();
+                        replaceOptions(query === '' || untouched
+                            ? master
+                            : master.filter((o) => o.label.toLowerCase().indexOf(query) !== -1));
+                    });
+                }
+
                 root.__hbCombobox = { open, close, select, setValue, replaceOptions, appendOptions };
             });
         };
@@ -290,6 +308,8 @@
     'emptyLabel' => 'No results',
     'disabled' => false,
     'ariaLabel' => null,
+    // true = the rendered options are the whole catalog; the combobox filters them itself.
+    'static' => false,
 ])
 @php
     $selectedOption = collect($options)->firstWhere('value', $value);
@@ -301,6 +321,7 @@
     data-hb-combobox
     data-open="false"
     data-value="{{ $value }}"
+    @if ($static) data-hb-combobox-static @endif
     {{ $attributes->merge(['class' => 'hb-combobox' . ($disabled ? ' hb-combobox--disabled' : '')]) }}
 >
     <div class="hb-combobox__field">

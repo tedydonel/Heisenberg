@@ -22,7 +22,7 @@
 @php $status = $status === 'fail' ? 'fail' : 'pass'; @endphp
 <div {{ $attributes->merge(['class' => 'hb-statuscheckrow']) }}>
     <span class="hb-statuscheckrow__icon hb-statuscheckrow__icon--{{ $status }}" aria-hidden="true">
-        @include('heisenberg::components.ui.icon', ['name' => $status === 'pass' ? 'check-circle' : 'x-circle', 'size' => 14])
+        @include('heisenberg::components.ui.icon', ['name' => $status === 'pass' ? 'check-circle-fill' : 'x-circle-fill', 'size' => 14])
     </span>
     <span class="hb-statuscheckrow__text">{{ $text !== '' ? $text : $slot }}</span>
 </div>

@@ -2,6 +2,8 @@
     'smooth' => 0.06,
     'wheelMultiplier' => 1,
     'container' => null,
+    // 'y' (default) or 'x' — a horizontal bar tracks scrollLeft along the bottom edge.
+    'axis' => 'y',
 ])
 
 @once
@@ -40,6 +42,21 @@
         .hb-custom-scrollbar:hover {
             opacity: .8;
             transform: scaleX(1.2);
+        }
+
+        /* Horizontal variant — same bar, rotated to the bottom edge. */
+        .hb-custom-scrollbar[data-axis="x"] {
+            width: 100vw; height: 11px;
+            left: 0; right: auto; top: auto; bottom: 1px;
+            transform-origin: center bottom;
+        }
+        .hb-custom-scrollbar[data-axis="x"][data-hb-scroll-container] { position: absolute; width: 100%; height: 11px; }
+        .hb-custom-scrollbar[data-axis="x"][data-scrolling="true"],
+        .hb-custom-scrollbar[data-axis="x"][data-dragging="true"],
+        .hb-custom-scrollbar[data-axis="x"]:hover { transform: scaleY(1.2); }
+        .hb-custom-scrollbar[data-axis="x"] .hb-custom-scrollbar__thumb {
+            width: 48px; height: 3px;
+            left: 0; right: auto; top: auto; bottom: 0;
         }
 
         .hb-custom-scrollbar[data-scrolling="true"] .hb-custom-scrollbar__thumb,
@@ -101,9 +118,10 @@
                             || document.querySelector(containerSelector))
                         : null;
                     const isWindow = !container;
+                    const horizontal = bar.dataset.axis === 'x';
                     if (!isWindow) {
                         container.classList.add('hb-scroll-container');
-                        container.style.overflowY = 'auto';
+                        container.style[horizontal ? 'overflowX' : 'overflowY'] = 'auto';
                     } else {
                         document.documentElement.classList.add('hb-scrollbar-enabled');
                     }
@@ -118,13 +136,27 @@
                     const coarsePointer = window.matchMedia('(pointer: coarse)').matches;
                     const useSmooth = !reduceMotion && !coarsePointer && smooth > 0;
 
-                    const getScrollTop = () => (isWindow ? (window.scrollY || window.pageYOffset || 0) : container.scrollTop);
-                    const setScrollTop = (v) => { if (isWindow) window.scrollTo(0, v); else container.scrollTop = v; };
-                    const viewportHeight = () => (isWindow ? window.innerHeight : container.clientHeight);
-                    const scrollHeight = () => (isWindow ? document.documentElement.scrollHeight : container.scrollHeight);
+                    // Axis-neutral accessors — every measurement below goes through these.
+                    const getScrollPos = () => {
+                        if (isWindow) return horizontal ? (window.scrollX || 0) : (window.scrollY || window.pageYOffset || 0);
+                        return horizontal ? container.scrollLeft : container.scrollTop;
+                    };
+                    const setScrollPos = (v) => {
+                        if (isWindow) window.scrollTo(horizontal ? v : (window.scrollX || 0), horizontal ? (window.scrollY || 0) : v);
+                        else if (horizontal) container.scrollLeft = v;
+                        else container.scrollTop = v;
+                    };
+                    const viewportSize = () => {
+                        if (isWindow) return horizontal ? window.innerWidth : window.innerHeight;
+                        return horizontal ? container.clientWidth : container.clientHeight;
+                    };
+                    const scrollSize = () => {
+                        if (isWindow) return horizontal ? document.documentElement.scrollWidth : document.documentElement.scrollHeight;
+                        return horizontal ? container.scrollWidth : container.scrollHeight;
+                    };
                     const eventTarget = isWindow ? window : container;
 
-                    let target = getScrollTop();
+                    let target = getScrollPos();
                     let current = target;
                     let frameId = null;
                     let lastFrame = 0;
@@ -132,19 +164,21 @@
                     let idleTimer = null;
                     let syncing = false;
 
-                    const maxScroll = () => Math.max(0, scrollHeight() - viewportHeight());
+                    const maxScroll = () => Math.max(0, scrollSize() - viewportSize());
                     const clamp = (value) => Math.min(maxScroll(), Math.max(0, value));
                     const setState = (name, value) => bar.dataset[name] = value ? 'true' : 'false';
 
                     const render = (position) => {
                         const bounds = maxScroll();
-                        const trackHeight = bar.clientHeight;
-                        const thumbHeight = thumb.offsetHeight;
+                        const trackSize = horizontal ? bar.clientWidth : bar.clientHeight;
+                        const thumbSize = horizontal ? thumb.offsetWidth : thumb.offsetHeight;
                         bar.hidden = bounds <= 0;
                         if (!bounds) return;
-                        const travel = Math.max(0, trackHeight - thumbHeight - 4);
+                        const travel = Math.max(0, trackSize - thumbSize - 4);
                         const offset = Math.max(0, Math.min(travel, position / bounds * travel));
-                        thumb.style.transform = `translate3d(0, ${offset.toFixed(2)}px, 0)`;
+                        thumb.style.transform = horizontal
+                            ? `translate3d(${offset.toFixed(2)}px, 0, 0)`
+                            : `translate3d(0, ${offset.toFixed(2)}px, 0)`;
                     };
 
                     const markScrolling = () => {
@@ -166,7 +200,7 @@
                         if (Math.abs(target - current) < .4) current = target;
 
                         syncing = true;
-                        setScrollTop(current);
+                        setScrollPos(current);
                         syncing = false;
                         emit();
 
@@ -193,20 +227,22 @@
                         // stops the browser's native scroll, not this component's own ancestor
                         // listener from independently reacting to the same event.
                         event.stopPropagation();
-                        let delta = event.deltaY;
+                        // A horizontal bar consumes deltaX (trackpads) plus shift+wheel, the
+                        // browser's own horizontal-scroll convention.
+                        let delta = horizontal ? (event.deltaX || (event.shiftKey ? event.deltaY : 0)) : event.deltaY;
                         if (event.deltaMode === 1) delta *= 16;
-                        if (event.deltaMode === 2) delta *= viewportHeight();
+                        if (event.deltaMode === 2) delta *= viewportSize();
                         target = clamp(target + delta * wheelMultiplier);
                         start();
                     };
 
                     const keydown = (event) => {
-                        if (!useSmooth) return;
+                        if (!useSmooth || horizontal) return; // key nav is a vertical concern
                         const element = event.target;
                         if (element?.isContentEditable || /^(input|textarea|select)$/i.test(element?.tagName || '')) return;
                         if (!isWindow && !container.contains(element) && element !== document.body) return;
 
-                        const viewport = viewportHeight();
+                        const viewport = viewportSize();
                         let step = 0;
                         if (event.key === 'ArrowDown') step = 90;
                         else if (event.key === 'ArrowUp') step = -90;
@@ -224,7 +260,7 @@
 
                     const scroll = () => {
                         if (syncing || frameId) return;
-                        target = current = getScrollTop();
+                        target = current = getScrollPos();
                         emit();
                     };
 
@@ -235,7 +271,7 @@
                         // then, and nothing else ever resyncs it once real dimensions exist, so the
                         // thumb stayed frozen at whatever offset that stale pair produced even after
                         // becoming scrollable.
-                        target = current = clamp(getScrollTop());
+                        target = current = clamp(getScrollPos());
                         render(current);
                     };
 
@@ -251,11 +287,13 @@
                         if (!dragging) return;
                         const bounds = maxScroll();
                         const barRect = bar.getBoundingClientRect();
-                        const ratio = Math.max(0, Math.min(1, (event.clientY - barRect.top) / bar.clientHeight));
+                        const ratio = horizontal
+                            ? Math.max(0, Math.min(1, (event.clientX - barRect.left) / bar.clientWidth))
+                            : Math.max(0, Math.min(1, (event.clientY - barRect.top) / bar.clientHeight));
                         target = ratio * bounds;
                         current = target;
                         syncing = true;
-                        setScrollTop(target);
+                        setScrollPos(target);
                         syncing = false;
                         render(target);
                         markScrolling();
@@ -322,6 +360,7 @@
     {{ $attributes->merge(['class' => 'hb-custom-scrollbar']) }}
     data-hb-custom-scrollbar
     @if ($container) data-hb-scroll-container="{{ $container }}" @endif
+    data-axis="{{ $axis === 'x' ? 'x' : 'y' }}"
     data-smooth="{{ $smooth }}"
     data-wheel-multiplier="{{ $wheelMultiplier }}"
     data-scrolling="false"

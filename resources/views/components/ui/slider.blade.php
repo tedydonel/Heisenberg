@@ -5,7 +5,7 @@
      fill portion via a CSS custom property since range fill-percentage isn't stylable in pure CSS. --}}
 @once
 <style>
-    .hb-slider { position: relative; display: inline-flex; align-items: center; width: 180px; height: 16px; }
+    .hb-slider { position: relative; display: inline-flex; align-items: center; width: 100%; min-width: 80px; height: 16px; }
     .hb-slider__input {
         -webkit-appearance: none;
         appearance: none;
@@ -53,10 +53,14 @@
             const pct = max > min ? ((Number(input.value) - min) / (max - min)) * 100 : 0;
             input.style.setProperty('--hb-slider-pct', pct + '%');
         };
+        // Repaint EVERY slider, wired or not. The fill is a painted custom property, so a
+        // value set programmatically (the inspector syncing a selected block, a re-render,
+        // a restored revision) leaves it showing the previous block's position — the
+        // "doesn't render right after a refresh" symptom. Wiring stays once-only.
         const boot = () => {
             document.querySelectorAll('[data-hb-slider]').forEach((input) => {
-                if (input.__hbSlider) return;
                 paint(input);
+                if (input.__hbSlider) return;
                 input.addEventListener('input', () => paint(input));
                 input.__hbSlider = true;
             });
@@ -64,6 +68,10 @@
         if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', boot, { once: true });
         else boot();
         document.addEventListener('hb:refresh', boot);
+        // A selection or a model write repaints too — neither dispatches hb:refresh, and both
+        // change what the slider should be showing.
+        document.addEventListener('hb:block-selected', boot);
+        document.addEventListener('hb:block-updated', boot);
     })();
 </script>
 @endonce

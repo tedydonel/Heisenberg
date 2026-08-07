@@ -6,6 +6,7 @@
 @once
 <style>
     .hb-input {
+        width: 100%;
         display: inline-flex;
         align-items: center;
         justify-content: space-between;
@@ -43,9 +44,11 @@
     'placeholder' => '',
     'showChevron' => false,
     'disabled' => false,
-    'width' => '100px',
+    // Fluid by default (see ui/field): the inline width overrode the panel's own layout,
+    // which is why a URL field showed ~15 characters inside a much wider section.
+    'width' => null,
 ])
-<div {{ $attributes->merge(['class' => 'hb-input' . ($disabled ? ' hb-input--disabled' : ''), 'style' => "width:{$width};"]) }}>
+<div {{ $attributes->merge(array_filter(['class' => 'hb-input' . ($disabled ? ' hb-input--disabled' : ''), 'style' => $width ? "width:{$width};" : null])) }}>
     <input
         type="text"
         class="hb-input__value"
