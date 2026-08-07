@@ -83,6 +83,7 @@
         color: var(--hb-text-secondary, #5A5A5A); cursor: pointer;
     }
     .hb-foot-chip:hover { color: var(--hb-text-primary, #0A0A0A); }
+    .hb-foot-chip[aria-pressed="true"] { color: var(--hb-accent, #000); font-weight: 600; }
 
     /* Locale switcher — drop-up menu anchored to the language pill. The menu itself escapes the
        footer's overflow:hidden via `position: fixed`; the JS computes its real coordinates from
@@ -218,7 +219,14 @@
             </div>
         </div>
         <span class="bar-sep"></span>
-        <button type="button" class="hb-foot-chip" data-hb="code-editor" title="{{ __('heisenberg::editor.footer.aria_code_editor') }}">
+        {{-- Toggles the Code view (live/code-editor.blade.php owns the listener + state);
+             the label always names the surface the click takes you TO. --}}
+        <button type="button" class="hb-foot-chip" data-hb="code-editor" aria-pressed="false"
+            title="{{ __('heisenberg::editor.footer.aria_code_editor') }}"
+            data-label-code="{{ __('heisenberg::editor.footer.code_editor_label') }}"
+            data-label-visual="{{ __('heisenberg::editor.footer.visual_editor_label') }}"
+            data-title-code="{{ __('heisenberg::editor.footer.aria_code_editor') }}"
+            data-title-visual="{{ __('heisenberg::editor.footer.aria_visual_editor') }}">
             <span>{{ __('heisenberg::editor.footer.code_editor_label') }}</span>
         </button>
         {{-- Hidden POST forms — one per locale — submitted on click of the matching menu option.
