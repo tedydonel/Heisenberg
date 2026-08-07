@@ -8,6 +8,7 @@ use Heisenberg\Http\Controllers\FontController;
 use Heisenberg\Http\Controllers\LocaleController;
 use Heisenberg\Http\Controllers\PostCategoryController;
 use Heisenberg\Http\Controllers\PostController;
+use Heisenberg\Http\Controllers\PostRevisionsController;
 use Heisenberg\Http\Controllers\PostSettingsController;
 use Heisenberg\Http\Controllers\PostTagController;
 use Heisenberg\Http\Controllers\PreviewController;
@@ -33,6 +34,9 @@ Route::middleware(config('heisenberg.middleware.editor', ['web']))->group(functi
     Route::post('/editor/posts', [PostController::class, 'store'])->name('heisenberg.editor.posts.store');
     Route::put('/editor/posts/{post}', [PostController::class, 'update'])->whereNumber('post')->name('heisenberg.editor.posts.update');
     Route::get('/editor/posts/{post}', [PostController::class, 'show'])->whereNumber('post')->name('heisenberg.editor.posts.show');
+    // Revision history (read-only — restore is client-driven via hbEditor.replaceDoc()).
+    Route::get('/editor/posts/{post}/revisions', [PostRevisionsController::class, 'index'])->whereNumber('post')->name('heisenberg.editor.posts.revisions.index');
+    Route::get('/editor/posts/{post}/revisions/{revision}', [PostRevisionsController::class, 'show'])->whereNumber('post')->whereNumber('revision')->name('heisenberg.editor.posts.revisions.show');
     // Category/tag taxonomy CRUD (blueprint §9.5 TaxonomyController) — literal
     // `categories`/`tags` segments never collide with the numeric-only
     // `/editor/{post}` above (whereNumber rejects a non-numeric segment

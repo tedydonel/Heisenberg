@@ -2,7 +2,7 @@
      grows / TR fixed). All icon buttons here are 28x28 (26x26 in the right cluster), cornerRadius 3,
      transparent by default — a header-specific treatment, deliberately NOT the same shape as ui/icon-button
      (which is 40x26 with an always-visible bg-muted fill), so it isn't force-reused here.
-     Structural shell only for undo/redo — no click behavior wired yet for those two (Phase 2).
+     Undo/redo are live: thin shells over window.hbEditor.undo()/redo(), enabled state from hb:history.
      Fullscreen, Layers and Preview (the eye button) ARE wired — see the script below. Width is
      100% here, not the source's 1440 artboard width.
 
@@ -53,6 +53,7 @@
     }
     .hb-topbar__btn:hover { background: var(--hb-surface-hover, #F7F7F7); color: var(--hb-text-secondary, #5A5A5A); }
     .hb-topbar__btn:focus-visible { outline: 2px solid var(--hb-border-focus, #000); outline-offset: -2px; }
+    .hb-topbar__btn:disabled { opacity: .35; cursor: default; pointer-events: none; }
     .hb-topbar__btn--sm { width: 26px; height: 26px; }
     .hb-topbar__icon { display: inline-flex; width: 14px; height: 14px; }
     .hb-topbar__icon--sm { width: 13px; height: 13px; }
@@ -298,6 +299,24 @@
                 btn.addEventListener('click', () => hbPerformSave(true));
             });
 
+            // Undo / redo — thin shells over the runtime's history; enabled state follows
+            // the hb:history events block-runtime dispatches on every commit/restore.
+            document.querySelectorAll('[data-hb-undo]').forEach((btn) => {
+                if (btn.__hbHist) return; btn.__hbHist = true;
+                btn.addEventListener('click', () => window.hbEditor && window.hbEditor.undo());
+            });
+            document.querySelectorAll('[data-hb-redo]').forEach((btn) => {
+                if (btn.__hbHist) return; btn.__hbHist = true;
+                btn.addEventListener('click', () => window.hbEditor && window.hbEditor.redo());
+            });
+            if (!document.__hbHistoryButtons) {
+                document.__hbHistoryButtons = true;
+                document.addEventListener('hb:history', (event) => {
+                    document.querySelectorAll('[data-hb-undo]').forEach((btn) => { btn.disabled = !event.detail.canUndo; });
+                    document.querySelectorAll('[data-hb-redo]').forEach((btn) => { btn.disabled = !event.detail.canRedo; });
+                });
+            }
+
             // Autosave triggers — a block-tree change or a title edit both dirty the document.
             // Wired once (document-scoped), regardless of how many times boot() itself reruns.
             if (!document.__hbAutosaveWired) {
@@ -472,8 +491,8 @@
         ['icon' => 'sidebar-simple', 'label' => __('heisenberg::editor.topbar.aria_panel_left'), 'toggle' => 'panel', 'tip' => 'aria_panel_left'],
     ];
     $centerButtons = [
-        ['icon' => 'arrow-counter-clockwise', 'label' => __('heisenberg::editor.topbar.aria_undo'), 'fullscreen' => false, 'layers' => false, 'preview' => false],
-        ['icon' => 'arrow-clockwise', 'label' => __('heisenberg::editor.topbar.aria_redo'), 'fullscreen' => false, 'layers' => false, 'preview' => false],
+        ['icon' => 'arrow-counter-clockwise', 'label' => __('heisenberg::editor.topbar.aria_undo'), 'undo' => true, 'fullscreen' => false, 'layers' => false, 'preview' => false],
+        ['icon' => 'arrow-clockwise', 'label' => __('heisenberg::editor.topbar.aria_redo'), 'redo' => true, 'fullscreen' => false, 'layers' => false, 'preview' => false],
         null,
         ['icon' => 'arrows-out', 'label' => __('heisenberg::editor.topbar.aria_fullscreen'), 'fullscreen' => true, 'layers' => false, 'preview' => false],
         ['icon' => 'stack', 'label' => __('heisenberg::editor.topbar.aria_layers'), 'fullscreen' => false, 'layers' => true, 'preview' => false],
@@ -537,6 +556,8 @@
                 <x-ui.divider orientation="vertical" style="width:1px;height:16px;" />
             @else
                 <button type="button" class="hb-topbar__btn" aria-label="{{ $btn['label'] }}"
+                    @if ($btn['undo'] ?? false) data-hb-undo disabled @endif
+                    @if ($btn['redo'] ?? false) data-hb-redo disabled @endif
                     @if ($btn['fullscreen'] ?? false) data-hb-fullscreen @endif
                     @if ($btn['layers'] ?? false) data-hb-layers @endif
                     @if ($btn['preview'] ?? false) data-hb-preview @endif

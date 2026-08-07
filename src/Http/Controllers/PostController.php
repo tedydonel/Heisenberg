@@ -104,8 +104,11 @@ class PostController
                 }
             }
 
-            // Revisions, when they land, must snapshot the OLD tree here — before
-            // replaceBlocks() discards it.
+            // Snapshot the OLD tree before replaceBlocks() discards it — this is the
+            // revision history. Creates are skipped (there is no old tree yet).
+            if ($existing !== null) {
+                $this->captureRevision($post, $actor, $request->boolean('autosave'));
+            }
 
             $this->replaceBlocks($post, (array) $request->input('blocks', []));
             $post->bumpContentVersion();
@@ -182,6 +185,47 @@ class PostController
         }
 
         return $attributes;
+    }
+
+    /**
+     * Snapshot the post's CURRENT (about-to-be-replaced) block tree into the
+     * revisions table. An autosave keeps ONE rolling snapshot per post (each
+     * replaces the previous `auto_save` row); manual saves accumulate, pruned
+     * to `heisenberg.revisions.keep` when set (null = unbounded, the config's
+     * as-built default). Runs inside save()'s transaction, on the row-locked
+     * model whose relation still holds the old rows.
+     */
+    private function captureRevision(Post $post, Authenticatable $actor, bool $autosave): void
+    {
+        $post->loadMissing('blocks');
+        if ($post->blocks->isEmpty()) {
+            return; // an empty tree is not a version worth restoring
+        }
+
+        $revisionClass = (string) config('heisenberg.models.revision', \Heisenberg\Models\Revision::class);
+
+        if ($autosave) {
+            $revisionClass::query()
+                ->where('post_id', $post->getKey())
+                ->where('revision_type', 'auto_save')
+                ->forceDelete();
+        }
+
+        \Heisenberg\Models\Revision::snapshotOf($post, $autosave ? 'auto_save' : 'manual', $actor->getAuthIdentifier());
+
+        $keep = config('heisenberg.revisions.keep');
+        if ($keep === null) {
+            return; // unbounded history — the config's as-built default
+        }
+        $stale = $revisionClass::query()
+            ->where('post_id', $post->getKey())
+            ->where('revision_type', '!=', 'auto_save')
+            ->orderByDesc('id')
+            ->skip(max(1, (int) $keep))->take(100)
+            ->pluck('id');
+        if ($stale->isNotEmpty()) {
+            $revisionClass::query()->whereKey($stale->all())->forceDelete();
+        }
     }
 
     /**
