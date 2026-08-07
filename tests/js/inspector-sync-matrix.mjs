@@ -17,6 +17,8 @@ const errors = [];
 page.on('pageerror', (e) => errors.push(String(e).slice(0, 200)));
 await page.goto(BASE + '/editor', { waitUntil: 'networkidle' });
 await page.click('[data-hb-insert]');
+await page.waitForTimeout(120);
+await page.click('[data-hb-qi-block="heisenberg/paragraph"]');
 await page.waitForTimeout(150);
 const id = await page.evaluate(() => window.hbEditor.getDoc().blocks[0].id);
 await page.click('.hb-blk[data-block="' + id + '"]');
@@ -105,6 +107,8 @@ ok('toolbar colour write surfaces as a fill layer row', rowState.count === 1 && 
 
 // switching to another block and back keeps rows in sync with each block's own model
 await page.click('[data-hb-insert]');
+await page.waitForTimeout(120);
+await page.click('[data-hb-qi-block="heisenberg/paragraph"]');
 await page.waitForTimeout(200);
 const id2 = await page.evaluate(() => window.hbEditor.getDoc().blocks[1].id);
 await page.click('.hb-blk[data-block="' + id2 + '"]');
@@ -118,6 +122,14 @@ const backRows = await sp.evaluate((el) => {
     return { count: rows.length, hex: rows[0]?.querySelector('.hb-colorlayer__hex')?.value || null };
 });
 ok('reselecting restores the block\'s own fill row', backRows.count === 1 && backRows.hex === '#123456', JSON.stringify(backRows));
+
+// ── guard: a look-alike change can never retarget the State tabs ──
+const stateGuard = await sp.evaluate((el) => {
+    const tabs = el.querySelector('[data-hb-style-state]');
+    tabs.dispatchEvent(new CustomEvent('change', { bubbles: true, detail: { value: '300' } }));
+    return el.dataset.hbStyleState || 'default';
+});
+ok('a bogus detail.value never becomes an interaction state', stateGuard !== '300', 'state=' + stateGuard);
 
 report.push('JS ERRORS: ' + (errors.length ? errors.join(' || ') : 'none'));
 console.log(report.join('\n'));

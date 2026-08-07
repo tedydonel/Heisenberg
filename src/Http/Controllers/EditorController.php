@@ -107,6 +107,7 @@ final class EditorController
             'postCategoryUrlTemplate' => route('heisenberg.editor.posts.store') . '/__ID__/categories/__ITEM_ID__',
             'postTagsUrlTemplate' => route('heisenberg.editor.posts.store') . '/__ID__/tags/__ITEM_ID__',
             'postLayoutUrlTemplate' => route('heisenberg.editor.posts.store') . '/__ID__/layout',
+            'postRevisionsUrlTemplate' => route('heisenberg.editor.posts.store') . '/__ID__/revisions',
             'postDiscussionUrlTemplate' => route('heisenberg.editor.posts.store') . '/__ID__/discussion',
             // Initial-render seed only — the real, policy-gated read/write happens in the
             // taxonomy controllers once the user acts.

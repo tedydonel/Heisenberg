@@ -74,6 +74,37 @@ return [
         'dropzone_desc' => 'Les images sont optimisées automatiquement. Les documents sont conservés tels quels. Taille maximale : 10 Mo chacun.',
     ],
 
+    // ── Dialogue des révisions (live/revisions-dialog.blade.php) ──
+    'revisions' => [
+        'title' => 'Révisions',
+        'empty' => 'Aucune révision — elles apparaissent au fil des enregistrements.',
+        'loading' => 'Chargement…',
+        'error' => 'Impossible de charger les révisions. Réessayez.',
+        'needs_save' => 'Enregistrez d\'abord l\'article pour démarrer son historique.',
+        'restore' => 'Restaurer',
+        'blocks_count' => ':count blocs',
+        'type_manual' => 'Enregistré',
+        'type_auto' => 'Sauvegarde auto',
+        'type_restore' => 'Point de restauration',
+    ],
+
+    // ── Vue code (live/code-editor.blade.php) ─────────────────────
+    'code' => [
+        'aria_input' => 'Source en shortcodes',
+        'placeholder' => '[h2]Votre titre[/h2]',
+        'errors_title' => 'Corrigez ces erreurs avant de revenir en mode visuel :',
+        'revert' => 'Rétablir depuis la zone de dessin',
+        'line_label' => 'Ligne :line',
+        'err_unknown_block' => 'Bloc inconnu « :slug »',
+        'err_unknown_attr' => 'Attribut ou chemin de support inconnu « :name » sur [:slug]',
+        'err_invalid_value' => 'Valeur invalide pour « :name » sur [:slug]',
+        'err_no_children' => '[:slug] ne peut pas contenir d\'autres blocs',
+        'err_no_body' => '[:slug] n\'accepte pas de contenu texte',
+        'err_stray_close' => 'Balise fermante inattendue [/:slug]',
+        'err_unclosed' => '[:slug] ouvert à la ligne :line n\'est jamais fermé',
+        'err_outside' => 'Contenu en dehors de tout bloc',
+    ],
+
     // ── Éditeur d'effets (live/pickers/effect-editor.blade.php) ───
     'effects' => [
         'drop_shadow' => 'Ombre portée',
@@ -153,6 +184,8 @@ return [
         'aria_status' => 'État du document',
         'aria_lang' => 'Langue du contenu',
         'aria_code_editor' => 'Éditeur de code',
+        'aria_visual_editor' => 'Éditeur visuel',
+        'visual_editor_label' => 'Éditeur visuel',
         'lang_label' => 'Français',
         'code_editor_label' => 'Éditeur de code',
         // États de la puce de statut d’enregistrement (live/footer.blade.php +
@@ -365,6 +398,12 @@ return [
     'locales' => [
         'en' => 'English',
         'fr' => 'Français',
+    ],
+
+    // ── Insertion rapide (fenêtre du bouton d’ajout) ──────────────
+    'quick_inserter' => [
+        'aria_label' => 'Insérer un bloc',
+        'search' => 'Rechercher des blocs…',
     ],
 
 ];

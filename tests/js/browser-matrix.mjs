@@ -25,8 +25,11 @@ await page.waitForTimeout(500);
 ok('page loads without JS errors', errors.length === 0, errors.slice(0, 5).join(' || '));
 ok('window.hbEditor exists', await page.evaluate(() => !!window.hbEditor));
 
-// Insert a paragraph the way a user does: click the canvas appender.
+// Insert a paragraph the way a user does: click the canvas appender, then pick Paragraph in
+// the quick inserter popup it opens (live/quick-inserter claims the runtime's hb:quick-insert).
 await page.click('[data-hb-insert]');
+await page.waitForTimeout(120);
+await page.click('[data-hb-qi-block="heisenberg/paragraph"]');
 await page.waitForTimeout(200);
 const id = await page.evaluate(() => window.hbEditor.getDoc().blocks[0]?.id);
 ok('appender click inserts a block', !!id, 'id=' + id);

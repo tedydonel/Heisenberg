@@ -18,6 +18,8 @@ const errors = [];
 page.on('pageerror', (e) => errors.push(String(e).slice(0, 200)));
 await page.goto(BASE + '/editor', { waitUntil: 'networkidle' });
 await page.click('[data-hb-insert]');
+await page.waitForTimeout(120);
+await page.click('[data-hb-qi-block="heisenberg/paragraph"]');
 await page.waitForTimeout(150);
 const id = await page.evaluate(() => window.hbEditor.getDoc().blocks[0].id);
 await page.click('.hb-blk[data-block="' + id + '"]');
@@ -26,9 +28,9 @@ await page.locator('[data-hb-inspector] [data-hb-tablist] [data-hb-tab="advanced
 await page.waitForTimeout(200);
 const panel = page.locator('[data-hb-subpanel="advanced"] [data-hb-block-panel="heisenberg/paragraph"]');
 
-// ── 1: the Animate select carries the REAL catalog, not the old hardcoded four ──
+// ── 1: the Animate combobox carries the REAL catalog, not the old hardcoded four ──
 const animOptions = await panel.evaluate((el) =>
-    [...el.querySelectorAll('[data-hb-control="animate"] [data-hb-select-option]')].map((o) => o.dataset.hbSelectOption));
+    [...el.querySelectorAll('[data-hb-control="animate"] [data-hb-combobox-option]')].map((o) => o.dataset.hbComboboxOption));
 ok('animate options come from AnimationCatalog (None + full preset list)',
     animOptions.length >= 35 && animOptions[0] === '' && animOptions.includes('fade-up') && animOptions.includes('zoom') && animOptions.includes('pulse'),
     `count=${animOptions.length}`);
@@ -48,11 +50,35 @@ const gatedBefore = await panel.evaluate((el) =>
     el.querySelector('[data-hb-control="animateDuration"]').closest('[data-hb-showwhen]').hidden);
 ok('animation detail rows hide while no preset is picked', gatedBefore === true);
 
+// ── 1b: the combobox is in static mode — typing filters the catalog it rendered ──
+const beforeFilter = await panel.evaluate((el) => {
+    const input = el.querySelector('[data-hb-control="animate"] [data-hb-combobox-input]');
+    const was = input.value;
+    input.value = 'fade';
+    input.dispatchEvent(new Event('input', { bubbles: true }));
+    return was;
+});
+await page.waitForTimeout(150);
+const fadeOnly = await panel.evaluate((el) =>
+    [...el.querySelectorAll('[data-hb-control="animate"] [data-hb-combobox-option]')].map((o) => o.dataset.hbComboboxOption));
+ok('typing "fade" filters the catalog down to the five Fade presets',
+    fadeOnly.length === 5 && !fadeOnly.some((v) => v.indexOf('zoom') !== -1), JSON.stringify(fadeOnly));
+await panel.evaluate((el, was) => {
+    const input = el.querySelector('[data-hb-control="animate"] [data-hb-combobox-input]');
+    input.value = '';
+    input.dispatchEvent(new Event('input', { bubbles: true })); // empty query restores the master list
+    input.value = was;
+}, beforeFilter);
+await page.waitForTimeout(150);
+
 // ── 2: picking a preset writes the model, classes the canvas, and Play animates ──
 await panel.evaluate((el) => {
-    const select = el.querySelector('[data-hb-control="animate"]');
-    const option = [...select.querySelectorAll('[data-hb-select-option]')].find((o) => o.dataset.hbSelectOption === 'fade-up');
-    select.__hbSelect.select(option);
+    const combobox = el.querySelector('[data-hb-control="animate"]');
+    const option = [...combobox.querySelectorAll('[data-hb-combobox-option]')].find((o) => o.dataset.hbComboboxOption === 'fade-up');
+    combobox.__hbCombobox.select(option);
+    // select() refocuses the field, and focus re-opens the menu — which would otherwise hang over
+    // the rows (and the Play button) this section goes on to exercise.
+    combobox.__hbCombobox.close();
 });
 await page.waitForTimeout(250);
 const afterPick = await page.evaluate((i) => ({
@@ -61,6 +87,9 @@ const afterPick = await page.evaluate((i) => ({
 }), id);
 ok('picking Fade up writes attributes.animate and classes the canvas root',
     afterPick.model === 'fade-up' && afterPick.classed, JSON.stringify(afterPick));
+const pickedLabel = await panel.evaluate((el) =>
+    el.querySelector('[data-hb-control="animate"] [data-hb-combobox-input]').value);
+ok('the combobox field shows the preset LABEL, not the raw key', pickedLabel === 'Fade up', JSON.stringify(pickedLabel));
 const gatedAfter = await panel.evaluate((el) =>
     el.querySelector('[data-hb-control="animateDuration"]').closest('[data-hb-showwhen]').hidden);
 ok('animation detail rows appear once a preset is picked', gatedAfter === false);

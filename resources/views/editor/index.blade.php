@@ -27,6 +27,13 @@
     </div>
     <div class="hb-editor__canvas">
         <x-live.canvas :title="$postTitle ?? ''" :page-padding-x="$postPagePaddingX ?? 56" :page-padding-y="$postPagePaddingY ?? 56" />
+        {{-- Code view (shortcode dialect of the block contracts) — hidden until the footer's
+             Code Editor chip toggles it; occupies the same slot as the canvas. --}}
+        <x-live.code-editor hidden />
+        {{-- The quick inserter popup — hidden until an appender fires the runtime's cancelable
+             hb:quick-insert, which this component claims (preventDefault) to offer every block
+             instead of the runtime's paragraph fallback. --}}
+        <x-live.quick-inserter :registry="$registry" />
         <x-ui.custom-scrollbar container=".hb-canvas" />
         {{-- The floating block toolbar lives here (hidden) until a block is selected; the
              block runtime moves it above the selected block and gates it by that block's supports. --}}
@@ -44,6 +51,7 @@
         :post-page-padding-x="$postPagePaddingX ?? 56" :post-page-padding-y="$postPagePaddingY ?? 56"
         :post-layout-url-template="$postLayoutUrlTemplate" :post-allow-comments="$postAllowComments ?? true"
         :post-discussion-url-template="$postDiscussionUrlTemplate"
+        :post-revisions-url-template="$postRevisionsUrlTemplate ?? ''"
         :fonts-search-url="route('heisenberg.editor.fonts.search')"
         :theme="$theme ?? []" />
     <x-live.footer class="hb-editor__footer" />
@@ -53,46 +61,15 @@
     <x-live.block-runtime :registry="$registry" :blocks-css="$blocksCss" :registry-hash="$registryHash ?? ''" />
 
     @if (! empty($initialBlocks))
-        {{-- Hydrates an existing post's block tree into the (frozen) block-runtime's document
-             model, entirely through its documented public window.hbEditor API — insertBlock()
-             for each top-level block, then setAttribute()/setSupport() to overwrite that block's
-             defaults with its saved values. block-runtime.blade.php is not edited to do this.
-             Known gaps (the runtime has no other public hook for them today): nested
-             `innerBlocks` are not reconstructed (the runtime doesn't render inner-blocks at all
-             yet — see its own file header); a block whose `name` is no longer a registered/
-             enabled contract is silently dropped by insertBlock() returning null, which would
-             then vanish for real on the next save. --}}
+        {{-- Hydrates an existing post's block tree through window.hbEditor.replaceDoc(): models
+             land in the save shape, get fresh ids, defaults merged, and nested innerBlocks
+             reconstructed. A block whose `name` is no longer a registered/enabled contract is
+             dropped (same rule as insertBlock returning null) and would vanish on the next save. --}}
         <script>
             (() => {
                 const blocks = @json($initialBlocks);
-
-                // supports can nest (e.g. {color: {text: '...'}}) — setSupport() takes a single
-                // dotted path per leaf value, so walk the tree and flatten it into those calls.
-                const applySupports = (id, node, prefix) => {
-                    Object.keys(node || {}).forEach((key) => {
-                        const path = prefix ? prefix + '.' + key : key;
-                        const value = node[key];
-                        if (value !== null && typeof value === 'object' && !Array.isArray(value)) {
-                            applySupports(id, value, path);
-                        } else {
-                            window.hbEditor.setSupport(id, path, value);
-                        }
-                    });
-                };
-
-                const hydrate = () => {
-                    blocks.forEach((block) => {
-                        if (!block || typeof block !== 'object' || !block.name) return;
-                        const el = window.hbEditor.insertBlock(block.name);
-                        if (!el) return; // contract no longer registered/enabled — see note above
-                        const id = el.getAttribute('data-block');
-                        const attributes = block.attributes || {};
-                        Object.keys(attributes).forEach((key) => window.hbEditor.setAttribute(id, key, attributes[key]));
-                        applySupports(id, block.supports || {}, '');
-                    });
-                };
-
-                if (window.hbEditor && typeof window.hbEditor.insertBlock === 'function') hydrate();
+                const hydrate = () => window.hbEditor.replaceDoc(blocks, { baseline: true });
+                if (window.hbEditor && typeof window.hbEditor.replaceDoc === 'function') hydrate();
                 else document.addEventListener('DOMContentLoaded', hydrate, { once: true });
             })();
         </script>

@@ -73,6 +73,37 @@ return [
         'dropzone_desc' => 'Images are optimized automatically. Documents are stored as originals. Maximum size: 10 MB each.',
     ],
 
+    // ── Revisions dialog (live/revisions-dialog.blade.php) ────────
+    'revisions' => [
+        'title' => 'Revisions',
+        'empty' => 'No revisions yet — they appear as you save.',
+        'loading' => 'Loading…',
+        'error' => 'Couldn’t load revisions. Try again.',
+        'needs_save' => 'Save the post first to start its revision history.',
+        'restore' => 'Restore',
+        'blocks_count' => ':count blocks',
+        'type_manual' => 'Saved',
+        'type_auto' => 'Autosave',
+        'type_restore' => 'Restore point',
+    ],
+
+    // ── Code view (live/code-editor.blade.php) ────────────────────
+    'code' => [
+        'aria_input' => 'Shortcode source',
+        'placeholder' => '[h2]Your title[/h2]',
+        'errors_title' => 'Fix these before switching back to Visual:',
+        'revert' => 'Revert to canvas',
+        'line_label' => 'Line :line',
+        'err_unknown_block' => 'Unknown block ":slug"',
+        'err_unknown_attr' => 'Unknown attribute or support path ":name" on [:slug]',
+        'err_invalid_value' => 'Invalid value for ":name" on [:slug]',
+        'err_no_children' => '[:slug] cannot contain other blocks',
+        'err_no_body' => '[:slug] does not accept text content',
+        'err_stray_close' => 'Unexpected closing tag [/:slug]',
+        'err_unclosed' => '[:slug] opened on line :line is never closed',
+        'err_outside' => 'Content outside of any block',
+    ],
+
     // ── Effect editor (live/pickers/effect-editor.blade.php) ──────
     'effects' => [
         'drop_shadow' => 'Drop Shadow',
@@ -154,6 +185,8 @@ return [
         'aria_status' => 'Document status',
         'aria_lang' => 'Content language',
         'aria_code_editor' => 'Code editor',
+        'aria_visual_editor' => 'Visual editor',
+        'visual_editor_label' => 'Visual Editor',
         'lang_label' => 'English',
         'code_editor_label' => 'Code Editor',
         // Save-status pill states (live/footer.blade.php + live/topbar.blade.php's save wiring).
@@ -365,6 +398,12 @@ return [
     'locales' => [
         'en' => 'English',
         'fr' => 'Français',
+    ],
+
+    // ── Quick inserter (the appender popup) ───────────────────────
+    'quick_inserter' => [
+        'aria_label' => 'Insert a block',
+        'search' => 'Search blocks…',
     ],
 
 ];
