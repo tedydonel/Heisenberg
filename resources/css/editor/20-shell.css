@@ -21,6 +21,9 @@
 }
 .hb-editor--panel-collapsed { --hb-editor-panel-w: 0px; }
 .hb-editor--panel-collapsed .hb-sidepanel { display: none; }
+/* The AI panel keeps the shared panel width. It briefly had its own wider track; that broke the
+   rule that every middle panel is the same size, so the width was given back and the room was
+   found inside the panel instead (full-bleed messages, no nested card padding). */
 .hb-editor--inspector-collapsed { --hb-editor-inspector-w: 0px; }
 .hb-editor--inspector-collapsed .hb-inspector { display: none; }
 

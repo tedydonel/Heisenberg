@@ -204,6 +204,152 @@ return [
         'virus_scanner' => \Heisenberg\Adapters\NullVirusScanner::class,
     ],
 
+    // ── AI assistant + MCP (docs/ai-mcp-plan.md) ──────────────
+    // Powers the editor's Ai/Tools panel, and — separately — lets Heisenberg act
+    // as an MCP server so other AIs can author pages here.
+    //
+    // A PROVIDER IS NOT A WIRE FORMAT. `formats` below lists the two API shapes
+    // this package can speak; a *provider* (OpenAI, Anthropic, xAI, Gemini,
+    // OpenRouter, Groq, MiniMax, a local Ollama) is a vendor that speaks one of
+    // them at a given base URL with its own credential. Nearly every vendor
+    // speaks the OpenAI `/chat/completions` shape, so conflating the two would
+    // cap this package at exactly two providers.
+    //
+    // CREDENTIALS: an operator may either set the provider's env var (the safer
+    // posture, and what wins when both exist) or paste a key into the settings
+    // modal, which stores it ENCRYPTED via the AiCredentialStore binding. No
+    // endpoint ever returns key material either way — the settings API reports
+    // `has_key` booleans and the name of the env var, nothing more.
+    'ai' => [
+        // Load the opt-in AI routes (routes/ai.php). Separate from the editor's
+        // own key so a host can mount the editor without the AI surface.
+        'routes' => true,
+
+        // The API shapes, and the adapter that speaks each one.
+        'formats' => [
+            \Heisenberg\Ai\AiProviderProfile::FORMAT_ANTHROPIC => [
+                'label'   => 'Anthropic Messages API',
+                'adapter' => \Heisenberg\Adapters\AnthropicProvider::class,
+            ],
+            \Heisenberg\Ai\AiProviderProfile::FORMAT_OPENAI => [
+                'label'   => 'OpenAI Chat Completions',
+                'adapter' => \Heisenberg\Adapters\OpenAiCompatibleProvider::class,
+            ],
+        ],
+
+        // Vendors an operator can add in one click, with the models each is
+        // known to serve. These are SEEDS for the settings modal, not a fixed
+        // list: a provider not here is added by hand with a label, format, base
+        // URL and key, and works identically.
+        'provider_presets' => [
+            [
+                'id' => 'openai', 'label' => 'OpenAI', 'format' => 'openai', 'icon' => 'circles-four',
+                'base_url' => 'https://api.openai.com/v1', 'key_env' => 'HEISENBERG_AI_OPENAI_KEY',
+                'models' => ['gpt-5', 'gpt-5-mini'],
+            ],
+            [
+                'id' => 'anthropic', 'label' => 'Anthropic', 'format' => 'anthropic', 'icon' => 'sparkle',
+                'base_url' => 'https://api.anthropic.com', 'key_env' => 'HEISENBERG_AI_ANTHROPIC_KEY',
+                'models' => ['claude-opus-5', 'claude-sonnet-5', 'claude-haiku-4-5'],
+            ],
+            [
+                'id' => 'google', 'label' => 'Google Gemini', 'format' => 'openai', 'icon' => 'diamond',
+                'base_url' => 'https://generativelanguage.googleapis.com/v1beta/openai',
+                'key_env' => 'HEISENBERG_AI_GOOGLE_KEY',
+                'models' => ['gemini-2.5-pro', 'gemini-2.5-flash'],
+            ],
+            [
+                'id' => 'xai', 'label' => 'xAI', 'format' => 'openai', 'icon' => 'x-square',
+                'base_url' => 'https://api.x.ai/v1', 'key_env' => 'HEISENBERG_AI_XAI_KEY',
+                'models' => ['grok-4', 'grok-3'],
+            ],
+            [
+                'id' => 'openrouter', 'label' => 'OpenRouter', 'format' => 'openai', 'icon' => 'shuffle',
+                'base_url' => 'https://openrouter.ai/api/v1', 'key_env' => 'HEISENBERG_AI_OPENROUTER_KEY',
+                'models' => ['anthropic/claude-opus-5', 'openai/gpt-5'],
+            ],
+            [
+                'id' => 'groq', 'label' => 'Groq', 'format' => 'openai', 'icon' => 'lightning',
+                'base_url' => 'https://api.groq.com/openai/v1', 'key_env' => 'HEISENBERG_AI_GROQ_KEY',
+                'models' => ['llama-3.3-70b-versatile'],
+            ],
+            [
+                'id' => 'deepseek', 'label' => 'DeepSeek', 'format' => 'openai', 'icon' => 'binoculars',
+                'base_url' => 'https://api.deepseek.com/v1', 'key_env' => 'HEISENBERG_AI_DEEPSEEK_KEY',
+                'models' => ['deepseek-chat', 'deepseek-reasoner'],
+            ],
+            [
+                'id' => 'mistral', 'label' => 'Mistral', 'format' => 'openai', 'icon' => 'wind',
+                'base_url' => 'https://api.mistral.ai/v1', 'key_env' => 'HEISENBERG_AI_MISTRAL_KEY',
+                'models' => ['mistral-large-latest'],
+            ],
+            // No key: a local runtime is reachable without one, and demanding a
+            // fake credential to talk to 127.0.0.1 would be theatre.
+            [
+                'id' => 'ollama', 'label' => 'Ollama (local)', 'format' => 'openai', 'icon' => 'hard-drives',
+                'base_url' => 'http://localhost:11434/v1', 'key_env' => null,
+                'models' => ['llama3.1:70b'],
+            ],
+            [
+                'id' => 'lmstudio', 'label' => 'LM Studio (local)', 'format' => 'openai', 'icon' => 'desktop',
+                'base_url' => 'http://localhost:1234/v1', 'key_env' => null,
+                'models' => [],
+            ],
+        ],
+
+        // Where a UI-entered API key is kept. The bundled store encrypts with the
+        // app key and always lets an environment variable win; a host running a
+        // real secrets manager binds its own AiCredentialStore here.
+        'credential_store' => \Heisenberg\Adapters\EncryptedFileCredentialStore::class,
+        'credentials_path' => env('HEISENBERG_AI_CREDENTIALS_PATH'),
+
+        // Fallback effort for a model that carries none of its own. Sampling
+        // parameters (temperature/top_p/top_k) and `budget_tokens` are
+        // deliberately absent and must never be added: current Anthropic models
+        // reject all four with a 400.
+        'effort'     => env('HEISENBERG_AI_EFFORT', 'high'), // low|medium|high|xhigh|max
+        'max_tokens' => (int) env('HEISENBERG_AI_MAX_TOKENS', 16000),
+        'timeout'    => (int) env('HEISENBERG_AI_TIMEOUT', 120),
+
+        // Laravel throttle spec ("requests,minutes") for the two model-calling
+        // endpoints. Every call spends the operator's API budget, so this is a
+        // bill guard, not just a load guard. Set to null to drop the throttle —
+        // the only reason to: it is the one part of this package that needs a
+        // working cache store, so a host on the `database` cache driver without
+        // the `cache` table must either create it or disable this.
+        'rate_limit' => env('HEISENBERG_AI_RATE_LIMIT', '30,1'),
+
+        // JSON file for the AI panel's settings (active provider/model/effort,
+        // enabled tools, MCP server list); null -> storage/app/heisenberg/ai.json.
+        // Same file-backed pattern as theme_path / saved_themes_path above.
+        'settings_path' => env('HEISENBERG_AI_SETTINGS_PATH'),
+
+        'mcp' => [
+            // Outbound — Heisenberg connects to other people's MCP servers and
+            // offers their tools to the model. The server list lives in the
+            // settings JSON; each entry names an env var for its token.
+            'client' => [
+                'enabled'        => (bool) env('HEISENBERG_MCP_CLIENT', false),
+                'adapter'        => \Heisenberg\Adapters\HttpMcpClient::class,
+                'timeout'        => (int) env('HEISENBERG_MCP_TIMEOUT', 30),
+                // Hard stop on the request -> tool_use -> tool_result loop, so a
+                // model that keeps calling tools cannot run forever.
+                'max_iterations' => (int) env('HEISENBERG_MCP_MAX_ITERATIONS', 8),
+            ],
+
+            // Inbound — other AIs connect to Heisenberg and author pages through
+            // the same validation the editor uses. OFF by default, deliberately:
+            // this is a write API, and enabling it is an explicit act.
+            'server' => [
+                'enabled'    => (bool) env('HEISENBERG_MCP_SERVER', false),
+                // "token:tier,token:tier" — tier is a heisenberg.roles key
+                // (authors/admins/super). Read at request time, never logged.
+                'tokens_env' => 'HEISENBERG_MCP_TOKENS',
+                'path'       => env('HEISENBERG_MCP_PATH', 'heisenberg/mcp'),
+            ],
+        ],
+    ],
+
     // ── Contracts → adapters ──────────────────────────────────
     'media_resolver' => \Heisenberg\Adapters\NullMediaResolver::class,
     'role_gate'      => \Heisenberg\Adapters\ConfigRoleGate::class,
@@ -279,10 +425,19 @@ return [
     // Open-by-default: `['web']` so the dev/testbench harness and the package's
     // own editor route tests keep working unauthenticated; a host mounting the
     // Editor for real widens this (e.g. `['web', 'auth']`).
+    // `middleware.ai` gates the AI panel's own endpoints (routes/ai.php) — same
+    // open-by-default posture as the two above; writes carry their own
+    // admins-tier RoleGate check regardless of what this stack is.
+    // `middleware.mcp` gates the inbound MCP server (routes/mcp.php) and is
+    // DELIBERATELY EMPTY: that endpoint authenticates with a bearer token, not a
+    // session, so it must sit outside the `web` group's session/CSRF stack.
+    // Putting `web` here would make every MCP call fail CSRF verification.
     'middleware' => [
         'api_admin' => ['auth:sanctum', 'verified', 'role:admin'],
         'media'     => ['web'],
         'editor'    => ['web'],
+        'ai'        => ['web'],
+        'mcp'       => [],
     ],
 
 ];

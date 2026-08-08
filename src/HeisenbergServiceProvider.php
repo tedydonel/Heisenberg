@@ -5,15 +5,20 @@ declare(strict_types=1);
 namespace Heisenberg;
 
 use Heisenberg\Adapters\ConfigRoleGate;
+use Heisenberg\Adapters\NullAiProvider;
 use Heisenberg\Adapters\PhosphorIconProvider;
 use Heisenberg\Adapters\NullAuditSink;
 use Heisenberg\Adapters\NullMediaResolver;
 use Heisenberg\Adapters\NullVirusScanner;
+use Heisenberg\Contracts\AiProvider;
 use Heisenberg\Contracts\AuditSink;
 use Heisenberg\Contracts\IconProvider;
+use Heisenberg\Contracts\McpClient;
 use Heisenberg\Contracts\MediaResolver;
 use Heisenberg\Contracts\RoleGate;
 use Heisenberg\Contracts\VirusScanner;
+use Heisenberg\Services\AiProviderRegistry;
+use Heisenberg\Services\AiSettingsRepository;
 use Heisenberg\Models\Category;
 use Heisenberg\Models\Post;
 use Heisenberg\Models\PublicFile;
@@ -50,6 +55,7 @@ class HeisenbergServiceProvider extends ServiceProvider
         $this->registerEngine();
         $this->registerUploadsDisk();
         $this->registerMedia();
+        $this->registerAi();
 
         // Later: domain singletons (PostStateMachine, PostTransitionAction, …).
     }
@@ -123,6 +129,71 @@ class HeisenbergServiceProvider extends ServiceProvider
     }
 
     /**
+     * The AI assistant's singleton graph (docs/ai-mcp-plan.md): settings
+     * repository, provider registry, the active provider, and the outbound MCP
+     * client.
+     *
+     * Every binding is a closure, so nothing here resolves at boot. That matters
+     * because `config('heisenberg.ai')` deliberately names adapters that ship in
+     * a later phase — `::class` in a config array is a compile-time string, not
+     * an autoload, and a binding that is never resolved never tries to load one.
+     * The registry reports such a provider as `available: false` instead.
+     */
+    protected function registerAi(): void
+    {
+        $this->app->singleton(AiSettingsRepository::class, fn ($app) => new AiSettingsRepository(
+            $app['config']->get('heisenberg.ai.settings_path'),
+        ));
+
+        // Where a UI-entered API key lives. Swappable so a host with a real
+        // secrets manager can bind its own; the bundled store encrypts with the
+        // app key and always lets an environment variable win.
+        $this->app->singleton(\Heisenberg\Contracts\AiCredentialStore::class, function ($app) {
+            $class = (string) $app['config']->get(
+                'heisenberg.ai.credential_store',
+                \Heisenberg\Adapters\EncryptedFileCredentialStore::class,
+            );
+
+            return $app->make($class);
+        });
+
+        $this->app->singleton(AiProviderRegistry::class, fn ($app) => new AiProviderRegistry(
+            $app->make(AiSettingsRepository::class),
+            $app->make(\Heisenberg\Contracts\AiCredentialStore::class),
+        ));
+
+        // Resolves to the adapter for whichever MODEL is in use — the model
+        // names its provider, and the provider names the API format. Degrades to
+        // the null object rather than throwing when nothing is configured.
+        $this->app->singleton(AiProvider::class, fn ($app) => $app->make(AiProviderRegistry::class)->active());
+
+        $this->app->singleton(\Heisenberg\Services\HeisenbergToolSource::class, fn ($app) => new \Heisenberg\Services\HeisenbergToolSource(
+            $app->make(\Heisenberg\Services\McpToolRegistry::class),
+        ));
+
+        $this->app->singleton(\Heisenberg\Services\AiToolRunner::class, fn ($app) => new \Heisenberg\Services\AiToolRunner(
+            // Resolved lazily: the MCP client binding throws when no adapter is
+            // configured, and the runner is useful without one.
+            $app->make(McpClient::class),
+            $app->make(AiSettingsRepository::class),
+            $app->make(\Heisenberg\Services\HeisenbergToolSource::class),
+        ));
+
+        $this->app->singleton(McpClient::class, function ($app) {
+            $class = (string) $app['config']->get('heisenberg.ai.mcp.client.adapter', '');
+
+            if ($class === '' || ! class_exists($class)) {
+                throw new \RuntimeException(
+                    'No MCP client adapter is available. Set heisenberg.ai.mcp.client.adapter to a class implementing '
+                    . McpClient::class . '.'
+                );
+            }
+
+            return $app->make($class);
+        });
+    }
+
+    /**
      * The block-engine singleton graph (blueprint §1.4): validator -> registry,
      * sanitizer, renderer (sanitizer + registry).
      */
@@ -160,6 +231,8 @@ class HeisenbergServiceProvider extends ServiceProvider
             $this->registerResources();
             $this->registerRoutes();
             $this->registerMediaRoutes();
+            $this->registerAiRoutes();
+            $this->registerMcpRoutes();
             $this->registerPolicies();
             $this->registerLivewireComponents();
             $this->registerLocaleMiddleware();
@@ -224,6 +297,35 @@ class HeisenbergServiceProvider extends ServiceProvider
     {
         if ($this->app['config']->get('heisenberg.media.routes', true)) {
             $this->loadRoutesFrom(__DIR__ . '/../routes/media.php');
+        }
+    }
+
+    /**
+     * Load the opt-in AI routes (routes/ai.php: the assistant panel's own
+     * settings API). Separate config key + middleware from the editor and media
+     * groups, so a host can mount the editor without the AI surface. Enabled by
+     * default; the bundled provider is a no-op, so this exposes no third party.
+     */
+    protected function registerAiRoutes(): void
+    {
+        if ($this->app['config']->get('heisenberg.ai.routes', true)) {
+            $this->loadRoutesFrom(__DIR__ . '/../routes/ai.php');
+        }
+    }
+
+    /**
+     * Load the inbound MCP server routes (routes/mcp.php) — the surface other
+     * AIs connect to in order to author pages here.
+     *
+     * OFF by default, unlike every other route group in this package: it is a
+     * write API reachable with a bearer token and no session, so enabling it is
+     * a deliberate config change. The route file is not even loaded until then,
+     * and McpTokenMiddleware 404s as a second line of defence.
+     */
+    protected function registerMcpRoutes(): void
+    {
+        if ($this->app['config']->get('heisenberg.ai.mcp.server.enabled', false)) {
+            $this->loadRoutesFrom(__DIR__ . '/../routes/mcp.php');
         }
     }
 

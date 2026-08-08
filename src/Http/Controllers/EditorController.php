@@ -8,6 +8,8 @@ use Heisenberg\Adapters\GuestActor;
 use Heisenberg\Models\Category;
 use Heisenberg\Models\Post;
 use Heisenberg\Models\Tag;
+use Heisenberg\Services\AiProviderRegistry;
+use Heisenberg\Services\AiSettingsRepository;
 use Heisenberg\Services\BlockRegistryService;
 use Heisenberg\Services\FontCatalogService;
 use Heisenberg\Services\SavedThemeRepository;
@@ -164,6 +166,23 @@ final class EditorController
             // taxonomy controllers once the user acts.
             'categoryOptions' => $this->categoryOptions(),
             'tagOptions' => $this->tagOptions(),
+            // AI settings modal seed. Resolved here rather than added to index()/show()'s
+            // signatures because it is view-only data with no request dependency — the
+            // provider catalogue comes from config and the settings from a JSON file.
+            // `aiProviders` never carries key material: each row reports `configured` as a
+            // boolean and names its env var, nothing more (see AiProviderRegistry).
+            'aiPayload' => [
+                'settings' => app(AiSettingsRepository::class)->load(),
+                'providers' => app(AiProviderRegistry::class)->describe(),
+                'presets' => app(AiProviderRegistry::class)->availablePresets(),
+                'formats' => app(AiProviderRegistry::class)->formats(),
+            ],
+            'aiSettingsUrl' => route('heisenberg.editor.ai.settings.update'),
+            // __ID__ placeholders, following topbar.blade.php's convention for
+            // routes whose segment isn't known at render time.
+            'aiKeyUrlTemplate' => route('heisenberg.editor.ai.providers.key', ['provider' => '__ID__']),
+            'aiDiscoverUrlTemplate' => route('heisenberg.editor.ai.providers.discover', ['provider' => '__ID__']),
+            'aiMcpTestUrl' => route('heisenberg.editor.ai.mcp.test'),
         ];
     }
 

@@ -21,7 +21,7 @@
         <x-live.panel-style-themes hidden :theme="$theme ?? []" :saved-themes="$savedThemes ?? []" :font-options="$fontOptions ?? []"
             :theme-update-url="route('heisenberg.editor.theme.update')" :fonts-search-url="route('heisenberg.editor.fonts.search')"
             :themes-store-url="route('heisenberg.editor.themes.store')" :themes-destroy-url="route('heisenberg.editor.themes.destroy')" />
-        <x-live.panel-ai-tools hidden />
+        <x-live.panel-ai-tools hidden :stream-url="route('heisenberg.editor.ai.stream')" />
         {{-- Navigator (List View | Outline) — hidden until the topbar Layers button opens it. --}}
         <x-live.panel-navigator hidden :registry="$registry" />
     </div>
@@ -114,6 +114,16 @@
         :fonts-search-url="route('heisenberg.editor.fonts.search')"
         :theme="$theme ?? []" />
     <x-live.footer class="hb-editor__footer" />
+
+    {{-- AI settings, opened by the AI panel's header button. Mounted at page level rather than
+         inside the panel (which the sidebar hides when another panel is active) so the dialog is
+         reachable from anywhere that dispatches [data-hb-ai-settings-open]. Its scrim is
+         position:fixed, so where it sits in the tree has no visual effect. --}}
+    <x-live.ai.ai-settings-dialog :payload="$aiPayload ?? []"
+        :settings-url="$aiSettingsUrl ?? null"
+        :key-url-template="$aiKeyUrlTemplate ?? null"
+        :discover-url-template="$aiDiscoverUrlTemplate ?? null"
+        :mcp-test-url="$aiMcpTestUrl ?? null" />
 
     {{-- The block model: registry + render/insert/select runtime. Kept last so the canvas,
          panels, inspector and toolbar it wires all exist in the DOM before it boots. --}}
