@@ -1,0 +1,3 @@
+[p padding="1px 2px 3px 4px" margin="8px 16px" hover:color=#0000ff]
+  State overrides always serialize last.
+[/p]

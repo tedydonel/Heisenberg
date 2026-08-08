@@ -1,0 +1,7 @@
+[h2]
+  Hello world
+[/h2]
+
+[p]
+  A plain paragraph.
+[/p]

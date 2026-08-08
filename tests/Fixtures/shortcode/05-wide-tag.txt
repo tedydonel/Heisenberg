@@ -1,0 +1,9 @@
+[h3
+  font-size=40px
+  line-height=1.2
+  letter-spacing=0.5px
+  color=#123456
+  padding="4px 8px 12px 16px"
+]
+  A tag whose inline form would exceed eighty columns breaks one attribute per line.
+[/h3]

@@ -1,0 +1,7 @@
+[h3 font-size=40px color=#123456 padding="4px 8px"]
+  Styled heading
+[/h3]
+
+[p color=var(--hb-t-c-1) padding-top=12px]
+  Body text with a <strong>theme-token</strong> binding.
+[/p]

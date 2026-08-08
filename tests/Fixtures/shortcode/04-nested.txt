@@ -1,0 +1,8 @@
+[group gap=16px]
+  [h4]
+    Nested heading
+  [/h4]
+  [p]
+    Nested paragraph.
+  [/p]
+[/group]

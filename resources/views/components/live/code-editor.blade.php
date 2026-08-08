@@ -679,6 +679,14 @@
                     if (code) { serializeIntoView(); input.focus(); }
                 };
 
+                // Machine-authored markup belongs in the Code view — that is where a generated
+                // page is read and corrected. The AI panel applies its blocks through the
+                // runtime and then calls these, so the result shows up as code rather than
+                // only as text in the chat. `sync` is the no-jump variant: it refreshes the
+                // view if it is already open and pristine, and does nothing otherwise.
+                window.hbCodeView.open = () => setMode(true);
+                window.hbCodeView.sync = () => { if (visible && !dirty) serializeIntoView(); };
+
                 input.addEventListener('input', onInput);
                 input.addEventListener('scroll', syncScroll);
                 input.addEventListener('click', updateBand);
@@ -724,6 +732,20 @@
                 document.addEventListener('hb:block-updated', onExternalChange);
             });
         };
+        // The dialect, available to anything else on the page. docs/code-view.md calls this the
+        // machine-authoring surface, and the AI panel is its first non-human caller: routing
+        // generated markup through THIS parser means AI output is validated against the same
+        // registry the canvas uses, reports the same line-numbered errors, and lands through the
+        // same undo stack — instead of a second, drifting insertion path.
+        //
+        // `parse` supplies its own message lookup because the real one reads a root element's
+        // data-* strings, which a non-DOM caller doesn't have; error *positions* are what matter
+        // to a caller that isn't rendering the gutter.
+        window.hbCodeView = {
+            parse: (text) => parseShortcode(String(text == null ? '' : text), (key) => key),
+            serialize: serializeDoc,
+        };
+
         if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', boot, { once: true });
         else boot();
         document.addEventListener('hb:refresh', boot);
