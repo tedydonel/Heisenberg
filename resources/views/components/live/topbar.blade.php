@@ -253,6 +253,11 @@
                             }
                         }
                         hbConflicted = false;
+                        // The Post tab's Summary rows re-read status/publish/url from this —
+                        // every 2xx save (manual or autosave) echoes the fresh post payload.
+                        if (res.data && res.data.post) {
+                            document.dispatchEvent(new CustomEvent('hb:post-saved', { detail: { post: res.data.post } }));
+                        }
                         hbEmitSaveState(hbDirty ? 'dirty' : 'saved');
                         return;
                     }

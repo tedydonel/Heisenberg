@@ -102,6 +102,7 @@
         </div>
     </div>
     <x-live.inspector class="hb-editor__inspector" :registry="$registry" :post-title="$postTitle ?? ''"
+        :post-meta="$postMeta ?? []"
         :post-id="$postId ?? null" :post-category-ids="$postCategoryIds ?? []" :post-tag-ids="$postTagIds ?? []"
         :category-options="$categoryOptions ?? []" :tag-options="$tagOptions ?? []"
         :categories-index-url="$categoriesIndexUrl" :tags-index-url="$tagsIndexUrl"

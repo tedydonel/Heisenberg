@@ -224,14 +224,10 @@
     // beyond that loop.
     'registry' => [],
     'postTitle' => '',
-    'postMeta' => [
-        ['label' => 'Visibility', 'value' => 'Public'],
-        ['label' => 'Publish', 'value' => 'Immediately'],
-        ['label' => 'URL', 'value' => '/untitled'],
-        ['label' => 'Author', 'value' => 'Ava Mercer'],
-        ['label' => 'Template', 'value' => 'Single Post'],
-        ['label' => 'Format', 'value' => 'Standard'],
-    ],
+    // Real rows come from EditorController::postMeta() (status/publish/url/blocks, each with
+    // a `key` the live-update script below refreshes on save). This default only covers test
+    // fixtures that mount the component bare.
+    'postMeta' => [],
     'postPendingReview' => false,
     'postStickToTop' => false,
     // Post tab Categories/Tags (shared multi-select checklist; attach/detach URLs use the
@@ -330,11 +326,15 @@
 
         <x-ui.disclosure-row icon="file-text" :label="__('heisenberg::editor.inspector.post_summary')" chevron="down" />
         <div data-hb-disclosure-body>
-            <div class="hb-post-meta">
+            {{-- LIVE rows (2026-08-08 — this section used to render hardcoded placeholders):
+                 seeded by EditorController::postMeta(), then kept current by the script below —
+                 status/publish/url from the post payload every successful save echoes
+                 (hb:post-saved, topbar), blocks recounted on every hb:blocks-changed. --}}
+            <div class="hb-post-meta" data-hb-post-meta>
                 @foreach ($postMeta as $row)
                     <div class="hb-post-meta__row">
                         <span class="hb-post-meta__label">{{ $row['label'] }}</span>
-                        <span class="hb-post-meta__value">{{ $row['value'] }}</span>
+                        <span class="hb-post-meta__value" @if (!empty($row['key'])) data-hb-post-meta-value="{{ $row['key'] }}" @endif>{{ $row['value'] }}</span>
                     </div>
                 @endforeach
             </div>
@@ -350,6 +350,14 @@
                 </div>
             </div>
             <hr class="hb-post-divider">
+            {{-- Revisions — opens the history dialog (live/revisions-dialog.blade.php). Lives
+                 INSIDE the Summary body (2026-08-08), just above Move to trash. The row carries
+                 the URL template + current post id; hb:post-id updates it after a new document's
+                 first save, same contract as the taxonomy bodies below. --}}
+            <x-ui.disclosure-row icon="arrow-counter-clockwise" :label="__('heisenberg::editor.revisions.title')" chevron="right"
+                data-hb-revisions-open
+                :data-hb-post-id="$postId ?? ''"
+                :data-hb-revisions-url-template="$postRevisionsUrlTemplate" />
             <button type="button" class="hb-post-trash">
                 <span class="hb-post-trash__icon" aria-hidden="true">
                     @include('heisenberg::components.ui.icon', ['name' => 'trash', 'size' => 15])
@@ -357,15 +365,54 @@
                 <span class="hb-post-trash__label">{{ __('heisenberg::editor.inspector.post_move_trash') }}</span>
             </button>
         </div>
-
-        {{-- Revisions — opens the history dialog (live/revisions-dialog.blade.php). The row
-             carries the URL template + current post id; hb:post-id updates it after a new
-             document's first save, same contract as the taxonomy bodies below. --}}
-        <x-ui.disclosure-row icon="arrow-counter-clockwise" :label="__('heisenberg::editor.revisions.title')" chevron="right"
-            data-hb-revisions-open
-            :data-hb-post-id="$postId ?? ''"
-            :data-hb-revisions-url-template="$postRevisionsUrlTemplate" />
         <x-live.revisions-dialog />
+
+        {{-- Discussion (2026-08-03; moved up beside Summary 2026-08-08 — it is post-level
+             metadata like the rows above, not taxonomy) — a single Allow-comments toggle. A
+             plain per-post override, nullable in the DB (null = comments allowed), same
+             disabled-until-saved posture as Categories/Tags below. See
+             PostSettingsController::updateDiscussion(); wiring in wirePostDiscussion below. --}}
+        <x-ui.disclosure-row icon="chat-circle" :label="__('heisenberg::editor.inspector.post_discussion')" chevron="down" />
+        <div class="hb-post-discussion-body" data-hb-disclosure-body data-hb-post-discussion-field
+            data-hb-post-id="{{ $postId ?? '' }}"
+            data-hb-discussion-url-template="{{ $postDiscussionUrlTemplate }}">
+            <div class="hb-post-toggle-row">
+                <span class="hb-post-toggle-row__label">{{ __('heisenberg::editor.inspector.post_allow_comments') }}</span>
+                <x-ui.toggle data-hb-post-allow-comments :on="$postAllowComments" name="post-allow-comments" :disabled="$postId === null" />
+            </div>
+            <span class="hb-post-taxonomy-hint" data-hb-post-discussion-hint @if ($postId !== null) hidden @endif>{{ __('heisenberg::editor.inspector.post_taxonomy_needs_save') }}</span>
+        </div>
+
+        {{-- The Summary rows' live half. hb:post-saved carries the saved post payload
+             (topbar dispatches it on every 2xx save); blocks recount from the runtime's
+             document on every structural change. --}}
+        @once('hb-post-meta-live')
+        <script>
+            (() => {
+                const value = (key) => document.querySelector('[data-hb-post-meta-value="' + key + '"]');
+                document.addEventListener('hb:post-saved', (event) => {
+                    const post = event.detail && event.detail.post;
+                    if (!post) return;
+                    const status = value('status');
+                    if (status && post.status) status.textContent = String(post.status).charAt(0).toUpperCase() + String(post.status).slice(1);
+                    const publish = value('publish');
+                    if (publish) {
+                        publish.textContent = post.published_at
+                            ? new Date(post.published_at).toLocaleString(undefined, { month: 'short', day: 'numeric', year: 'numeric', hour: '2-digit', minute: '2-digit' })
+                            : publish.textContent;
+                    }
+                    const url = value('url');
+                    if (url && typeof post.slug === 'string') url.textContent = post.slug !== '' ? '/' + post.slug : '—';
+                });
+                document.addEventListener('hb:blocks-changed', () => {
+                    const el = value('blocks');
+                    if (!el || !window.hbEditor) return;
+                    const count = (list) => list.reduce((n, b) => n + 1 + (Array.isArray(b.innerBlocks) ? count(b.innerBlocks) : 0), 0);
+                    el.textContent = String(count(window.hbEditor.getDoc().blocks));
+                });
+            })();
+        </script>
+        @endonce
 
         {{-- Categories/Tags — ONE shared multi-select checklist widget for both (each is
              BelongsToMany via a real pivot, wired by the one wirePostTaxonomy()
@@ -435,23 +482,6 @@
                 placeholder="{{ __('heisenberg::editor.inspector.post_tag_add_ph') }}"
                 autocomplete="off" spellcheck="false" @if ($postId === null) disabled @endif>
             <span class="hb-post-taxonomy-hint" data-hb-post-taxonomy-hint @if ($postId !== null) hidden @endif>{{ __('heisenberg::editor.inspector.post_taxonomy_needs_save') }}</span>
-        </div>
-
-        {{-- Discussion (2026-08-03) — a single Allow-comments toggle. There is no per-post
-             template assignment anywhere in the schema yet (post-templates are a registry/contract
-             system, not yet linked to individual Post rows), so this can't read a "template
-             default" the way its name might suggest — it's a plain per-post override, nullable in
-             the DB (null = comments allowed), same disabled-until-saved posture as Categories/Tags
-             above. See PostSettingsController::updateDiscussion(). --}}
-        <x-ui.disclosure-row icon="chat-circle" :label="__('heisenberg::editor.inspector.post_discussion')" chevron="down" />
-        <div class="hb-post-discussion-body" data-hb-disclosure-body data-hb-post-discussion-field
-            data-hb-post-id="{{ $postId ?? '' }}"
-            data-hb-discussion-url-template="{{ $postDiscussionUrlTemplate }}">
-            <div class="hb-post-toggle-row">
-                <span class="hb-post-toggle-row__label">{{ __('heisenberg::editor.inspector.post_allow_comments') }}</span>
-                <x-ui.toggle data-hb-post-allow-comments :on="$postAllowComments" name="post-allow-comments" :disabled="$postId === null" />
-            </div>
-            <span class="hb-post-taxonomy-hint" data-hb-post-discussion-hint @if ($postId !== null) hidden @endif>{{ __('heisenberg::editor.inspector.post_taxonomy_needs_save') }}</span>
         </div>
 
         {{-- Page layout (2026-08-03) — the whole page's X/Y padding, nothing else (no per-side

@@ -39,6 +39,7 @@ final class EditorController
             'postPagePaddingX' => self::DEFAULT_PAGE_PADDING_X,
             'postPagePaddingY' => self::DEFAULT_PAGE_PADDING_Y,
             'postAllowComments' => true,
+            'postMeta' => $this->postMeta(null),
         ]));
     }
 
@@ -70,7 +71,57 @@ final class EditorController
             'postPagePaddingX' => $model->page_padding_x ?? self::DEFAULT_PAGE_PADDING_X,
             'postPagePaddingY' => $model->page_padding_y ?? self::DEFAULT_PAGE_PADDING_Y,
             'postAllowComments' => $model->allow_comments ?? true,
+            'postMeta' => $this->postMeta($model),
         ]));
+    }
+
+    /**
+     * The Post tab's Summary rows, from the REAL post (2026-08-08 — the section used to
+     * render hardcoded placeholder strings). Each row carries a `key` the inspector's own
+     * script uses to keep the value live: status/publish/url refresh from `hb:post-saved`
+     * (every successful save echoes the post payload), blocks from `hb:blocks-changed`.
+     * A null model is the blank /editor document — the same defaults a first save produces.
+     *
+     * @return list<array{key: string, label: string, value: string}>
+     */
+    private function postMeta(?Post $model): array
+    {
+        $blocks = 0;
+        if ($model !== null) {
+            $count = function (array $list) use (&$count): int {
+                $n = 0;
+                foreach ($list as $block) {
+                    $n += 1 + (is_array($block['innerBlocks'] ?? null) ? $count($block['innerBlocks']) : 0);
+                }
+
+                return $n;
+            };
+            $blocks = $count($model->blocks->map(fn ($b) => $b->content)->all());
+        }
+
+        return [
+            [
+                'key' => 'status',
+                'label' => (string) __('heisenberg::editor.inspector.summary_status'),
+                'value' => ucfirst((string) ($model?->status ?? 'draft')),
+            ],
+            [
+                'key' => 'publish',
+                'label' => (string) __('heisenberg::editor.inspector.summary_publish'),
+                'value' => $model?->published_at?->format('M j, Y H:i')
+                    ?? (string) __('heisenberg::editor.inspector.summary_immediately'),
+            ],
+            [
+                'key' => 'url',
+                'label' => (string) __('heisenberg::editor.inspector.summary_url'),
+                'value' => ($model !== null && (string) $model->slug !== '') ? '/' . $model->slug : '—',
+            ],
+            [
+                'key' => 'blocks',
+                'label' => (string) __('heisenberg::editor.inspector.summary_blocks'),
+                'value' => (string) $blocks,
+            ],
+        ];
     }
 
     /**

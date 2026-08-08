@@ -7,7 +7,11 @@
 @once
 <style>
     .hb-revdialog { width: 560px; height: 520px; }
-    .hb-revdialog__body { flex: 1 1 auto; min-height: 0; overflow-y: auto; padding: var(--hb-space-4, 16px); }
+    /* Two-layer scroll shell (2026-08-08): __body is the positioned, non-scrolling parent the
+       absolute ui/custom-scrollbar anchors to; __scroll is the region the bar drives (the bar
+       itself adds hb-scroll-container + overflow on boot) — no native scrollbar. */
+    .hb-revdialog__body { position: relative; flex: 1 1 auto; min-height: 0; }
+    .hb-revdialog__scroll { height: 100%; box-sizing: border-box; padding: var(--hb-space-4, 16px); }
     .hb-revdialog__empty { padding: 48px 0; text-align: center; color: var(--hb-text-muted, #9A9A9A); font-size: var(--hb-fs-base, 13px); }
     .hb-revdialog__empty[hidden] { display: none; }
     .hb-revdialog__list { display: flex; flex-direction: column; gap: 6px; }
@@ -94,6 +98,9 @@
                         row.append(meta, type, restore);
                         list.appendChild(row);
                     });
+                    // The custom scrollbar tracks content height — a fresh row set changes it
+                    // (and the bar booted while the dialog was [hidden]), so re-measure.
+                    document.dispatchEvent(new CustomEvent('hb:refresh'));
                 };
 
                 const load = () => {
@@ -155,8 +162,11 @@
             </button>
         </div>
         <div class="hb-revdialog__body">
-            <div class="hb-revdialog__empty" data-hb-rev-empty hidden></div>
-            <div class="hb-revdialog__list" data-hb-rev-list></div>
+            <div class="hb-revdialog__scroll" data-hb-rev-scroll>
+                <div class="hb-revdialog__empty" data-hb-rev-empty hidden></div>
+                <div class="hb-revdialog__list" data-hb-rev-list></div>
+            </div>
+            <x-ui.custom-scrollbar container="[data-hb-rev-scroll]" />
         </div>
     </div>
 </div>
