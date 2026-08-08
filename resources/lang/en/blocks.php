@@ -67,6 +67,13 @@ return [
         ],
     ],
 
+    'icon' => [
+        'title' => 'Icon',
+        'description' => 'A scalable icon from the bundled icon library.',
+        'controls' => [
+            'icon' => 'Icon',
+        ],
+    ],
     'embed' => [
         'title' => 'Embed',
         'description' => 'YouTube or Vimeo video.',

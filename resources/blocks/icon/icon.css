@@ -1,0 +1,47 @@
+/* heisenberg/icon — one scalable SVG from the bundled icon library (resources/icons/blocks,
+   imported from VvvebJs — see CREDITS.md there). The `icon` template node inlines the
+   sanitized SVG server-side; the canvas runtime fetch-injects the same asset.
+
+   COLOR: the library's sets draw with `currentColor` (stroke-based sets like feather set
+   fill:none stroke:currentColor on their own root; fill-based sets inherit fill), so the
+   block tints by setting `color` from its Fill — no per-path surgery needed. Sets that
+   hardcode their own fills simply ignore it, which is the correct outcome for multicolor
+   glyphs.
+
+   Border/radius are SUPPORTED (Stroke + Appearance's corner fields) and are declared
+   nowhere in this file on purpose — the SupportsStyle capability sheet owns every one of
+   those properties, fed through style.variables. `box-sizing: border-box` keeps a stroke
+   from growing the box. (NB: never write a literal star-slash sequence inside a comment —
+   it terminates it early and the CSS parser then swallows the rule that follows.) */
+.hb-block-icon {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    box-sizing: border-box;
+    transition: color 140ms ease, background-color 140ms ease, box-shadow 140ms ease, transform 140ms ease;
+    color: var(--hb-icon-color, inherit);
+    background: var(--hb-icon-bg, transparent);
+    width: var(--hb-icon-w, 32px);
+    height: var(--hb-icon-h, 32px);
+    min-width: var(--hb-icon-minw, 0);
+    min-height: var(--hb-icon-minh, 0);
+    max-width: var(--hb-icon-maxw, none);
+    max-height: var(--hb-icon-maxh, none);
+    margin: var(--hb-icon-mt, 0) var(--hb-icon-mr, 0) var(--hb-icon-mb, 0) var(--hb-icon-ml, 0);
+    padding: var(--hb-icon-pt, 0) var(--hb-icon-pr, 0) var(--hb-icon-pb, 0) var(--hb-icon-pl, 0);
+}
+
+/* The injected SVG fills the block box; its own viewBox keeps the aspect. Import strips the
+   root width/height attributes, so this is the single owner of icon sizing. */
+.hb-block-icon__svg { display: block; width: 100%; height: 100%; }
+.hb-block-icon__svg svg { display: block; width: 100%; height: 100%; }
+
+/* Device visibility — six breakpoint bands, same (0,3,0)-beating pattern as every block:
+   the capability sheet's [data-block-id].hb-supports rules are (0,2,0)+, so the hide rules
+   carry the attribute selector to win regardless of stylesheet order. */
+@media (max-width: 575.98px) { [data-block-id].hb-supports.hb-block-icon.hb-hide-xs { display: none; } }
+@media (min-width: 576px) and (max-width: 767.98px) { [data-block-id].hb-supports.hb-block-icon.hb-hide-sm { display: none; } }
+@media (min-width: 768px) and (max-width: 991.98px) { [data-block-id].hb-supports.hb-block-icon.hb-hide-md { display: none; } }
+@media (min-width: 992px) and (max-width: 1199.98px) { [data-block-id].hb-supports.hb-block-icon.hb-hide-lg { display: none; } }
+@media (min-width: 1200px) and (max-width: 1399.98px) { [data-block-id].hb-supports.hb-block-icon.hb-hide-xl { display: none; } }
+@media (min-width: 1400px) { [data-block-id].hb-supports.hb-block-icon.hb-hide-xxl { display: none; } }

@@ -283,4 +283,48 @@ final class EditorController
             'Cache-Control' => 'public, max-age=31536000, immutable',
         ]);
     }
+
+    /**
+     * One block-library icon (see IconLibraryService — the imported VvvebJs
+     * collection). The set/slug pair is manifest-gated inside the service, so an
+     * unlisted pair 404s without ever touching the filesystem.
+     */
+    public function icon(\Heisenberg\Services\IconLibraryService $icons, string $set, string $slug): Response
+    {
+        $svg = $icons->svg($set . '/' . $slug);
+        if ($svg === null) {
+            return response('', 404);
+        }
+
+        return response($svg, 200, [
+            'Content-Type' => 'image/svg+xml',
+            'Cache-Control' => 'public, max-age=31536000, immutable',
+        ]);
+    }
+
+    /**
+     * GET /editor/icons — the icon picker's search feed. `q` substring-matches
+     * slugs, `set` filters to one set, `limit`/`offset` page. Each row carries
+     * the reference the icon block's attribute stores plus its asset URL.
+     */
+    public function iconsSearch(Request $request, \Heisenberg\Services\IconLibraryService $icons): \Illuminate\Http\JsonResponse
+    {
+        $result = $icons->search(
+            (string) $request->query('q', ''),
+            $request->query('set') === null ? null : (string) $request->query('set'),
+            (int) $request->integer('limit', 60),
+            (int) $request->integer('offset', 0),
+        );
+
+        return response()->json([
+            'icons' => array_map(fn (array $row) => [
+                'set' => $row['set'],
+                'slug' => $row['slug'],
+                'reference' => $row['set'] . '/' . $row['slug'],
+                'url' => route('heisenberg.editor.asset.icon', ['set' => $row['set'], 'slug' => $row['slug']]),
+            ], $result['icons']),
+            'total' => $result['total'],
+            'sets' => $icons->sets(),
+        ]);
+    }
 }

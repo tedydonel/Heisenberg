@@ -102,4 +102,11 @@ Route::middleware(config('heisenberg.middleware.editor', ['web']))->group(functi
     Route::get('/heisenberg-assets/editor-supports.css', [EditorController::class, 'supportsCss'])->name('heisenberg.editor.asset.supports');
     Route::get('/heisenberg-assets/editor-fonts/{file}', [EditorController::class, 'font'])->name('heisenberg.editor.asset.font');
     Route::get('/heisenberg-assets/editor-logo.svg', [EditorController::class, 'logo'])->name('heisenberg.editor.asset.logo');
+    // Block-icon library (the imported VvvebJs collection): the picker's search feed and the
+    // per-icon SVG asset the canvas runtime fetch-injects. Both manifest-gated — see
+    // IconLibraryService for the fail-closed set/slug allow-list.
+    Route::get('/editor/icons', [EditorController::class, 'iconsSearch'])->name('heisenberg.editor.icons.search');
+    Route::get('/heisenberg-assets/icon/{set}/{slug}.svg', [EditorController::class, 'icon'])
+        ->where(['set' => '[a-z0-9-]+', 'slug' => '[a-z0-9-]+'])
+        ->name('heisenberg.editor.asset.icon');
 });

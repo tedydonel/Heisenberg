@@ -60,6 +60,14 @@ return [
     ],
 
     // ── Médias : dialogue / bibliothèque / zone de dépôt (live/media/*) ──
+    'icon_picker' => [
+        'title' => 'Choisir une icône',
+        'search_ph' => 'Rechercher des icônes…',
+        'all_sets' => 'Tous les jeux',
+        'empty' => 'Aucune icône ne correspond à cette recherche.',
+        'load_more' => 'Charger plus',
+        'field_empty' => 'Choisir une icône…',
+    ],
     'media' => [
         'select_featured_image' => 'Choisir l\'image mise en avant',
         'select_image' => 'Choisir une image',

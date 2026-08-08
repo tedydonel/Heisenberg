@@ -360,4 +360,44 @@ class ContainerRenderParityTest extends TestCase
         $this->assertStringContainsString('start="3"', $html);
         $this->assertStringContainsString('hb-list--ordered', $html);
     }
+
+    public function test_an_icon_block_inlines_its_sanitized_svg_server_side(): void
+    {
+        // The `icon` template node resolves "<set>/<slug>" through IconLibraryService's
+        // manifest and inlines the import-sanitized SVG — the published page needs no
+        // client fetch (that path is the canvas runtime's only).
+        $html = $this->publish([[
+            'id' => 'ic1',
+            'name' => 'heisenberg/icon',
+            'schemaVersion' => '1.0.0',
+            'attributes' => ['icon' => 'feather/activity'],
+            'supports' => ['color' => ['text' => '#e11d48'], 'size' => ['width' => '64px']],
+            'innerBlocks' => [],
+        ]]);
+
+        $this->assertMatchesRegularExpression(
+            '/<span class="hb-block-icon__svg" data-hb-icon="feather\/activity"><svg[^>]*viewBox=/',
+            $html,
+        );
+        $this->assertStringContainsString('--hb-icon-color: #e11d48', $html);
+        $this->assertStringContainsString('--hb-icon-w: 64px', $html);
+    }
+
+    public function test_an_unknown_icon_reference_renders_nothing_at_all(): void
+    {
+        // Fail closed: neither a traversal-shaped reference nor a well-formed-but-unlisted
+        // one may reach the filesystem or leave an empty shell in the page.
+        foreach (['../../composer.json', 'feather/definitely-not-a-real-icon'] as $reference) {
+            $html = $this->publish([[
+                'id' => 'ic2',
+                'name' => 'heisenberg/icon',
+                'schemaVersion' => '1.0.0',
+                'attributes' => ['icon' => $reference],
+                'supports' => [],
+                'innerBlocks' => [],
+            ]]);
+
+            $this->assertStringNotContainsString('data-hb-icon=', $html, $reference);
+        }
+    }
 }

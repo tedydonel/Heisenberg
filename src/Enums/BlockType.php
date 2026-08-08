@@ -42,6 +42,9 @@ enum BlockType: string
     case GROUP = 'group';
     case COLUMN = 'column';
     case EMBED = 'embed';
+    // Icon (2026-08-08 — backed by the imported VvvebJs icon library, see
+    // resources/icons/blocks + IconLibraryService).
+    case ICON = 'icon';
 
     /**
      * All type slugs, in declaration order.
@@ -86,6 +89,7 @@ enum BlockType: string
             self::GROUP => 'Group',
             self::COLUMN => 'Column',
             self::EMBED => 'Embed',
+            self::ICON => 'Icon',
         };
     }
 
@@ -119,6 +123,7 @@ enum BlockType: string
             self::GROUP => 'frame',
             self::COLUMN => 'rectangle-vertical',
             self::EMBED => 'youtube',
+            self::ICON => 'star',
         };
     }
 }

@@ -22,12 +22,18 @@ use Heisenberg\Tests\TestCase;
 class ShippedContractsTest extends TestCase
 {
     private const EXPECTED = [
+        'heisenberg/button',
         'heisenberg/column',
         'heisenberg/columns',
         'heisenberg/embed',
         'heisenberg/group',
         'heisenberg/heading',
+        'heisenberg/icon',
+        'heisenberg/image',
+        'heisenberg/list',
         'heisenberg/paragraph',
+        'heisenberg/quote',
+        'heisenberg/separator',
     ];
 
     private function registry(): BlockRegistryService

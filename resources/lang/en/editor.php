@@ -59,6 +59,14 @@ return [
     ],
 
     // ── Media dialog / library / dropzone (live/media/*) ──────────
+    'icon_picker' => [
+        'title' => 'Select Icon',
+        'search_ph' => 'Search icons…',
+        'all_sets' => 'All sets',
+        'empty' => 'No icons match that search.',
+        'load_more' => 'Load more',
+        'field_empty' => 'Select an icon…',
+    ],
     'media' => [
         'select_featured_image' => 'Select Featured Image',
         'select_image' => 'Select Image',

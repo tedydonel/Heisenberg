@@ -86,6 +86,12 @@
                 document.addEventListener('hb:refresh', boot);
             })();
         </script>
+        {{-- The icon block's library picker — opened by the runtime's cancelable hb:pick-icon
+             (an empty icon block's placeholder); a pick writes the "<set>/<slug>" reference
+             through hbEditor.setAttribute. --}}
+        <x-live.icon-picker-dialog
+            :search-url="\Illuminate\Support\Facades\Route::has('heisenberg.editor.icons.search') ? route('heisenberg.editor.icons.search') : null"
+            :sets="app(\Heisenberg\Services\IconLibraryService::class)->sets()" />
         <x-ui.custom-scrollbar container=".hb-canvas" />
         {{-- The floating block toolbar lives here (hidden) until a block is selected; the
              block runtime moves it above the selected block and gates it by that block's supports. --}}

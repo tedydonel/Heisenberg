@@ -57,6 +57,9 @@
         // no longer matches the live contracts (stale-schema detection), so the client must
         // send back the hash the page was rendered against.
         registryHash: @json($registryHash),
+        // Where the canvas fetches a block-library icon's sanitized SVG from (the same asset
+        // the published page inlines server-side) — see the runtime's `icon` node branch.
+        iconUrlTemplate: @json(\Illuminate\Support\Facades\Route::has('heisenberg.editor.asset.icon') ? route('heisenberg.editor.asset.icon', ['set' => '__SET__', 'slug' => '__SLUG__']) : ''),
     });
 </script>
 
@@ -252,6 +255,36 @@
     // BlockRenderer::stateStylesCss()'s `.hb-state-preview-<state>` hook, which exists precisely
     // so an editor can force a state's look while it is being edited.
     const previewStates = {};
+
+    // Library-icon SVGs by "<set>/<slug>" — '' means fetched-and-rejected (or 404), a string is
+    // the markup, absence means never requested. One in-flight fetch per reference; on arrival
+    // EVERY span carrying the reference fills in, so duplicated icons cost one request.
+    const iconCache = {};
+    const iconPending = {};
+    function injectLibraryIcon(el, reference) {
+        if (Object.prototype.hasOwnProperty.call(iconCache, reference)) {
+            if (iconCache[reference]) el.innerHTML = iconCache[reference];
+            return;
+        }
+        if (iconPending[reference]) return; // the resolve pass below fills this span too
+        const template = DATA.iconUrlTemplate || '';
+        if (!template) return;
+        iconPending[reference] = true;
+        const parts = reference.split('/');
+        window.fetch(template.replace('__SET__', parts[0]).replace('__SLUG__', parts[1]), { credentials: 'same-origin' })
+            .then((r) => (r.ok ? r.text() : ''))
+            .then((svg) => {
+                // The asset is same-origin and sanitized at import — reject anything scripty
+                // anyway so a misconfigured route can never execute in the canvas.
+                iconCache[reference] = (svg && svg.indexOf('<script') === -1) ? svg : '';
+                delete iconPending[reference];
+                if (!iconCache[reference]) return;
+                document.querySelectorAll('[data-hb-icon="' + reference + '"]').forEach(function (span) {
+                    span.innerHTML = iconCache[reference];
+                });
+            })
+            .catch(function () { delete iconPending[reference]; });
+    }
 
     function styleDeclarations(model, contract) {
         const variables = contract && contract.style && contract.style.variables;
@@ -558,7 +591,26 @@
         if (model.name.indexOf('heading') !== -1) wrap.setAttribute('data-level', String(model.attributes.level || 2));
         wrap.appendChild(root);
         decorateImageBlock(wrap, model);
+        decorateIconBlock(wrap, model);
         return wrap;
+    }
+
+    // An icon block with no icon picked yet shows a click-to-pick placeholder — the same
+    // affordance (and the same cancelable-event seam) as the image block's: the placeholder
+    // dispatches hb:pick-icon and the icon-picker dialog claims it.
+    function decorateIconBlock(container, model) {
+        if (!container || !model || model.name.indexOf('/icon') === -1) return;
+        const reference = model.attributes && model.attributes.icon;
+        if (reference && /^[a-z0-9-]+\/[a-z0-9-]+$/.test(String(reference).trim())) return;
+        if (container.querySelector('.hb-icon-empty')) return;
+        const ph = document.createElement('button');
+        ph.type = 'button';
+        ph.className = 'hb-icon-empty';
+        ph.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 8v8M8 12h8"/></svg><span>Select icon</span>';
+        ph.addEventListener('click', function () {
+            document.dispatchEvent(new CustomEvent('hb:pick-icon', { detail: { id: model.id, model: model }, cancelable: true }));
+        });
+        (container.querySelector('[data-block-id]') || container).appendChild(ph);
     }
 
     // Empty image blocks show a click-to-pick placeholder instead of a broken <img>.

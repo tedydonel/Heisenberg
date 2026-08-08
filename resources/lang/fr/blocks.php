@@ -67,6 +67,13 @@ return [
         ],
     ],
 
+    'icon' => [
+        'title' => 'Icône',
+        'description' => 'Une icône vectorielle issue de la bibliothèque intégrée.',
+        'controls' => [
+            'icon' => 'Icône',
+        ],
+    ],
     'embed' => [
         'title' => 'Contenu intégré',
         'description' => 'Vidéo YouTube ou Vimeo.',
