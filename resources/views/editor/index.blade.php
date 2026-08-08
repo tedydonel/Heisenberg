@@ -34,6 +34,58 @@
              hb:quick-insert, which this component claims (preventDefault) to offer every block
              instead of the runtime's paragraph fallback. --}}
         <x-live.quick-inserter :registry="$registry" />
+        {{-- Block image picker — an empty image block's placeholder (decorateImageBlock,
+             block-runtime) dispatches the cancelable hb:pick-image with the block id; this
+             dialog claims it, and a Library/Upload pick writes url + alt back through the
+             public runtime API. Separate instance from the Post tab's featured-image dialog,
+             whose hb:media-select listener writes to the featured-image inputs instead. --}}
+        @php
+            $hbBlockImageSelectUrl = \Illuminate\Support\Facades\Route::has('media.select') ? route('media.select') : null;
+            $hbBlockImageUploadUrl = \Illuminate\Support\Facades\Route::has('media.upload') ? route('media.upload') : null;
+        @endphp
+        <x-live.media.media-dialog
+            data-hb-block-image-dialog
+            hidden
+            :scrim="true"
+            tab="library"
+            accept="image/*"
+            :title="__('heisenberg::editor.media.select_image')"
+            :select-url="$hbBlockImageSelectUrl"
+            :upload-url="$hbBlockImageUploadUrl"
+        />
+        <script>
+            (() => {
+                let hbImageTargetId = null;
+                const hbImageDialog = () => document.querySelector('[data-hb-block-image-dialog]');
+                if (!document.__hbBlockImagePicker) {
+                    document.__hbBlockImagePicker = true;
+                    document.addEventListener('hb:pick-image', (e) => {
+                        const dialog = hbImageDialog();
+                        if (!dialog || typeof dialog.hbOpen !== 'function') return;
+                        e.preventDefault(); // claimed — the intent is handled here
+                        hbImageTargetId = e.detail && e.detail.id ? e.detail.id : null;
+                        const blk = hbImageTargetId ? document.querySelector('.hb-blk[data-block="' + hbImageTargetId + '"]') : null;
+                        dialog.hbOpen(blk ? blk.querySelector('.hb-img-empty') : null);
+                    });
+                }
+                const boot = () => {
+                    const dialog = hbImageDialog();
+                    if (!dialog || dialog.__hbBlockImage) return;
+                    dialog.__hbBlockImage = true;
+                    dialog.addEventListener('hb:media-select', (event) => {
+                        const file = event.detail;
+                        if (!hbImageTargetId || !file || !file.url || !window.hbEditor) return;
+                        window.hbEditor.setAttribute(hbImageTargetId, 'url', file.url);
+                        const alt = file.alt_text_en || file.alt_text_fr || '';
+                        if (alt) window.hbEditor.setAttribute(hbImageTargetId, 'alt', alt);
+                        hbImageTargetId = null;
+                    });
+                };
+                if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', boot, { once: true });
+                else boot();
+                document.addEventListener('hb:refresh', boot);
+            })();
+        </script>
         <x-ui.custom-scrollbar container=".hb-canvas" />
         {{-- The floating block toolbar lives here (hidden) until a block is selected; the
              block runtime moves it above the selected block and gates it by that block's supports. --}}

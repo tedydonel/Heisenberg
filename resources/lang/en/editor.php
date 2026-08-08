@@ -61,6 +61,7 @@ return [
     // ── Media dialog / library / dropzone (live/media/*) ──────────
     'media' => [
         'select_featured_image' => 'Select Featured Image',
+        'select_image' => 'Select Image',
         'tab_upload' => 'Upload Files',
         'tab_library' => 'Media Library',
         'search_ph' => 'Search media items…',

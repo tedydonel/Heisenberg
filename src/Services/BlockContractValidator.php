@@ -103,7 +103,7 @@ class BlockContractValidator
     ];
 
     /** Valid render.template node types (`element` is also the default when `type` is absent). */
-    private const TEMPLATE_NODE_TYPES = ['element', 'text', 'rich-text', 'inner-blocks'];
+    private const TEMPLATE_NODE_TYPES = ['element', 'text', 'rich-text', 'inner-blocks', 'text-lines', 'icon'];
 
     /** Valid innerBlocks layout orientations. */
     private const ORIENTATIONS = ['vertical', 'horizontal', 'auto'];
@@ -535,8 +535,8 @@ class BlockContractValidator
             $errors[] = "render.template node has unknown type '" . $this->stringify($type) . "'";
         }
 
-        if ($type === 'rich-text' && ! (isset($node['attribute']) && is_string($node['attribute']))) {
-            $errors[] = 'render.template rich-text node requires a string attribute';
+        if (in_array($type, ['rich-text', 'text-lines', 'icon'], true) && ! (isset($node['attribute']) && is_string($node['attribute']))) {
+            $errors[] = "render.template {$type} node requires a string attribute";
         }
 
         if (isset($node['tag']) && ! is_string($node['tag'])) {

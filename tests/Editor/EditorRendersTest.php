@@ -309,11 +309,10 @@ class EditorRendersTest extends TestCase
         $this->assertStringContainsString('data-hb-insert-block="heisenberg/heading"', $html);
         $this->assertStringContainsString('data-hb-insert-block="heisenberg/paragraph"', $html);
 
-        // The design's original other 10 cards (Form, Input, Text Area, Select, Checkbox, Radio,
-        // Link, Video, Image, Button — Divider/separator's contract is also gone) map to no block
-        // contract that exists anywhere. Clicking any of them did nothing, so they must not render
-        // at all, not merely render inert.
-        foreach (['Form', 'Input', 'Text Area', 'Select', 'Checkbox', 'Radio', 'Link', 'Video', 'Image', 'Divider', 'Button'] as $label) {
+        // Design cards that map to NO existing block contract must not render at all, not merely
+        // render inert. (2026-08-07: Image/Button/Quote/List/Separator left this list — their
+        // contracts shipped in the essentials round, so the registry now derives real cards.)
+        foreach (['Form', 'Input', 'Text Area', 'Select', 'Checkbox', 'Radio', 'Link', 'Video', 'Divider'] as $label) {
             $this->assertStringNotContainsString('hb-toolcard__label">' . $label . '<', $html);
         }
     }
@@ -408,9 +407,15 @@ class EditorRendersTest extends TestCase
         // entries that look actionable but silently do nothing.
         $this->assertStringContainsString('data-type-level="1"', $html);
         $this->assertStringContainsString('data-type-level="6"', $html);
-        $this->assertStringNotContainsString('Heading 1', $html);
-        $this->assertStringNotContainsString('>List<', $html);
-        $this->assertStringNotContainsString('>Quote<', $html);
+        // Scoped to the type menu's own markup: the PALETTE legitimately shows "List"/"Quote"
+        // cards now that those contracts shipped (2026-08-07) — only the TYPE MENU must not
+        // offer them as fake convert-to targets.
+        $menuStart = strpos($html, 'data-hb-typemenu');
+        $this->assertIsInt($menuStart);
+        $menu = substr($html, $menuStart, strpos($html, '</div>', strpos($html, 'data-type-level="6"')) - $menuStart);
+        $this->assertStringNotContainsString('Heading 1', $menu);
+        $this->assertStringNotContainsString('>List<', $menu);
+        $this->assertStringNotContainsString('>Quote<', $menu);
     }
 
     public function test_excerpt_section_was_removed(): void

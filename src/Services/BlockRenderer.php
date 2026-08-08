@@ -232,6 +232,49 @@ class BlockRenderer
             return $this->renderInnerBlocks($block, $locale, $depth);
         }
 
+        // text-lines: one element per non-empty line of a plain attribute — the generic
+        // engine's list primitive. The GTC-era engine did this in a per-type PHP method
+        // (renderJsonList splitting on \R+); expressing it as a template node keeps the
+        // "no per-block PHP" design while giving a real <li> per item instead of one
+        // catch-all cell. Escaped plain text only — no rich-text tier applies, and the
+        // tag is static (never interpolated), constrained to the tag-name charset.
+        if ($type === 'text-lines') {
+            $value = (string) $this->localizedAttribute($block, (string) ($node['attribute'] ?? ''), $locale);
+            $tag = strtolower((string) ($node['tag'] ?? 'li'));
+            if (preg_match('/^[a-z][a-z0-9-]*$/', $tag) !== 1) {
+                $tag = 'li';
+            }
+            $class = isset($node['class']) ? $this->substitute((string) $node['class'], $block, $locale) : '';
+            $open = '<' . $tag . ($class !== '' ? ' class="' . $this->escape($class) . '"' : '') . '>';
+            $html = '';
+            foreach ((preg_split('/\R/', $value) ?: []) as $line) {
+                $line = trim($line);
+                if ($line === '') {
+                    continue;
+                }
+                $html .= $open . $this->escape($line) . '</' . $tag . '>';
+            }
+
+            return $html;
+        }
+
+        // icon: inline one sanitized SVG from the block-icon library (the imported VvvebJs
+        // collection — IconLibraryService), resolved from a plain attribute holding
+        // "<set>/<slug>". Manifest-gated fail-closed: an unknown/empty reference renders
+        // nothing at all. The files were sanitized at import time, so inlining them adds no
+        // new markup surface; the wrapping span carries the reference for the canvas runtime.
+        if ($type === 'icon') {
+            $reference = trim((string) $this->localizedAttribute($block, (string) ($node['attribute'] ?? ''), $locale));
+            $svg = $reference === '' ? null : app(IconLibraryService::class)->svg($reference);
+            if ($svg === null) {
+                return '';
+            }
+            $class = isset($node['class']) ? $this->substitute((string) $node['class'], $block, $locale) : '';
+
+            return '<span' . ($class !== '' ? ' class="' . $this->escape($class) . '"' : '')
+                . ' data-hb-icon="' . $this->escape($reference) . '">' . $svg . '</span>';
+        }
+
         // element
         $tag = $this->resolveTag($node, $block, $contract, $locale);
         $attributes = $this->resolveAttributes($node, $block, $locale);

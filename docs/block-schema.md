@@ -367,6 +367,12 @@ A recursive node tree compiled to safe HTML by one generic walk. Node shapes:
 // inner-blocks (container slot — expands the block's `innerBlocks` children in place, each
 // rendered through its OWN contract; depth-capped. Works as the sole child or as a sibling.)
 { "type": "inner-blocks" }
+
+// text-lines (the generic list primitive, 2026-08-08: one element per non-empty line of a
+// PLAIN attribute — escaped text, no rich-text tier. `tag` is static (never interpolated),
+// constrained to the tag-name charset, default `li`. The list block's ul/ol use this to get
+// a real <li> per item.)
+{ "type": "text-lines", "attribute": "content", "tag": "li", "class": "hb-block-list__item" }
 ```
 
 - **Tokens** (in `tag`, `class`, `attributes`, text `content`): `{{id}}`, `{{name}}`,

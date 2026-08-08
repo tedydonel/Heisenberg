@@ -1,0 +1,66 @@
+/* Border/radius intentionally absent: this contract declares no `border` support, so
+   no border-side or radius variables exist and no rule here reads them. (NB: never
+   write a literal star-slash sequence inside this comment — it terminates it early
+   and the CSS parser then swallows the base rule below.) */
+.hb-block-separator {
+    box-sizing: border-box;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: var(--hb-separator-w, 100%);
+    height: var(--hb-separator-h, auto);
+    min-width: var(--hb-separator-minw, 0);
+    min-height: var(--hb-separator-minh, 0);
+    max-width: var(--hb-separator-maxw, none);
+    max-height: var(--hb-separator-maxh, none);
+    margin: var(--hb-separator-mt, 24px) var(--hb-separator-mr, 0) var(--hb-separator-mb, 24px) var(--hb-separator-ml, 0);
+}
+
+/* The visible mark. A centered, fixed-width 100px line by default — the root above
+   spans the full row (or `supports.size.width`) and centers this child within it. */
+.hb-block-separator__line {
+    width: 100px;
+    height: 1px;
+    background: var(--hb-separator-bg, currentColor);
+}
+
+.hb-sep--wide .hb-block-separator__line {
+    width: 100%;
+}
+
+/* `dots` renders as text content (three literal middle-dot glyphs) rather than a
+   tiled `background: radial-gradient(...)`: a gradient repeats to fill whatever width
+   the line box ends up with (which varies with `supports.size.width` and the `wide`
+   variant), so the dot COUNT would drift with layout. Fixed glyph content always
+   reads as exactly three dots regardless of width. */
+.hb-sep--dots .hb-block-separator__line {
+    width: auto;
+    height: auto;
+    background: none;
+    color: var(--hb-separator-bg, currentColor);
+    font-size: 20px;
+    line-height: 1;
+    letter-spacing: 6px;
+}
+
+.hb-sep--dots .hb-block-separator__line::before {
+    content: "\2022\2022\2022";
+}
+
+/* Targets the LINE, not the block root: the root's own `opacity` is already owned by
+   the appearance.opacity capability (`--hb-opacity`, SupportsStyle::baseCapabilitiesRule
+   at `[data-block-id].hb-supports`) — a second `opacity` declaration on the root at a
+   lower specificity would just lose to it. Softening the mark itself keeps `soft` and an
+   instance's own opacity override independently composable. */
+.hb-sep--soft .hb-block-separator__line {
+    opacity: 0.4;
+}
+
+/* Device visibility — six breakpoint bands (Bootstrap-style ranges).
+   Published output hides the block for every enabled band. */
+@media (max-width: 575.98px) { .hb-block-separator.hb-hide-xs { display: none; } }
+@media (min-width: 576px) and (max-width: 767.98px) { .hb-block-separator.hb-hide-sm { display: none; } }
+@media (min-width: 768px) and (max-width: 991.98px) { .hb-block-separator.hb-hide-md { display: none; } }
+@media (min-width: 992px) and (max-width: 1199.98px) { .hb-block-separator.hb-hide-lg { display: none; } }
+@media (min-width: 1200px) and (max-width: 1399.98px) { .hb-block-separator.hb-hide-xl { display: none; } }
+@media (min-width: 1400px) { .hb-block-separator.hb-hide-xxl { display: none; } }

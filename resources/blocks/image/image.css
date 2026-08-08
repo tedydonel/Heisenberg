@@ -1,0 +1,57 @@
+/* Border/radius intentionally absent from this file: SupportsStyle's capability sheet
+   (src/Support/SupportsStyle.php) owns every border-side and border-radius longhand for a
+   block carrying the hb-supports marker — the contract feeds them through style.variables,
+   this file never repeats them. (NB: never write a literal star-slash sequence inside this
+   comment — it terminates it early and the CSS parser then swallows the rule below.) */
+.hb-block-image {
+    display: block;
+    box-sizing: border-box;
+    transition: box-shadow 140ms ease, transform 140ms ease;
+    background: var(--hb-image-bg);
+    width: var(--hb-image-w, auto);
+    height: var(--hb-image-h, auto);
+    min-width: var(--hb-image-minw, 0);
+    min-height: var(--hb-image-minh, 0);
+    max-width: var(--hb-image-maxw, 100%);
+    max-height: var(--hb-image-maxh, none);
+    margin: var(--hb-image-mt, 0) var(--hb-image-mr, 0) var(--hb-image-mb, 16px) var(--hb-image-ml, 0);
+    padding: var(--hb-image-pt, 0) var(--hb-image-pr, 0) var(--hb-image-pb, 0) var(--hb-image-pl, 0);
+}
+
+/* The link wrapper is purely structural (href/target only render when set) — it never
+   carries its own box styling, so an unlinked image lays out identically to a linked one. */
+.hb-block-image > a {
+    display: block;
+}
+
+.hb-block-image__img {
+    display: block;
+    width: 100%;
+    height: 100%;
+    object-fit: var(--hb-image-fit, cover);
+    aspect-ratio: var(--hb-image-ratio, auto);
+    border-radius: inherit;
+}
+
+.hb-block-image__caption {
+    margin: 8px 0 0;
+    color: var(--hb-muted, #6b7280);
+    font-size: 13px;
+    line-height: 1.4;
+    text-align: center;
+}
+
+/* An untouched/caption-less image shows no caption row at all — same idea as
+   .hb-block-embed__note-text:empty, but here the whole element collapses. */
+.hb-block-image__caption:empty {
+    display: none;
+}
+
+/* Device visibility — six breakpoint bands (Bootstrap-style ranges).
+   Published output hides the block for every enabled band. */
+@media (max-width: 575.98px) { .hb-block-image.hb-hide-xs { display: none; } }
+@media (min-width: 576px) and (max-width: 767.98px) { .hb-block-image.hb-hide-sm { display: none; } }
+@media (min-width: 768px) and (max-width: 991.98px) { .hb-block-image.hb-hide-md { display: none; } }
+@media (min-width: 992px) and (max-width: 1199.98px) { .hb-block-image.hb-hide-lg { display: none; } }
+@media (min-width: 1200px) and (max-width: 1399.98px) { .hb-block-image.hb-hide-xl { display: none; } }
+@media (min-width: 1400px) { .hb-block-image.hb-hide-xxl { display: none; } }

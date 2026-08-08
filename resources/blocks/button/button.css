@@ -1,0 +1,96 @@
+/* Border/radius intentionally absent: the SupportsStyle capability sheet owns every
+   border-<side>-<width|style|color> longhand and border-<corner>-radius longhand
+   (SupportsStyle::baseCapabilitiesRule), each read from a generic var this contract
+   feeds through style.variables. Repeating any of them here would be a second owner
+   for one property, and it would additionally have to be written the long way: that
+   capability rule is (0,2,0), so a plain `.hb-block-button` declaration (0,1,0) would
+   lose and read as a dead control. (NB: never write a literal star-slash sequence
+   inside a comment — it terminates it early and the CSS parser then swallows the
+   rule that follows.) */
+.hb-block-button {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    box-sizing: border-box;
+    cursor: pointer;
+    text-decoration: none;
+    white-space: nowrap;
+    user-select: none;
+    border: none;
+    transition: color 140ms ease, background-color 140ms ease, box-shadow 140ms ease, transform 140ms ease;
+    color: var(--hb-button-color, #fff);
+    background: var(--hb-button-bg, var(--ink, #111));
+    font-family: var(--hb-button-ff, inherit);
+    font-weight: var(--hb-button-fw, 600);
+    font-size: var(--hb-button-fs, 15px);
+    width: var(--hb-button-w, auto);
+    height: var(--hb-button-h, auto);
+    min-width: var(--hb-button-minw, 0);
+    min-height: var(--hb-button-minh, 0);
+    max-width: var(--hb-button-maxw, none);
+    max-height: var(--hb-button-maxh, none);
+    margin: var(--hb-button-mt, 0) var(--hb-button-mr, 0) var(--hb-button-mb, 0) var(--hb-button-ml, 0);
+    padding: var(--hb-button-pt, 10px) var(--hb-button-pr, 20px) var(--hb-button-pb, 10px) var(--hb-button-pl, 20px);
+}
+
+.hb-block-button:hover {
+    filter: brightness(0.92);
+}
+
+.hb-block-button__label {
+    pointer-events: none;
+}
+
+/* Variant looks. `primary` is intentionally undeclared — it IS the base rule above
+   (dark fill, light label), so a `.hb-btn--primary` rule would just restate it. */
+.hb-btn--secondary {
+    background: var(--hb-button-bg, var(--muted, #e5e5e5));
+    color: var(--hb-button-color, var(--ink, #111));
+}
+
+.hb-btn--danger {
+    background: var(--hb-button-bg, #b3261e);
+    color: var(--hb-button-color, #fff);
+}
+
+.hb-btn--link {
+    background: transparent;
+    color: var(--hb-button-color, var(--ink, #111));
+    text-decoration: underline;
+    padding-left: 0;
+    padding-right: 0;
+}
+
+.hb-btn--link:hover {
+    filter: none;
+    opacity: 0.7;
+}
+
+/* `outline` needs its ring drawn as a box-shadow (never `border` — that longhand is
+   capability-owned, see the header comment). The plain `.hb-btn--outline` selector is
+   (0,1,0), the same as every other rule in this file, but the capability sheet's base
+   rule ALSO sets `box-shadow` from `--hb-shadow` at `[data-block-id].hb-supports`
+   (0,2,0) — a bare `.hb-btn--outline` box-shadow would lose to that rule's `none`
+   fallback and never appear. Written the long way, at (0,4,0), it wins by specificity
+   alone; the trade-off is that an outline button can't ALSO carry an effects.shadow
+   override, which is an acceptable one given the ring IS the outline variant's shape. */
+[data-block-id].hb-supports.hb-block-button.hb-btn--outline {
+    background: transparent;
+    color: var(--hb-button-color, currentColor);
+    box-shadow: inset 0 0 0 1px currentColor;
+}
+
+.hb-btn--full {
+    display: flex;
+    width: 100%;
+}
+
+/* Device visibility — six breakpoint bands (Bootstrap-style ranges).
+   Published output hides the block for every enabled band. */
+@media (max-width: 575.98px) { .hb-block-button.hb-hide-xs { display: none; } }
+@media (min-width: 576px) and (max-width: 767.98px) { .hb-block-button.hb-hide-sm { display: none; } }
+@media (min-width: 768px) and (max-width: 991.98px) { .hb-block-button.hb-hide-md { display: none; } }
+@media (min-width: 992px) and (max-width: 1199.98px) { .hb-block-button.hb-hide-lg { display: none; } }
+@media (min-width: 1200px) and (max-width: 1399.98px) { .hb-block-button.hb-hide-xl { display: none; } }
+@media (min-width: 1400px) { .hb-block-button.hb-hide-xxl { display: none; } }

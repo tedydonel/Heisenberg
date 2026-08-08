@@ -438,6 +438,40 @@
             return span;
         }
 
+        // icon: LOCKSTEP with BlockRenderer's branch of the same name — a "<set>/<slug>"
+        // reference from a plain attribute becomes the library SVG. The canvas fetch-injects
+        // the SAME sanitized asset the published page inlines server-side (cached per
+        // reference); an empty/invalid reference renders nothing and the icon block's own
+        // decorator shows a click-to-pick placeholder instead.
+        if (type === 'icon') {
+            const reference = String(model.attributes[node.attribute] == null ? '' : model.attributes[node.attribute]).trim();
+            if (!/^[a-z0-9-]+\/[a-z0-9-]+$/.test(reference)) return null;
+            const span = document.createElement('span');
+            if (node.class) { const c = subst(node.class, model); if (c) span.className = c; }
+            span.setAttribute('data-hb-icon', reference);
+            injectLibraryIcon(span, reference);
+            return span;
+        }
+
+        // text-lines: LOCKSTEP with BlockRenderer's branch of the same name — one element
+        // per non-empty line of a plain attribute, escaped (textContent), static tag only.
+        if (type === 'text-lines') {
+            const frag = document.createDocumentFragment();
+            const raw = model.attributes[node.attribute];
+            let lineTag = String(node.tag || 'li').toLowerCase();
+            if (!/^[a-z][a-z0-9-]*$/.test(lineTag)) lineTag = 'li';
+            const lineCls = node.class ? subst(node.class, model) : '';
+            String(raw == null ? '' : raw).split(/\r\n|\r|\n/).forEach(function (line) {
+                line = line.trim();
+                if (!line) return;
+                const li = document.createElement(lineTag);
+                if (lineCls) li.className = lineCls;
+                li.textContent = line;
+                frag.appendChild(li);
+            });
+            return frag;
+        }
+
         // inner-blocks: each child renders through its OWN contract (same recursion as
         // BlockRenderer::renderInnerBlocks() on the published page), wrapped in a
         // display:contents .hb-blk--nested shell so it is selectable/editable while the

@@ -1,0 +1,65 @@
+/* Border/radius are NOT declared here: quote declares supports.border, so the per-side
+   width/style/color and per-corner radius longhands are owned by SupportsStyle's generated
+   `[data-block-id].hb-supports` rule (docs/block-schema.md) — duplicating them here would
+   only race that rule's specificity. Same reasoning keeps box-shadow out of this file: quote
+   declares supports.effects.shadow, so `box-shadow` is capability-sheet-owned too; the default
+   look's accent bar therefore uses `background-image` (a property SupportsStyle never touches)
+   instead of `border-left`/`box-shadow`. (NB: never write a literal star-slash sequence inside
+   this comment — it terminates it early and the CSS parser then swallows the entire base rule
+   below.) */
+.hb-block-quote {
+    display: block;
+    position: relative;
+    transition: color 140ms ease, background-color 140ms ease, transform 140ms ease;
+    color: var(--hb-quote-color);
+    background-color: var(--hb-quote-bg);
+    background-image: linear-gradient(to right, var(--accent-1, currentColor) 0 4px, transparent 4px);
+    background-repeat: no-repeat;
+    font-family: var(--hb-quote-ff, inherit);
+    font-weight: var(--hb-quote-fw, 400);
+    font-size: var(--hb-quote-fs, 19px);
+    font-style: italic;
+    line-height: var(--hb-quote-lh, 1.5);
+    width: var(--hb-quote-w, auto);
+    height: var(--hb-quote-h, auto);
+    min-width: var(--hb-quote-minw, 0);
+    min-height: var(--hb-quote-minh, 0);
+    max-width: var(--hb-quote-maxw, none);
+    max-height: var(--hb-quote-maxh, none);
+    margin: var(--hb-quote-mt, 16px) var(--hb-quote-mr, 0) var(--hb-quote-mb, 16px) var(--hb-quote-ml, 0);
+    padding: var(--hb-quote-pt, 20px) var(--hb-quote-pr, 24px) var(--hb-quote-pb, 20px) var(--hb-quote-pl, 24px);
+}
+
+/* Plain variant — same text treatment, no accent bar and no surface. */
+.hb-block-quote.hb-quote--plain {
+    background-color: transparent;
+    background-image: none;
+    padding-left: 0;
+    padding-right: 0;
+}
+
+.hb-block-quote__text {
+    margin: 0;
+}
+
+.hb-block-quote__cite {
+    display: block;
+    font-style: normal;
+    opacity: .7;
+    font-size: .85em;
+    margin-top: 8px;
+}
+
+/* An empty citation (the common case — citation is optional) takes up no space at all. */
+.hb-block-quote__cite:empty {
+    display: none;
+}
+
+/* Device visibility — six breakpoint bands (Bootstrap-style ranges).
+   Published output hides the block for every enabled band. */
+@media (max-width: 575.98px) { .hb-block-quote.hb-hide-xs { display: none; } }
+@media (min-width: 576px) and (max-width: 767.98px) { .hb-block-quote.hb-hide-sm { display: none; } }
+@media (min-width: 768px) and (max-width: 991.98px) { .hb-block-quote.hb-hide-md { display: none; } }
+@media (min-width: 992px) and (max-width: 1199.98px) { .hb-block-quote.hb-hide-lg { display: none; } }
+@media (min-width: 1200px) and (max-width: 1399.98px) { .hb-block-quote.hb-hide-xl { display: none; } }
+@media (min-width: 1400px) { .hb-block-quote.hb-hide-xxl { display: none; } }

@@ -333,4 +333,31 @@ class ContainerRenderParityTest extends TestCase
         $this->assertStringContainsString('max-width: var(--hb-column-maxw, var(--hb-column-w, none))', $html);
         $this->assertStringContainsString('height: var(--hb-column-h, auto)', $html);
     }
+
+    public function test_a_list_renders_one_li_per_line_via_the_text_lines_node(): void
+    {
+        // 2026-08-08: the list's content used to land in ONE <li> (only the first line got a
+        // marker). The `text-lines` template node splits the newline-delimited attribute into
+        // real per-item markup; blank lines drop, text is escaped, and the published page and
+        // the canvas runtime share the same rule.
+        $html = $this->publish([[
+            'id' => 'ls1',
+            'name' => 'heisenberg/list',
+            'schemaVersion' => '1.0.0',
+            'attributes' => ['content' => "First item\nSecond item\n\n  Third <b>item</b>  ", 'ordered' => true, 'start' => 3],
+            'supports' => [],
+            'innerBlocks' => [],
+        ]]);
+
+        // Both the ul and the ol carry the node (CSS shows one), so each item appears twice.
+        foreach ([
+            '<li class="hb-block-list__item">First item</li>',
+            '<li class="hb-block-list__item">Second item</li>',
+            '<li class="hb-block-list__item">Third &lt;b&gt;item&lt;/b&gt;</li>',
+        ] as $item) {
+            $this->assertSame(2, substr_count($html, $item), $item);
+        }
+        $this->assertStringContainsString('start="3"', $html);
+        $this->assertStringContainsString('hb-list--ordered', $html);
+    }
 }

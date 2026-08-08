@@ -62,6 +62,7 @@ return [
     // ── Médias : dialogue / bibliothèque / zone de dépôt (live/media/*) ──
     'media' => [
         'select_featured_image' => 'Choisir l\'image mise en avant',
+        'select_image' => 'Choisir une image',
         'tab_upload' => 'Téléverser des fichiers',
         'tab_library' => 'Bibliothèque de médias',
         'search_ph' => 'Rechercher des médias…',

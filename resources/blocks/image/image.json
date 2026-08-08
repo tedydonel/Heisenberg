@@ -1,0 +1,649 @@
+{
+    "$schema": "../../../docs/block-schema.md",
+    "apiVersion": 1,
+    "name": "heisenberg/image",
+    "title": "heisenberg::blocks.image.title",
+    "category": "media",
+    "icon": "image",
+    "description": "heisenberg::blocks.image.description",
+    "keywords": [
+        "image",
+        "photo",
+        "media",
+        "picture"
+    ],
+    "version": "1.0.0",
+    "attributes": {
+        "url": {
+            "type": "url",
+            "default": "",
+            "sanitize": "url",
+            "control": {
+                "type": "text",
+                "section": "settings",
+                "placeholder": "https://…"
+            }
+        },
+        "alt": {
+            "type": "string",
+            "default": "",
+            "sanitize": "text",
+            "control": {
+                "type": "text",
+                "section": "settings"
+            }
+        },
+        "caption": {
+            "type": "rich-text",
+            "default": "",
+            "sanitize": "rich-text-inline",
+            "control": {
+                "type": "textarea",
+                "section": "settings"
+            }
+        },
+        "href": {
+            "type": "url",
+            "default": "",
+            "sanitize": "url",
+            "control": {
+                "type": "text",
+                "section": "settings"
+            }
+        },
+        "target": {
+            "type": "string",
+            "default": "_self",
+            "sanitize": "text",
+            "enum": [
+                "_self",
+                "_blank"
+            ],
+            "control": {
+                "type": "select",
+                "section": "settings"
+            }
+        },
+        "aspectRatio": {
+            "type": "string",
+            "default": "",
+            "sanitize": "text",
+            "enum": [
+                "",
+                "1/1",
+                "4/3",
+                "3/2",
+                "16/9",
+                "21/9"
+            ],
+            "control": {
+                "type": "select",
+                "section": "settings"
+            }
+        },
+        "scale": {
+            "type": "string",
+            "default": "cover",
+            "sanitize": "text",
+            "enum": [
+                "cover",
+                "contain",
+                "fill"
+            ],
+            "control": {
+                "type": "select",
+                "section": "settings"
+            }
+        },
+        "lightboxEnabled": {
+            "type": "boolean",
+            "default": false,
+            "sanitize": "boolean",
+            "control": false
+        },
+        "anchor": {
+            "type": "string",
+            "default": "",
+            "sanitize": "text",
+            "control": {
+                "type": "text",
+                "section": "general",
+                "half": true,
+                "placeholder": "unique-id"
+            }
+        },
+        "titleAttr": {
+            "type": "string",
+            "default": "",
+            "sanitize": "text",
+            "control": {
+                "type": "text",
+                "section": "general",
+                "half": true,
+                "placeholder": "Tooltip text"
+            }
+        },
+        "extraClasses": {
+            "type": "string",
+            "default": "",
+            "sanitize": "text",
+            "control": {
+                "type": "chips",
+                "section": "general",
+                "placeholder": "Add class…"
+            }
+        },
+        "hideXs": {
+            "type": "boolean",
+            "default": false,
+            "sanitize": "boolean",
+            "control": {
+                "type": "toggle",
+                "section": "visibility",
+                "half": true
+            }
+        },
+        "hideSm": {
+            "type": "boolean",
+            "default": false,
+            "sanitize": "boolean",
+            "control": {
+                "type": "toggle",
+                "section": "visibility",
+                "half": true
+            }
+        },
+        "hideMd": {
+            "type": "boolean",
+            "default": false,
+            "sanitize": "boolean",
+            "control": {
+                "type": "toggle",
+                "section": "visibility",
+                "half": true
+            }
+        },
+        "hideLg": {
+            "type": "boolean",
+            "default": false,
+            "sanitize": "boolean",
+            "control": {
+                "type": "toggle",
+                "section": "visibility",
+                "half": true
+            }
+        },
+        "hideXl": {
+            "type": "boolean",
+            "default": false,
+            "sanitize": "boolean",
+            "control": {
+                "type": "toggle",
+                "section": "visibility",
+                "half": true
+            }
+        },
+        "hideXxl": {
+            "type": "boolean",
+            "default": false,
+            "sanitize": "boolean",
+            "control": {
+                "type": "toggle",
+                "section": "visibility",
+                "half": true
+            }
+        },
+        "fillWidth": {
+            "type": "boolean",
+            "default": false,
+            "sanitize": "boolean",
+            "control": false
+        },
+        "fillHeight": {
+            "type": "boolean",
+            "default": false,
+            "sanitize": "boolean",
+            "control": false
+        },
+        "hugWidth": {
+            "type": "boolean",
+            "default": false,
+            "sanitize": "boolean",
+            "control": false
+        },
+        "hugHeight": {
+            "type": "boolean",
+            "default": false,
+            "sanitize": "boolean",
+            "control": false
+        },
+        "clipContent": {
+            "type": "boolean",
+            "default": false,
+            "sanitize": "boolean",
+            "control": false
+        }
+    },
+    "supports": {
+        "align": [
+            "left",
+            "center",
+            "right"
+        ],
+        "color": {
+            "background": true,
+            "custom": false
+        },
+        "size": {
+            "width": true,
+            "height": true,
+            "minWidth": true,
+            "minHeight": true,
+            "maxWidth": true,
+            "maxHeight": true
+        },
+        "spacing": {
+            "margin": {
+                "top": true,
+                "right": true,
+                "bottom": true,
+                "left": true
+            },
+            "padding": {
+                "top": true,
+                "right": true,
+                "bottom": true,
+                "left": true
+            }
+        },
+        "border": {
+            "width": {
+                "top": true,
+                "right": true,
+                "bottom": true,
+                "left": true
+            },
+            "style": true,
+            "color": true,
+            "radius": {
+                "topLeft": true,
+                "topRight": true,
+                "bottomRight": true,
+                "bottomLeft": true
+            }
+        },
+        "animation": true,
+        "appearance": {
+            "opacity": true
+        },
+        "states": {
+            "hover": true,
+            "active": true,
+            "focus": true
+        },
+        "position": {
+            "x": true,
+            "y": true,
+            "rotation": true,
+            "mode": true
+        },
+        "effects": {
+            "shadow": true
+        }
+    },
+    "style": {
+        "css": "./image.css",
+        "className": "hb-block-image hb-supports",
+        "classNames": [
+            {
+                "class": "hb-hide-xs",
+                "when": {
+                    "attribute": "hideXs",
+                    "equals": true
+                }
+            },
+            {
+                "class": "hb-hide-sm",
+                "when": {
+                    "attribute": "hideSm",
+                    "equals": true
+                }
+            },
+            {
+                "class": "hb-hide-md",
+                "when": {
+                    "attribute": "hideMd",
+                    "equals": true
+                }
+            },
+            {
+                "class": "hb-hide-lg",
+                "when": {
+                    "attribute": "hideLg",
+                    "equals": true
+                }
+            },
+            {
+                "class": "hb-hide-xl",
+                "when": {
+                    "attribute": "hideXl",
+                    "equals": true
+                }
+            },
+            {
+                "class": "hb-hide-xxl",
+                "when": {
+                    "attribute": "hideXxl",
+                    "equals": true
+                }
+            },
+            {
+                "class": "hb-size-fill-w",
+                "when": {
+                    "attribute": "fillWidth",
+                    "equals": true
+                }
+            },
+            {
+                "class": "hb-size-fill-h",
+                "when": {
+                    "attribute": "fillHeight",
+                    "equals": true
+                }
+            },
+            {
+                "class": "hb-size-hug-w",
+                "when": {
+                    "attribute": "hugWidth",
+                    "equals": true
+                }
+            },
+            {
+                "class": "hb-size-hug-h",
+                "when": {
+                    "attribute": "hugHeight",
+                    "equals": true
+                }
+            },
+            {
+                "class": "hb-size-clip",
+                "when": {
+                    "attribute": "clipContent",
+                    "equals": true
+                }
+            }
+        ],
+        "variables": {
+            "--hb-image-bg": {
+                "source": "supports.color.background",
+                "default": "",
+                "sanitize": "color-value"
+            },
+            "--hb-image-w": {
+                "source": "supports.size.width",
+                "default": "",
+                "sanitize": "size-value"
+            },
+            "--hb-image-h": {
+                "source": "supports.size.height",
+                "default": "",
+                "sanitize": "size-value"
+            },
+            "--hb-image-minw": {
+                "source": "supports.size.minWidth",
+                "default": "",
+                "sanitize": "size-value"
+            },
+            "--hb-image-minh": {
+                "source": "supports.size.minHeight",
+                "default": "",
+                "sanitize": "size-value"
+            },
+            "--hb-image-maxw": {
+                "source": "supports.size.maxWidth",
+                "default": "",
+                "sanitize": "size-value"
+            },
+            "--hb-image-maxh": {
+                "source": "supports.size.maxHeight",
+                "default": "",
+                "sanitize": "size-value"
+            },
+            "--hb-image-mt": {
+                "source": "supports.spacing.margin.top",
+                "default": "",
+                "sanitize": "size-value"
+            },
+            "--hb-image-mr": {
+                "source": "supports.spacing.margin.right",
+                "default": "",
+                "sanitize": "size-value"
+            },
+            "--hb-image-mb": {
+                "source": "supports.spacing.margin.bottom",
+                "default": "",
+                "sanitize": "size-value"
+            },
+            "--hb-image-ml": {
+                "source": "supports.spacing.margin.left",
+                "default": "",
+                "sanitize": "size-value"
+            },
+            "--hb-image-pt": {
+                "source": "supports.spacing.padding.top",
+                "default": "",
+                "sanitize": "size-value"
+            },
+            "--hb-image-pr": {
+                "source": "supports.spacing.padding.right",
+                "default": "",
+                "sanitize": "size-value"
+            },
+            "--hb-image-pb": {
+                "source": "supports.spacing.padding.bottom",
+                "default": "",
+                "sanitize": "size-value"
+            },
+            "--hb-image-pl": {
+                "source": "supports.spacing.padding.left",
+                "default": "",
+                "sanitize": "size-value"
+            },
+            "--hb-image-ratio": {
+                "source": "attributes.aspectRatio",
+                "default": "",
+                "sanitize": "text"
+            },
+            "--hb-image-fit": {
+                "source": "attributes.scale",
+                "default": "cover",
+                "sanitize": "text"
+            },
+            "--hb-border-top-width": {
+                "source": "supports.border.width.top",
+                "default": "",
+                "sanitize": "size-value"
+            },
+            "--hb-border-right-width": {
+                "source": "supports.border.width.right",
+                "default": "",
+                "sanitize": "size-value"
+            },
+            "--hb-border-bottom-width": {
+                "source": "supports.border.width.bottom",
+                "default": "",
+                "sanitize": "size-value"
+            },
+            "--hb-border-left-width": {
+                "source": "supports.border.width.left",
+                "default": "",
+                "sanitize": "size-value"
+            },
+            "--hb-border-top-style": {
+                "source": "supports.border.style",
+                "default": "solid",
+                "sanitize": "border-style"
+            },
+            "--hb-border-right-style": {
+                "source": "supports.border.style",
+                "default": "solid",
+                "sanitize": "border-style"
+            },
+            "--hb-border-bottom-style": {
+                "source": "supports.border.style",
+                "default": "solid",
+                "sanitize": "border-style"
+            },
+            "--hb-border-left-style": {
+                "source": "supports.border.style",
+                "default": "solid",
+                "sanitize": "border-style"
+            },
+            "--hb-border-top-color": {
+                "source": "supports.border.color",
+                "default": "",
+                "sanitize": "color-value"
+            },
+            "--hb-border-right-color": {
+                "source": "supports.border.color",
+                "default": "",
+                "sanitize": "color-value"
+            },
+            "--hb-border-bottom-color": {
+                "source": "supports.border.color",
+                "default": "",
+                "sanitize": "color-value"
+            },
+            "--hb-border-left-color": {
+                "source": "supports.border.color",
+                "default": "",
+                "sanitize": "color-value"
+            },
+            "--hb-border-radius-tl": {
+                "source": "supports.border.radius.topLeft",
+                "default": "",
+                "sanitize": "size-value"
+            },
+            "--hb-border-radius-tr": {
+                "source": "supports.border.radius.topRight",
+                "default": "",
+                "sanitize": "size-value"
+            },
+            "--hb-border-radius-br": {
+                "source": "supports.border.radius.bottomRight",
+                "default": "",
+                "sanitize": "size-value"
+            },
+            "--hb-border-radius-bl": {
+                "source": "supports.border.radius.bottomLeft",
+                "default": "",
+                "sanitize": "size-value"
+            },
+            "--hb-opacity": {
+                "source": "supports.appearance.opacity",
+                "default": "",
+                "sanitize": "opacity"
+            },
+            "--hb-tx": {
+                "source": "supports.position.x",
+                "default": "",
+                "sanitize": "length-signed"
+            },
+            "--hb-ty": {
+                "source": "supports.position.y",
+                "default": "",
+                "sanitize": "length-signed"
+            },
+            "--hb-rotate": {
+                "source": "supports.position.rotation",
+                "default": "",
+                "sanitize": "angle"
+            },
+            "--hb-shadow": {
+                "source": "supports.effects.shadow",
+                "default": "",
+                "sanitize": "shadow"
+            },
+            "--hb-position-mode": {
+                "source": "supports.position.mode",
+                "default": "",
+                "sanitize": "position-mode"
+            }
+        }
+    },
+    "render": {
+        "template": {
+            "tag": "figure",
+            "class": "hb-block hb-block-image {{attributes.extraClasses}}",
+            "attributes": {
+                "data-block-name": "{{name}}",
+                "data-block-id": "{{id}}",
+                "id": {
+                    "value": "{{attributes.anchor}}",
+                    "omitWhenEmpty": true
+                },
+                "title": {
+                    "value": "{{attributes.titleAttr}}",
+                    "omitWhenEmpty": true
+                },
+                "data-hb-lightbox": {
+                    "boolean": "{{attributes.lightboxEnabled}}"
+                }
+            },
+            "children": [
+                {
+                    "tag": "a",
+                    "attributes": {
+                        "href": {
+                            "value": "{{attributes.href}}",
+                            "omitWhenEmpty": true
+                        },
+                        "target": {
+                            "value": "{{attributes.target}}",
+                            "omitWhenEmpty": true
+                        }
+                    },
+                    "children": [
+                        {
+                            "tag": "img",
+                            "class": "hb-block-image__img",
+                            "attributes": {
+                                "src": "{{attributes.url}}",
+                                "alt": "{{attributes.alt}}",
+                                "loading": "lazy",
+                                "decoding": "async"
+                            }
+                        }
+                    ]
+                },
+                {
+                    "tag": "figcaption",
+                    "class": "hb-block-image__caption",
+                    "children": [
+                        {
+                            "type": "rich-text",
+                            "attribute": "caption"
+                        }
+                    ]
+                }
+            ]
+        },
+        "publicPartial": "blocks.image",
+        "script": null
+    },
+    "innerBlocks": {
+        "enabled": false
+    },
+    "serialization": {
+        "mode": "json",
+        "saveAttributes": true,
+        "saveSupports": true,
+        "saveInnerBlocks": true,
+        "migrations": []
+    },
+    "security": {
+        "richText": "inline-basic",
+        "allowRawHtml": false,
+        "allowCustomCss": false
+    }
+}

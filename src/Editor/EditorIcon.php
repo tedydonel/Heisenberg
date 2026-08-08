@@ -45,6 +45,10 @@ final class EditorIcon
         'border_bottom'          => 'align-bottom',
         'rounded_corner'         => 'frame-corners',
         'horizontal_rule'        => 'minus',
+        // Contract icons are Lucide slugs (Appendix C / BlockType::icon()); these two have no
+        // same-named Phosphor asset, so map them to their visual equivalents.
+        'mouse-pointer-click'    => 'cursor-click',
+        'quote'                  => 'quotes',
         'selection-all-fill'     => 'selection-all',
         'caret-down'             => 'caret-down',
         'sidebar-simple'         => 'sidebar-simple',
