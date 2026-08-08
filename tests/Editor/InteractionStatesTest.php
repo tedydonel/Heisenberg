@@ -172,4 +172,37 @@ class InteractionStatesTest extends TestCase
 
         $this->assertSame('', $css);
     }
+
+    public function test_selecting_a_block_resets_the_state_tab_to_default(): void
+    {
+        $html = $this->editorHtml();
+
+        // The Style panels are shared per block TYPE, so dataset.hbStyleState would otherwise
+        // survive a selection change: with the tab stuck on hover, every edit on the newly
+        // selected block silently retargets states.hover.* — the canvas shows nothing (no
+        // forced preview on this block) and the styling "vanishes" after save + reload because
+        // it only ever applies on hover. This was the reported columns/column symptom.
+        $this->assertStringContainsString(
+            "if ((styleRoot.dataset.hbStyleState || 'default') === 'default') return;",
+            $html,
+        );
+        $this->assertStringContainsString("styleRoot.dataset.hbStyleState = 'default';", $html);
+        $this->assertStringContainsString(
+            "tab.setAttribute('aria-selected', tab.dataset.hbTab === 'default' ? 'true' : 'false')",
+            $html,
+        );
+    }
+
+    public function test_deselecting_a_block_clears_its_forced_state_preview(): void
+    {
+        $html = $this->editorHtml();
+
+        // previewStates is an editing aid for the SELECTED block only. Left behind, the block
+        // keeps painting its hover look after the user moves on — the canvas then shows styling
+        // the default state does not have, which reads as "worked live, gone after reload".
+        $this->assertStringContainsString(
+            'if (previewStates[id]) { delete previewStates[id]; reRenderBlock(id); }',
+            $html,
+        );
+    }
 }

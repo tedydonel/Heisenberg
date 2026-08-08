@@ -106,8 +106,10 @@ class InspectorWiringTest extends TestCase
 
         // One setSupport of the whole group object, not four scalar writes — setSupport
         // re-renders the block on every call, so four would rebuild the DOM four times per
-        // keystroke while the user types.
-        $this->assertStringContainsString("window.hbEditor.setSupport(id, 'spacing.' + group, {", $html);
+        // keystroke while the user types. Routed through hbStatePath like the per-side
+        // controls' own writes, so aggregate padding authored on a Hover/Active/Focus tab
+        // retargets states.<state>.spacing.* instead of silently writing the base style.
+        $this->assertStringContainsString("window.hbEditor.setSupport(id, hbStatePath(root, 'spacing.' + group), {", $html);
     }
 
     public function test_aggregate_spacing_fields_are_re_derived_when_a_block_is_selected(): void
@@ -244,5 +246,36 @@ class InspectorWiringTest extends TestCase
         // Space is the model's separator, so one chip labelled "a b c" would silently re-split
         // into three on the next read — the chip list and the model would disagree.
         $this->assertStringContainsString('input.value.trim().split(/\s+/).filter(Boolean)', $html);
+    }
+
+    public function test_an_absent_style_value_restores_the_controls_pristine_default(): void
+    {
+        $html = $this->editorHtml();
+
+        // The old early-return kept whatever the PREVIOUSLY selected block left in the shared
+        // per-type panel, so block B appeared to carry block A's padding/width — and the
+        // spacing group's object commit then wrote those stale values into block B's model.
+        $this->assertStringContainsString('function controlPristine(el, type)', $html);
+        $this->assertStringContainsString('const pristine = controlPristine(el, type);', $html);
+        $this->assertStringContainsString('if (value === undefined) value = pristine;', $html);
+        $this->assertStringNotContainsString(
+            "if (root.querySelector('.hb-blockstyle') && value === undefined) return;",
+            $html,
+        );
+    }
+
+    public function test_a_trailing_change_after_a_selection_switch_never_writes_to_the_new_block(): void
+    {
+        $html = $this->editorHtml();
+
+        // A focused field keeps focus while the user clicks the next block; its pending native
+        // 'change' fires only after the selection already moved, so the delegated write would
+        // land block A's value on block B. The focus-time stamp drops that stale event.
+        $this->assertStringContainsString('el.__hbEditsBlock = window.hbEditor.getSelectedId();', $html);
+        $this->assertStringContainsString('if (el) delete el.__hbEditsBlock;', $html);
+        $this->assertStringContainsString(
+            'if (el.__hbEditsBlock !== undefined && el.__hbEditsBlock !== id) return;',
+            $html,
+        );
     }
 }

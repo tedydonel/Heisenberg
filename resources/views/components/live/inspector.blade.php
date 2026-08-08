@@ -1048,6 +1048,30 @@
         if (preview) preview.style.background = rawValue || 'transparent';
     }
 
+    // The server-rendered presentation of a Style control, snapshotted before the first model
+    // sync ever touches it. When a block has NO value at a control's path, the control must show
+    // this pristine default again — the old behavior (skip the sync entirely) kept whatever the
+    // PREVIOUSLY selected block left in the shared per-type panel, so block B appeared to carry
+    // block A's padding/width/etc., and group-committing controls then wrote those stale values
+    // into block B's model on its first edit.
+    function controlPristine(el, type) {
+        if (el.__hbPristine !== undefined) return el.__hbPristine;
+        let value;
+        if (type === 'toggle') value = !!el.querySelector('.hb-toggle__input')?.checked;
+        else if (type === 'checkbox') {
+            const checked = !!el.querySelector('.hb-checkbox__input')?.checked;
+            const on = el.getAttribute('data-hb-control-on');
+            const off = el.getAttribute('data-hb-control-off');
+            value = (on === null && off === null) ? checked : (checked ? (on ?? 'true') : (off ?? ''));
+        } else if (type === 'select' || type === 'combobox') value = el.dataset.value ?? '';
+        else if (type === 'segmented') value = el.querySelector('[data-hb-tab][aria-selected="true"]')?.dataset.hbTab ?? '';
+        else {
+            const field = el.matches('input, textarea') ? el : el.querySelector('input, textarea');
+            value = field ? field.value : '';
+        }
+        return el.__hbPristine = value;
+    }
+
     // Populate every [data-hb-control] under `root` (one shown block-panel) with the block's
     // real current value — called right before that panel is unhidden, so nothing visible ever
     // shows a stale/default value (the "re-selecting a block shows its real values" requirement).
@@ -1060,13 +1084,17 @@
             // On a non-default state tab a supports control reads its own override, not the base
             // value — otherwise every state would open showing the default and overwrite it on
             // the first edit.
-            const value = kind === 'supports'
+            let value = kind === 'supports'
                 ? hbGet(source, hbStatePath(mountedStyleRoot(el) || el.closest('.hb-blockstyle'), key))
                 : hbGet(source, key);
 
-            // An absent source value must not erase the field's rendered visual default on mount;
-            // explicit null/empty values still sync — only a genuinely missing path keeps it.
-            if (root.querySelector('.hb-blockstyle') && value === undefined) return;
+            // Style panels: snapshot the pristine presentation on first contact (even when a
+            // model value is about to overwrite it), and substitute it for an absent path so a
+            // stale value from the previously synced block can never survive a selection change.
+            if (root.querySelector('.hb-blockstyle')) {
+                const pristine = controlPristine(el, type);
+                if (value === undefined) value = pristine;
+            }
 
             if (type === 'toggle') {
                 const input = el.querySelector('.hb-toggle__input');
@@ -1180,6 +1208,21 @@
         const inspector = document.querySelector('[data-hb-inspector]');
         if (!inspector) return;
         const { name, model } = event.detail || {};
+        // The Style panels are shared per block TYPE, and dataset.hbStyleState would otherwise
+        // survive a selection change: with the tab stuck on hover/active/focus, every edit on the
+        // newly selected block silently retargets supports.states.<state>.* — the canvas shows
+        // nothing (no forced preview on this block), and a save "loses" the styling because it
+        // only ever applies in that state. A fresh selection always starts on Default. Reset
+        // BEFORE showBlockPanels so syncControls reads base paths, and without activate() so the
+        // tablist's change event can't cascade into a write.
+        inspector.querySelectorAll('.hb-blockstyle').forEach((styleRoot) => {
+            if ((styleRoot.dataset.hbStyleState || 'default') === 'default') return;
+            styleRoot.dataset.hbStyleState = 'default';
+            const tabs = styleRoot.querySelector('[data-hb-style-state]');
+            if (tabs) tabs.querySelectorAll('[data-hb-tab]').forEach((tab) => {
+                tab.setAttribute('aria-selected', tab.dataset.hbTab === 'default' ? 'true' : 'false');
+            });
+        });
         showBlockIcon(inspector, name || '');
         const empty = inspector.querySelector('[data-hb-block-empty]');
         const populated = inspector.querySelector('[data-hb-block-populated]');
@@ -1215,6 +1258,21 @@
         });
     });
 
+    // A focused control keeps that focus while the user clicks the next block on the canvas;
+    // the browser fires the field's pending 'change' only after the click already moved the
+    // selection, so the delegated write below would land the value typed for block A onto the
+    // freshly selected block B. Stamp the selection at focus time and drop any event whose
+    // stamp no longer matches; the stamp clears on focusout, so synthetic re-dispatches (the
+    // variable menu, commitLinkedSides) on an unfocused control are never affected.
+    document.addEventListener('focusin', (event) => {
+        const el = event.target.closest ? event.target.closest('[data-hb-control]') : null;
+        if (el && window.hbEditor) el.__hbEditsBlock = window.hbEditor.getSelectedId();
+    });
+    document.addEventListener('focusout', (event) => {
+        const el = event.target.closest ? event.target.closest('[data-hb-control]') : null;
+        if (el) delete el.__hbEditsBlock;
+    });
+
     // One delegated listener for every control, present or future — the panels above are only
     // ever shown/hidden and value-synced, never rebuilt, so a single document-level listener
     // never needs re-wiring (see this file's docblock).
@@ -1226,6 +1284,7 @@
         if (!window.hbEditor) return;
         const id = window.hbEditor.getSelectedId();
         if (!id) return;
+        if (el.__hbEditsBlock !== undefined && el.__hbEditsBlock !== id) return; // stale trailing edit — see the focusin stamp above
         const model = window.hbEditor.getModel(id);
         if (!model) return;
         const contract = window.hbEditor.getContract(model.name);
@@ -1519,7 +1578,10 @@
         if (!id) return;
         const sides = group === 'padding' ? paddingSideInputs(root) : marginSideInputs(root);
         if (Object.values(sides).some((input) => !input)) return;
-        window.hbEditor.setSupport(id, 'spacing.' + group, {
+        // hbStatePath, like the per-side controls' own writes: on a non-default State tab the
+        // aggregate modes must retarget states.<state>.spacing.* too, or "one value" padding
+        // authored on Hover would silently write the BASE style instead.
+        window.hbEditor.setSupport(id, hbStatePath(root, 'spacing.' + group), {
             top: sides.top.value,
             right: sides.right.value,
             bottom: sides.bottom.value,

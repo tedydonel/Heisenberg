@@ -756,10 +756,16 @@
     }
     function deselect() {
         if (!selected) return;
+        const id = selected.getAttribute('data-block');
         selected.classList.remove('is-selected');
         selected = null;
         stowToolbar();
         switchInspector(0); // back to Post tab
+        // A forced state preview is an editing aid for the SELECTED block only. Left behind, the
+        // block keeps painting its hover/active look after the user moves on — the canvas then
+        // shows styling the default state does not have, which reads as "it worked live but was
+        // gone after reload".
+        if (previewStates[id]) { delete previewStates[id]; reRenderBlock(id); }
         document.dispatchEvent(new CustomEvent('hb:block-deselected', { detail: {} }));
     }
 
