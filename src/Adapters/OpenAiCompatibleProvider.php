@@ -351,7 +351,11 @@ class OpenAiCompatibleProvider implements AiProvider
                         'type' => 'function',
                         'function' => [
                             'name' => $call['name'],
-                            'arguments' => (string) json_encode($call['arguments']),
+                            // An argument-less call decodes to PHP's [], which re-encodes as a
+                            // JSON ARRAY — but the spec says `arguments` is an object string,
+                            // and strict endpoints (MiniMax) 400 the whole request on "[]".
+                            // Same guard AnthropicProvider already has for its `input` echo.
+                            'arguments' => (string) json_encode($call['arguments'] === [] ? new \stdClass() : $call['arguments']),
                         ],
                     ], $message->toolCalls),
                 ];

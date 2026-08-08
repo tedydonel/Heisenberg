@@ -192,6 +192,30 @@ class OpenAiCompatibleProviderTest extends TestCase
         $this->assertSame(['team' => 'core'], $response->toolCalls[0]['arguments']);
     }
 
+    public function test_an_argument_less_tool_call_echoes_as_an_object_not_an_array(): void
+    {
+        // An argument-less call decodes to PHP's [], which json_encode turns back into a JSON
+        // ARRAY — but `arguments` is specified as an object string, and strict endpoints
+        // (MiniMax) reject the whole follow-up request over "[]". This was exactly the panel's
+        // "works for chat, errors when building a post" failure: authoring flows begin with
+        // argument-less discovery calls (list_blocks), chat never calls a tool at all.
+        $this->setKey('sk-test');
+        $this->fakeOk();
+
+        $this->provider()->complete(new AiRequest(messages: [
+            AiMessage::user('build me a post'),
+            AiMessage::toolRequest('', [['id' => 'call_1', 'name' => 'heisenberg__list_blocks', 'arguments' => []]]),
+            AiMessage::toolResult('call_1', 'heisenberg__list_blocks', '[]'),
+        ]));
+
+        Http::assertSent(function ($request) {
+            $assistant = collect($request->data()['messages'])->firstWhere('role', 'assistant');
+
+            return $assistant !== null
+                && $assistant['tool_calls'][0]['function']['arguments'] === '{}';
+        });
+    }
+
     public function test_streaming_stops_on_the_literal_done_terminator(): void
     {
         $this->setKey('sk-test');
