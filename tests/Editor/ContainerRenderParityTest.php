@@ -292,4 +292,45 @@ class ContainerRenderParityTest extends TestCase
         preg_match('/data-block-id="g2"[^>]*style="([^"]*)"/', $html, $m);
         $this->assertStringNotContainsString('layers', $m[1], 'inspector layer state must not reach the page');
     }
+
+    public function test_a_columns_width_and_height_reach_the_published_page(): void
+    {
+        // 2026-08-07: column declared only min/max sizes — a cell could never be given an
+        // explicit width or height from the inspector. The width folds into the flex-item
+        // contract (flex-basis + a width-derived max-width cap) so a set width is exact when
+        // the row has room and still shrinks when it overflows; unset stays equal-shares.
+        $html = $this->publish([[
+            'id' => 'cw1',
+            'name' => 'heisenberg/columns',
+            'schemaVersion' => '1.0.0',
+            'attributes' => ['columns' => 2],
+            'supports' => [],
+            'innerBlocks' => [
+                [
+                    'id' => 'cw2',
+                    'name' => 'heisenberg/column',
+                    'schemaVersion' => '1.0.0',
+                    'attributes' => [],
+                    'supports' => ['size' => ['width' => '120px', 'height' => '100px']],
+                    'innerBlocks' => [],
+                ],
+                [
+                    'id' => 'cw3',
+                    'name' => 'heisenberg/column',
+                    'schemaVersion' => '1.0.0',
+                    'attributes' => [],
+                    'supports' => [],
+                    'innerBlocks' => [],
+                ],
+            ],
+        ]]);
+
+        $this->assertStringContainsString('--hb-column-w: 120px', $html);
+        $this->assertStringContainsString('--hb-column-h: 100px', $html);
+
+        // The stylesheet must consume both: basis + cap for width, plain height.
+        $this->assertStringContainsString('flex: 1 1 var(--hb-column-w, 0)', $html);
+        $this->assertStringContainsString('max-width: var(--hb-column-maxw, var(--hb-column-w, none))', $html);
+        $this->assertStringContainsString('height: var(--hb-column-h, auto)', $html);
+    }
 }

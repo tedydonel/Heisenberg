@@ -819,10 +819,52 @@
         return true;
     }
 
+    // A container contract that declares a `columns` count attribute (heisenberg/columns) keeps
+    // its innerBlocks length in lockstep with it: raising the count appends fresh children of the
+    // first allowed block, lowering it drops trailing children (undo restores them). A blank
+    // mid-edit value ("" while the user retypes) leaves the children alone — the blocks-changed
+    // sync below writes the real length back, so the model never saves a non-integer count.
+    function reconcileColumnsCount(model) {
+        const c = REGISTRY[model.name];
+        if (!c || !c.attributes || !Object.prototype.hasOwnProperty.call(c.attributes, 'columns')) return;
+        if (!c.innerBlocks || !c.innerBlocks.enabled) return;
+        const allowed = c.innerBlocks.allowedBlocks;
+        const childName = Array.isArray(allowed) && allowed.length ? allowed[0] : null;
+        if (!childName) return;
+        const raw = model.attributes.columns;
+        if (raw === '' || raw == null) return;
+        let want = parseInt(raw, 10);
+        if (!isFinite(want)) return;
+        want = Math.max(1, Math.min(6, want));
+        model.attributes.columns = want;
+        while (model.innerBlocks.length < want) {
+            const child = newBlockModel(childName, 1);
+            if (!child) break;
+            model.innerBlocks.push(child);
+        }
+        if (model.innerBlocks.length > want) model.innerBlocks.length = want;
+    }
+
+    // The reverse edge of the lockstep: any structural change (delete/duplicate/drag of a child,
+    // hydration of a saved document) rewrites the count attribute from the real children length,
+    // so the inspector's field can never show a stale number.
+    function syncColumnsCounts(list) {
+        (list || doc.blocks).forEach(function (m) {
+            const c = REGISTRY[m.name];
+            if (c && c.attributes && Object.prototype.hasOwnProperty.call(c.attributes, 'columns')
+                && c.innerBlocks && c.innerBlocks.enabled) {
+                m.attributes.columns = m.innerBlocks.length;
+            }
+            if (Array.isArray(m.innerBlocks) && m.innerBlocks.length) syncColumnsCounts(m.innerBlocks);
+        });
+    }
+    document.addEventListener('hb:blocks-changed', function () { syncColumnsCounts(); });
+
     function setAttribute(id, key, value) {
         const model = findModel(id);
         if (!model) return false;
         model.attributes[key] = value;
+        if (key === 'columns') reconcileColumnsCount(model);
         reRenderBlock(id);
         document.dispatchEvent(new CustomEvent('hb:block-updated', { detail: { id: id, key: key, value: value, model: model } }));
         // The document changed, so anything derived from it must re-read. This matters for
@@ -1091,6 +1133,118 @@
         });
     }
 
+    // ── container edge-resize ──────────────────────────────────
+    // Hovering within RESIZE_BAND px inside a resizable block root's right/bottom edge shows the
+    // matching resize cursor (hb-resize-* classes, 35-blocks.css); dragging writes size.width/
+    // size.height. A block is resizable when its CONTRACT declares supports.size.width/height
+    // (group, columns, column today — any future contract joins automatically). During the drag
+    // only the root's style attribute is regenerated from the model (styleDeclarations — cheap,
+    // and it keeps pointer capture on the ORIGINAL element, which a reRenderBlock would replace);
+    // the setSupport commit on release does the real re-render, events and history step.
+    const RESIZE_BAND = 6;
+    const RESIZE_MIN = 24;
+    // All resize candidates along the .hb-blk chain match first (a columns row and its columns
+    // share one bottom edge); the SELECTED block wins when it is among them — so selecting the
+    // row and grabbing the shared edge resizes the row, while an unselected hit resizes the
+    // innermost block, which is what the pointer is visually closest to.
+    function resizeHitAt(target, x, y) {
+        const hits = [];
+        let blk = target && target.closest ? target.closest('.hb-blk') : null;
+        while (blk) {
+            const model = findModel(blk.getAttribute('data-block'));
+            const c = model ? REGISTRY[model.name] : null;
+            const size = c && c.supports ? c.supports.size : null;
+            const root = blk.querySelector(':scope > [data-block-id]');
+            if (model && size && root) {
+                const canW = size.width === true;
+                const canH = size.height === true;
+                if (canW || canH) {
+                    const r = root.getBoundingClientRect();
+                    const inX = x >= r.left && x <= r.right;
+                    const inY = y >= r.top && y <= r.bottom;
+                    const onRight = canW && inY && x <= r.right && r.right - x <= RESIZE_BAND;
+                    const onBottom = canH && inX && y <= r.bottom && r.bottom - y <= RESIZE_BAND;
+                    if (onRight || onBottom) {
+                        hits.push({ blk: blk, model: model, contract: c, root: root, rect: r, w: onRight, h: onBottom });
+                    }
+                }
+            }
+            blk = blk.parentElement ? blk.parentElement.closest('.hb-blk') : null;
+        }
+        if (!hits.length) return null;
+        for (let i = 0; i < hits.length; i++) { if (hits[i].blk === selected) return hits[i]; }
+        return hits[0];
+    }
+    function clearResizeCursor() {
+        document.querySelectorAll('.hb-resize-ew, .hb-resize-ns, .hb-resize-nwse').forEach(function (el) {
+            el.classList.remove('hb-resize-ew', 'hb-resize-ns', 'hb-resize-nwse');
+        });
+    }
+    function wireContainerResize() {
+        let resizing = false;
+        document.addEventListener('mousemove', (e) => {
+            if (resizing) return;
+            if (!e.target.closest || !e.target.closest('.hb-page__blocks')) { clearResizeCursor(); return; }
+            const hit = resizeHitAt(e.target, e.clientX, e.clientY);
+            clearResizeCursor();
+            if (hit) hit.root.classList.add(hit.w && hit.h ? 'hb-resize-nwse' : (hit.w ? 'hb-resize-ew' : 'hb-resize-ns'));
+        });
+        document.addEventListener('pointerdown', (e) => {
+            if (e.button != null && e.button !== 0) return;
+            if (!e.target.closest || !e.target.closest('.hb-page__blocks') || e.target.closest('.hb-tb')) return;
+            const hit = resizeHitAt(e.target, e.clientX, e.clientY);
+            if (!hit) return;
+            e.preventDefault();
+            e.stopPropagation();
+            resizing = true;
+            select(hit.blk);
+            try { hit.root.setPointerCapture(e.pointerId); } catch (err) { /* older engines */ }
+            const startX = e.clientX, startY = e.clientY;
+            const startW = hit.rect.width, startH = hit.rect.height;
+            const size = () => {
+                if (!hit.model.supports || typeof hit.model.supports !== 'object') hit.model.supports = {};
+                if (typeof hit.model.supports.size !== 'object' || hit.model.supports.size === null) hit.model.supports.size = {};
+                return hit.model.supports.size;
+            };
+            const before = { width: size().width, height: size().height };
+            let wrote = false;
+            function apply(ev) {
+                if (hit.w) size().width = Math.max(RESIZE_MIN, Math.round(startW + ev.clientX - startX)) + 'px';
+                if (hit.h) size().height = Math.max(RESIZE_MIN, Math.round(startH + ev.clientY - startY)) + 'px';
+                wrote = true;
+                const declarations = styleDeclarations(hit.model, hit.contract);
+                if (declarations) hit.root.setAttribute('style', declarations);
+            }
+            function cleanup() {
+                hit.root.removeEventListener('pointermove', apply);
+                hit.root.removeEventListener('pointerup', onUp);
+                hit.root.removeEventListener('pointercancel', onCancel);
+                resizing = false;
+            }
+            function onUp() {
+                cleanup();
+                if (!wrote) return;
+                const id = hit.model.id;
+                // Commit through the public write path so re-render, events and the history
+                // debounce all happen exactly like an inspector edit.
+                if (hit.w) setSupport(id, 'size.width', size().width);
+                if (hit.h) setSupport(id, 'size.height', size().height);
+            }
+            function onCancel() {
+                if (wrote) {
+                    size().width = before.width;
+                    size().height = before.height;
+                    const declarations = styleDeclarations(hit.model, hit.contract);
+                    if (declarations) hit.root.setAttribute('style', declarations);
+                }
+                cleanup();
+            }
+            hit.root.addEventListener('pointermove', apply);
+            hit.root.addEventListener('pointerup', onUp);
+            hit.root.addEventListener('pointercancel', onCancel);
+        }, true);
+    }
+
     // Palette → canvas — dragging a Components card onto the canvas inserts it at the drop
     // position; a plain click (no movement past the threshold) still appends via the existing click
     // handler in boot(), untouched.
@@ -1234,6 +1388,12 @@
 
         // Select on mousedown (so the caret still lands where clicked).
         wrap.addEventListener('mousedown', (e) => {
+            // The floating toolbar is DOCKED inside a block element — and a NESTED child's bar
+            // docks in its top-level ANCESTOR (toolbarHost). Without this guard, pressing any
+            // toolbar button read as a click on that ancestor and re-selected the container out
+            // from under the nested child the bar was acting for, so the button then applied to
+            // the wrong block (or to nothing, once gateToolbar re-gated it).
+            if (e.target.closest('.hb-tb')) return;
             const blk = e.target.closest('.hb-blk');
             if (blk) select(blk);
         });
@@ -1330,6 +1490,7 @@
             document.__hbBlockDnd = true;
             wireCanvasBlockDrag();
             wirePaletteDrag();
+            wireContainerResize();
         }
     }
 

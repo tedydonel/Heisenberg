@@ -500,4 +500,32 @@ class EditorRendersTest extends TestCase
         $this->assertStringContainsString('data-hb-post-layout-x', $html);
         $this->assertStringContainsString('data-hb-post-layout-y', $html);
     }
+
+    public function test_a_toolbar_click_never_reselects_the_docked_ancestor(): void
+    {
+        $html = $this->get('/editor')->getContent();
+
+        // The floating toolbar docks INSIDE a block element — a nested child's bar docks in its
+        // top-level ancestor (toolbarHost). Without this guard, pressing any toolbar button read
+        // as a canvas click on that ancestor and re-selected the container out from under the
+        // child the bar was acting for.
+        $this->assertStringContainsString("if (e.target.closest('.hb-tb')) return;", $html);
+    }
+
+    public function test_the_columns_block_has_a_working_column_count_control(): void
+    {
+        $html = $this->get('/editor')->getContent();
+
+        // The Content sub-tab's count field (contract attribute `columns`, number control) …
+        $this->assertMatchesRegularExpression(
+            '/data-hb-control="columns" data-hb-control-kind="attributes" data-hb-control-type="number"/',
+            $html,
+        );
+        // … drives the runtime's innerBlocks reconciliation in both directions: a count write
+        // adds/drops trailing column children, and structural changes write the true length back.
+        $this->assertStringContainsString('function reconcileColumnsCount(model)', $html);
+        $this->assertStringContainsString("if (key === 'columns') reconcileColumnsCount(model);", $html);
+        $this->assertStringContainsString('function syncColumnsCounts(list)', $html);
+        $this->assertStringContainsString('m.attributes.columns = m.innerBlocks.length;', $html);
+    }
 }

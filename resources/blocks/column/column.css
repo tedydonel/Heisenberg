@@ -1,9 +1,10 @@
 /* heisenberg/column — one vertical cell inside heisenberg/columns.
 
-   `flex: 1 1 0` + `min-width: 0` is the flex-ITEM half of the contract: equal shares of the
-   row by default, and a min-width that lets long content shrink instead of forcing the row
-   wider (the flex default `min-width: auto` is what makes columns overflow). Those are item
-   properties, so no capability rule competes for them and the base rule below is enough.
+   `flex: 1 1 var(--hb-column-w, 0)` + `min-width: 0` is the flex-ITEM half of the contract:
+   equal shares of the row by default, an explicit Width via the basis/cap composition (see
+   the rule's own comment), and a min-width that lets long content shrink instead of forcing
+   the row wider (the flex default `min-width: auto` is what makes columns overflow). Those
+   are item properties, so no capability rule competes for them and the base rule is enough.
 
    `display: flex` comes from the shared capability sheet
    (SupportsStyle::flexLayoutRule, `[data-block-id].hb-supports.hb-flex-layout`), which this
@@ -33,6 +34,8 @@
    own inline style (set by the renderer) still wins for the element that has one. */
 .hb-block-column {
     --hb-column-bg: initial;
+    --hb-column-w: initial;
+    --hb-column-h: initial;
     --hb-column-minw: initial;
     --hb-column-minh: initial;
     --hb-column-maxw: initial;
@@ -42,13 +45,21 @@
     --hb-column-pb: initial;
     --hb-column-pl: initial;
     box-sizing: border-box;
-    flex: 1 1 0;
+    /* A column is a flex ITEM sharing a row, so an explicit Width must be expressed in flex
+       terms, not a bare `width` (flex-grow would redistribute right past it). The set width
+       becomes the flex-basis AND the max-width cap: with spare row space the cell sits at
+       exactly that width (grow is capped), and when the row overflows it shrinks like any
+       other cell instead of forcing the row wider. Unset, the basis falls back to 0 and the
+       cap to `none` — the original equal-shares behavior, untouched. An explicit Max Width
+       still wins over the width-derived cap. */
+    flex: 1 1 var(--hb-column-w, 0);
+    height: var(--hb-column-h, auto);
     transition: color 140ms ease, background-color 140ms ease, box-shadow 140ms ease, transform 140ms ease;
     color: var(--hb-column-color, inherit);
     background: var(--hb-column-bg, transparent);
     min-width: var(--hb-column-minw, 0);
     min-height: var(--hb-column-minh, 0);
-    max-width: var(--hb-column-maxw, none);
+    max-width: var(--hb-column-maxw, var(--hb-column-w, none));
     max-height: var(--hb-column-maxh, none);
 }
 

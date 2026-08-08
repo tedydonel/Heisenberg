@@ -1,7 +1,9 @@
 {{-- live/block/style/dimensions — Dimensions section. Per-control gating on the contract's
-     `supports.size` feature map (same idiom as flex-layout/typography): a container like
-     `column` declares only min/max — it is `flex: 1 1 0` by design — so W/H fields writing
-     undeclared paths must not render. Absent/empty prop = render everything (back-compat). --}}
+     `supports.size` feature map (same idiom as flex-layout/typography): a contract that
+     declares only some of width/height/min/max renders only those fields, so a control can
+     never write an undeclared path. (2026-08-07: `column` now declares width/height too — its
+     width folds into the flex-basis/max-width composition in column.css.) Absent/empty prop =
+     render everything (back-compat). --}}
 @props(['size' => null])
 @php
     $hbDimOn = fn (string $key): bool => $size === null || $size === [] || (($size[$key] ?? false) === true);

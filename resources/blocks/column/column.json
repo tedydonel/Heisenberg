@@ -150,6 +150,8 @@
             "custom": false
         },
         "size": {
+            "width": true,
+            "height": true,
             "minWidth": true,
             "minHeight": true,
             "maxWidth": true,
@@ -278,6 +280,16 @@
                 "source": "supports.color.background",
                 "default": "",
                 "sanitize": "color-value"
+            },
+            "--hb-column-w": {
+                "source": "supports.size.width",
+                "default": "",
+                "sanitize": "size-value"
+            },
+            "--hb-column-h": {
+                "source": "supports.size.height",
+                "default": "",
+                "sanitize": "size-value"
             },
             "--hb-column-minw": {
                 "source": "supports.size.minWidth",

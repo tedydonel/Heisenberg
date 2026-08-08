@@ -15,6 +15,16 @@
     ],
     "version": "1.0.0",
     "attributes": {
+        "columns": {
+            "type": "integer",
+            "default": 2,
+            "control": {
+                "type": "number",
+                "section": "settings",
+                "min": 1,
+                "max": 6
+            }
+        },
         "anchor": {
             "type": "string",
             "default": "",

@@ -186,3 +186,17 @@
 .hb-blk .hb-img-empty { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 8px; min-height: 160px; width: 100%; border: 1px dashed var(--line-strong, #C8C8C8); border-radius: var(--r-md, 5px); background: var(--subtle, #FAFAFA); color: var(--muted, #9A9A9A); cursor: pointer; font-family: var(--hb-font-sans, Rubik, sans-serif); font-size: 13px; }
 .hb-blk .hb-img-empty:hover { border-color: var(--hb-editing, #3D68F5); color: var(--hb-editing, #3D68F5); }
 .hb-blk .hb-img-empty svg { width: 26px; height: 26px; opacity: .7; }
+
+/* Container edge-resize affordance — block-runtime's wireContainerResize() puts one of these
+   on a resizable block ROOT while the pointer sits in the 6px band inside its right/bottom
+   edge (contract declares supports.size.width/height). !important because a container's own
+   content (e.g. an .hb-ce with cursor:text) must not win the band. Editor-only chrome. */
+.hb-canvas .hb-resize-ew, .hb-canvas .hb-resize-ew * { cursor: ew-resize !important; }
+.hb-canvas .hb-resize-ns, .hb-canvas .hb-resize-ns * { cursor: ns-resize !important; }
+.hb-canvas .hb-resize-nwse, .hb-canvas .hb-resize-nwse * { cursor: nwse-resize !important; }
+
+/* Empty icon block — a click-to-pick placeholder (decorateIconBlock, block-runtime); the
+   click dispatches the cancelable hb:pick-icon the icon-picker dialog claims. */
+.hb-blk .hb-icon-empty { display: inline-flex; flex-direction: column; align-items: center; justify-content: center; gap: 6px; min-width: 96px; min-height: 96px; border: 1px dashed var(--line-strong, #C8C8C8); border-radius: var(--r-md, 5px); background: var(--subtle, #FAFAFA); color: var(--muted, #9A9A9A); cursor: pointer; font-family: var(--hb-font-sans, Rubik, sans-serif); font-size: 12px; }
+.hb-blk .hb-icon-empty:hover { border-color: var(--hb-editing, #3D68F5); color: var(--hb-editing, #3D68F5); }
+.hb-blk .hb-icon-empty svg { width: 22px; height: 22px; opacity: .7; }
