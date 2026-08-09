@@ -3,7 +3,7 @@
      Ai tab: header (badge + title, new small assembly), subtitle, 4 ui/suggestion-row instances (icon
      colors vary per row in the source — editing/success/accent/danger — passed through iconColor,
      which that atom already exposed for exactly this), a response card (new — bg-subtle box with an
-     Insert/Regenerate action pair, no existing atom matches this shape), and a prompt input bar with a
+     Regenerate action, no existing atom matches this shape), and a prompt input bar with a
      circular send button.
      Tools tab: search + "Writing" category head + an 8-card grid, all real ui/tool-card instances. --}}
 @once
@@ -69,8 +69,6 @@
     .hb-ai-response__actions { display: flex; align-items: center; gap: var(--hb-space-3, 12px); }
     .hb-ai-action { display: inline-flex; align-items: center; gap: var(--hb-space-1, 4px); border: 0; background: transparent; cursor: pointer; padding: 0; font-family: var(--hb-font-sans, Rubik, sans-serif); font-size: var(--hb-fs-sm, 12px); font-weight: 500; }
     .hb-ai-action__icon { display: inline-flex; width: 14px; height: 14px; }
-    .hb-ai-action--insert { color: var(--hb-accent, #000); }
-    .hb-ai-action--insert .hb-ai-action__icon { color: var(--hb-accent, #000); }
     .hb-ai-action--regenerate { color: var(--hb-text-secondary, #5A5A5A); }
     .hb-ai-action--regenerate .hb-ai-action__icon { color: var(--hb-text-muted, #9A9A9A); }
 
@@ -139,7 +137,8 @@
     })();
 </script>
 <script>
-    {{-- The assistant itself: prompt bar -> SSE -> response card -> Insert.
+    {{-- The assistant itself: prompt bar -> SSE -> response card, with markup replies
+         building onto the CANVAS live as they stream (see LIVE BUILD in run()).
 
          Insert deliberately does NOT parse markup of its own. It hands the reply to
          window.hbCodeView.parse (live/code-editor.blade.php), so an AI-authored block goes
@@ -165,6 +164,9 @@
 
                 let lastPrompt = '';
                 let controller = null;
+                // The latest run's live-build state: the document as that run found it, and
+                // whether the run actually applied markup (see LIVE BUILD in run()).
+                let lastRun = null;
 
                 // Several open-weight models write their chain of thought inline as
                 // <think>…</think>. That comes from the serving template, not the model's
@@ -291,6 +293,41 @@
                     let stopReason = '';
                     const stick = atBottom();
 
+                    // ── LIVE BUILD ────────────────────────────────────────────────────
+                    // A reply that is block markup applies to the CANVAS as it streams: each
+                    // completed top-level block lands the moment its closing tag arrives, so
+                    // the post assembles in front of the user instead of waiting behind an
+                    // Insert button. The baseline is the document as this run found it —
+                    // markup always APPENDS to it, and regenerating the latest reply first
+                    // restores that baseline so the redo replaces the old build rather than
+                    // doubling it. Prose answers produce no markup and never touch the page.
+                    if (replace && lastRun && lastRun.applied && window.hbEditor) {
+                        window.hbEditor.replaceDoc(lastRun.baseline);
+                    }
+                    lastRun = {
+                        baseline: window.hbEditor ? JSON.parse(JSON.stringify(window.hbEditor.getDoc().blocks || [])) : [],
+                        applied: false,
+                    };
+                    let lastAppliedStamp = '';
+                    let lastApplyAt = 0;
+                    const liveApply = (final) => {
+                        if (!window.hbCodeView || !window.hbEditor) return;
+                        const now = Date.now();
+                        if (!final && now - lastApplyAt < 250) return; // replaceDoc rerenders the whole doc — pace it
+                        const markup = extractMarkup(stripReasoning(acc));
+                        if (!markup) return;
+                        const parsed = window.hbCodeView.parse(markup);
+                        // Mid-stream the tail is legitimately unfinished — apply whatever
+                        // COMPLETE blocks parsed and ignore the errors the ragged edge causes.
+                        if (!parsed || !parsed.blocks.length) return;
+                        const stamp = JSON.stringify(parsed.blocks);
+                        if (stamp === lastAppliedStamp) return;
+                        lastAppliedStamp = stamp;
+                        lastApplyAt = now;
+                        lastRun.applied = true;
+                        window.hbEditor.replaceDoc(lastRun.baseline.concat(parsed.blocks));
+                    };
+
                     window.fetch(url, {
                         method: 'POST',
                         headers: {
@@ -317,6 +354,7 @@
                                 if (event.type === 'text_delta') {
                                     acc += event.text || '';
                                     reply.textEl.textContent = stripReasoning(acc) || msg('msgThinking');
+                                    liveApply(false);
                                     if (stick) scrollToEnd();
                                 } else if (event.type === 'done') {
                                     sawDone = true;
@@ -358,6 +396,9 @@
                         })
                         .then(() => {
                             setBusy(false);
+                            // The stream is over — apply the final, complete markup unthrottled
+                            // so the last block never waits on the pacing window.
+                            liveApply(true);
                             const clean = stripReasoning(acc);
                             // A reply that was ONLY reasoning leaves nothing to show; say so
                             // rather than presenting an empty card.
@@ -413,47 +454,22 @@
                     setBusy(false);
                 });
 
-                // Delegated: Insert and Regenerate belong to whichever message they are in,
-                // and messages are created as the conversation grows.
+                // Delegated: Regenerate belongs to whichever message it is in, and messages
+                // are created as the conversation grows. (There is no Insert — a markup reply
+                // builds onto the canvas LIVE while it streams; see LIVE BUILD in run().)
                 thread.addEventListener('click', (event) => {
-                    const insert = event.target.closest('[data-hb-ai-insert]');
                     const regen = event.target.closest('[data-hb-ai-regenerate]');
-                    if (!insert && !regen) return;
+                    if (!regen) return;
 
                     const node = event.target.closest('[data-hb-ai-msg]');
                     const textEl = node?.querySelector('[data-hb-ai-text]');
-                    if (!textEl) return;
+                    if (!textEl || !lastPrompt) return;
 
-                    if (regen) {
-                        if (!lastPrompt) return;
-                        run(lastPrompt, {
-                            node: node,
-                            textEl: textEl,
-                            actions: node.querySelector('[data-hb-ai-actions]'),
-                        });
-                        return;
-                    }
-
-                    const text = (textEl.textContent || '').trim();
-                    if (!text || !window.hbCodeView || !window.hbEditor) return;
-
-                    const markup = extractMarkup(text);
-                    const parsed = markup ? window.hbCodeView.parse(markup) : null;
-                    // Refuse rather than guess: a prose answer is not block markup, and
-                    // inserting a best-effort paragraph would quietly discard the user's intent.
-                    if (!parsed || !parsed.blocks.length || parsed.errors.length) {
-                        addMessage('note', msg('msgInsertFailed')).node.classList.add('hb-ai-msg--error');
-                        return;
-                    }
-
-                    // One replaceDoc so the whole insert is a single Ctrl+Z, and so the models
-                    // land through the runtime's own hydration (fresh ids, defaults merged).
-                    const existing = window.hbEditor.getDoc().blocks || [];
-                    window.hbEditor.replaceDoc(existing.concat(parsed.blocks));
-                    // Generated markup belongs in the code editor, not only in the chat: open
-                    // it there so what the model wrote is editable as code straight away.
-                    if (window.hbCodeView.open) window.hbCodeView.open();
-                    addMessage('note', msg('msgInserted'));
+                    run(lastPrompt, {
+                        node: node,
+                        textEl: textEl,
+                        actions: node.querySelector('[data-hb-ai-actions]'),
+                    });
                 });
 
                 // A tool card is just a canned prompt.
@@ -494,8 +510,6 @@
 <div data-hb-panel-ai
     data-stream-url="{{ $streamUrl }}"
     data-msg-thinking="{{ __('heisenberg::editor.panel_ai_tools.ai_thinking') }}"
-    data-msg-insert-failed="{{ __('heisenberg::editor.panel_ai_tools.ai_insert_failed') }}"
-    data-msg-inserted="{{ __('heisenberg::editor.panel_ai_tools.ai_inserted') }}"
     data-msg-network="{{ __('heisenberg::editor.ai.network_error', ['provider' => __('heisenberg::editor.ai.settings_title')]) }}"
     data-msg-role-you="{{ __('heisenberg::editor.panel_ai_tools.ai_role_you') }}"
     data-msg-role-assistant="{{ __('heisenberg::editor.panel_ai_tools.ai_role_assistant') }}"
@@ -560,10 +574,6 @@
             <div class="hb-ai-response">
                 <p class="hb-ai-response__text" data-hb-ai-text></p>
                 <div class="hb-ai-response__actions" data-hb-ai-actions hidden>
-                    <button type="button" class="hb-ai-action hb-ai-action--insert" data-hb-ai-insert>
-                        <span class="hb-ai-action__icon" aria-hidden="true">@include('heisenberg::components.ui.icon', ['name' => 'plus-circle', 'size' => 14])</span>
-                        {{ __('heisenberg::editor.panel_ai_tools.ai_insert') }}
-                    </button>
                     <button type="button" class="hb-ai-action hb-ai-action--regenerate" data-hb-ai-regenerate>
                         <span class="hb-ai-action__icon" aria-hidden="true">@include('heisenberg::components.ui.icon', ['name' => 'arrow-clockwise', 'size' => 14])</span>
                         {{ __('heisenberg::editor.panel_ai_tools.ai_regenerate') }}

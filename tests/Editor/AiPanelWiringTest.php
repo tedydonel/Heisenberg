@@ -225,17 +225,26 @@ class AiPanelWiringTest extends TestCase
         $this->assertStringNotContainsString('hb-editor--ai-wide', $html);
     }
 
-    public function test_insert_and_regenerate_are_wired(): void
+    public function test_markup_replies_build_the_canvas_live_and_insert_is_gone(): void
     {
+        // 2026-08-09: the Insert button is gone — a markup reply applies to the canvas AS IT
+        // STREAMS (each completed top-level block lands on arrival), appended to the document
+        // the run found; regenerating first restores that baseline so the redo replaces the
+        // old build instead of doubling it. Prose replies never touch the page.
         $html = $this->editorHtml();
 
-        $this->assertStringContainsString('data-hb-ai-insert', $html);
+        $this->assertStringNotContainsString('data-hb-ai-insert', $html);
         $this->assertStringContainsString('data-hb-ai-regenerate', $html);
+        $this->assertStringContainsString('const liveApply = (final)', $html);
+        $this->assertStringContainsString('liveApply(false);', $html);
+        $this->assertStringContainsString('liveApply(true);', $html);
+        $this->assertStringContainsString('window.hbEditor.replaceDoc(lastRun.baseline.concat(parsed.blocks));', $html);
+        $this->assertStringContainsString('window.hbEditor.replaceDoc(lastRun.baseline);', $html);
     }
 
     /**
-     * Insert routes AI output through the code view's parser rather than a
-     * second insertion path, so the export has to exist on the page.
+     * The live build routes AI output through the code view's parser rather than
+     * a second insertion path, so the export has to exist on the page.
      */
     public function test_the_code_view_parser_is_exported_for_the_assistant(): void
     {
