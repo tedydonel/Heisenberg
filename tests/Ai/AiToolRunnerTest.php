@@ -290,11 +290,13 @@ class AiToolRunnerTest extends TestCase
 
         $this->assertSame([['linear', 'search', ['q' => 'mine']]], $mcp->calls);
 
-        // Text is forwarded delta by delta; the tool call itself is machinery and
-        // never reaches the panel.
+        // Text is forwarded delta by delta, and each tool round announces itself
+        // (2026-08-09) so the panel can narrate the work instead of sitting silent
+        // through it — the announcement carries the tool NAME only, never arguments.
         $types = array_map(static fn (AiStreamEvent $e): string => $e->type, $events);
-        $this->assertSame([AiStreamEvent::TEXT_DELTA, AiStreamEvent::TEXT_DELTA, AiStreamEvent::DONE], $types);
-        $this->assertSame('You have 42.', $events[0]->text . $events[1]->text);
+        $this->assertSame([AiStreamEvent::TOOL_USE, AiStreamEvent::TEXT_DELTA, AiStreamEvent::TEXT_DELTA, AiStreamEvent::DONE], $types);
+        $this->assertSame(['name' => 'linear__search'], $events[0]->data);
+        $this->assertSame('You have 42.', $events[1]->text . $events[2]->text);
     }
 
     /**

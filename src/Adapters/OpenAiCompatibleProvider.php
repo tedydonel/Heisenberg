@@ -174,6 +174,7 @@ class OpenAiCompatibleProvider implements AiProvider
             // INACTIVITY bound instead: chunks keep flowing while a model thinks, so a
             // healthy stream never trips it and a hung one still errors out.
             $response = Http::withHeaders($this->headers())
+                ->connectTimeout(30) // a flaky line needs more than the 10s default to say hello
                 ->timeout(0)
                 ->withOptions(['stream' => true, 'read_timeout' => $this->timeout()])
                 ->post($this->endpoint(), $this->body($request) + ['stream' => true]);

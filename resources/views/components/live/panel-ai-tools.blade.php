@@ -49,6 +49,9 @@
     }
     .hb-ai-msg--user .hb-ai-response { background: var(--hb-bg-muted, #F4F4F4); }
     .hb-ai-msg--error .hb-ai-response__text { color: var(--hb-danger, #D4191A); }
+    {{-- The reasoning phase streams as a dimmed, italic tail — visibly alive, visually
+         subordinate to real prose. --}}
+    .hb-ai-msg--reasoning .hb-ai-response__text { color: var(--hb-text-muted, #9A9A9A); font-style: italic; }
     .hb-ai-empty {
         padding: 32px 10px; text-align: center;
         font-family: var(--hb-font-sans, Rubik, sans-serif);
@@ -176,7 +179,28 @@
                     .replace(/<(think|thinking|reasoning|reflection)\b[^>]*>[\s\S]*?<\/\1\s*>/gi, '')
                     .replace(/<(think|thinking|reasoning|reflection)\b[^>]*>[\s\S]*$/i, '')
                     .replace(/^[\s\S]*?<\/(think|thinking|reasoning|reflection)\s*>/i, '')
+                    // Catch-all: a stray unpaired tag (a round-2 continuation can open with a
+                    // bare closer the pair/prefix rules miss) must never reach the transcript.
+                    .replace(/<\/?(think|thinking|reasoning|reflection)\b[^>]*>/gi, '')
                     .trim();
+
+                // What the BUBBLE shows for a raw accumulated reply. Markup belongs on the
+                // canvas (the live build), never in the chat: the bubble carries the prose
+                // around it plus a live build status. While the model is still reasoning
+                // (nothing visible yet), the bubble streams a dimmed tail of the reasoning so
+                // the work is watchable instead of a frozen "Thinking…".
+                const displayFor = (raw) => {
+                    const clean = stripReasoning(raw);
+                    if (!clean) {
+                        const tail = raw.replace(/<\/?[a-z][^>]*>/gi, ' ').replace(/\s+/g, ' ').trim();
+                        return { kind: 'reasoning', text: tail.slice(-160) };
+                    }
+                    const fence = clean.search(/```/);
+                    const tag = clean.search(/\[[a-z][a-z0-9-]*(\s|\]|\/|=)/i);
+                    const cut = Math.min(fence === -1 ? Infinity : fence, tag === -1 ? Infinity : tag);
+                    if (cut === Infinity) return { kind: 'prose', text: clean };
+                    return { kind: 'mixed', prose: clean.slice(0, cut).trim() };
+                };
 
                 // A real reply is prose *around* markup — "Here's a hero section:", a fenced
                 // block, then "Let me know what you think." Handing the whole string to the
@@ -310,6 +334,8 @@
                     };
                     let lastAppliedStamp = '';
                     let lastApplyAt = 0;
+                    let builtCount = 0;
+                    let toolNote = '';
                     const liveApply = (final) => {
                         if (!window.hbCodeView || !window.hbEditor) return;
                         const now = Date.now();
@@ -325,7 +351,26 @@
                         lastAppliedStamp = stamp;
                         lastApplyAt = now;
                         lastRun.applied = true;
+                        builtCount = parsed.blocks.length;
                         window.hbEditor.replaceDoc(lastRun.baseline.concat(parsed.blocks));
+                    };
+
+                    // One render of the bubble from the current state — prose in full, markup
+                    // as a live build count, reasoning as a dimmed streaming tail.
+                    const paint = (finished) => {
+                        const view = displayFor(acc);
+                        reply.node.classList.toggle('hb-ai-msg--reasoning', view.kind === 'reasoning' && !finished);
+                        if (view.kind === 'reasoning') {
+                            reply.textEl.textContent = finished
+                                ? msg('msgEmptyReply')
+                                : (toolNote || view.text || msg('msgThinking'));
+                            return;
+                        }
+                        const status = builtCount > 0
+                            ? (finished ? msg('msgBuilt') : msg('msgBuilding')).replace(':count', String(builtCount))
+                            : (finished || view.kind === 'prose' ? '' : msg('msgThinking'));
+                        const prose = view.kind === 'prose' ? view.text : view.prose;
+                        reply.textEl.textContent = [prose, status].filter(Boolean).join('\n\n') || msg('msgThinking');
                     };
 
                     window.fetch(url, {
@@ -353,8 +398,17 @@
                                 try { event = JSON.parse(line.slice(5).trim()); } catch (e) { return; }
                                 if (event.type === 'text_delta') {
                                     acc += event.text || '';
-                                    reply.textEl.textContent = stripReasoning(acc) || msg('msgThinking');
+                                    toolNote = '';
                                     liveApply(false);
+                                    paint(false);
+                                    if (stick) scrollToEnd();
+                                } else if (event.type === 'tool_use') {
+                                    // The loop is off running a tool — narrate it instead of
+                                    // sitting silent (the name is our own registry's, made
+                                    // readable: heisenberg__list_blocks -> "list blocks").
+                                    const tool = String((event.data && event.data.name) || '').replace(/^heisenberg__/, '').replace(/_/g, ' ');
+                                    toolNote = msg('msgWorking').replace(':tool', tool || '…');
+                                    paint(false);
                                     if (stick) scrollToEnd();
                                 } else if (event.type === 'done') {
                                     sawDone = true;
@@ -399,12 +453,11 @@
                             // The stream is over — apply the final, complete markup unthrottled
                             // so the last block never waits on the pacing window.
                             liveApply(true);
-                            const clean = stripReasoning(acc);
                             // A reply that was ONLY reasoning leaves nothing to show; say so
                             // rather than presenting an empty card.
                             if (!reply.node.classList.contains('hb-ai-msg--error')) {
-                                reply.textEl.textContent = clean || msg('msgEmptyReply');
-                                reply.actions.hidden = clean === '';
+                                paint(true);
+                                reply.actions.hidden = stripReasoning(acc) === '' && !lastRun.applied;
                             }
                             // Say WHY a reply stopped short instead of leaving the user to
                             // guess whether the model finished.
@@ -510,6 +563,9 @@
 <div data-hb-panel-ai
     data-stream-url="{{ $streamUrl }}"
     data-msg-thinking="{{ __('heisenberg::editor.panel_ai_tools.ai_thinking') }}"
+    data-msg-building="{{ __('heisenberg::editor.panel_ai_tools.ai_building') }}"
+    data-msg-built="{{ __('heisenberg::editor.panel_ai_tools.ai_built') }}"
+    data-msg-working="{{ __('heisenberg::editor.panel_ai_tools.ai_working_tool') }}"
     data-msg-network="{{ __('heisenberg::editor.ai.network_error', ['provider' => __('heisenberg::editor.ai.settings_title')]) }}"
     data-msg-role-you="{{ __('heisenberg::editor.panel_ai_tools.ai_role_you') }}"
     data-msg-role-assistant="{{ __('heisenberg::editor.panel_ai_tools.ai_role_assistant') }}"

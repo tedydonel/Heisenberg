@@ -189,6 +189,10 @@ class AiToolRunner
             $messages[] = AiMessage::toolRequest($text, $calls);
 
             foreach ($calls as $call) {
+                // Surface the activity to the client BEFORE the (possibly slow) call runs —
+                // without this the panel sits silent through every tool round and the whole
+                // build looks like nothing is streaming.
+                yield AiStreamEvent::toolUse(['name' => (string) ($call['name'] ?? '')]);
                 $messages[] = $this->execute($call, $byName);
             }
         }
