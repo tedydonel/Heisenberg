@@ -127,9 +127,12 @@ class AnthropicProvider implements AiProvider
         }
 
         try {
+            // No TOTAL timeout on a stream — same reasoning as OpenAiCompatibleProvider:
+            // Guzzle's `timeout` bounds the entire body read and kills long generations
+            // mid-stream; the configured budget bounds INACTIVITY between chunks instead.
             $response = Http::withHeaders($this->headers())
-                ->timeout($this->timeout())
-                ->withOptions(['stream' => true])
+                ->timeout(0)
+                ->withOptions(['stream' => true, 'read_timeout' => $this->timeout()])
                 ->post($this->endpoint(), $this->body($request) + ['stream' => true]);
         } catch (\Throwable $e) {
             yield AiStreamEvent::error($this->networkMessage($e));

@@ -165,6 +165,11 @@ class AiController
 
     public function stream(Request $request, EditorPrompt $prompt): StreamedResponse
     {
+        // A reasoning model can stream for longer than a host's max_execution_time —
+        // PHP killing the worker mid-stream reads as "the connection ended before the
+        // reply did". Harmless where the limit is already 0 (CLI server).
+        @set_time_limit(0);
+
         $denied = $this->denyUnlessAuthor($request);
         $text = trim((string) $request->input('prompt', ''));
         $context = (array) $request->input('context', []);

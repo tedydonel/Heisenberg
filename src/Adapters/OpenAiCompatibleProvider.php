@@ -167,9 +167,15 @@ class OpenAiCompatibleProvider implements AiProvider
         }
 
         try {
+            // No TOTAL timeout on a stream — a reasoning model (MiniMax-M3 at high effort)
+            // legitimately generates for longer than any sane request budget, and Guzzle's
+            // `timeout` bounds the entire body read, killing the reply mid-stream ("the
+            // connection ended before the reply did"). The configured budget becomes the
+            // INACTIVITY bound instead: chunks keep flowing while a model thinks, so a
+            // healthy stream never trips it and a hung one still errors out.
             $response = Http::withHeaders($this->headers())
-                ->timeout($this->timeout())
-                ->withOptions(['stream' => true])
+                ->timeout(0)
+                ->withOptions(['stream' => true, 'read_timeout' => $this->timeout()])
                 ->post($this->endpoint(), $this->body($request) + ['stream' => true]);
         } catch (\Throwable $e) {
             yield AiStreamEvent::error($this->networkMessage());
