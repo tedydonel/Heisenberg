@@ -21,7 +21,13 @@
         <x-live.panel-style-themes hidden :theme="$theme ?? []" :saved-themes="$savedThemes ?? []" :font-options="$fontOptions ?? []"
             :theme-update-url="route('heisenberg.editor.theme.update')" :fonts-search-url="route('heisenberg.editor.fonts.search')"
             :themes-store-url="route('heisenberg.editor.themes.store')" :themes-destroy-url="route('heisenberg.editor.themes.destroy')" />
-        <x-live.panel-ai-tools hidden :stream-url="route('heisenberg.editor.ai.stream')" />
+        <x-live.panel-ai hidden :stream-url="route('heisenberg.editor.ai.stream')"
+            :conversations-url="route('heisenberg.editor.ai.conversations.index')"
+            :suggest-url="route('heisenberg.editor.ai.suggest')"
+            :model-options="$aiModelOptions ?? []"
+            :active-model="$aiActiveModel ?? null"
+            :locale="app()->getLocale()"
+            :post-id="$postId ?? null" />
         {{-- Navigator (List View | Outline) — hidden until the topbar Layers button opens it. --}}
         <x-live.panel-navigator hidden :registry="$registry" />
     </div>
@@ -124,6 +130,11 @@
         :key-url-template="$aiKeyUrlTemplate ?? null"
         :discover-url-template="$aiDiscoverUrlTemplate ?? null"
         :mcp-test-url="$aiMcpTestUrl ?? null" />
+
+    {{-- AI chat history, opened by the AI panel header's notepad button. Page level for the
+         same reason as the settings dialog above; it reads its URLs off the panel root's
+         dataset and hands a chosen conversation back via hb:ai-open-conversation. --}}
+    <x-live.ai.ai-history-dialog />
 
     {{-- The block model: registry + render/insert/select runtime. Kept last so the canvas,
          panels, inspector and toolbar it wires all exist in the DOM before it boots. --}}

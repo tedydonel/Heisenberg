@@ -44,9 +44,9 @@ class AiPanelWiringTest extends TestCase
         $html = $this->editorHtml();
 
         foreach ([
-            'hb-ai-prompt-bar',        // prompt composer + send button
-            'hb-ai-prompt-bar__send',
-            'hb-ai-response',          // the message card styling
+            'hb-ai-composer',          // prompt composer well (reference Frame 4)
+            'hb-ai-composer__btn',     // send / new-chat / stop controls
+            'hb-ai-msg',               // a transcript turn
             'hb-panel-ai__grid',       // Tools tab card grid
         ] as $marker) {
             $this->assertStringContainsString($marker, $html, "the extracted {$marker} must still be mounted");
@@ -182,7 +182,10 @@ class AiPanelWiringTest extends TestCase
         $html = $this->editorHtml();
 
         $this->assertStringContainsString('data-hb-ai-thread', $html);
-        $this->assertStringContainsString('data-hb-ai-msg-template', $html);
+        // Two templates now — user and assistant turns render differently
+        // (the assistant turn carries the thinking block and applied card).
+        $this->assertStringContainsString('data-hb-ai-user-template', $html);
+        $this->assertStringContainsString('data-hb-ai-assistant-template', $html);
         $this->assertStringContainsString('data-hb-ai-new', $html);
         // The old single-slot card is gone, along with its fake copy.
         $this->assertStringNotContainsString('data-hb-ai-result', $html);
@@ -201,16 +204,17 @@ class AiPanelWiringTest extends TestCase
 
     /**
      * A single-line input hides everything past its width; prompts are routinely
-     * longer than that. Enter sends, Shift+Enter is a newline, and a long
-     * generation can be stopped.
+     * longer than that. Enter sends and Shift+Enter is a newline (wired in the
+     * keydown handler, no longer advertised as hint copy), and a long generation
+     * can be stopped.
      */
     public function test_the_composer_is_a_growing_textarea_with_a_stop_control(): void
     {
         $html = $this->editorHtml();
 
         $this->assertMatchesRegularExpression('/<textarea[^>]*data-hb-ai-prompt/', $html);
+        $this->assertStringContainsString('data-hb-ai-send', $html);
         $this->assertStringContainsString('data-hb-ai-stop', $html);
-        $this->assertStringContainsString('Shift+Enter', $html);
     }
 
     /**
@@ -240,6 +244,41 @@ class AiPanelWiringTest extends TestCase
         $this->assertStringContainsString('liveApply(true);', $html);
         $this->assertStringContainsString('window.hbEditor.replaceDoc(lastRun.baseline.concat(parsed.blocks));', $html);
         $this->assertStringContainsString('window.hbEditor.replaceDoc(lastRun.baseline);', $html);
+    }
+
+    /**
+     * The direct write path (2026-08-09): the assistant's write_canvas tool
+     * frames arrive on the stream with their shortcode arguments, and the panel
+     * applies them straight to the editor — append or replace. Once a tool
+     * build lands, the legacy text-extraction fallback stands down so content
+     * is never applied twice.
+     */
+    public function test_the_write_canvas_tool_frames_apply_to_the_editor(): void
+    {
+        $html = $this->editorHtml();
+
+        $this->assertStringContainsString("'heisenberg__write_canvas'", $html);
+        $this->assertStringContainsString('const applyCanvasTool', $html);
+        $this->assertStringContainsString('if (toolBuilt) return;', $html);
+        // Server verdict is honored: code the contracts rejected never applies.
+        $this->assertStringContainsString('data.ok === false', $html);
+        // set_page_title lands in the editor's title field the same way.
+        $this->assertStringContainsString("'heisenberg__set_page_title'", $html);
+        $this->assertStringContainsString('const applyTitleTool', $html);
+    }
+
+    /**
+     * Assistant prose is markdown — rendered, not shown raw. The renderer
+     * escapes first (model output can never inject markup) and the assistant
+     * bubble is a <div> so lists/paragraphs are legal inside it.
+     */
+    public function test_assistant_replies_render_markdown_not_raw_text(): void
+    {
+        $html = $this->editorHtml();
+
+        $this->assertStringContainsString('const renderMarkdown', $html);
+        $this->assertStringContainsString('renderMarkdown(reply.textEl', $html);
+        $this->assertMatchesRegularExpression('/<div class="hb-ai-msg__text" data-hb-ai-text>/', $html);
     }
 
     /**

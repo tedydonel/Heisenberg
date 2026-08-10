@@ -177,6 +177,18 @@ final class EditorController
                 'presets' => app(AiProviderRegistry::class)->availablePresets(),
                 'formats' => app(AiProviderRegistry::class)->formats(),
             ],
+            // Model picker for the chat composer, rendered with the real
+            // ui/select. Only enabled models are offered; the active one is
+            // preselected. Built here (not client-fetched) so the select is a
+            // real, server-rendered component, not markup assembled in JS.
+            'aiModelOptions' => array_values(array_map(
+                static fn (array $m): array => ['value' => $m['provider'] . ':' . $m['id'], 'label' => $m['label'] ?? $m['id']],
+                array_filter(
+                    app(AiSettingsRepository::class)->load()['models'],
+                    static fn (array $m): bool => ($m['enabled'] ?? true) !== false,
+                ),
+            )),
+            'aiActiveModel' => app(AiSettingsRepository::class)->activeModel()?->key(),
             'aiSettingsUrl' => route('heisenberg.editor.ai.settings.update'),
             // __ID__ placeholders, following topbar.blade.php's convention for
             // routes whose segment isn't known at render time.
