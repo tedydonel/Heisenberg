@@ -16,9 +16,11 @@ use FilesystemIterator;
  * (docs/post-template-schema.md). A separate registry with its own cache and
  * hash: it never touches `BlockRegistryService`'s scan or `computeHash()`.
  *
- * Templates live under `resources/templates` (overridable via
- * `config('heisenberg.template_root')` — not yet wired; see the schema doc's
- * "Wiring" section) rather than a host's view directory, exactly like blocks.
+ * Templates live under `resources/templates` by default, exactly like blocks —
+ * and `config('heisenberg.template_root')` (wired, see rootPath()) lets a host
+ * point the registry at its OWN template directory instead: that is the "host
+ * provides its own post/page template" seam, exercised end-to-end on a
+ * host integration bench (2026-08-10).
  */
 class PostTemplateRegistryService
 {

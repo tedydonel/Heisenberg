@@ -90,9 +90,15 @@ class HeisenbergServiceProvider extends ServiceProvider
      * Register a default `uploads` disk (docs/media-library-backend-blueprint.md
      * §3.1) IF the host hasn't already defined one — a package must not clobber
      * a host's own filesystems config. Root is storage_path('uploads'); a host
-     * still needs to run `php artisan storage:link` once (or add the
-     * public/uploads -> storage/uploads pair itself) so the disk's bytes are
+     * still runs `php artisan storage:link` once so the disk's bytes are
      * reachable by URL with zero PHP in the read path.
+     *
+     * The public/uploads -> storage/uploads entry is ALSO merged into
+     * `filesystems.links` here (2026-08-10) — storage:link only creates links
+     * that map declares, so registering the disk without the link entry left
+     * the documented "just run storage:link" advice doing nothing (observed on
+     * a real host install, which had to add the entry by hand). Skipped when the
+     * host defined its own uploads disk: their disk, their link strategy.
      */
     protected function registerUploadsDisk(): void
     {
@@ -109,6 +115,13 @@ class HeisenbergServiceProvider extends ServiceProvider
             'visibility' => 'public',
             'throw' => false,
         ]);
+
+        $links = (array) $config->get('filesystems.links', []);
+        $publicUploads = public_path('uploads');
+        if (! array_key_exists($publicUploads, $links)) {
+            $links[$publicUploads] = storage_path('uploads');
+            $config->set('filesystems.links', $links);
+        }
     }
 
     /**
@@ -403,6 +416,24 @@ class HeisenbergServiceProvider extends ServiceProvider
                 (string) $app['config']->get("heisenberg.post_template.{$configKey}", $default)
             ));
         }
+
+        // The template registry itself, config-wired (template_prefix +
+        // template_root), so a host rendering posts through its own template
+        // contract resolves it from the container instead of hand-constructing
+        // the validator/registry pair the way TemplatesVerifyCommand does —
+        // which is exactly what a host integration bench had to duplicate before
+        // this binding existed (2026-08-10).
+        $this->app->singleton(\Heisenberg\Services\PostTemplateContractValidator::class, fn ($app) => new \Heisenberg\Services\PostTemplateContractValidator(
+            (string) $app['config']->get('heisenberg.template_prefix', 'heisenberg'),
+        ));
+        $this->app->singleton(\Heisenberg\Services\PostTemplateRegistryService::class, function ($app) {
+            $root = $app['config']->get('heisenberg.template_root');
+
+            return new \Heisenberg\Services\PostTemplateRegistryService(
+                $app->make(\Heisenberg\Services\PostTemplateContractValidator::class),
+                is_string($root) && $root !== '' ? $root : null,
+            );
+        });
     }
 
     /**

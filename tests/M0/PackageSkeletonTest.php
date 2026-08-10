@@ -80,6 +80,51 @@ class PackageSkeletonTest extends TestCase
         $this->assertSame(['admin'], $gate->rolesOf($admin));
     }
 
+    /**
+     * The template registry is container-bound and config-wired (2026-08-10) —
+     * before this, every host rendering posts through its own template contract
+     * had to hand-construct the validator/registry pair the way
+     * TemplatesVerifyCommand does (observed duplicated on a host integration bench).
+     */
+    public function test_template_registry_resolves_as_a_singleton_and_honors_template_root(): void
+    {
+        $registry = app(\Heisenberg\Services\PostTemplateRegistryService::class);
+        $this->assertSame($registry, app(\Heisenberg\Services\PostTemplateRegistryService::class));
+
+        // Default root: the shipped article template is discovered.
+        $slugs = array_column($registry->registry()['templates'] ?? [], 'name');
+        $this->assertContains('heisenberg/article', $slugs);
+
+        // A host-set template_root replaces the scan root wholesale: an empty
+        // host directory yields an empty registry (fresh instance — the
+        // singleton above was already resolved and caches its scan).
+        $root = sys_get_temp_dir() . DIRECTORY_SEPARATOR . 'hb-templates-' . uniqid('', true);
+        mkdir($root);
+        try {
+            config(['heisenberg.template_root' => $root]);
+            $this->app->forgetInstance(\Heisenberg\Services\PostTemplateRegistryService::class);
+            $hostRegistry = app(\Heisenberg\Services\PostTemplateRegistryService::class);
+            $this->assertSame([], $hostRegistry->registry()['templates'] ?? []);
+        } finally {
+            rmdir($root);
+            config(['heisenberg.template_root' => null]);
+            $this->app->forgetInstance(\Heisenberg\Services\PostTemplateRegistryService::class);
+        }
+    }
+
+    /**
+     * Registering the uploads disk without its filesystems.links entry left
+     * `php artisan storage:link` a documented no-op (2026-08-10, observed on
+     * a host integration bench) — the link map is what that command reads.
+     */
+    public function test_uploads_disk_ships_its_storage_link_entry(): void
+    {
+        $this->assertNotNull(config('filesystems.disks.uploads'));
+        $links = (array) config('filesystems.links');
+        $this->assertArrayHasKey(public_path('uploads'), $links);
+        $this->assertSame(storage_path('uploads'), $links[public_path('uploads')]);
+    }
+
     private function userWithRoles(array $roles): AuthUser
     {
         return new class($roles) extends AuthUser {
