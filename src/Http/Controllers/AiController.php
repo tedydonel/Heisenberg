@@ -140,13 +140,33 @@ class AiController
         }
 
         $provider = $this->providers->active();
-        $aiRequest = $this->buildRequest($prompt, $text, (array) $request->input('context', []));
+        $aiRequest = $this->buildRequest(
+            $prompt,
+            $text,
+            (array) $request->input('context', []),
+            (array) $request->input('history', []),
+            $request->input('model'),
+        );
 
         // The tool loop always runs: Heisenberg's own tools need no configuration,
         // and they are what let the assistant look up a block contract or read a
         // post rather than asking the user for it. Connected MCP servers join the
         // same loop when the client is enabled.
-        $response = app(\Heisenberg\Services\AiToolRunner::class)->run($provider, $aiRequest);
+        //
+        // Unlike stream(), nothing here is already committed to an open
+        // connection — but an uncaught \Throwable would still fall through to a
+        // raw 500 instead of the structured error shape every other failure on
+        // this endpoint uses, so it gets the same try/catch treatment.
+        try {
+            $response = app(\Heisenberg\Services\AiToolRunner::class)->run($provider, $aiRequest);
+        } catch (\Throwable $e) {
+            report($e);
+
+            return response()->json(
+                \Heisenberg\Ai\AiResponse::error(__('heisenberg::editor.ai.completion_failed'))->toArray(),
+                502,
+            );
+        }
 
         // Several open-weight models emit their chain of thought inline as
         // <think>…</think>; that is serving-template behaviour, not something
@@ -163,6 +183,100 @@ class AiController
         return response()->json($response->toArray(), $response->isError() ? 502 : 200);
     }
 
+    /**
+     * Three short, conversation-aware follow-up suggestions for the panel's
+     * quick-insert chips. Best-effort by design: this spends a little of the
+     * operator's budget on a convenience, so any failure returns an empty list
+     * with 200 rather than an error the panel would have to handle.
+     *
+     * Language follows the editor's current locale (the footer switcher, via
+     * EditorLocaleMiddleware) so the chips read in the language the author is
+     * working in — French chips for a French document, English for English.
+     */
+    public function suggest(Request $request): JsonResponse
+    {
+        if (($denied = $this->denyUnlessAuthor($request)) !== null) {
+            return $denied;
+        }
+
+        $history = $this->historyMessages((array) $request->input('history', []));
+        if ($history === []) {
+            return response()->json(['suggestions' => []]);
+        }
+
+        $provider = $this->providers->active();
+        if (! $provider->isConfigured()) {
+            return response()->json(['suggestions' => []]);
+        }
+
+        $locale = in_array($request->input('locale'), ['en', 'fr'], true)
+            ? (string) $request->input('locale')
+            : app()->getLocale();
+        $language = $locale === 'fr' ? 'French' : 'English';
+
+        // A compact replay — just the words, capped — is enough to ground the
+        // suggestions without re-sending the whole document.
+        $transcript = collect($history)
+            ->map(fn (AiMessage $m): string => ($m->role === AiMessage::ROLE_USER ? 'User: ' : 'Assistant: ') . \Illuminate\Support\Str::limit($m->content, 500))
+            ->implode("\n");
+
+        $model = $this->resolveModel($request->input('model'));
+        $suggestRequest = new AiRequest(
+            messages: [AiMessage::user("The conversation so far:\n\n{$transcript}")],
+            system: "You propose what the user might ask the assistant next in a block-based page "
+                . "builder. Reply with ONLY a JSON array of exactly 3 suggestions, each a short "
+                . "imperative of at most 6 words, written in {$language}. Base them on where the "
+                . "conversation is going. No prose, no code fence, no keys — just the array.",
+            model: $model?->id,
+            effort: AiRequest::normalizeEffort('low'),
+            maxTokens: 200,
+        );
+
+        try {
+            $response = $provider->complete($suggestRequest);
+        } catch (\Throwable $e) {
+            report($e);
+
+            return response()->json(['suggestions' => []]);
+        }
+
+        return response()->json(['suggestions' => $this->parseSuggestions($response->text)]);
+    }
+
+    /**
+     * Pull a JSON string array out of the model's reply, tolerating a stray
+     * code fence or preamble. Anything that isn't three-ish short strings is
+     * dropped rather than shown.
+     *
+     * @return list<string>
+     */
+    private function parseSuggestions(string $text): array
+    {
+        $text = \Heisenberg\Ai\ReasoningFilter::strip($text);
+        $start = strpos($text, '[');
+        $end = strrpos($text, ']');
+        if ($start === false || $end === false || $end <= $start) {
+            return [];
+        }
+
+        $decoded = json_decode(substr($text, $start, $end - $start + 1), true);
+        if (! is_array($decoded)) {
+            return [];
+        }
+
+        $out = [];
+        foreach ($decoded as $item) {
+            if (is_string($item) && trim($item) !== '') {
+                $out[] = \Illuminate\Support\Str::limit(trim($item), 60, '');
+            }
+            if (count($out) === 3) {
+                break;
+            }
+        }
+
+        return $out;
+    }
+
     public function stream(Request $request, EditorPrompt $prompt): StreamedResponse
     {
         // A reasoning model can stream for longer than a host's max_execution_time —
@@ -175,7 +289,13 @@ class AiController
         $context = (array) $request->input('context', []);
 
         $provider = $this->providers->active();
-        $aiRequest = $this->buildRequest($prompt, $text, $context);
+        $aiRequest = $this->buildRequest(
+            $prompt,
+            $text,
+            $context,
+            (array) $request->input('history', []),
+            $request->input('model'),
+        );
 
         return response()->stream(function () use ($denied, $text, $provider, $aiRequest): void {
             // Tear every output buffer down before the first frame. PHP-FPM, the
@@ -259,13 +379,25 @@ class AiController
         ]);
     }
 
-    /** @param array<string, mixed> $context */
-    private function buildRequest(EditorPrompt $prompt, string $text, array $context): AiRequest
+    /**
+     * @param array<string, mixed> $context
+     * @param list<array{role?: mixed, content?: mixed}> $history prior turns, oldest first
+     */
+    private function buildRequest(EditorPrompt $prompt, string $text, array $context, array $history = [], ?string $modelKey = null): AiRequest
     {
-        $model = $this->settings->activeModel();
+        $model = $this->resolveModel($modelKey);
+
+        // Prior turns come first as plain user/assistant text, then the current
+        // turn — which is the only one carrying the live document context, so a
+        // reopened conversation is remembered without re-attaching stale
+        // document snapshots from every past turn.
+        $messages = array_merge(
+            $this->historyMessages($history),
+            [AiMessage::user($prompt->user($text, $context))],
+        );
 
         return new AiRequest(
-            messages: [AiMessage::user($prompt->user($text, $context))],
+            messages: $messages,
             system: $prompt->system(),
             model: $model?->id,
             // Effort rides on the MODEL, not on one global setting: a small local
@@ -273,6 +405,61 @@ class AiController
             effort: $model?->effort ?? AiRequest::normalizeEffort(config('heisenberg.ai.effort')),
             maxTokens: (int) config('heisenberg.ai.max_tokens', 16000),
         );
+    }
+
+    /**
+     * The model the client asked for (its `provider:id` key), falling back to
+     * the configured active model. Only models the operator has configured can
+     * be named, so this widens nothing — it just lets the chat's own picker win.
+     */
+    private function resolveModel(?string $modelKey): ?\Heisenberg\Ai\AiModel
+    {
+        $active = $this->settings->activeModel();
+        if ($modelKey === null || $modelKey === '') {
+            return $active;
+        }
+
+        foreach ($this->settings->load()['models'] as $raw) {
+            $model = \Heisenberg\Ai\AiModel::fromArray($raw);
+            if ($model->key() === $modelKey && $model->enabled) {
+                return $model;
+            }
+        }
+
+        return $active;
+    }
+
+    /**
+     * Turn the client's transcript into replayable message turns. Only `user`
+     * and `assistant` text turns are accepted — tool rounds are transport, not
+     * transcript — and the tail is capped so a long thread can't blow the
+     * context window.
+     *
+     * @param list<array{role?: mixed, content?: mixed}> $history
+     * @return list<AiMessage>
+     */
+    private function historyMessages(array $history): array
+    {
+        $cap = (int) config('heisenberg.ai.history_turns', 20);
+        if ($cap > 0 && count($history) > $cap) {
+            $history = array_slice($history, -$cap);
+        }
+
+        $messages = [];
+        foreach ($history as $turn) {
+            $role = is_array($turn) ? (string) ($turn['role'] ?? '') : '';
+            $content = is_array($turn) ? trim((string) ($turn['content'] ?? '')) : '';
+            if ($content === '') {
+                continue;
+            }
+            if ($role === AiMessage::ROLE_ASSISTANT) {
+                $messages[] = AiMessage::assistant($content);
+            } elseif ($role === AiMessage::ROLE_USER) {
+                $messages[] = AiMessage::user($content);
+            }
+        }
+
+        return $messages;
     }
 
     /** @return array<string, mixed> */

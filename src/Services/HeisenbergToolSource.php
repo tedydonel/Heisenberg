@@ -18,13 +18,41 @@ namespace Heisenberg\Services;
  * out over the network to come straight back would add a socket, a token and a
  * failure mode for nothing.
  *
- * The tier is `authors`, so the assistant can read and draft but cannot publish
- * — publishing stays a deliberate human act in the editor.
+ * The tier is `authors`, so the assistant can read and draft; whether it may
+ * also change a post's lifecycle status is a SEPARATE axis —
+ * {@see McpToolRegistry::SURFACE_EDITOR} — passed on every call below. A human
+ * is driving this surface (unlike the inbound MCP server, which stays
+ * draft-only), so it is offered `set_post_status`, gated per-call by the same
+ * {@see \Heisenberg\Policies\PostPolicy::transitionAllowed()} check the
+ * editor's own Publish button runs.
  */
 class HeisenbergToolSource
 {
     /** Namespaced so a connected MCP server offering `get_post` stays distinct. */
     public const PREFIX = 'heisenberg__';
+
+    /**
+     * The live-canvas write tool ({@see McpToolRegistry}'s `write_canvas`), by
+     * its namespaced name. Special-cased in {@see AiToolRunner::stream()}: its
+     * arguments ARE the payload — the panel applies them to the editor when the
+     * tool_use frame arrives, after this side has validated the shortcode.
+     */
+    public const CANVAS_TOOL = self::PREFIX . 'write_canvas';
+
+    /**
+     * Every tool whose execution is split validate-server-side /
+     * apply-client-side. {@see AiToolRunner::stream()} ships these frames with
+     * their arguments and an `ok` verdict; the panel does the applying.
+     */
+    public const CLIENT_APPLIED_TOOLS = [
+        self::CANVAS_TOOL,
+        self::PREFIX . 'set_page_title',
+    ];
+
+    public static function appliesClientSide(string $name): bool
+    {
+        return in_array($name, self::CLIENT_APPLIED_TOOLS, true);
+    }
 
     public function __construct(private McpToolRegistry $registry)
     {
@@ -41,7 +69,7 @@ class HeisenbergToolSource
             'name' => self::PREFIX . $tool['name'],
             'description' => $tool['description'],
             'input_schema' => $tool['inputSchema'],
-        ], $this->registry->listFor(McpToolRegistry::TIER_AUTHORS));
+        ], $this->registry->listFor(McpToolRegistry::TIER_AUTHORS, McpToolRegistry::SURFACE_EDITOR));
     }
 
     public function owns(string $name): bool
@@ -59,6 +87,7 @@ class HeisenbergToolSource
             substr($name, strlen(self::PREFIX)),
             $arguments,
             McpToolRegistry::TIER_AUTHORS,
+            McpToolRegistry::SURFACE_EDITOR,
         );
 
         return [

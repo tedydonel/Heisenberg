@@ -77,9 +77,19 @@ class HttpMcpClient implements McpClient
             }
         }
 
+        $content = implode("\n", $text);
+        $isError = (bool) ($result['isError'] ?? false);
+
+        // A text-less success reply left the model staring at `""` with no clue
+        // whether that meant "done, nothing to say" or "something broke" — say
+        // which, rather than teaching it that empty means silent success.
+        if ($content === '' && ! $isError) {
+            $content = '(The tool ran but returned no text content.)';
+        }
+
         return [
-            'content' => implode("\n", $text),
-            'isError' => (bool) ($result['isError'] ?? false),
+            'content' => $content,
+            'isError' => $isError,
         ];
     }
 

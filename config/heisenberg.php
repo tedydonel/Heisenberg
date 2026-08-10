@@ -58,6 +58,8 @@ return [
         'post_related'    => 'heisenberg_post_related',
         'seo_meta'        => 'seo_meta',
         'public_files'    => 'heisenberg_public_files',
+        'ai_conversations' => 'heisenberg_ai_conversations',
+        'ai_messages'      => 'heisenberg_ai_messages',
     ],
 
     // ── Block engine ──────────────────────────────────────────
@@ -308,7 +310,12 @@ return [
         // deliberately absent and must never be added: current Anthropic models
         // reject all four with a 400.
         'effort'     => env('HEISENBERG_AI_EFFORT', 'high'), // low|medium|high|xhigh|max
-        'max_tokens' => (int) env('HEISENBERG_AI_MAX_TOKENS', 16000),
+        // Reasoning tokens count against this cap on every current API. A heavy
+        // thinker (MiniMax-M3, DeepSeek-R1 class) can spend >16k on thinking
+        // ALONE for a full-page build and hit the cap before writing anything —
+        // the panel then shows "reply hit the model's length limit" with an
+        // empty canvas. 32k leaves room to think AND build.
+        'max_tokens' => (int) env('HEISENBERG_AI_MAX_TOKENS', 32000),
         'timeout'    => (int) env('HEISENBERG_AI_TIMEOUT', 120),
 
         // Laravel throttle spec ("requests,minutes") for the two model-calling
@@ -333,8 +340,14 @@ return [
                 'adapter'        => \Heisenberg\Adapters\HttpMcpClient::class,
                 'timeout'        => (int) env('HEISENBERG_MCP_TIMEOUT', 30),
                 // Hard stop on the request -> tool_use -> tool_result loop, so a
-                // model that keeps calling tools cannot run forever.
-                'max_iterations' => (int) env('HEISENBERG_MCP_MAX_ITERATIONS', 8),
+                // model that keeps calling tools cannot run forever. Raised from
+                // 8: a from-scratch creative prompt routinely burns 6-8 rounds on
+                // one-at-a-time discovery calls (list_blocks, then describe_block
+                // per block) before it authors anything, so 8 was clipping normal
+                // turns, not just runaway ones. The loop also no longer discards
+                // work on exhaustion (see AiToolRunner's graceful final pass), so
+                // raising this is a quality tradeoff, not a bill-risk one.
+                'max_iterations' => (int) env('HEISENBERG_MCP_MAX_ITERATIONS', 16),
             ],
 
             // Inbound — other AIs connect to Heisenberg and author pages through

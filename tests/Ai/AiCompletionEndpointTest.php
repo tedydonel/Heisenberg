@@ -103,6 +103,38 @@ class AiCompletionEndpointTest extends TestCase
             ->assertJsonPath('text', '');
     }
 
+    /**
+     * The provider-error case above is an ordinary AiResponse::error() value —
+     * this covers the other failure mode, an actual \Throwable escaping the
+     * tool loop, which used to fall straight through to a raw 500.
+     */
+    public function test_an_unexpected_exception_surfaces_as_502_rather_than_a_500(): void
+    {
+        $this->app['env'] = 'local';
+
+        $this->app->bind(\Heisenberg\Services\AiToolRunner::class, function () {
+            return new class () extends \Heisenberg\Services\AiToolRunner {
+                public function __construct()
+                {
+                }
+
+                public function run(
+                    \Heisenberg\Contracts\AiProvider $provider,
+                    \Heisenberg\Ai\AiRequest $request,
+                    ?array $byName = null,
+                    ?array $tools = null,
+                ): \Heisenberg\Ai\AiResponse {
+                    throw new \RuntimeException('tool loop blew up');
+                }
+            };
+        });
+
+        $response = $this->postJson('/editor/ai/complete', ['prompt' => 'hi']);
+
+        $response->assertStatus(502)->assertJsonPath('text', '');
+        $this->assertNotNull($response->json('error'));
+    }
+
     public function test_the_prompt_carries_the_selected_blocks_content_as_context(): void
     {
         $this->app['env'] = 'local';
@@ -140,8 +172,9 @@ class AiCompletionEndpointTest extends TestCase
             $this->assertStringContainsString('shortcode', $system);
             $this->assertStringContainsString('heading', $system);
             $this->assertStringContainsString('paragraph', $system);
-            // Anything else would bypass the block contracts entirely.
-            $this->assertStringContainsString('never HTML', $system);
+            // Block-level output must be the dialect, not raw HTML — anything
+            // else would bypass the block contracts entirely.
+            $this->assertStringContainsString('Block-level HTML may not', $system);
 
             return true;
         });
