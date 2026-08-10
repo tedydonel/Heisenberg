@@ -53,9 +53,18 @@ class PostTemplateContractValidator
 
     private const COMMENT_SORT_ORDERS = ['newest', 'oldest'];
 
-    private const TOC_SOURCES = ['headings'];
+    // 'entries' (2026-08-10): the post's own AUTHORED table of contents (Post::tocEntries(),
+    // heisenberg_post_toc_entries — editor Post-tab "Table of contents" modal), as distinct from
+    // 'headings' deriving the list from the block tree at render time. See
+    // docs/post-template-schema.md's tableOfContents section for the full contrast.
+    private const TOC_SOURCES = ['headings', 'entries'];
 
-    private const FEATURED_IMAGE_SOURCES = ['first-image-block'];
+    // 'post-attribute' (2026-08-10): the post's own featured_image_id FK —
+    // what the editor's Post-tab picker sets and PreviewController renders.
+    // Before it existed, a host whose template really used the FK had to
+    // declare 'first-image-block' for validity while implementing something
+    // else (observed on a real host install).
+    private const FEATURED_IMAGE_SOURCES = ['post-attribute', 'first-image-block'];
 
     public function __construct(private string $templatePrefix = 'heisenberg')
     {

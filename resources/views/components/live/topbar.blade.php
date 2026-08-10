@@ -433,7 +433,17 @@
                             'X-Requested-With': 'XMLHttpRequest',
                         },
                         credentials: 'same-origin',
-                        body: JSON.stringify({ title: hbReadTitle(), blocks: window.hbEditor.getDoc().blocks || [] }),
+                        body: (() => {
+                            const idEl = document.querySelector('[data-hb-featured-image-id]');
+                            const urlEl = document.querySelector('[data-hb-featured-image-id-url], [data-hb-featured-image-url]');
+                            const featuredId = idEl && idEl.value ? idEl.value : '';
+                            const featuredUrl = urlEl && urlEl.value ? urlEl.value : '';
+                            const payload = { title: hbReadTitle(), blocks: window.hbEditor.getDoc().blocks || [] };
+                            if (featuredId && featuredUrl) {
+                                payload.featured_image = { id: Number(featuredId), url: featuredUrl };
+                            }
+                            return JSON.stringify(payload);
+                        })(),
                     })
                         .then((r) => (r.ok ? r.json().catch(() => null) : null))
                         .then((res) => {

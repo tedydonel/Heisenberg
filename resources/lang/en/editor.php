@@ -77,6 +77,8 @@ return [
         'load_error' => 'Couldn’t load the media library. Try again.',
         'upload_failed' => 'Upload failed.',
         'upload_network' => 'Upload failed. Check your connection and try again.',
+        'upload_too_large' => 'Too large — the upload limit is :max.',
+        'upload_rejected_by_server' => 'The file failed to upload — files over :max (the server’s PHP upload limit) are rejected before the app ever sees them.',
         'uploading' => 'Uploading…',
         'dropzone_title' => 'Drop files to upload',
         'dropzone_desc' => 'Images are optimized automatically. Documents are stored as originals. Maximum size: 10 MB each.',
@@ -192,6 +194,30 @@ return [
         'type_manual' => 'Saved',
         'type_auto' => 'Autosave',
         'type_restore' => 'Restore point',
+    ],
+
+    // ── Table of contents (live/toc-dialog.blade.php) — the Post tab's authored TOC,
+    // reusing 'title' for both the disclosure-row label and the dialog header (same
+    // convention as 'revisions' above). ─────────────────────────────────────────
+    'toc' => [
+        'title' => 'Table of contents',
+        'summary_empty' => 'No table of contents yet.',
+        'summary_count' => ':count entries',
+        'edit' => 'Edit',
+        'add_entry' => 'Add entry',
+        'load_headings' => 'Load from headings',
+        'no_headings' => 'No headings found in the document.',
+        'no_new_headings' => 'Every heading is already in the table of contents.',
+        'label_ph' => 'Section label',
+        'anchor_ph' => 'anchor-id',
+        'move_up' => 'Move up',
+        'move_down' => 'Move down',
+        'remove' => 'Remove entry',
+        'empty_list' => 'No entries yet — add one or load from headings.',
+        'error' => 'Couldn’t save the table of contents. Try again.',
+        'needs_save' => 'Save the post first to store a table of contents.',
+        'incomplete' => 'Every entry needs a label and an anchor.',
+        'invalid_anchor' => 'Anchors must start with a letter and contain only letters, numbers, "-" or "_".',
     ],
 
     // ── AI chat history (live/ai/ai-history-dialog.blade.php) ──────

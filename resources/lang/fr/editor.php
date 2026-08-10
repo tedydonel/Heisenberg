@@ -78,6 +78,8 @@ return [
         'load_error' => 'Impossible de charger la bibliothèque. Réessayez.',
         'upload_failed' => 'Le téléversement a échoué.',
         'upload_network' => 'Le téléversement a échoué. Vérifiez votre connexion et réessayez.',
+        'upload_too_large' => 'Trop volumineux — la limite de téléversement est de :max.',
+        'upload_rejected_by_server' => 'Le fichier n’a pas pu être téléversé — les fichiers dépassant :max (la limite PHP du serveur) sont rejetés avant même que l’application ne les voie.',
         'uploading' => 'Téléversement…',
         'dropzone_title' => 'Déposez des fichiers pour les téléverser',
         'dropzone_desc' => 'Les images sont optimisées automatiquement. Les documents sont conservés tels quels. Taille maximale : 10 Mo chacun.',
@@ -191,6 +193,30 @@ return [
         'type_manual' => 'Enregistré',
         'type_auto' => 'Sauvegarde auto',
         'type_restore' => 'Point de restauration',
+    ],
+
+    // ── Table des matières (live/toc-dialog.blade.php) — la TOC rédigée de l'onglet Post,
+    // réutilise 'title' pour le libellé du disclosure-row ET le titre du dialogue (même
+    // convention que 'revisions' ci-dessus). ───────────────────────────────────────────
+    'toc' => [
+        'title' => 'Table des matières',
+        'summary_empty' => 'Pas encore de table des matières.',
+        'summary_count' => ':count entrées',
+        'edit' => 'Modifier',
+        'add_entry' => 'Ajouter une entrée',
+        'load_headings' => 'Charger depuis les titres',
+        'no_headings' => 'Aucun titre trouvé dans le document.',
+        'no_new_headings' => 'Tous les titres figurent déjà dans la table des matières.',
+        'label_ph' => 'Libellé de la section',
+        'anchor_ph' => 'identifiant-ancre',
+        'move_up' => 'Monter',
+        'move_down' => 'Descendre',
+        'remove' => 'Supprimer l\'entrée',
+        'empty_list' => 'Aucune entrée pour le moment — ajoutez-en une ou chargez depuis les titres.',
+        'error' => 'Impossible d\'enregistrer la table des matières. Réessayez.',
+        'needs_save' => 'Enregistrez d\'abord l\'article pour ajouter une table des matières.',
+        'incomplete' => 'Chaque entrée doit avoir un libellé et une ancre.',
+        'invalid_anchor' => 'Les ancres doivent commencer par une lettre et ne contenir que des lettres, chiffres, « - » ou « _ ».',
     ],
 
     // ── Historique des conversations IA (live/ai/ai-history-dialog.blade.php) ──

@@ -94,7 +94,7 @@ a result for every call it makes.
 
 | Capability | Why there is no tool |
 |---|---|
-| **Featured image** | The platform has no featured-image column, route, or adapter — the capability does not exist on either side yet. Building it would mean extending the post data model, which is out of scope. |
+| ~~**Featured image**~~ | **No longer a gap (2026-08-10):** `heisenberg_posts.featured_image_id` (nullable FK to public files, `nullOnDelete`), `Post::featuredImage`, `PUT /editor/posts/{post}/featured-image` (`PostSettingsController::updateFeaturedImage`, same posture as layout/discussion), rendered by the preview page. Editor-HTTP surface only — no MCP tool for it yet. |
 | **SEO fields** (meta title/description/OG) | Unbound scaffolding only (`NullPostSeoMetaProvider`, `seo_meta` table reserved) — "pending M3". Not reachable from the editor either. |
 | **Media upload** | `list_media` is intentionally read-only; upload is a separate surface the assistant does not drive. |
 | **Status changes over the inbound MCP server** | Deliberate: the external API stays draft-only (see Surface split). |

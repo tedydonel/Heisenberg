@@ -82,6 +82,42 @@ class EditorRendersTest extends TestCase
         $this->assertStringContainsString('data-hb-cv-band', $html);
     }
 
+    /**
+     * Table of contents (2026-08-10): the Post tab's Edit trigger + the modal it opens
+     * (live/toc-dialog.blade.php), including its custom scrollbar and the Load-from-headings
+     * wiring that writes a generated anchor back through window.hbEditor.setAttribute().
+     */
+    public function test_editor_ships_the_toc_section_modal_and_load_from_headings_wiring(): void
+    {
+        $html = $this->get('/editor')->assertOk()->getContent();
+
+        // The Post tab's Edit trigger — matched with the trailing `hidden` on the dialog scrim
+        // rather than the bare `data-hb-toc` substring, same reasoning as the revisions pin above
+        // (`data-hb-toc` is a prefix of `data-hb-toc-open`/`data-hb-toc-url-template`/etc.).
+        $this->assertStringContainsString('data-hb-toc-open', $html);
+        $this->assertStringContainsString('data-hb-toc hidden', $html);
+
+        // The dialog reuses the SAME modal shell (scrim classes + custom scrollbar) every other
+        // editor dialog does — never a bespoke one.
+        $this->assertStringContainsString('hb-mediadialog__scrim', $html);
+        $this->assertStringContainsString('data-hb-toc-scroll', $html);
+        $this->assertStringContainsString('[data-hb-toc-scroll]', $html); // custom-scrollbar's container selector
+
+        // Add/reorder/remove + Load from headings + Save chrome.
+        $this->assertStringContainsString('data-hb-toc-add', $html);
+        $this->assertStringContainsString('data-hb-toc-load', $html);
+        $this->assertStringContainsString('data-hb-toc-save', $html);
+        $this->assertStringContainsString('data-hb-toc-up', $html);
+        $this->assertStringContainsString('data-hb-toc-down', $html);
+        $this->assertStringContainsString('data-hb-toc-remove', $html);
+
+        // Load from headings walks the real runtime doc and writes the anchor back onto the
+        // heading block — never a client-only, throwaway computation.
+        $this->assertStringContainsString('window.hbEditor.getDoc()', $html);
+        $this->assertStringContainsString("window.hbEditor.setAttribute(block.id, 'anchor'", $html);
+        $this->assertStringContainsString("b.name === 'heisenberg/heading'", $html);
+    }
+
     public function test_client_registry_ships_contract_version_for_schema_version(): void
     {
         // BlocksPayloadService requires every block instance to carry a schemaVersion equal to
@@ -563,6 +599,27 @@ class EditorRendersTest extends TestCase
         $this->assertStringContainsString('data-nav-depth', $html);
         $this->assertStringContainsString('data-nav-twist', $html);
         $this->assertStringContainsString('walk(kids, depth + 1)', $html);
+    }
+
+    /**
+     * The extracted media-card's uploading/error states are LIVE (2026-08-10):
+     * the dialog uploads per-file over XHR into an optimistic uploading card
+     * (real progress ticks), failure swaps in the error card with Retry, and a
+     * file over the server's EFFECTIVE limit (min of media.max_kb and PHP's
+     * upload_max_filesize/post_max_size) is rejected client-side with the
+     * limit spelled out — instead of a wasted request ending in the opaque
+     * "failed to upload" default.
+     */
+    public function test_the_media_dialog_uploads_with_progress_cards_and_a_size_preflight(): void
+    {
+        $html = $this->get('/editor')->getContent();
+
+        $this->assertStringContainsString('data-hb-mediacard-uploading-template', $html);
+        $this->assertStringContainsString('data-hb-mediacard-error-template', $html);
+        $this->assertStringContainsString('hbUploadCard', $html);
+        $this->assertStringContainsString("xhr.upload.addEventListener('progress'", $html);
+        $this->assertStringContainsString('data-max-bytes=', $html);
+        $this->assertStringContainsString('hb-mediacard__retry', $html);
     }
 
     public function test_editor_and_preview_pages_for_a_post_require_view_authorization(): void

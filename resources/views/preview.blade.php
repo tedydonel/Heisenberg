@@ -3,6 +3,17 @@
      the doc's SEO meta so what you ship is what you see. --}}
 @php
     $seo = $seo ?? [];
+    $featured = $featured ?? null;
+    // AUTHORED table of contents (Post::tocEntries()) — renders ONLY when the post has rows;
+    // never derived from headings here (that's the tableOfContents capability's own render-time
+    // job inside a template's `view`, not this generic preview page — see
+    // docs/post-template-schema.md's tableOfContents section).
+    $toc = $toc ?? [];
+    // Backwards-compat: the controller used to inline `'image-id'` etc. in $seo; normalize a
+    // legacy $seo['featured_image'] into the same flat array the controller now passes directly.
+    if ($featured === null && isset($seo['featured_image']) && is_array($seo['featured_image'])) {
+        $featured = $seo['featured_image'];
+    }
     $metaTitle = trim((string) ($seo['title'] ?? '')) ?: $title;
     $metaDescription = trim((string) ($seo['description'] ?? ''));
     $canonical = trim((string) ($seo['canonical'] ?? ''));
@@ -25,7 +36,7 @@
     <meta property="og:type" content="article" />
     <meta property="og:title" content="{{ $ogTitle }}" />
     @if ($ogDescription !== '')<meta property="og:description" content="{{ $ogDescription }}" />@endif
-    @if ($ogImage !== '')<meta property="og:image" content="{{ $ogImage }}" />@endif
+    @if ($ogImage !== '')<meta property="og:image" content="{{ $ogImage }}" />@elseif (! empty($featured['url']))<meta property="og:image" content="{{ $featured['url'] }}" />@endif
     <meta name="twitter:card" content="{{ $ogImage !== '' ? 'summary_large_image' : 'summary' }}" />
     <link rel="icon" type="image/svg+xml" href="{{ route('heisenberg.editor.asset.logo') }}" />
     @if (! empty($fontsHref))
@@ -58,10 +69,23 @@
             font-family: var(--font-sans, 'Rubik'), -apple-system, sans-serif;
             -webkit-font-smoothing: antialiased;
         }
-        .hb-preview-page { max-width: 760px; margin: 0 auto; padding: 56px 24px 96px; }
+        .hb-preview-page { max-width: 760px; margin: 0 auto; padding: 56px 24px 96px; position: relative; z-index: 1; }
         .hb-preview-title { font-size: 40px; font-weight: 700; letter-spacing: -0.02em; line-height: 1.15; margin: 0 0 10px; }
+    .hb-preview-featured { display: block; margin: 0 0 28px; }
+    /* Fixed-height hero: width fills the .hb-preview-page column; height:300px is the
+       design standard; object-fit:cover (default is fill) so non-16:9 sources crop into the
+       gutter instead of squishing. */
+    .hb-preview-featured img { display: block; width: 100%; height: 300px; object-fit: cover; border-radius: var(--r-md, 5px); }
+    .hb-preview-toc {
+        margin: 0 0 28px; padding: var(--sp-3, 1rem) var(--sp-4, 1.5rem);
+        background: var(--subtle, #fafafa); border: 1px solid var(--line, #e4e4e4); border-radius: var(--r-md, 5px);
+    }
+    .hb-preview-toc__title { margin: 0 0 8px; font-size: var(--fs-sm, 13px); font-weight: 600; text-transform: uppercase; letter-spacing: .04em; color: var(--slate, #5a5a5a); }
+    .hb-preview-toc__list { margin: 0; padding: 0; list-style: none; display: flex; flex-direction: column; gap: 4px; }
+    .hb-preview-toc__list a { color: var(--ink, #0a0a0a); font-size: var(--fs-md, 14px); text-decoration: none; }
+    .hb-preview-toc__list a:hover { text-decoration: underline; }
         .hb-preview-bar {
-            position: sticky; top: 0; background: var(--ink, #0a0a0a); color: var(--on-ink, #fff);
+            position: sticky; top: 0; z-index: 10; background: var(--ink, #0a0a0a); color: var(--on-ink, #fff);
             font: 12px/1 var(--font-sans, 'Rubik'), sans-serif; letter-spacing: 0.04em;
             padding: 8px 16px; display: flex; align-items: center; gap: 8px;
         }
@@ -88,6 +112,21 @@
             </div>
         @else
             <h1 class="hb-preview-title">{{ $title }}</h1>
+            @if (! empty($featured['url']))
+                <figure class="hb-preview-featured">
+                    <img src="{{ $featured['url'] }}"@if (! empty($featured['srcset'])) srcset="{{ $featured['srcset'] }}"@endif@if (! empty($featured['sizes'])) sizes="{{ $featured['sizes'] }}"@if (! empty($featured['alt'])) alt="{{ $featured['alt'] }}"@else alt=""@endif>
+                </figure>
+            @endif
+            @if (count($toc) > 0)
+                <nav class="hb-preview-toc" aria-label="Table of contents">
+                    <p class="hb-preview-toc__title">Contents</p>
+                    <ol class="hb-preview-toc__list">
+                        @foreach ($toc as $entry)
+                            <li><a href="#{{ $entry['anchor'] }}">{{ $entry['label'] }}</a></li>
+                        @endforeach
+                    </ol>
+                </nav>
+            @endif
             {!! $html !!}
         @endif
     </main>

@@ -69,10 +69,12 @@ Route::middleware(config('heisenberg.middleware.editor', ['web']))->group(functi
     Route::delete('/editor/posts/{post}/categories/{category}', [PostCategoryController::class, 'detach'])->whereNumber('post')->whereNumber('category')->name('heisenberg.editor.posts.categories.detach');
     Route::post('/editor/posts/{post}/tags/{tag}', [PostTagController::class, 'attach'])->whereNumber('post')->whereNumber('tag')->name('heisenberg.editor.posts.tags.attach');
     Route::delete('/editor/posts/{post}/tags/{tag}', [PostTagController::class, 'detach'])->whereNumber('post')->whereNumber('tag')->name('heisenberg.editor.posts.tags.detach');
-    // Lightweight per-post settings (Page layout, Discussion) — see PostSettingsController's own
-    // docblock for why these bypass PostController::update() entirely.
+    // Lightweight per-post settings (Page layout, Discussion, Featured image, Table of contents) —
+    // see PostSettingsController's own docblock for why these bypass PostController::update() entirely.
     Route::put('/editor/posts/{post}/layout', [PostSettingsController::class, 'updateLayout'])->whereNumber('post')->name('heisenberg.editor.posts.layout.update');
     Route::put('/editor/posts/{post}/discussion', [PostSettingsController::class, 'updateDiscussion'])->whereNumber('post')->name('heisenberg.editor.posts.discussion.update');
+    Route::put('/editor/posts/{post}/featured-image', [PostSettingsController::class, 'updateFeaturedImage'])->whereNumber('post')->name('heisenberg.editor.posts.featured-image.update');
+    Route::put('/editor/posts/{post}/toc', [PostSettingsController::class, 'updateToc'])->whereNumber('post')->name('heisenberg.editor.posts.toc.update');
     // "Preview in another page" (topbar's eye button) — reaches the SAME
     // PreviewController the deprecated builder route group already wires at
     // POST/GET /builder/preview (routes/web.php), but under the editor's own

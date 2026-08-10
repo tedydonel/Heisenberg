@@ -181,6 +181,72 @@ class EditorPreviewTest extends TestCase
         $this->get('/editor/999999/preview')->assertNotFound();
     }
 
+    /**
+     * The featured image renders above the title when one is set (2026-08-10:
+     * Post::featuredImage + PostSettingsController::updateFeaturedImage +
+     * preview.blade.php's figure), and the figure is absent when none is.
+     */
+    public function test_saved_post_preview_renders_the_featured_image_when_set(): void
+    {
+        $post = $this->createPost('Body text');
+        $postId = $post['post']['id'];
+
+        // Match the MARKUP, not the class name — the stylesheet always carries
+        // the .hb-preview-featured rules regardless of whether a figure renders.
+        $without = (string) $this->get("/editor/{$postId}/preview")->assertOk()->getContent();
+        $this->assertStringNotContainsString('<figure class="hb-preview-featured"', $without);
+
+        $file = \Heisenberg\Models\PublicFile::create([
+            'type' => 'jpg',
+            'disk' => 'uploads',
+            'stored_path' => 'media/2026/08/hero.jpg',
+            'original_name' => 'hero.jpg',
+            'stored_name' => 'hero.jpg',
+            'mime_type' => 'image/jpeg',
+            'size_bytes' => 2048,
+            'alt_text_en' => 'A hero image',
+        ]);
+        $this->putJson("/editor/posts/{$postId}/featured-image", ['featured_image_id' => $file->id])->assertOk();
+
+        $with = (string) $this->get("/editor/{$postId}/preview")->assertOk()->getContent();
+
+        $this->assertStringContainsString('<figure class="hb-preview-featured"', $with);
+        $this->assertStringContainsString($file->url, $with);
+        $this->assertStringContainsString('alt="A hero image"', $with);
+    }
+
+    /**
+     * The AUTHORED table of contents (Post::tocEntries(), PostSettingsController::updateToc(),
+     * 2026-08-10) renders as a <nav> above the body ONLY when the post has entries — it must
+     * never appear for a post nobody added one to.
+     */
+    public function test_saved_post_preview_renders_the_table_of_contents_when_entries_exist(): void
+    {
+        $post = $this->createPost('Body text');
+        $postId = $post['post']['id'];
+
+        // Match the MARKUP, not the class name — the stylesheet always carries the
+        // .hb-preview-toc rules regardless of whether a <nav> renders (same reasoning as the
+        // featured-image test above).
+        $without = (string) $this->get("/editor/{$postId}/preview")->assertOk()->getContent();
+        $this->assertStringNotContainsString('<nav class="hb-preview-toc"', $without);
+
+        $this->putJson("/editor/posts/{$postId}/toc", [
+            'entries' => [
+                ['label' => 'Introduction', 'anchor' => 'introduction'],
+                ['label' => 'Deep Dive', 'anchor' => 'deep-dive'],
+            ],
+        ])->assertOk();
+
+        $with = (string) $this->get("/editor/{$postId}/preview")->assertOk()->getContent();
+
+        $this->assertStringContainsString('<nav class="hb-preview-toc"', $with);
+        $this->assertStringContainsString('href="#introduction"', $with);
+        $this->assertStringContainsString('>Introduction<', $with);
+        $this->assertStringContainsString('href="#deep-dive"', $with);
+        $this->assertStringContainsString('>Deep Dive<', $with);
+    }
+
     public function test_post_scoped_preview_route_url_matches_the_editor_path(): void
     {
         $this->assertSame(

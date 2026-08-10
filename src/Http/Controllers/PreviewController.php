@@ -11,6 +11,7 @@ use Heisenberg\Services\BlockRegistryService;
 use Heisenberg\Services\FontCatalogService;
 use Heisenberg\Services\ThemeRepository;
 use Heisenberg\Support\BlockViewData;
+use Illuminate\Contracts\Auth\Authenticatable;
 use Illuminate\Contracts\View\View;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -33,6 +34,13 @@ use Illuminate\Support\Facades\Gate;
  *    a stale or unrelated document some other tab left sitting in the
  *    session, and it needs no POST at all before the tab can be pointed at
  *    it.
+ *
+ * For the post-scoped flow, the controller also loads the post's featured
+ * image (Post::featuredImage BelongsTo) and passes a flat {url, srcset, sizes,
+ * alt} payload to the view (preview.blade.php renders it above the title when
+ * present). The session flow carries the same payload through the client doc
+ * envelope (`featured_image` field, optional), so the editor's pick shows up
+ * in unsaved previews without a persistence round-trip.
  */
 class PreviewController
 {
@@ -70,11 +78,18 @@ class PreviewController
         $hasDoc = is_array($doc);
         $doc = $hasDoc ? $doc : ['title' => null, 'blocks' => []];
 
+        // The session envelope may carry a `featured_image` field (the inspector's hidden inputs,
+        // echoed back by EditorController::show() clients when an unsaved doc preview is opened).
+        // It's already in the right shape — {id, url, ...} — so we just pass it through.
+        $featured = is_array($doc['featured_image'] ?? null) ? $doc['featured_image'] : null;
+        $featured = $this->normalizeFeatured($featured);
+
         return $this->renderDoc(
             blocks: array_values($doc['blocks']),
             title: (string) ($doc['title'] ?? '') ?: 'Untitled post',
             seo: (array) (($doc['meta'] ?? [])['seo'] ?? []),
             hasDoc: $hasDoc,
+            featured: $featured,
         );
     }
 
@@ -92,20 +107,29 @@ class PreviewController
     {
         /** @var class-string<Post> $class */
         $class = (string) config('heisenberg.models.post', Post::class);
-        $model = $class::query()->with('blocks')->findOrFail($post);
+        $model = $class::query()->with(['featuredImage', 'tocEntries'])->findOrFail($post);
 
-        Gate::forUser($request->user() ?? new GuestActor())->authorize('view', $model);
+        Gate::forUser($this->actor($request))->authorize('view', $model);
 
         return $this->renderDoc(
             blocks: $model->blocks->map(fn ($block) => $block->content)->values()->all(),
             title: (string) ($model->title_en ?? '') ?: 'Untitled post',
             seo: [],
             hasDoc: true,
+            featured: $this->featuredPayload($model->featuredImage),
+            // The AUTHORED table of contents (Post::tocEntries()) — renders ONLY when the post
+            // has rows here; see preview.blade.php and Post::tocEntries()'s own docblock for why
+            // this is deliberately distinct from the tableOfContents capability's render-time
+            // "derive from headings" path (docs/post-template-schema.md, source: "entries").
+            toc: $model->tocEntries->map(fn ($entry) => [
+                'label' => $entry->label,
+                'anchor' => $entry->anchor,
+            ])->values()->all(),
         );
     }
 
     /** @param list<array<string, mixed>> $blocks */
-    private function renderDoc(array $blocks, string $title, array $seo, bool $hasDoc): View
+    private function renderDoc(array $blocks, string $title, array $seo, bool $hasDoc, ?array $featured, array $toc = []): View
     {
         $theme = $this->themes->load();
 
@@ -128,6 +152,52 @@ class PreviewController
             'themeCss' => $this->themes->css($theme),
             'fontsHref' => $this->fonts->css2Url($faces),
             'seo' => $seo,
+            'featured' => $featured,
+            'toc' => $toc,
         ]);
+    }
+
+    /**
+     * Resolve a featured image payload from a PublicFile instance. Returns null when the post has
+     * no featured image; otherwise returns the same flat {id, url, srcset, sizes, alt} payload
+     * PublicFile::imagePayload() produces, plus the localized alt text the preview needs.
+     */
+    private function featuredPayload($file): ?array
+    {
+        if ($file === null) {
+            return null;
+        }
+
+        $payload = $file->imagePayload('hero');
+        $payload['id'] = (int) $file->id;
+        $payload['alt'] = $file->getAlt(app()->getLocale());
+
+        return $payload;
+    }
+
+    /**
+     * The session-flow payload may already be a PublicFile::imagePayload-shaped array (when the
+     * client sent it via the editor's POST /editor/preview envelope) — in that case we just
+     * hydrate the alt from the existing alt field if present, otherwise leave it as-is.
+     */
+    private function normalizeFeatured(?array $payload): ?array
+    {
+        if ($payload === null) {
+            return null;
+        }
+        if (! isset($payload['url']) || ! is_string($payload['url']) || $payload['url'] === '') {
+            return null;
+        }
+
+        if (! isset($payload['alt']) || ! is_string($payload['alt'])) {
+            $payload['alt'] = '';
+        }
+
+        return $payload;
+    }
+
+    private function actor(Request $request): Authenticatable
+    {
+        return $request->user() ?? new GuestActor();
     }
 }

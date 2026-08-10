@@ -7,8 +7,10 @@ hands off to the adopter's own implementation.
 
 This is a **contract on disk**, exactly like a [block contract](block-schema.md) — no database
 migration is required to add, change, or remove a template. Templates live at
-`resources/templates/<slug>/<slug>.json` (overridable via `config('heisenberg.template_root')`,
-not yet wired — see [Wiring](#wiring)). Each is validated by `PostTemplateContractValidator`;
+`resources/templates/<slug>/<slug>.json`, overridable via `config('heisenberg.template_root')` —
+**this is how a host supplies its own post/page templates**: point `template_root` at a
+directory in the host app and the registry scans, validates and serves those contracts instead.
+Each is validated by `PostTemplateContractValidator`;
 invalid contracts are excluded from the registry and reported by `PostTemplateRegistryService`
 and the `templates:verify` command.
 
@@ -136,27 +138,36 @@ untouched. See [Wiring](#wiring) for the exact addition needed.
 ```jsonc
 "tableOfContents": {
   "enabled": true,
-  "source": "headings",        // only value today — see note below
-  "minLevel": 2,                // 1-6
-  "maxLevel": 3,                // 1-6, >= minLevel
+  "source": "headings",        // "headings" | "entries" — see note below
+  "minLevel": 2,                // 1-6, "headings" only
+  "maxLevel": 3,                // 1-6, >= minLevel, "headings" only
   "title": "heisenberg::templates.article.toc_title"
 }
 ```
 
-Computed from the post's own heading blocks (`heisenberg/heading` instances in its `blocks`) at
-render time — no storage needed. `config('heisenberg.tables.toc_entries')` reserves
-`heisenberg_post_toc_entries` for a *future*, editorially-curated TOC (custom labels, manual
-numbering/ordering — see `docs/BLUEPRINT.md` §2.3.10's `BlogPostTocEntry`, planned M3). That is
-a genuinely different feature (curated vs. derived) and `"source"` only accepts `"headings"`
-today; `"source": "curated"` will be added once that model ships, not invented here against
-nothing.
+Two sources, genuinely different features:
+
+- `"headings"` — computed from the post's own heading blocks (`heisenberg/heading` instances in
+  its `blocks`) at render time; no storage needed. `minLevel`/`maxLevel` filter which heading
+  levels are included.
+- `"entries"` (2026-08-10) — the post's own AUTHORED table of contents: `{label, anchor}` rows an
+  editor writes explicitly from the editor's Post tab ("Table of contents" section → modal),
+  stored in `heisenberg_post_toc_entries` (`config('heisenberg.tables.toc_entries')`,
+  `Post::tocEntries()`, blueprint §2.3.10's `BlogPostTocEntry`). Custom labels and manual
+  ordering, independent of the heading structure — a post's TOC renders only when it has rows
+  here. `minLevel`/`maxLevel` don't apply to this source (there is no heading level to filter).
+  Written via `PUT /editor/posts/{post}/toc` (`PostSettingsController::updateToc()`), which
+  replaces the whole set on every save; the modal's "Load from headings" action seeds it from the
+  current heading blocks (writing a slugified `anchor` attribute back onto each heading so the
+  link actually resolves) as a starting point, not a live binding — editing headings afterward
+  does not change already-authored entries.
 
 ### 2. Featured image — Render
 
 ```jsonc
 "featuredImage": {
   "enabled": true,
-  "source": "first-image-block",   // only value today
+  "source": "post-attribute",       // or "first-image-block"
   "context": "hero",                // passed to MediaResolver::resolve($url, $context)
   "fallback": null                  // a static fallback URL, or null
 }
@@ -167,10 +178,10 @@ magazine schema reserves one; the as-built reduced migration does not carry it, 
 is a migration out of scope here). So, like TOC, this resolves from content that already
 exists: the first `heisenberg/image` block in the post, its `url` attribute resolved through the
 **already-bound** `MediaResolver` contract (no new binding needed — this is the one render
-capability that leans on an existing seam rather than a new one). A host that adds their own
-`featured_image` column to their own `Post` subclass is not accommodated by `"source"` today
-(only `"first-image-block"` validates) — that would be a reasonable `"post-attribute"` addition
-once a host actually needs it, deliberately not speculated into the validator now.
+capability that leans on an existing seam rather than a new one). `"post-attribute"` (added
+2026-08-10, the moment a host actually needed it — a real host integration bench) declares the OTHER
+source: the post's own `featured_image_id` FK (`Post::featuredImage`), i.e. whatever the
+editor's Post-tab picker set — the same relation `PreviewController::featuredPayload()` renders.
 
 ### 3. Post views — Adapter
 
@@ -448,6 +459,11 @@ namespace, the same convention `resources/lang/{en,fr}/blocks.php` uses for bloc
 5. Run `php artisan templates:verify` to confirm your contract validates before shipping it.
 
 ## Wiring
+
+**Historical note (2026-08-10): everything below has since landed** — the config keys exist in
+`config/heisenberg.php` (`template_root`/`template_prefix`/`post_template`), the four provider
+bindings are in `HeisenbergServiceProvider` (see its contract-binding map), and both verify
+commands are registered. The section is kept as the record of what wiring meant.
 
 Everything in this delivery works standalone (direct instantiation, exactly like the tests in
 `tests/Templates/`) with **zero required changes elsewhere**. Two things were deliberately *not*

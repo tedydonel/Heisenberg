@@ -213,10 +213,42 @@ class PostTemplateContractValidatorTest extends TestCase
         $this->assertInvalid($contract, 'tableOfContents');
     }
 
+    /**
+     * 'entries' (2026-08-10) — the post's own AUTHORED table of contents (Post::tocEntries(),
+     * editor Post-tab modal), as opposed to 'headings' deriving the list from the block tree.
+     * minLevel/maxLevel don't apply to this source (no heading levels to filter), so a contract
+     * that omits them entirely must still be valid.
+     */
+    public function test_table_of_contents_source_accepts_entries(): void
+    {
+        $contract = $this->validContract();
+        $contract['capabilities']['tableOfContents'] = ['enabled' => true, 'source' => 'entries', 'title' => 'x'];
+        $this->assertValid($contract);
+    }
+
     public function test_featured_image_requires_a_source_when_enabled(): void
     {
         $contract = $this->validContract();
         unset($contract['capabilities']['featuredImage']['source']);
+        $this->assertInvalid($contract, 'featuredImage');
+    }
+
+    /**
+     * 'post-attribute' (2026-08-10): the post's own featured_image_id FK — what
+     * the editor's picker sets. Before it joined the enum, a host template that
+     * really rendered the FK had to declare 'first-image-block' for validity.
+     */
+    public function test_featured_image_accepts_the_post_attribute_source(): void
+    {
+        $contract = $this->validContract();
+        $contract['capabilities']['featuredImage']['source'] = 'post-attribute';
+        $this->assertValid($contract);
+    }
+
+    public function test_featured_image_rejects_an_unknown_source(): void
+    {
+        $contract = $this->validContract();
+        $contract['capabilities']['featuredImage']['source'] = 'divination';
         $this->assertInvalid($contract, 'featuredImage');
     }
 

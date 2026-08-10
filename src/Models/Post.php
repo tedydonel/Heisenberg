@@ -6,6 +6,7 @@ namespace Heisenberg\Models;
 
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
@@ -26,8 +27,8 @@ class Post extends Model
         restore as private softDeletesRestore;
     }
 
-    // page_padding_x/page_padding_y/allow_comments are deliberately NOT fillable — same
-    // "never mass-assignable via PostController's generic content save" posture the old
+    // page_padding_x/page_padding_y/allow_comments/featured_image_id are deliberately NOT fillable —
+    // same "never mass-assignable via PostController's generic content save" posture the old
     // category_id column had (see PostTaxonomyRelationsTest's docblock): PostSettingsController
     // sets them via direct property assignment, the only path that may write them.
     protected $fillable = [
@@ -165,6 +166,39 @@ class Post extends Model
             'post_id',
             'tag_id'
         );
+    }
+
+    /**
+     * The Post tab's featured image (Post Settings → Featured image disclosure). NULL means "no
+     * featured image picked" — the inspector's dropzone trigger renders instead of the preview.
+     * The image itself lives on heisenberg_public_files; this is just the FK pointer. Same
+     * "independent referenced row, not owned content" posture as categories()/tags() above: a
+     * featured image can be deleted without losing the post (FK nullOnDelete, see the migration
+     * that adds featured_image_id), and a force-deleted post can leave its featured image
+     * intact for reuse elsewhere.
+     */
+    public function featuredImage(): BelongsTo
+    {
+        return $this->belongsTo(
+            config('heisenberg.models.public_file', PublicFile::class),
+            'featured_image_id'
+        );
+    }
+
+    /**
+     * The Post tab's AUTHORED table of contents (blueprint §2.3.10 `BlogPostTocEntry`) —
+     * ordered rows written wholesale by PostSettingsController::updateToc(). Distinct from the
+     * `tableOfContents` capability's `source: "headings"` derivation (docs/post-template-schema.md):
+     * that one is computed from the block tree at render time and needs no storage; this is the
+     * editorially-curated counterpart (`source: "entries"`), and the post's TOC renders ONLY when
+     * this relation is non-empty. Same "independent, not part of the soft-delete cascade" posture
+     * as categories()/tags() above is NOT the case here — toc_entries FK is cascadeOnDelete at the
+     * DB level (see the migration), so a hard-deleted post takes its entries with it; nothing in
+     * Post::delete()/restore() needs to touch them since a soft-delete never issues that DELETE.
+     */
+    public function tocEntries(): HasMany
+    {
+        return $this->hasMany(config('heisenberg.models.toc_entry', TocEntry::class), 'post_id')->orderBy('order');
     }
 
     /** Atomic bump of the optimistic-lock counter (autosave, §2.3.1). */

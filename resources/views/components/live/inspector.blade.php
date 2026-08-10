@@ -247,6 +247,18 @@
     'postAllowComments' => true,
     'postDiscussionUrlTemplate' => '',
     'postRevisionsUrlTemplate' => '',
+    // The Post tab's Featured image (set on Post::featuredImage BelongsTo). Seeded from
+    // EditorController::show() for an existing post; null for /editor (blank document). The
+    // inspector's script calls updateFeaturedImage() on every pick/remove so the change
+    // persists across reloads.
+    'postFeaturedImage' => null,
+    'postFeaturedImageUrlTemplate' => '',
+    // The Post tab's authored table of contents (Post::tocEntries(), {label, anchor} pairs only —
+    // see EditorController::show()). Empty for /editor's blank document. The disclosure row below
+    // just renders a summary + Edit trigger; live/toc-dialog.blade.php owns the whole editing
+    // surface (add/reorder/remove/load-from-headings/save).
+    'postTocEntries' => [],
+    'postTocUrlTemplate' => '',
     'blockIcon' => '',
     'blockName' => __('heisenberg::editor.common.no_block_selected_title'),
     'blockDescription' => __('heisenberg::editor.common.no_block_selected_desc'),
@@ -281,7 +293,8 @@
         </div>
 
         <x-ui.disclosure-row icon="image" :label="__('heisenberg::editor.inspector.post_featured_image')" chevron="down" />
-        <div class="hb-post-dropzone-wrap" data-hb-disclosure-body data-hb-featured-field>
+        <div class="hb-post-dropzone-wrap" data-hb-disclosure-body data-hb-featured-field
+            @if ((string) $postFeaturedImageUrlTemplate !== '') data-hb-featured-image-update-url-template="{{ $postFeaturedImageUrlTemplate }}" @endif>
             {{-- A real focusable control (native <button>, not a bare div) — opens the media
                  dialog below. Hidden once an image is picked, swapping for the preview block. --}}
             <button type="button" class="hb-post-dropzone" data-hb-featured-trigger aria-haspopup="dialog" aria-label="{{ __('heisenberg::editor.inspector.post_featured_set') }}">
@@ -290,8 +303,9 @@
                 </span>
                 <span class="hb-post-dropzone__label">{{ __('heisenberg::editor.inspector.post_featured_set') }}</span>
             </button>
-            <div class="hb-post-dropzone-preview" data-hb-featured-preview hidden>
-                <img class="hb-post-dropzone-preview__img" data-hb-featured-img alt="{{ __('heisenberg::editor.inspector.post_featured_image') }}">
+            <div class="hb-post-dropzone-preview" data-hb-featured-preview @if ($postFeaturedImage === null) hidden @endif>
+                <img class="hb-post-dropzone-preview__img" data-hb-featured-img
+                    @if ($postFeaturedImage !== null) src="{{ $postFeaturedImage['url'] }}" @if (! empty($postFeaturedImage['alt'])) alt="{{ $postFeaturedImage['alt'] }}" @else alt="" @endif @endif>
                 <div class="hb-post-dropzone-preview__actions">
                     <button type="button" class="hb-post-dropzone-preview__btn" data-hb-featured-replace aria-label="{{ __('heisenberg::editor.inspector.post_featured_replace') }}">
                         @include('heisenberg::components.ui.icon', ['name' => 'arrows-clockwise', 'size' => 14])
@@ -301,13 +315,14 @@
                     </button>
                 </div>
             </div>
-            {{-- No post-persistence layer exists in this package yet (no save endpoint at all —
-                 see the featured-image script below for the full explanation). These hidden
-                 inputs are the documented client-side home for the pick, mirroring data-hb-title
-                 above: readable by the rest of the app, but in-memory only — they do NOT survive
-                 a reload. --}}
-            <input type="hidden" data-hb-featured-image-id value="">
-            <input type="hidden" data-hb-featured-image-url value="">
+            {{-- Hidden inputs are the documented client-side mirror of the post's featured image
+                 (the same Post::featuredImage BelongsTo that the preview page now reads). Seeded
+                 from EditorController::show() on first render so a reload shows the existing pick,
+                 not an empty dropzone. The script below PUTs every change to the post's
+                 featured-image endpoint, so the pick survives reloads — the same posture as the
+                 discussion/layout rows adjacent to this one. See featured-image script below. --}}
+            <input type="hidden" data-hb-featured-image-id value="{{ $postFeaturedImage['id'] ?? '' }}">
+            <input type="hidden" data-hb-featured-image-url value="{{ $postFeaturedImage['url'] ?? '' }}">
             @php
                 $hbFeaturedSelectUrl = \Illuminate\Support\Facades\Route::has('media.select') ? route('media.select') : null;
                 $hbFeaturedUploadUrl = \Illuminate\Support\Facades\Route::has('media.upload') ? route('media.upload') : null;
@@ -382,6 +397,31 @@
             </div>
             <span class="hb-post-taxonomy-hint" data-hb-post-discussion-hint @if ($postId !== null) hidden @endif>{{ __('heisenberg::editor.inspector.post_taxonomy_needs_save') }}</span>
         </div>
+
+        {{-- Table of contents (2026-08-10) — the AUTHORED counterpart to the tableOfContents
+             capability's `source: "headings"` render-time derivation (docs/post-template-schema.md,
+             `source: "entries"`). This row only shows a summary + Edit trigger; the whole editing
+             surface (add/reorder/remove entries, Load from headings, Save) lives in
+             live/toc-dialog.blade.php's modal, which the Edit button opens with the post's current
+             entries handed over as JSON (data-hb-toc-entries) — same "read off the opener" contract
+             live/revisions-dialog uses for its own url template + post id. The summary text is
+             rendered server-side from EditorController::show()'s postTocEntries and kept live by the
+             dialog's own script after every save (see toc-dialog's applySaved()). --}}
+        <x-ui.disclosure-row icon="list-numbers" :label="__('heisenberg::editor.toc.title')" chevron="down" />
+        <div class="hb-post-toc-body" data-hb-disclosure-body data-hb-post-toc-field>
+            <span class="hb-post-toc-summary" data-hb-post-toc-summary>
+                {{ count($postTocEntries) > 0
+                    ? str_replace(':count', (string) count($postTocEntries), __('heisenberg::editor.toc.summary_count'))
+                    : __('heisenberg::editor.toc.summary_empty') }}
+            </span>
+            <button type="button" class="hb-post-toc-edit" data-hb-toc-open aria-haspopup="dialog"
+                data-hb-post-id="{{ $postId ?? '' }}"
+                data-hb-toc-url-template="{{ $postTocUrlTemplate }}"
+                data-hb-toc-entries="{{ json_encode($postTocEntries) }}">
+                {{ __('heisenberg::editor.toc.edit') }}
+            </button>
+        </div>
+        <x-live.toc-dialog />
 
         {{-- The Summary rows' live half. hb:post-saved carries the saved post payload
              (topbar dispatches it on every 2xx save); blocks recount from the runtime's
@@ -529,6 +569,7 @@
         </style>
         <script>
             (() => {
+                const csrf = () => (document.querySelector('meta[name="csrf-token"]') || {}).content || '';
                 const boot = () => {
                     document.querySelectorAll('[data-hb-featured-field]').forEach((field) => {
                         if (field.__hbFeatured) return;
@@ -543,6 +584,38 @@
                         const idInput = field.querySelector('[data-hb-featured-image-id]');
                         const urlInput = field.querySelector('[data-hb-featured-image-url]');
                         if (!trigger || !preview || !img) return;
+
+                        const updateUrlTemplate = field.dataset.hbFeaturedImageUpdateUrlTemplate || '';
+                        // The post id is tracked at the page level (every save echo updates it via
+                        // hb:post-id — see topbar.blade.php's own docblock). When the broadcast
+                        // arrives and we don't have a saved id yet, queuing a single retry is the
+                        // simplest way to cover the "save, then pick" sequence without polling.
+                        let postId = document.querySelector('[data-hb-post-id]')?.dataset?.hbPostId || '';
+                        let pending = null;
+                        const consume = () => {
+                            if (pending && postId) {
+                                const file = pending; pending = null;
+                                requestSave(file);
+                            }
+                        };
+                        document.addEventListener('hb:post-id', (event) => {
+                            if (event && event.detail && event.detail.id != null) {
+                                postId = String(event.detail.id);
+                                consume();
+                            }
+                        });
+
+                        const requestSave = (file) => {
+                            if (!updateUrlTemplate) return;
+                            if (!postId) { pending = file; return; }
+                            const url = updateUrlTemplate.replace('__ID__', encodeURIComponent(postId));
+                            const payload = JSON.stringify({ featured_image_id: file && file.id != null ? file.id : null });
+                            const headers = { 'Accept': 'application/json', 'Content-Type': 'application/json', 'X-Requested-With': 'XMLHttpRequest' };
+                            const token = csrf();
+                            if (token) headers['X-CSRF-TOKEN'] = token;
+                            fetch(url, { method: 'PUT', headers, body: payload, credentials: 'same-origin' })
+                                .catch(() => { /* silent — the in-memory pick still works, just won't persist */ });
+                        };
 
                         const applySelection = (file, opts) => {
                             opts = opts || {};
@@ -562,11 +635,17 @@
                                 if (urlInput) urlInput.value = '';
                                 if (opts.focusTrigger) trigger.focus();
                             }
-                            // Rest-of-app hook: no post-persistence layer exists yet (no save
-                            // endpoint in this package), so there is nothing to POST this to. This
-                            // event plus the two hidden inputs above are the documented, in-memory
-                            // client-side home for the pick — lost on reload, by design, rather
-                            // than faking durability (e.g. via localStorage) this app doesn't have.
+                            // Persist via PostSettingsController::updateFeaturedImage — the same
+                            // direct-property write path layout/discussion use (Post::$fillable
+                            // excludes featured_image_id, so this endpoint is the only legal write).
+                            // The PUT is fire-and-forget: the in-memory hidden inputs + preview
+                            // state stay the source of truth for the rest of the session, and a
+                            // reload picks up the seeded value from EditorController::show().
+                            requestSave(file && url ? file : null);
+
+                            // Rest-of-app hook: hb:featured-image-change is the documented
+                            // event for whatever else wants to react to a pick (the preview
+                            // listener, future SEO meta sync, etc.). Detail is null when cleared.
                             field.dispatchEvent(new CustomEvent('hb:featured-image-change', {
                                 bubbles: true,
                                 detail: file && url ? { id: file.id, url } : null,
@@ -580,7 +659,10 @@
                         removeBtn?.addEventListener('click', () => applySelection(null, { focusTrigger: true }));
                         dialog?.addEventListener('hb:media-select', (event) => applySelection(event.detail));
 
-                        applySelection(null);
+                        // The hidden inputs are server-seeded from EditorController::show() on first
+                        // render so a reload shows the existing pick. DON'T re-apply a null here or
+                        // the seed would be wiped before the user can see it — only clear when the
+                        // user explicitly hits the remove button (the handler above).
                     });
                 };
                 if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', boot, { once: true });
@@ -598,12 +680,23 @@
         <style>
             .hb-post-taxonomy-body,
             .hb-post-discussion-body,
-            .hb-post-layout-body { display: flex; flex-direction: column; gap: 6px; padding: 0 var(--hb-space-3, 12px) var(--hb-space-3, 12px); }
+            .hb-post-layout-body,
+            .hb-post-toc-body { display: flex; flex-direction: column; gap: 6px; padding: 0 var(--hb-space-3, 12px) var(--hb-space-3, 12px); }
             .hb-post-taxonomy-body[hidden],
             .hb-post-discussion-body[hidden],
-            .hb-post-layout-body[hidden] { display: none; }
+            .hb-post-layout-body[hidden],
+            .hb-post-toc-body[hidden] { display: none; }
             .hb-post-taxonomy-hint { font-family: var(--hb-font-sans, Rubik, sans-serif); font-size: var(--hb-fs-xs, 11px); color: var(--hb-text-muted, #9A9A9A); }
             .hb-post-taxonomy-hint[hidden] { display: none; }
+
+            .hb-post-toc-summary { font-family: var(--hb-font-sans, Rubik, sans-serif); font-size: var(--hb-fs-sm, 12px); color: var(--hb-text-secondary, #5A5A5A); }
+            .hb-post-toc-edit {
+                align-self: flex-start; border: 1px solid var(--hb-border, #E4E4E4); cursor: pointer;
+                padding: 5px 10px; border-radius: var(--hb-radius-control, 6px);
+                background: var(--hb-bg, #fff); color: var(--hb-text-secondary, #5A5A5A);
+                font-family: var(--hb-font-sans, Rubik, sans-serif); font-size: var(--hb-fs-sm, 12px); font-weight: 600;
+            }
+            .hb-post-toc-edit:hover { background: var(--hb-surface-hover, #F7F7F7); }
 
             {{-- Two-layer scroll shell (the scrollbar's `container` can't double as the bar's own
                  direct parent). Shared by BOTH Categories and Tags. `max-height`

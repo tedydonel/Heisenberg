@@ -117,6 +117,10 @@
         :post-layout-url-template="$postLayoutUrlTemplate" :post-allow-comments="$postAllowComments ?? true"
         :post-discussion-url-template="$postDiscussionUrlTemplate"
         :post-revisions-url-template="$postRevisionsUrlTemplate ?? ''"
+        :post-featured-image="$postFeaturedImage ?? null"
+        :post-featured-image-url-template="$postFeaturedImageUrlTemplate ?? ''"
+        :post-toc-entries="$postTocEntries ?? []"
+        :post-toc-url-template="$postTocUrlTemplate ?? ''"
         :fonts-search-url="route('heisenberg.editor.fonts.search')"
         :theme="$theme ?? []" />
     <x-live.footer class="hb-editor__footer" />

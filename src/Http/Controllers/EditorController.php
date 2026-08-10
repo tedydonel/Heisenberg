@@ -49,6 +49,7 @@ final class EditorController
             'postPagePaddingY' => self::DEFAULT_PAGE_PADDING_Y,
             'postAllowComments' => true,
             'postMeta' => $this->postMeta(null),
+            'postTocEntries' => [],
         ]));
     }
 
@@ -65,9 +66,20 @@ final class EditorController
 
         /** @var class-string<Post> $class */
         $class = (string) config('heisenberg.models.post', Post::class);
-        $model = $class::query()->with(['blocks', 'categories', 'tags'])->findOrFail($post);
+        $model = $class::query()->with(['blocks', 'categories', 'tags', 'featuredImage', 'tocEntries'])->findOrFail($post);
 
         Gate::forUser($request->user() ?? new GuestActor())->authorize('view', $model);
+
+        // Seed the Post tab's featured image on first render — the {id, url, srcset, sizes, alt}
+        // shape the inspector's hidden inputs expect so the preview (replace/remove) button
+        // shows the existing image rather than the empty dropzone.
+        $featuredImage = null;
+        if ($model->featuredImage !== null) {
+            $payload = $model->featuredImage->imagePayload('hero');
+            $payload['id'] = (int) $model->featuredImage->id;
+            $payload['alt'] = $model->featuredImage->getAlt((string) ($model->locale ?? 'en'));
+            $featuredImage = $payload;
+        }
 
         return view('heisenberg::editor.index', array_merge($this->sharedViewData($registry, $themes, $savedThemes, $fonts), [
             'postId' => $model->getKey(),
@@ -82,7 +94,14 @@ final class EditorController
             'postPagePaddingX' => $model->page_padding_x ?? self::DEFAULT_PAGE_PADDING_X,
             'postPagePaddingY' => $model->page_padding_y ?? self::DEFAULT_PAGE_PADDING_Y,
             'postAllowComments' => $model->allow_comments ?? true,
+            'postFeaturedImage' => $featuredImage,
             'postMeta' => $this->postMeta($model),
+            // The Post tab's authored table of contents (Post::tocEntries(), ordered) — {label,
+            // anchor} pairs only; the modal's own script owns render/reorder/save.
+            'postTocEntries' => $model->tocEntries->map(fn ($entry) => [
+                'label' => $entry->label,
+                'anchor' => $entry->anchor,
+            ])->values()->all(),
         ]));
     }
 
@@ -171,6 +190,8 @@ final class EditorController
             'postLayoutUrlTemplate' => route('heisenberg.editor.posts.store') . '/__ID__/layout',
             'postRevisionsUrlTemplate' => route('heisenberg.editor.posts.store') . '/__ID__/revisions',
             'postDiscussionUrlTemplate' => route('heisenberg.editor.posts.store') . '/__ID__/discussion',
+            'postFeaturedImageUrlTemplate' => route('heisenberg.editor.posts.store') . '/__ID__/featured-image',
+            'postTocUrlTemplate' => route('heisenberg.editor.posts.store') . '/__ID__/toc',
             // Initial-render seed only — the real, policy-gated read/write happens in the
             // taxonomy controllers once the user acts.
             'categoryOptions' => $this->categoryOptions(),
@@ -275,6 +296,16 @@ final class EditorController
      */
     public function servedUpload(string $path): Response
     {
+        // DEV-ONLY, now enforced in code (2026-08-10 blueprint audit): this
+        // route is a stand-in for the web server's static /uploads handling,
+        // but nothing gated it — mounted in production it would quietly become
+        // an unauthenticated PHP file server for the whole uploads disk,
+        // contradicting the blueprint's "no PHP in the read path" invariant.
+        // Same environment discipline as LocalDevRoleGate: re-checked per call.
+        if (! app()->environment('local', 'testing')) {
+            return response('', 404);
+        }
+
         // Defense-in-depth: never hand the disk a traversal or NUL path, even though
         // Flysystem's own normalizer also rejects '..'.
         if (str_contains($path, "\0") || in_array('..', preg_split('#[/\\\\]#', $path) ?: [], true)) {
