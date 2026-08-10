@@ -29,6 +29,13 @@ final class EditorController
 
     public function index(BlockRegistryService $registry, ThemeRepository $themes, SavedThemeRepository $savedThemes, FontCatalogService $fonts): View
     {
+        // The editor is one big server-rendered component tree; the FIRST render
+        // after a view-cache rebuild compiles/loads hundreds of Blade views and
+        // can exceed a host's default 30s max_execution_time (observed on a
+        // Windows host: cold ~35s, warm ~11s) — dying there is a white page.
+        // Same pattern as AiController::stream(); harmless where the limit is 0.
+        @set_time_limit(120);
+
         return view('heisenberg::editor.index', array_merge($this->sharedViewData($registry, $themes, $savedThemes, $fonts), [
             // No post yet — the first Save is what gives it an id; the Post tab's
             // taxonomy/layout controls render disabled until hb:post-id fires.
@@ -54,6 +61,8 @@ final class EditorController
      */
     public function show(Request $request, BlockRegistryService $registry, ThemeRepository $themes, SavedThemeRepository $savedThemes, FontCatalogService $fonts, string $post): View
     {
+        @set_time_limit(120); // same cold-render headroom as index()
+
         /** @var class-string<Post> $class */
         $class = (string) config('heisenberg.models.post', Post::class);
         $model = $class::query()->with(['blocks', 'categories', 'tags'])->findOrFail($post);
