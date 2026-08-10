@@ -13,6 +13,10 @@
          what the post was actually called. Kept in sync as you type by live/canvas's title
          script, which also owns the canvas/inspector title mirroring. --}}
     <title>{{ trim((string) ($postTitle ?? '')) !== '' ? $postTitle : __('heisenberg::editor.canvas.ph_untitled_post') }}</title>
+    {{-- The SVG brand mark doubles as the favicon (the PNG logo was retired
+         2026-08-10 — SVG-only branding), served through the package's own
+         asset route so no publishing step is needed. --}}
+    <link rel="icon" type="image/svg+xml" href="/heisenberg-assets/editor-logo.svg">
     <link rel="stylesheet" href="/heisenberg-assets/editor.css">
 </head>
 <body>
