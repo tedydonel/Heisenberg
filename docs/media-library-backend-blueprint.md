@@ -69,8 +69,10 @@ storage/
 public/
 └── uploads  ->  ../storage/uploads     # symlink created by `php artisan storage:link`
 
-tests/Feature/
-└── MediaLibraryTest.php                # 18 passing feature tests
+tests/Media/                            # (originally tests/Feature/MediaLibraryTest.php with 18 tests;
+├── MediaLibraryTest.php                #  the suite has since grown to 60+ across these files)
+├── MediaAuthorizationTest.php          #  the role/guest authorization matrix (2026-08-10)
+└── MediaPagesTest.php                  #  the HTML /media grid + dev-only /uploads gate (2026-08-10)
 ```
 
 **Layered responsibility (strictly enforced):**
@@ -135,8 +137,12 @@ Public URL:      /uploads/media/2026/07/photo.jpg   (served by nginx/apache, no 
   `photo(2).jpg`. The conflict check considers the base file **and** all image
   variant paths, so an original and its `-small`/`-medium` derivatives never clash.
 - **Original-name tracking:** keep both the uploaded display name and the final
-  stored name. If `photo.jpg` becomes `photo(1).jpg`, the DB row still remembers
-  the user's uploaded name while `stored_path` points to the collision-free file.
+  stored name. **Spec change (owner decision, 2026-08-10):** when a collision
+  renames the stored file, the SAME `(n)` marker is spliced into the display
+  name (`original_name`) — off the client's RAW name, original casing and
+  extension preserved — so `photo.jpg` uploaded twice reads `photo.jpg` and
+  `photo(1).jpg` in every library UI instead of two indistinguishable
+  `photo.jpg` rows. The first upload's display name stays verbatim.
 
 ### 3.3 Cloud / CDN migration path (built-in)
 
@@ -231,7 +237,7 @@ Metadata-only. **No binary is ever stored in this table**.
 | `type` | string(60), **indexed** | **= file extension** (`jpg`, `pdf`, …) after migration `000002` normalized it. Originally a category; now an extension used for filtering. |
 | `disk` | string(32), default `uploads` | which disk holds the bytes |
 | `stored_path` | string | relative path on the disk |
-| `original_name` | string | the user-provided filename before deduplication |
+| `original_name` | string | the user-provided filename; duplicates carry the same `(n)` marker as the stored rename (2026-08-10) |
 | `stored_name` | string | the final deduplicated filename on disk |
 | `mime_type` | string(127) | |
 | `size_bytes` | unsignedBigInteger | |
@@ -433,11 +439,22 @@ Gate::policy(PublicFile::class, PublicFilePolicy::class);
 ## 10. HTTP API (routes)
 
 The media library exposes one route group. The host application decides which
-authenticated actors can reach the route group, while the policy decides what
-each actor can do inside it.
+actors can reach the route group, while the policy decides what each actor can
+do inside it.
 
-**Media routes** — `routes/media.php`, authenticated middleware, prefix `media`,
-name `media.`:
+> **As-built note (2026-08-10).** The shipped default middleware is plain
+> `['web']` (`config('heisenberg.middleware.media')`) rather than an auth
+> gate — enforcement lives entirely in `PublicFilePolicy`, which authorizes the
+> request user or an explicit `GuestActor`. A guest is allowed ONLY on a
+> developer's local machine (`LocalDevRoleGate`: `app()->environment('local')`
+> AND `heisenberg.allow_anonymous_in_local`, re-checked per call) so a fresh
+> install works out of the box; everywhere else guests are denied and a host
+> widens the middleware (e.g. `['web', 'auth']`) for real deployments.
+> `GET /media` without a JSON `Accept` header renders the thin server-rendered
+> grid (`heisenberg::media.index`) this table always promised — a view that
+> was only actually built on 2026-08-10.
+
+**Media routes** — `routes/media.php`, prefix `media`, name `media.`:
 
 | Method | URI | Action | Route name |
 |---|---|---|---|
@@ -532,6 +549,11 @@ Rebuild the whole subsystem from zero:
   for why (image polyglots defeat content-based MIME validation) and the
   Apache/nginx snippets that make PHP execution under `storage/uploads` /
   `public/uploads` actually impossible, not just unlikely.
+  *(One deliberate dev-only exception: `GET /uploads/{path}` →
+  `EditorController::servedUpload()` stands in for the missing symlink under
+  `testbench serve`. Since 2026-08-10 it hard-404s outside the `local`/`testing`
+  environments — enforced in code, not just by comment — so it can never become
+  the de facto file server in a production mount.)*
 - **Controller stays thin** — all logic in `MediaLibraryService`; all authz in
   `PublicFilePolicy`; all validation in `UploadPublicFileRequest`.
 - **No role names in the subsystem** — upload, update, and delete rights come

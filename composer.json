@@ -22,7 +22,7 @@
         "spatie/laravel-activitylog": "Wire the AuditSink to Spatie activitylog (optional).",
         "spatie/laravel-permission": "If the host uses Spatie roles, the default RoleGate maps to it.",
         "mallardduck/blade-lucide-icons": "Optional Lucide-backed IconProvider; the default provider serves the bundled Phosphor set (resources/icons/phosphor).",
-        "intervention/image": "Generate responsive image variants (small/medium) for the media library on upload; without it, uploads still work but ship no variants."
+        "intervention/image": "Generate responsive image variants (small/medium) for the media library on upload; without it, uploads still work but ship no variants. Require ^3.9 — v4 changed the ImageManager API and is NOT compatible."
     },
     "autoload": {
         "psr-4": {

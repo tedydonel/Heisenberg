@@ -28,13 +28,23 @@
             transform-origin: center right;
             transition: transform .3s cubic-bezier(.165,.84,.44,1), opacity .3s cubic-bezier(.65,0,.35,1);
             width: 11px;
-            z-index: 1000;
+            /* No z-index on purpose. Every editor call site uses container mode (the
+               data-hb-scroll-container variant below), which scopes the bar to the
+               container's own stacking context. z-index: 1000 here was leaking the bar
+               across every modal/sheet/popover in the editor. The window-mode (no container)
+               case is rare (only the editor's gallery page), and a window-mode bar without
+               a z-index still draws on top of body content, which is the gutter's job. */
         }
         /* Container mode (data-hb-scroll-container set): anchor to the scroll container instead of
-           the viewport. The container needs position:relative for this to anchor correctly. */
+           the viewport. The container needs position:relative for this to anchor correctly.
+           `z-index: 1` puts the bar above the container's scrolled content (it overlays the
+           thumb area on overflow): it's position:absolute'd to a position:relative parent, so it
+           inherits the container's stacking context and can never escape into a sibling or
+           ancestor panel. */
         .hb-custom-scrollbar[data-hb-scroll-container] {
             position: absolute;
             height: 100%;
+            z-index: 1;
         }
 
         .hb-custom-scrollbar[data-scrolling="true"],

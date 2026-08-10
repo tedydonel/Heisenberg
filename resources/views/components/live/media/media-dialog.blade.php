@@ -44,10 +44,15 @@
     .hb-mediadialog__close:hover { background: var(--hb-surface-hover, #F7F7F7); color: var(--hb-text-primary, #0A0A0A); }
     .hb-mediadialog__err { flex: none; padding: 10px var(--hb-space-4, 16px) 0; font-size: var(--hb-fs-sm, 12px); color: var(--hb-danger, #D4191A); text-align: center; }
     .hb-mediadialog__err[hidden] { display: none; }
-    .hb-mediadialog__body { flex: 1 1 auto; min-height: 0; overflow: auto; }
+    .hb-mediadialog__body { flex: 1 1 auto; min-height: 0; overflow: hidden; position: relative; }
     .hb-mediadialog__body--upload { display: flex; align-items: center; justify-content: center; padding: var(--hb-space-4, 16px); min-height: 420px; }
     .hb-mediadialog__body--library { padding: var(--hb-space-6, 24px); }
     .hb-mediadialog__body[hidden] { display: none; }
+    /* The library body grows longer than the 640px frame once enough items load, so the
+       actual scroll region is the inner div — sibling to the custom-scrollbar bar that drives
+       it. The bar's <script> adds hb-scroll-container + overflow:auto to data-hb-mediadialog-scroll
+       on boot, so this only needs to fill the body. */
+    .hb-mediadialog__scroll { box-sizing: border-box; height: 100%; }
     .hb-mediadialog__scrim {
         position: fixed; inset: 0; z-index: 120; display: flex; align-items: center; justify-content: center;
         padding: 24px; background: rgba(0, 0, 0, .4);
@@ -108,35 +113,81 @@
             if (dialog.dataset.accept) input.accept = dialog.dataset.accept;
             zone.insertAdjacentElement('afterend', input);
 
+            const lib = () => dialog.querySelector('[data-hb-medialib]');
             const goToLibrary = () => {
                 const tablist = dialog.querySelector('[data-hb-tablist]');
                 const libTab = tablist?.querySelector('[data-hb-tab="library"]');
                 if (tablist?.__hbTablist && libTab) tablist.__hbTablist.activate(libTab, false);
-                dialog.querySelector('[data-hb-medialib]')?.hbRefresh?.('');
+            };
+
+            // Upload one file over XHR (fetch has no upload progress) into an
+            // optimistic uploading card — the extracted media-card's uploading
+            // state, driven live: progress ticks fill the track, success swaps
+            // in the real pickable card, failure swaps in the error card whose
+            // Retry re-runs exactly this function.
+            const maxBytes = parseInt(dialog.dataset.maxBytes || '0', 10) || 0;
+            const uploadOne = (file) => {
+                const root = lib();
+                const card = root && root.hbUploadCard ? root.hbUploadCard(file.name) : null;
+                if (!card) { showError(dialog.dataset.msgUploadFailed || ''); return; }
+
+                // Preflight: a file over the server's effective limit (the
+                // smaller of the app's media.max_kb and PHP's own
+                // upload_max_filesize/post_max_size) would only come back as a
+                // vague validation error after a wasted round trip — reject it
+                // here with the limit spelled out.
+                if (maxBytes > 0 && file.size > maxBytes) {
+                    card.setProgress(0);
+                    card.fail((dialog.dataset.msgTooLarge || '').replace(':max', dialog.dataset.maxHuman || ''), null);
+                    return;
+                }
+
+                const form = new FormData();
+                form.append('file', file);
+                const xhr = new XMLHttpRequest();
+                xhr.open('POST', uploadUrl, true);
+                xhr.setRequestHeader('Accept', 'application/json');
+                xhr.setRequestHeader('X-CSRF-TOKEN', csrfToken());
+                xhr.setRequestHeader('X-Requested-With', 'XMLHttpRequest');
+                xhr.withCredentials = true;
+                xhr.upload.addEventListener('progress', (e) => {
+                    if (e.lengthComputable) card.setProgress((e.loaded / e.total) * 100);
+                });
+                // A localhost upload lands in milliseconds — without a floor the
+                // uploading card exists for one frame and the whole extracted
+                // progress state reads as "gone". Failures swap immediately
+                // (never delay bad news); success waits out the remainder.
+                const startedAt = Date.now();
+                const MIN_VISIBLE_MS = 650;
+                xhr.addEventListener('load', () => {
+                    let data = {};
+                    try { data = JSON.parse(xhr.responseText || '{}'); } catch (e) { /* non-JSON error page */ }
+                    if (xhr.status >= 200 && xhr.status < 300 && data.files && data.files[0]) {
+                        card.setProgress(100);
+                        const rest = Math.max(0, MIN_VISIBLE_MS - (Date.now() - startedAt));
+                        window.setTimeout(() => card.succeed(data.files[0]), rest);
+                        return;
+                    }
+                    const firstError = data && data.errors ? Object.values(data.errors)[0] : null;
+                    const message = (Array.isArray(firstError) ? firstError[0] : firstError) || data.message || dialog.dataset.msgUploadFailed || '';
+                    card.fail(message, () => uploadOne(file));
+                });
+                xhr.addEventListener('error', () => card.fail(dialog.dataset.msgUploadNetwork || '', () => uploadOne(file)));
+                xhr.send(form);
             };
 
             const upload = (files) => {
                 const list = Array.from(files || []);
                 if (!list.length) return;
                 showError('');
-                const form = new FormData();
-                list.forEach((f) => form.append('files[]', f));
-                window.fetch(uploadUrl, {
-                    method: 'POST',
-                    headers: { 'Accept': 'application/json', 'X-CSRF-TOKEN': csrfToken(), 'X-Requested-With': 'XMLHttpRequest' },
-                    credentials: 'same-origin',
-                    body: form,
-                })
-                    .then((r) => r.json().catch(() => ({})).then((data) => ({ ok: r.ok, data })))
-                    .then(({ ok, data }) => {
-                        if (!ok) {
-                            const firstError = data && data.errors ? Object.values(data.errors)[0] : null;
-                            showError((Array.isArray(firstError) ? firstError[0] : firstError) || data.message || dialog.dataset.msgUploadFailed || '');
-                            return;
-                        }
-                        goToLibrary();
-                    })
-                    .catch(() => showError(dialog.dataset.msgUploadNetwork || ''));
+                // The library tab is where the cards live — switch first, let the
+                // existing grid load (hbRefresh resolves even without a URL), THEN
+                // start the uploads so the refresh can't wipe in-flight cards.
+                goToLibrary();
+                const root = lib();
+                const start = () => list.forEach(uploadOne);
+                if (root && root.hbRefresh) Promise.resolve(root.hbRefresh('')).then(start, start);
+                else start();
             };
 
             zone.addEventListener('click', () => input.click());
@@ -242,6 +293,33 @@
         ['value' => 'library', 'label' => __('heisenberg::editor.media.tab_library')],
     ];
     $activeIndex = $tab === 'library' ? 1 : 0;
+
+    // The EFFECTIVE per-file upload ceiling: the app's media.max_kb AND PHP's
+    // own ini limits, whichever is smallest. PHP rejects an over-ini file before
+    // Laravel ever sees it properly ("The files.0 failed to upload." with zero
+    // explanation), so the client preflights against this and says the limit
+    // out loud instead of burning a doomed request.
+    $hbIniBytes = static function (string $v): ?int {
+        $v = trim($v);
+        if ($v === '' || $v === '0' || $v === '-1') { return null; } // unlimited
+        $unit = strtolower(substr($v, -1));
+        $n = (float) $v;
+        return (int) match ($unit) {
+            'g' => $n * 1024 ** 3,
+            'm' => $n * 1024 ** 2,
+            'k' => $n * 1024,
+            default => $n,
+        };
+    };
+    $hbLimits = array_filter([
+        ((int) config('heisenberg.media.max_kb', \Heisenberg\Models\PublicFile::MAX_KB)) * 1024,
+        $hbIniBytes((string) ini_get('upload_max_filesize')),
+        $hbIniBytes((string) ini_get('post_max_size')),
+    ]);
+    $hbMaxBytes = $hbLimits === [] ? 0 : min($hbLimits);
+    $hbMaxHuman = $hbMaxBytes >= 1024 ** 2
+        ? round($hbMaxBytes / 1024 ** 2, $hbMaxBytes % (1024 ** 2) === 0 ? 0 : 1) . ' MB'
+        : round($hbMaxBytes / 1024) . ' KB';
 @endphp
 @if ($scrim)
     {{-- Visibility is entirely caller-controlled: pass `hidden` on the component tag (as
@@ -250,6 +328,8 @@
     <div {{ $attributes->merge(['class' => 'hb-mediadialog__scrim']) }}>
         <div class="hb-mediadialog" role="dialog" aria-modal="true" aria-label="{{ $title }}" tabindex="-1"
             data-hb-mediadialog data-upload-url="{{ $uploadUrl }}" data-accept="{{ $accept }}"
+            data-max-bytes="{{ $hbMaxBytes }}" data-max-human="{{ $hbMaxHuman }}"
+            data-msg-too-large="{{ __('heisenberg::editor.media.upload_too_large') }}"
             data-msg-upload-failed="{{ __('heisenberg::editor.media.upload_failed') }}"
             data-msg-upload-network="{{ __('heisenberg::editor.media.upload_network') }}">
             <div class="hb-mediadialog__top">
@@ -264,13 +344,18 @@
                 <x-live.media.upload-dropzone />
             </div>
             <div class="hb-mediadialog__body hb-mediadialog__body--library" data-hb-tab-body="library" @if ($tab !== 'library') hidden @endif>
-                <x-live.media.media-library :items="$items" :select-url="$selectUrl" />
+                <div class="hb-mediadialog__scroll" data-hb-mediadialog-scroll>
+                    <x-live.media.media-library :items="$items" :select-url="$selectUrl" />
+                </div>
+                <x-ui.custom-scrollbar container="[data-hb-mediadialog-scroll]" />
             </div>
         </div>
     </div>
 @else
     <div {{ $attributes->merge(['class' => 'hb-mediadialog']) }} role="dialog" aria-modal="true" aria-label="{{ $title }}" tabindex="-1"
         data-hb-mediadialog data-upload-url="{{ $uploadUrl }}" data-accept="{{ $accept }}"
+        data-max-bytes="{{ $hbMaxBytes }}" data-max-human="{{ $hbMaxHuman }}"
+        data-msg-too-large="{{ __('heisenberg::editor.media.upload_too_large') }}"
         data-msg-upload-failed="{{ __('heisenberg::editor.media.upload_failed') }}"
         data-msg-upload-network="{{ __('heisenberg::editor.media.upload_network') }}">
         <div class="hb-mediadialog__top">
@@ -285,7 +370,10 @@
             <x-live.media.upload-dropzone />
         </div>
         <div class="hb-mediadialog__body hb-mediadialog__body--library" data-hb-tab-body="library" @if ($tab !== 'library') hidden @endif>
-            <x-live.media.media-library :items="$items" :select-url="$selectUrl" />
+            <div class="hb-mediadialog__scroll" data-hb-mediadialog-scroll>
+                <x-live.media.media-library :items="$items" :select-url="$selectUrl" />
+            </div>
+            <x-ui.custom-scrollbar container="[data-hb-mediadialog-scroll]" />
         </div>
     </div>
 @endif

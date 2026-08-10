@@ -114,23 +114,28 @@ class MediaLibraryTest extends TestCase
         Storage::disk('uploads')->assertExists($file->stored_path);
     }
 
-    public function test_duplicate_filenames_become_collision_free_and_original_name_is_preserved(): void
+    public function test_duplicate_filenames_become_collision_free_in_both_stored_and_display_names(): void
     {
-        $this->postJson(route('media.upload'), [
-            'file' => UploadedFile::fake()->image('photo.jpg', 800, 600),
-        ])->assertCreated();
-
-        $this->postJson(route('media.upload'), [
-            'file' => UploadedFile::fake()->image('photo.jpg', 800, 600),
-        ])->assertCreated();
+        // Spec change (owner decision, 2026-08-10): a duplicate upload's
+        // DISPLAY name carries the same (n) marker as its stored name —
+        // photo.jpg / photo(1).jpg / photo(2).jpg — so two identically-named
+        // uploads are distinguishable in every library UI. The first upload's
+        // name stays verbatim.
+        foreach (range(1, 3) as $i) {
+            $this->postJson(route('media.upload'), [
+                'file' => UploadedFile::fake()->image('photo.jpg', 800, 600),
+            ])->assertCreated();
+        }
 
         $files = PublicFile::orderBy('id')->get();
-        $this->assertCount(2, $files);
+        $this->assertCount(3, $files);
 
         $this->assertSame('photo.jpg', $files[0]->original_name);
         $this->assertSame('photo.jpg', $files[0]->stored_name);
-        $this->assertSame('photo.jpg', $files[1]->original_name, 'original_name must be preserved even when deduped');
+        $this->assertSame('photo(1).jpg', $files[1]->original_name, 'a duplicate must be distinguishable by display name');
         $this->assertSame('photo(1).jpg', $files[1]->stored_name);
+        $this->assertSame('photo(2).jpg', $files[2]->original_name);
+        $this->assertSame('photo(2).jpg', $files[2]->stored_name);
 
         Storage::disk('uploads')->assertExists($files[0]->stored_path);
         Storage::disk('uploads')->assertExists($files[1]->stored_path);

@@ -50,6 +50,41 @@
                     root.dispatchEvent(new CustomEvent('hb:media-pick', { bubbles: true, detail: file }));
                 };
 
+                // One card, built once — paint() AND hbUploadCard's success swap
+                // both come through here so an optimistically-inserted card is
+                // pixel- and behaviour-identical to a fetched one.
+                function buildCard(file) {
+                    const node = template.content.firstElementChild.cloneNode(true);
+                    const thumbEl = node.querySelector('.hb-mediacard__thumb');
+                    let img = node.querySelector('.hb-mediacard__img');
+                    const src = file.thumbnail_url || file.url || '';
+                    if (src) {
+                        if (!img) {
+                            img = document.createElement('img');
+                            img.className = 'hb-mediacard__img';
+                            thumbEl?.insertBefore(img, thumbEl.firstChild);
+                        }
+                        img.src = src;
+                        img.alt = file.original_name || '';
+                    } else {
+                        img?.remove();
+                    }
+                    const nameEl = node.querySelector('.hb-mediacard__name');
+                    if (nameEl) nameEl.textContent = file.original_name || msgUntitled;
+                    const metaEl = node.querySelector('.hb-mediacard__meta');
+                    if (metaEl) metaEl.textContent = file.human_size || '';
+                    const selected = selectedId != null && file.id === selectedId;
+                    node.classList.toggle('hb-mediacard--selected', selected);
+                    node.setAttribute('role', 'button');
+                    node.setAttribute('tabindex', '0');
+                    node.setAttribute('aria-selected', selected ? 'true' : 'false');
+                    node.addEventListener('click', () => pick(file));
+                    node.addEventListener('keydown', (e) => {
+                        if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); pick(file); }
+                    });
+                    return node;
+                }
+
                 function paint(files) {
                     currentFiles = files || [];
                     if (!grid || !template) return;
@@ -60,49 +95,69 @@
                     }
                     if (empty) empty.hidden = true;
                     grid.hidden = false;
-                    currentFiles.forEach((file) => {
-                        const node = template.content.firstElementChild.cloneNode(true);
-                        const thumbEl = node.querySelector('.hb-mediacard__thumb');
-                        let img = node.querySelector('.hb-mediacard__img');
-                        const src = file.thumbnail_url || file.url || '';
-                        if (src) {
-                            if (!img) {
-                                img = document.createElement('img');
-                                img.className = 'hb-mediacard__img';
-                                thumbEl?.insertBefore(img, thumbEl.firstChild);
-                            }
-                            img.src = src;
-                            img.alt = file.original_name || '';
-                        } else {
-                            img?.remove();
-                        }
-                        const nameEl = node.querySelector('.hb-mediacard__name');
-                        if (nameEl) nameEl.textContent = file.original_name || msgUntitled;
-                        const metaEl = node.querySelector('.hb-mediacard__meta');
-                        if (metaEl) metaEl.textContent = file.human_size || '';
-                        const selected = selectedId != null && file.id === selectedId;
-                        node.classList.toggle('hb-mediacard--selected', selected);
-                        node.setAttribute('role', 'button');
-                        node.setAttribute('tabindex', '0');
-                        node.setAttribute('aria-selected', selected ? 'true' : 'false');
-                        node.addEventListener('click', () => pick(file));
-                        node.addEventListener('keydown', (e) => {
-                            if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); pick(file); }
-                        });
-                        grid.appendChild(node);
-                    });
+                    currentFiles.forEach((file) => grid.appendChild(buildCard(file)));
                 }
 
                 // Deliberately a no-op with no select-url — see the file header. This is what
-                // keeps the showcase page's static demo untouched.
+                // keeps the showcase page's static demo untouched. Returns the fetch promise
+                // so a caller (the dialog's upload flow) can sequence work after the grid loads.
                 root.hbRefresh = (search) => {
-                    if (!selectUrl) return;
+                    if (!selectUrl) return Promise.resolve();
                     const sep = selectUrl.indexOf('?') === -1 ? '?' : '&';
                     const url = search ? `${selectUrl}${sep}search=${encodeURIComponent(search)}` : selectUrl;
-                    window.fetch(url, { headers: { Accept: 'application/json' }, credentials: 'same-origin' })
+                    return window.fetch(url, { headers: { Accept: 'application/json' }, credentials: 'same-origin' })
                         .then((r) => { if (!r.ok) throw new Error('http-' + r.status); return r.json(); })
                         .then((res) => paint(Array.isArray(res.files) ? res.files : []))
                         .catch(() => setMessage(msgLoadError));
+                };
+
+                // ── optimistic upload cards ──────────────────────────
+                // The extracted media-card's uploading/error states, live: the
+                // dialog's upload flow calls hbUploadCard(name) per file and
+                // drives the handle. Cards are PREPENDED so fresh uploads are
+                // where the eye already is.
+                const uploadingTpl = root.querySelector('[data-hb-mediacard-uploading-template]');
+                const errorTpl = root.querySelector('[data-hb-mediacard-error-template]');
+                const msgUploading = root.dataset.msgUploading || '';
+                root.hbUploadCard = (name) => {
+                    if (!grid || !uploadingTpl) return null;
+                    if (empty) empty.hidden = true;
+                    grid.hidden = false;
+                    let node = uploadingTpl.content.firstElementChild.cloneNode(true);
+                    const nameOf = (n) => n.querySelector('.hb-mediacard__name');
+                    if (nameOf(node)) nameOf(node).textContent = name;
+                    grid.insertBefore(node, grid.firstChild);
+
+                    return {
+                        setProgress: (pct) => {
+                            pct = Math.max(0, Math.min(100, Math.round(pct)));
+                            const fill = node.querySelector('.hb-mediacard__fill');
+                            const status = node.querySelector('.hb-mediacard__status');
+                            if (fill) fill.style.width = pct + '%';
+                            if (status) status.textContent = msgUploading + ' ' + pct + '%';
+                        },
+                        // The server said no (or the preflight did) — swap to the
+                        // error card; Retry re-runs the caller's upload for THIS file.
+                        fail: (message, retry) => {
+                            if (!errorTpl) { node.remove(); return; }
+                            const err = errorTpl.content.firstElementChild.cloneNode(true);
+                            if (nameOf(err)) nameOf(err).textContent = name;
+                            const msgEl = err.querySelector('.hb-mediacard__err');
+                            if (msgEl && message) msgEl.textContent = message;
+                            const retryBtn = err.querySelector('.hb-mediacard__retry');
+                            if (retryBtn) {
+                                if (retry) retryBtn.addEventListener('click', () => { err.remove(); retry(); });
+                                else retryBtn.remove();
+                            }
+                            node.replaceWith(err);
+                            node = err;
+                        },
+                        // Landed — become a real, pickable card.
+                        succeed: (file) => {
+                            currentFiles.unshift(file);
+                            node.replaceWith(buildCard(file));
+                        },
+                    };
                 };
 
                 searchInput?.addEventListener('input', () => {
@@ -127,6 +182,7 @@
 <div {{ $attributes->merge(['class' => 'hb-medialib']) }} data-hb-medialib data-select-url="{{ $selectUrl }}"
     data-msg-empty="{{ __('heisenberg::editor.media.empty') }}"
     data-msg-load-error="{{ __('heisenberg::editor.media.load_error') }}"
+    data-msg-uploading="{{ __('heisenberg::editor.media.uploading') }}"
     data-msg-untitled="{{ __('heisenberg::editor.common.untitled') }}">
     <x-ui.search-field :placeholder="$placeholder ?? __('heisenberg::editor.media.search_ph')" />
     <div class="hb-medialib__grid" data-hb-medialib-grid @if (! count($items)) hidden @endif>
@@ -142,7 +198,11 @@
         @endforeach
     </div>
     <div class="hb-medialib__empty" data-hb-medialib-empty @if (count($items)) hidden @endif>{{ __('heisenberg::editor.media.empty') }}</div>
-    {{-- Clone target for JS-rendered results — guarantees fetched cards are pixel-identical to
-         the server-rendered ones above without re-implementing media-card's markup/icons in JS. --}}
+    {{-- Clone targets for JS-rendered results — guarantees fetched cards are pixel-identical to
+         the server-rendered ones above without re-implementing media-card's markup/icons in JS.
+         The uploading/error variants are the extracted design's full-state cards (spinner +
+         progress track, error + Retry), cloned live by hbUploadCard() during an upload. --}}
     <template data-hb-mediacard-template><x-live.media.media-card /></template>
+    <template data-hb-mediacard-uploading-template><x-live.media.media-card state="uploading" :progress="0" /></template>
+    <template data-hb-mediacard-error-template><x-live.media.media-card state="error" /></template>
 </div>

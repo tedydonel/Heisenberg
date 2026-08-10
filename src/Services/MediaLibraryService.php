@@ -79,7 +79,7 @@ class MediaLibraryService
         $writtenPaths = [];
 
         try {
-            $storedName = $this->availableFilename($disk, $dir, $baseName, $extension);
+            [$storedName, $collisionSuffix] = $this->availableFilename($disk, $dir, $baseName, $extension);
             $stored = Storage::disk($disk)->putFileAs($dir, $file, $storedName);
 
             if ($stored === false) {
@@ -106,7 +106,10 @@ class MediaLibraryService
                 'type' => $extension,
                 'disk' => $disk,
                 'stored_path' => $stored,
-                'original_name' => $originalName,
+                // Duplicates get the collision marker in their DISPLAY name too
+                // — see suffixedDisplayName(). The un-suffixed first upload
+                // keeps the client's name verbatim.
+                'original_name' => $collisionSuffix === 0 ? $originalName : $this->suffixedDisplayName($originalName, $collisionSuffix),
                 'stored_name' => $storedName,
                 'mime_type' => $file->getMimeType() ?: (string) $file->getClientMimeType(),
                 'size_bytes' => $file->getSize() ?: 0,
@@ -320,8 +323,16 @@ class MediaLibraryService
      * Collision-free stored filename: `photo.jpg` -> `photo(1).jpg` -> ... The
      * conflict check considers the base file AND every variant path so an
      * original and its -small/-medium derivatives never clash (blueprint §3.2).
+     *
+     * Returns the applied collision suffix alongside the name (0 = no
+     * collision) so storeOne() can mirror the SAME `(n)` into the DISPLAY name
+     * — two uploads of photo.jpg used to both show "photo.jpg" in every
+     * library UI, indistinguishable (owner decision, 2026-08-10: duplicates
+     * read photo(1).jpg, WordPress-style).
+     *
+     * @return array{0: string, 1: int} [stored filename, collision suffix]
      */
-    private function availableFilename(string $disk, string $dir, string $baseName, string $extension): string
+    private function availableFilename(string $disk, string $dir, string $baseName, string $extension): array
     {
         $extension = strtolower($extension);
         $safeBase = $this->sanitizeBaseName($baseName);
@@ -332,7 +343,23 @@ class MediaLibraryService
             $counter++;
         } while ($this->filenameConflicts($disk, $dir, $candidateBase, $extension));
 
-        return $extension === '' ? $candidateBase : "{$candidateBase}.{$extension}";
+        $name = $extension === '' ? $candidateBase : "{$candidateBase}.{$extension}";
+
+        return [$name, $counter - 1];
+    }
+
+    /**
+     * The client's own filename with the collision marker spliced in before the
+     * extension — display-side twin of availableFilename()'s stored rename.
+     * Works off the RAW client name (original casing, original extension) so
+     * "Photo.JPG" duplicates read "Photo(1).JPG", not a sanitized variant.
+     */
+    private function suffixedDisplayName(string $originalName, int $suffix): string
+    {
+        $base = pathinfo($originalName, PATHINFO_FILENAME);
+        $extension = pathinfo($originalName, PATHINFO_EXTENSION);
+
+        return $extension === '' ? "{$base}({$suffix})" : "{$base}({$suffix}).{$extension}";
     }
 
     private function filenameConflicts(string $disk, string $dir, string $base, string $extension): bool

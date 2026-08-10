@@ -57,6 +57,26 @@ class UploadPublicFileRequest extends FormRequest
         });
     }
 
+    /**
+     * "The files.0 failed to upload." explains nothing. The dominant real-world
+     * cause is PHP's own upload_max_filesize rejecting the file BEFORE Laravel
+     * sees it (UPLOAD_ERR_INI_SIZE) — an app-level max_kb violation has its own
+     * clear `max` message, so the bare `file` rule failing almost always means
+     * the ini ceiling. Say so, with the limit.
+     *
+     * @return array<string, string>
+     */
+    public function messages(): array
+    {
+        $limit = (string) ini_get('upload_max_filesize');
+        $message = (string) __('heisenberg::editor.media.upload_rejected_by_server', ['max' => $limit]);
+
+        return [
+            'file.file' => $message,
+            'files.*.file' => $message,
+        ];
+    }
+
     /** Path separators in the filename are rejected outright (blueprint §3.2). */
     private function noPathSeparatorsRule(): Closure
     {
