@@ -3,6 +3,7 @@
 declare(strict_types=1);
 
 use Heisenberg\Http\Controllers\AiController;
+use Heisenberg\Http\Controllers\AiConversationController;
 use Heisenberg\Http\Controllers\AiMcpController;
 use Illuminate\Support\Facades\Route;
 
@@ -46,6 +47,18 @@ Route::middleware(config('heisenberg.middleware.ai', ['web']))
         // Probe an MCP server for its tool list — admins-tier, read-only.
         Route::post('/mcp/test', [AiMcpController::class, 'test'])->name('mcp.test');
 
+        // Chat history — authors-tier, always scoped to the requesting author
+        // inside the controller. DELETE is bulk-by-body (ids: [...]) because
+        // multi-select delete is the dialog's primary destructive action; a
+        // single delete is a one-item bulk.
+        Route::get('/conversations', [AiConversationController::class, 'index'])->name('conversations.index');
+        Route::post('/conversations', [AiConversationController::class, 'store'])->name('conversations.store');
+        Route::get('/conversations/{conversation}', [AiConversationController::class, 'show'])
+            ->whereNumber('conversation')->name('conversations.show');
+        Route::post('/conversations/{conversation}/messages', [AiConversationController::class, 'storeMessage'])
+            ->whereNumber('conversation')->name('conversations.messages');
+        Route::delete('/conversations', [AiConversationController::class, 'destroy'])->name('conversations.destroy');
+
         // Model-calling endpoints. Throttled because each request spends the
         // operator's API budget: without a limit, one stuck client retrying in a
         // loop is a bill. Both also carry an authors-tier check inside the
@@ -59,6 +72,9 @@ Route::middleware(config('heisenberg.middleware.ai', ['web']))
         $model = function (): void {
             Route::post('/complete', [AiController::class, 'complete'])->name('complete');
             Route::post('/stream', [AiController::class, 'stream'])->name('stream');
+            // Conversation-aware follow-up chips. Throttled with the other two
+            // because it too spends the operator's API budget.
+            Route::post('/suggest', [AiController::class, 'suggest'])->name('suggest');
         };
 
         if (is_string($rateLimit) && $rateLimit !== '') {
