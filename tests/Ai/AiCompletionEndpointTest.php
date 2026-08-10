@@ -76,7 +76,7 @@ class AiCompletionEndpointTest extends TestCase
     public function test_an_authors_tier_actor_may_use_the_assistant(): void
     {
         $this->app['env'] = 'testing';
-        $this->actingAs(new FakeActor(1, 'employee_l1'));
+        $this->actingAs(new FakeActor(1, 'author'));
         $this->fakeModel();
 
         $this->postJson('/editor/ai/complete', ['prompt' => 'Write an intro'])

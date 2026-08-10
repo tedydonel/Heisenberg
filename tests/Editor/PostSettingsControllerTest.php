@@ -92,7 +92,7 @@ class PostSettingsControllerTest extends TestCase
         $post = Post::create(['title_en' => 'Owned By No One', 'status' => 'draft', 'author_id' => null]);
 
         $this->app['env'] = 'testing';
-        $this->actingAs(new FakeActor(999, 'employee_l1'));
+        $this->actingAs(new FakeActor(999, 'author'));
 
         $this->putJson("/editor/posts/{$post->id}/layout", ['page_padding_x' => 40, 'page_padding_y' => 40])->assertStatus(403);
         $this->putJson("/editor/posts/{$post->id}/discussion", ['allow_comments' => false])->assertStatus(403);

@@ -386,10 +386,30 @@ return [
     'allow_anonymous_in_local' => env('HEISENBERG_ALLOW_ANONYMOUS_IN_LOCAL', true),
 
     // ── Authorization role map (tiers, not literal roles) ─────
+    // The map is keyed by TIER, not literal role — a tier resolves to a list
+    // of the host's own role strings, and a policy asks the RoleGate for a
+    // tier ('authors', 'admins', …), never a literal role. `admin`, `editor`,
+    // `author` and `viewer` are Heisenberg's own canonical role vocabulary
+    // (WordPress-familiar); a host with different role names remaps them
+    // here without touching a single policy or controller. `super` is the
+    // ceiling tier above `admins` — currently unused by any shipped policy
+    // or controller, kept to document the ceiling for a host that wants a
+    // super-admin-only surface later.
+    //
+    // The media.* entries are the abilities PublicFilePolicy asks the RoleGate
+    // for. They were missing (2026-08-10), which made ConfigRoleGate resolve
+    // them to an empty role set — the HTTP media API then denied EVERY user,
+    // even admins, on any host using the bundled gate.
     'roles' => [
-        'super'   => ['super_admin'],
-        'admins'  => ['super_admin', 'admin'],
-        'authors' => ['super_admin', 'admin', 'employee_l1', 'employee_l2', 'employee_l3'],
+        'super'   => ['admin'],
+        'admins'  => ['admin'],
+        'editors' => ['admin', 'editor'],
+        'authors' => ['admin', 'editor', 'author'],
+
+        'media.viewAny'   => ['admin', 'editor', 'author', 'viewer'],
+        'media.create'    => ['admin', 'editor', 'author'],
+        'media.updateAny' => ['admin', 'editor'],
+        'media.deleteAny' => ['admin', 'editor'],
     ],
 
     // ── Publishing lifecycle ──────────────────────────────────
@@ -403,9 +423,9 @@ return [
         ],
         'role_permissions' => [          // target status -> tier
             'pending_review' => 'authors',
-            'published'      => 'admins', // ← resolved publish-authority decision (§7.4)
-            'scheduled'      => 'admins',
-            'archived'       => 'admins',
+            'published'      => 'editors', // ← resolved publish-authority decision (§7.4) — WordPress semantics: editors publish
+            'scheduled'      => 'editors',
+            'archived'       => 'editors',
             'draft'          => 'authors',
         ],
     ],

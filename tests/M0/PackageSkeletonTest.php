@@ -31,8 +31,8 @@ class PackageSkeletonTest extends TestCase
     {
         $this->assertSame('heisenberg', config('heisenberg.block_prefix'));
         $this->assertSame('hb', config('heisenberg.css_prefix'));
-        $this->assertSame(['super_admin'], config('heisenberg.roles.super'));
-        $this->assertSame('admins', config('heisenberg.lifecycle.role_permissions.published'));
+        $this->assertSame(['admin'], config('heisenberg.roles.super'));
+        $this->assertSame('editors', config('heisenberg.lifecycle.role_permissions.published'));
     }
 
     public function test_contracts_resolve_to_default_adapters(): void
@@ -66,12 +66,18 @@ class PackageSkeletonTest extends TestCase
     public function test_config_role_gate_resolves_tiers(): void
     {
         $gate = app(RoleGate::class);
-        $user = $this->userWithRoles(['admin']);
+        $admin = $this->userWithRoles(['admin']);
+        $viewer = $this->userWithRoles(['viewer']);
 
-        $this->assertTrue($gate->isAny($user, ['admins']));
-        $this->assertTrue($gate->isAny($user, ['authors']));
-        $this->assertFalse($gate->is($user, 'super'));
-        $this->assertSame(['admin'], $gate->rolesOf($user));
+        $this->assertTrue($gate->isAny($admin, ['admins']));
+        $this->assertTrue($gate->isAny($admin, ['authors']));
+        // The bundled default map resolves 'super' to the same role set as
+        // 'admins' (see config/heisenberg.php) — 'super' is an unused ceiling
+        // tier a host may narrow further, not a stricter one out of the box.
+        $this->assertTrue($gate->is($admin, 'super'));
+        $this->assertFalse($gate->isAny($viewer, ['admins']));
+        $this->assertFalse($gate->is($viewer, 'super'));
+        $this->assertSame(['admin'], $gate->rolesOf($admin));
     }
 
     private function userWithRoles(array $roles): AuthUser

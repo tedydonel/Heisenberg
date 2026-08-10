@@ -4,32 +4,43 @@ declare(strict_types=1);
 
 namespace Heisenberg\Http\Controllers;
 
+use Heisenberg\Adapters\GuestActor;
 use Heisenberg\Http\Requests\UploadPublicFileRequest;
 use Heisenberg\Models\PublicFile;
 use Heisenberg\Services\MediaLibraryService;
-use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Gate;
 use Illuminate\View\View;
 
 /**
  * Thin HTTP adapter over MediaLibraryService (blueprint §2, §12): no business
  * logic lives here — every action authorizes via the policy, then delegates.
+ *
+ * Authorization runs as the request user OR an explicit {@see GuestActor}
+ * (2026-08-10) — the AuthorizesRequests trait's bare authorize() denies a null
+ * user before the policy ever runs, which cut the editor's media dialog off
+ * from the local-dev bypass every other unauthenticated editor surface gets.
+ * The GuestActor is decided by PublicFilePolicy's LocalDevRoleGate wrapper:
+ * allowed on a developer's local machine, denied everywhere else.
  */
 class MediaLibraryController
 {
-    use AuthorizesRequests;
-
     public function __construct(private MediaLibraryService $media)
     {
+    }
+
+    private function authorize(Request $request, string $ability, mixed $target): void
+    {
+        Gate::forUser($request->user() ?? new GuestActor())->authorize($ability, $target);
     }
 
     /** GET /media — paginated grid + filters, or JSON when requested. */
     public function index(Request $request): JsonResponse|View
     {
         $class = $this->modelClass();
-        $this->authorize('viewAny', $class);
+        $this->authorize($request, 'viewAny', $class);
 
         $files = $this->media->paginate($this->filters($request));
 
@@ -50,7 +61,7 @@ class MediaLibraryController
     /** POST /media/upload — stores 1..N files; JSON (201) or redirect. */
     public function upload(UploadPublicFileRequest $request): JsonResponse|RedirectResponse
     {
-        $this->authorize('create', $this->modelClass());
+        $this->authorize($request, 'create', $this->modelClass());
 
         $files = $request->file('files');
         if (! is_array($files) || $files === []) {
@@ -76,7 +87,7 @@ class MediaLibraryController
     public function update(Request $request, string $file): JsonResponse|RedirectResponse
     {
         $model = $this->findOrFail($file);
-        $this->authorize('update', $model);
+        $this->authorize($request, 'update', $model);
 
         $updated = $this->media->updateMeta($model, $request->only([
             'alt_text_en', 'alt_text_fr', 'caption_en', 'caption_fr', 'credit',
@@ -93,7 +104,7 @@ class MediaLibraryController
     public function destroy(Request $request, string $file): JsonResponse|RedirectResponse
     {
         $model = $this->findOrFail($file);
-        $this->authorize('delete', $model);
+        $this->authorize($request, 'delete', $model);
 
         $this->media->delete($model);
 
@@ -107,7 +118,7 @@ class MediaLibraryController
     /** GET /media/select — JSON picker payload for modal image pickers. */
     public function select(Request $request): JsonResponse
     {
-        $this->authorize('viewAny', $this->modelClass());
+        $this->authorize($request, 'viewAny', $this->modelClass());
 
         $perPage = (int) $request->integer('per_page', 24) ?: 24;
         $files = $this->media->paginate($this->filters($request), $perPage);

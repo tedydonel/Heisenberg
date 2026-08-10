@@ -194,7 +194,7 @@ class AiControllerTest extends TestCase
     public function test_writing_a_key_requires_the_admins_tier(): void
     {
         $this->app['env'] = 'testing';
-        $this->actingAs(new FakeActor(1, 'employee_l1'));
+        $this->actingAs(new FakeActor(1, 'author'));
 
         $this->putJson('/editor/ai/providers/openai/key', ['key' => 'sk-nope'])->assertStatus(403);
         $this->assertFileDoesNotExist($this->credentials);
@@ -308,7 +308,7 @@ class AiControllerTest extends TestCase
     public function test_discovery_requires_the_admins_tier(): void
     {
         $this->app['env'] = 'testing';
-        $this->actingAs(new FakeActor(1, 'employee_l1'));
+        $this->actingAs(new FakeActor(1, 'author'));
 
         $this->postJson('/editor/ai/providers/openai/discover')->assertStatus(403);
     }

@@ -20,12 +20,12 @@ class UploadPublicFileRequest extends FormRequest
 {
     public function authorize(): bool
     {
-        $user = $this->user();
-        if ($user === null) {
-            return false;
-        }
+        // Same GuestActor + LocalDevRoleGate seam as PublicFilePolicy (2026-08-10):
+        // "no user" is allowed on a developer's local machine only; a real user
+        // is always answered by the configured gate.
+        $actor = $this->user() ?? new \Heisenberg\Adapters\GuestActor();
 
-        return app(RoleGate::class)->is($user, 'media.create');
+        return (new \Heisenberg\Adapters\LocalDevRoleGate(app(RoleGate::class)))->is($actor, 'media.create');
     }
 
     /**

@@ -98,7 +98,7 @@ class TagControllerTest extends TestCase
         $tag = Tag::create(['name_en' => 'Featured']);
 
         $this->app['env'] = 'testing';
-        $this->actingAs(new FakeActor(1, 'employee_l1'));
+        $this->actingAs(new FakeActor(1, 'author'));
 
         $this->putJson("/editor/tags/{$tag->id}", ['name_en' => 'Renamed'])->assertStatus(403);
         $this->deleteJson("/editor/tags/{$tag->id}")->assertStatus(403);

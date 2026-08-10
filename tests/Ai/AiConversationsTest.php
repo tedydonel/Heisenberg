@@ -27,7 +27,7 @@ class AiConversationsTest extends TestCase
 
     private function actingAsAuthor(int $id = 1): void
     {
-        $this->actingAs(new FakeActor($id, 'employee_l1'));
+        $this->actingAs(new FakeActor($id, 'author'));
     }
 
     public function test_a_conversation_is_created_titled_and_listed(): void

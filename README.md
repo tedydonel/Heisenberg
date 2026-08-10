@@ -215,13 +215,17 @@ through config alone. Turn it off once real auth exists.
 ## Roles
 
 Authorization runs through tiers, not literal role names, so the package never
-hard-codes your roles. Map the three tiers to whatever your app uses:
+hard-codes your roles. Heisenberg's own canonical vocabulary is WordPress-familiar
+— `admin`, `editor`, `author`, `viewer` — and the bundled default map already
+resolves the tiers to it. Remap the tiers to whatever role strings your app
+actually uses:
 
 ```php
 'roles' => [
-    'super'   => ['super_admin'],
-    'admins'  => ['super_admin', 'admin'],
-    'authors' => ['super_admin', 'admin', 'editor', 'writer'],
+    'super'   => ['admin'],
+    'admins'  => ['admin'],
+    'editors' => ['admin', 'editor'],
+    'authors' => ['admin', 'editor', 'author'],
 ],
 ```
 
@@ -238,7 +242,7 @@ scheduled publishing to act as a specific user.
 
 Publishing authority is separate from the tier map and lives in
 `heisenberg.lifecycle.role_permissions` (by default, `authors` may submit for
-review; only `admins` may publish, schedule or archive).
+review; only `editors` may publish, schedule or archive).
 
 ## Virus scanning
 

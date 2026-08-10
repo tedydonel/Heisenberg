@@ -372,7 +372,7 @@ class EditorAssistantTest extends TestCase
     public function test_an_authors_tier_actor_can_use_it(): void
     {
         $this->app['env'] = 'testing';
-        $this->actingAs(new FakeActor(1, 'employee_l1'));
+        $this->actingAs(new FakeActor(1, 'author'));
         $this->fakeReply('Done.');
 
         $this->postJson('/editor/ai/complete', ['prompt' => 'hi'])

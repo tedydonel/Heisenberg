@@ -120,7 +120,7 @@ class PostTaxonomyAttachDetachTest extends TestCase
         // A REAL, authenticated, non-owning, non-admin actor — PostPolicy::update()
         // denies it (same rule PostPersistenceTest's own authorization test exercises).
         $this->app['env'] = 'testing';
-        $this->actingAs(new FakeActor(999, 'employee_l1'));
+        $this->actingAs(new FakeActor(999, 'author'));
 
         $this->postJson("/editor/posts/{$post->id}/categories/{$category->id}")->assertStatus(403);
         $this->postJson("/editor/posts/{$post->id}/tags/{$tag->id}")->assertStatus(403);
@@ -132,7 +132,7 @@ class PostTaxonomyAttachDetachTest extends TestCase
     public function test_the_posts_own_author_may_attach_and_detach(): void
     {
         $this->app['env'] = 'testing';
-        $author = new FakeActor(42, 'employee_l1');
+        $author = new FakeActor(42, 'author');
         $this->actingAs($author);
 
         $post = Post::create(['title_en' => 'Mine', 'status' => 'draft', 'author_id' => 42]);

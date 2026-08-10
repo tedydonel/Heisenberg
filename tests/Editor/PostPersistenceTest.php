@@ -151,11 +151,11 @@ class PostPersistenceTest extends TestCase
 
         // A REAL, authenticated actor is never affected by LocalDevRoleGate
         // in any environment — moving outside 'local' just makes that
-        // explicit. `employee_l1` is an `authors`-tier role, never `admins`,
+        // explicit. `author` is an `authors`-tier role, never `admins`,
         // and doesn't own this post (its author_id is null, never matched by
         // PostPolicy's ownership check), so PostPolicy::update() must deny it.
         $this->app['env'] = 'testing';
-        $this->actingAs(new FakeActor(999, 'employee_l1'));
+        $this->actingAs(new FakeActor(999, 'author'));
 
         $update = $this->putJson("/editor/posts/{$postId}", $this->envelope(
             [$this->block('heisenberg/paragraph', ['content' => 'changed'])],
@@ -173,13 +173,13 @@ class PostPersistenceTest extends TestCase
 
     public function test_autosave_does_not_trip_the_lifecycle_guard(): void
     {
-        // `employee_l1` is `authors`-tier only — config('heisenberg.lifecycle
-        // .role_permissions')['published'] is `admins`, so this actor could
+        // `author` is `authors`-tier only — config('heisenberg.lifecycle
+        // .role_permissions')['published'] is `editors`, so this actor could
         // NEVER move a post to `published` through a real (non-autosave)
         // transition. Owns the post it creates, so the CONTENT save itself
         // is authorized either way — isolating the assertion to the
         // lifecycle guard specifically.
-        $author = new FakeActor(42, 'employee_l1');
+        $author = new FakeActor(42, 'author');
         $this->actingAs($author);
 
         $store = $this->postJson('/editor/posts', $this->envelope(
@@ -211,7 +211,7 @@ class PostPersistenceTest extends TestCase
      * with autosave OFF, a status change that IS a legal edge from `draft`
      * (config('heisenberg.lifecycle.transitions')['draft'] includes
      * `archived`) but requires a tier this actor lacks
-     * (role_permissions['archived'] === 'admins') must actually be
+     * (role_permissions['archived'] === 'editors') must actually be
      * rejected — proof the guard is real and not merely always a no-op.
      * (`published` is deliberately NOT used here — draft -> published isn't
      * even a legal edge, which would 422 for an unrelated reason; see
@@ -219,7 +219,7 @@ class PostPersistenceTest extends TestCase
      */
     public function test_non_autosave_status_transition_still_requires_the_correct_tier(): void
     {
-        $author = new FakeActor(42, 'employee_l1');
+        $author = new FakeActor(42, 'author');
         $this->actingAs($author);
 
         $store = $this->postJson('/editor/posts', $this->envelope(
@@ -245,7 +245,7 @@ class PostPersistenceTest extends TestCase
     /** A legal edge (draft -> pending_review) with the tier it requires (`authors`) succeeds. */
     public function test_a_transition_the_actor_is_authorized_for_succeeds(): void
     {
-        $author = new FakeActor(7, 'employee_l1');
+        $author = new FakeActor(7, 'author');
         $this->actingAs($author);
 
         $store = $this->postJson('/editor/posts', $this->envelope(
@@ -269,7 +269,7 @@ class PostPersistenceTest extends TestCase
     /** An edge that isn't in the transitions graph at all (draft -> published) is a 422, independent of tier. */
     public function test_an_illegal_transition_edge_is_rejected_with_422_even_for_an_admin(): void
     {
-        $admin = new FakeActor(1, 'super_admin');
+        $admin = new FakeActor(1, 'admin');
         $this->actingAs($admin);
 
         $store = $this->postJson('/editor/posts', $this->envelope(

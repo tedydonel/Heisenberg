@@ -70,7 +70,7 @@ class SavedThemeControllerTest extends TestCase
     public function test_an_authors_tier_actor_is_denied(): void
     {
         $this->app['env'] = 'testing';
-        $this->actingAs(new FakeActor(1, 'employee_l1'));
+        $this->actingAs(new FakeActor(1, 'author'));
 
         $this->postJson('/editor/themes', ['name' => 'Mine', 'theme' => $this->theme()])->assertStatus(403);
     }
@@ -134,7 +134,7 @@ class SavedThemeControllerTest extends TestCase
         $this->actingAs(new FakeActor(1, 'admin'));
         $this->postJson('/editor/themes', ['name' => 'Brand', 'theme' => $this->theme()])->assertOk();
 
-        $this->actingAs(new FakeActor(2, 'employee_l1'));
+        $this->actingAs(new FakeActor(2, 'author'));
         $this->deleteJson('/editor/themes', ['name' => 'Brand'])->assertStatus(403);
 
         $this->assertCount(1, $this->getJson('/editor/themes')->json('themes'));

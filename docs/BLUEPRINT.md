@@ -1776,10 +1776,13 @@ return [
     'icon_provider'  => \Heisenberg\Adapters\LucideIconProvider::class,
 
     // ── Authorization role map (tiers, not literal roles) ─────
+    // admin/editor/author/viewer are Heisenberg's own canonical role
+    // vocabulary; a host remaps its own role names here.
     'roles' => [
-        'super'   => ['super_admin'],
-        'admins'  => ['super_admin', 'admin'],
-        'authors' => ['super_admin', 'admin', 'employee_l1', 'employee_l2', 'employee_l3'],
+        'super'   => ['admin'],
+        'admins'  => ['admin'],
+        'editors' => ['admin', 'editor'],
+        'authors' => ['admin', 'editor', 'author'],
     ],
 
     // ── Publishing lifecycle ──────────────────────────────────
@@ -1793,9 +1796,9 @@ return [
         ],
         'role_permissions' => [                                      // target status → tiers
             'pending_review' => 'authors',
-            'published'      => 'admins',   // ← the resolved publish-authority decision (§7.4)
-            'scheduled'      => 'admins',
-            'archived'       => 'admins',
+            'published'      => 'editors',   // ← the resolved publish-authority decision (§7.4)
+            'scheduled'      => 'editors',
+            'archived'       => 'editors',
             'draft'          => 'authors',
         ],
     ],

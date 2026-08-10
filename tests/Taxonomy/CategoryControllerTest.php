@@ -124,11 +124,11 @@ class CategoryControllerTest extends TestCase
 
         // A REAL, authenticated actor is never affected by LocalDevRoleGate in
         // any environment — moving outside 'local' just makes that explicit.
-        // `employee_l1` is `authors`-tier (allowed to view/create) but never
+        // `author` is `authors`-tier (allowed to view/create) but never
         // `admins` (required for update/delete) — blueprint §10.2's
-        // "Category/Tag.update/delete: super_admin/admin only" row.
+        // "Category/Tag.update/delete: admin only" row.
         $this->app['env'] = 'testing';
-        $this->actingAs(new FakeActor(1, 'employee_l1'));
+        $this->actingAs(new FakeActor(1, 'author'));
 
         $this->putJson("/editor/categories/{$category->id}", ['name_en' => 'Renamed'])->assertStatus(403);
         $this->deleteJson("/editor/categories/{$category->id}")->assertStatus(403);
@@ -138,7 +138,7 @@ class CategoryControllerTest extends TestCase
     public function test_create_and_view_are_allowed_for_an_authors_tier_actor(): void
     {
         $this->app['env'] = 'testing';
-        $this->actingAs(new FakeActor(1, 'employee_l1'));
+        $this->actingAs(new FakeActor(1, 'author'));
 
         $this->postJson('/editor/categories', ['name_en' => 'Allowed'])->assertCreated();
         $this->getJson('/editor/categories')->assertOk();
