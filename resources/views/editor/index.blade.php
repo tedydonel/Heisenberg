@@ -154,4 +154,68 @@
             })();
         </script>
     @endif
+
+    @if (($postId ?? null) === null)
+        {{-- Unsaved-draft survival for the blank /editor. Autosave deliberately never CREATES a
+             post (an abandoned keystroke session must not spawn a stray draft row), which meant a
+             refresh before the first explicit Save silently discarded everything on the canvas.
+             The document is mirrored to localStorage instead (blocks + title, debounced on the
+             same hb:blocks-changed / hb:doc-title signals autosave keys off) and restored here on
+             the next blank-editor load. The moment the first Save gives the post an id
+             (hb:post-id — the URL adopts /editor/{id} at the same time), the DB owns persistence
+             and the local draft is cleared. Saved posts never touch this path: this whole block
+             only renders when the server passed no post. --}}
+        <script>
+            (() => {
+                const KEY = 'hb-editor:unsaved-draft';
+                let adopted = false;
+                let timer = null;
+
+                const readDraft = () => { try { return JSON.parse(localStorage.getItem(KEY) || 'null'); } catch (e) { return null; } };
+                const clearDraft = () => { try { localStorage.removeItem(KEY); } catch (e) { /* private mode */ } };
+
+                const titleEl = () => document.querySelector('[data-hb-title]');
+                const readTitle = () => {
+                    const el = titleEl();
+                    if (!el) return '';
+                    return (el.tagName === 'INPUT' ? el.value : el.textContent).trim();
+                };
+                const writeTitle = (value) => {
+                    const el = titleEl();
+                    if (!el || !value) return;
+                    if (el.tagName === 'INPUT') el.value = value; else el.textContent = value;
+                    el.dispatchEvent(new Event('input', { bubbles: true }));
+                };
+
+                const mirror = () => {
+                    if (adopted) return;
+                    clearTimeout(timer);
+                    timer = setTimeout(() => {
+                        if (adopted || !window.hbEditor) return;
+                        const blocks = window.hbEditor.getDoc().blocks || [];
+                        const title = readTitle();
+                        if (!blocks.length && !title) { clearDraft(); return; }
+                        try {
+                            localStorage.setItem(KEY, JSON.stringify({ blocks: blocks, title: title, at: Date.now() }));
+                        } catch (e) { /* quota/private mode — persistence is best-effort */ }
+                    }, 400);
+                };
+
+                const start = () => {
+                    const draft = readDraft();
+                    if (draft) {
+                        if (draft.title) writeTitle(draft.title);
+                        if (Array.isArray(draft.blocks) && draft.blocks.length) {
+                            window.hbEditor.replaceDoc(draft.blocks, { baseline: true });
+                        }
+                    }
+                    document.addEventListener('hb:blocks-changed', mirror);
+                    document.addEventListener('hb:doc-title', mirror);
+                    document.addEventListener('hb:post-id', () => { adopted = true; clearTimeout(timer); clearDraft(); });
+                };
+                if (window.hbEditor && typeof window.hbEditor.replaceDoc === 'function') start();
+                else document.addEventListener('DOMContentLoaded', start, { once: true });
+            })();
+        </script>
+    @endif
 @endsection

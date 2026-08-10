@@ -27,6 +27,15 @@
 .hb-editor--inspector-collapsed { --hb-editor-inspector-w: 0px; }
 .hb-editor--inspector-collapsed .hb-inspector { display: none; }
 
+/* Boot gate: added synchronously before first paint (editor/layouts/app.blade.php), removed by the
+   release script once the DOMContentLoaded restores (active panel, block hydration, unsaved draft)
+   have applied — so a refresh never flashes the fresh-boot layout before "readjusting" into the
+   restored one. visibility (not display) so the grid still lays out at its real size underneath,
+   and a scripting failure degrades to a paused-looking editor, not a reflowing one. The release
+   script carries a hard timeout failsafe: this class can never stick. */
+.hb-editor--booting, .hb-editor--booting * { transition: none !important; }
+.hb-editor--booting { visibility: hidden; }
+
 .hb-editor__topbar { grid-column: 1 / -1; grid-row: 1; }
 .hb-editor__sidebar { grid-column: 1; grid-row: 2; }
 .hb-editor__panel { grid-column: 2; grid-row: 2; overflow: hidden; }

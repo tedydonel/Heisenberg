@@ -33,6 +33,11 @@
     .hb-nav-row:hover { background: var(--hb-surface-hover, #F7F7F7); color: var(--hb-text-primary, #0A0A0A); }
     .hb-nav-row.is-on { background: var(--hb-bg-muted, #F4F4F4); color: var(--hb-text-primary, #0A0A0A); }
     .hb-nav-row .twist { width: 10px; height: 10px; flex: none; }
+    /* Container rows get a real caret in the twist slot; clicking it folds the
+       subtree (rotated closed like every other disclosure in the editor). */
+    .hb-nav-row .twist.has-kids { display: inline-flex; align-items: center; justify-content: center; color: var(--hb-text-muted, #9A9A9A); cursor: pointer; transition: transform .12s ease; }
+    .hb-nav-row .twist.has-kids svg { width: 10px; height: 10px; }
+    .hb-nav-row .twist.has-kids.is-closed { transform: rotate(-90deg); }
     .hb-nav-row .ic { width: 13px; height: 13px; flex: none; display: inline-flex; align-items: center; justify-content: center; color: inherit; }
     .hb-nav-row .ic svg { width: 13px; height: 13px; }
     .hb-nav-row .nm { flex: 1; min-width: 0; font-size: 12px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
@@ -105,26 +110,52 @@
             return el;
         };
 
+        const TWIST = '<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 6l4 4 4-4"/></svg>';
+        // Folded subtrees per panel root. Rows are rebuilt wholesale on every
+        // hb:blocks-changed, so the fold state must live OUTSIDE the DOM.
+        const collapsedByRoot = new WeakMap();
+        const foldSetFor = (root) => {
+            let set = collapsedByRoot.get(root);
+            if (!set) { set = new Set(); collapsedByRoot.set(root, set); }
+            return set;
+        };
+
         const buildList = (root) => {
             const host = root.querySelector('[data-hb-nav-list-body]');
             if (!host) return;
+            const collapsed = foldSetFor(root);
             // Rows read the model (the runtime's source of truth); the Outline below reads the
             // DOM instead because it needs each block's *rendered* text, not raw innerHTML.
+            // The walk recurses into innerBlocks — a group's children are part of the document
+            // and the list view must show them, indented under their parent, not hide them.
             const docBlocks = window.hbEditor ? window.hbEditor.getDoc().blocks : [];
             const iconFor = (name) => {
                 const t = document.querySelector('[data-hb-nav-icon="' + cssId(name) + '"]');
                 return t && t.innerHTML.trim() ? t.innerHTML : BLOCK;
             };
-            const rows = docBlocks.map((b) => {
-                const name = b.name || '';
-                const id = b.id == null ? '' : String(b.id);
-                return '<button type="button" class="hb-nav-row" data-nav-row="' + esc(id) + '" aria-keyshortcuts="Alt+ArrowUp Alt+ArrowDown">'
-                    + '<span class="twist"></span>'
-                    + '<span class="ic">' + iconFor(name) + '</span>'
-                    + '<span class="nm">' + esc(labelFor(name)) + '</span>'
-                    + '<span class="grab">' + GRIP + '</span>'
-                    + '</button>';
-            });
+            const rows = [];
+            const walk = (list, depth) => {
+                list.forEach((b) => {
+                    const name = b.name || '';
+                    const id = b.id == null ? '' : String(b.id);
+                    const kids = Array.isArray(b.innerBlocks) ? b.innerBlocks : [];
+                    const folded = collapsed.has(id);
+                    rows.push('<button type="button" class="hb-nav-row" data-nav-row="' + esc(id) + '" data-nav-depth="' + depth + '"'
+                        + (depth ? ' style="padding-left:' + (8 + depth * 14) + 'px"' : '')
+                        + ' aria-keyshortcuts="Alt+ArrowUp Alt+ArrowDown">'
+                        + (kids.length
+                            ? '<span class="twist has-kids' + (folded ? ' is-closed' : '') + '" data-nav-twist="' + esc(id) + '">' + TWIST + '</span>'
+                            : '<span class="twist"></span>')
+                        + '<span class="ic">' + iconFor(name) + '</span>'
+                        + '<span class="nm">' + esc(labelFor(name)) + '</span>'
+                        // Drag-to-reorder is top-level only (moveBlock addresses root
+                        // indexes) — nested rows get no grip rather than a dead one.
+                        + (depth === 0 ? '<span class="grab">' + GRIP + '</span>' : '')
+                        + '</button>');
+                    if (kids.length && !folded) walk(kids, depth + 1);
+                });
+            };
+            walk(docBlocks, 0);
             host.innerHTML = '<div class="hb-nav-list">' + (rows.length ? rows.join('') : '<div class="hb-nav-empty">' + t('empty_blocks', 'No blocks yet.') + '</div>') + '</div>';
         };
 
@@ -284,6 +315,15 @@
                 rebuildAll(root);
             });
             root.addEventListener('click', (e) => {
+                // The caret folds the subtree; it must not also select/scroll.
+                const twist = e.target.closest('[data-nav-twist]');
+                if (twist) {
+                    const id = twist.getAttribute('data-nav-twist');
+                    const set = foldSetFor(root);
+                    set.has(id) ? set.delete(id) : set.add(id);
+                    buildList(root);
+                    return;
+                }
                 const row = e.target.closest('[data-nav-row]');
                 if (row) {
                     scrollToBlock(row.getAttribute('data-nav-row'));

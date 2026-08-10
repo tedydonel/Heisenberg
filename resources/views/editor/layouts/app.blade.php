@@ -23,6 +23,11 @@
                 // Runs synchronously as the very first child of .hb-editor, before the rest of the
                 // shell paints, so persisted collapse/theme state applies with no visible flash.
                 const shell = document.currentScript.parentElement;
+                // Boot gate — see .hb-editor--booting in 20-shell.css. The restores that need the
+                // parsed DOM (active panel, block hydration, unsaved draft) run at DOMContentLoaded;
+                // without this the browser paints the fresh-boot layout first and the restored state
+                // arrives as a visible "readjust". Released by the script after the content yield.
+                shell.classList.add('hb-editor--booting');
                 const panelKeys = ['sidebar', 'panel', 'inspector'];
                 panelKeys.forEach((key) => {
                     if (localStorage.getItem(`hb-editor:${key}-collapsed`) === 'true') {
@@ -49,6 +54,23 @@
             })();
         </script>
         @yield('content')
+        <script>
+            (() => {
+                // Boot-gate release. Registered AFTER every restore script in the content above,
+                // so its DOMContentLoaded listener runs last (listener order = registration
+                // order): by the time this fires, the active panel is swapped in and the block
+                // tree is hydrated. Two rAFs let that batch commit, then the shell reveals in its
+                // restored state. The timeout is the failsafe — if any restore script throws, the
+                // editor must still appear.
+                const shell = document.currentScript.parentElement;
+                const release = () => requestAnimationFrame(() => requestAnimationFrame(
+                    () => shell.classList.remove('hb-editor--booting')
+                ));
+                if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', release, { once: true });
+                else release();
+                setTimeout(() => shell.classList.remove('hb-editor--booting'), 1500);
+            })();
+        </script>
     </div>
 </body>
 </html>

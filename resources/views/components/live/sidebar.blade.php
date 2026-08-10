@@ -86,6 +86,18 @@
         const showPanel = (panelKey, tabIndex) => {
             const selector = PANEL_SELECTOR[panelKey];
             if (!selector) return;
+            // Choosing a panel MEANS "show me that panel" — if the panel area is
+            // collapsed, reopen it here instead of making the user find the
+            // topbar toggle. Below 1024px the one-open-at-a-time rule applies,
+            // same as the topbar's own toggles.
+            const shell = document.querySelector('.hb-editor');
+            if (shell && shell.classList.contains('hb-editor--panel-collapsed')) {
+                if (window.hbSetPanelCollapsed) window.hbSetPanelCollapsed(shell, 'panel', false);
+                else shell.classList.remove('hb-editor--panel-collapsed');
+                if (window.matchMedia('(max-width: 1023px)').matches && window.hbSetPanelCollapsed) {
+                    ['sidebar', 'inspector'].forEach((key) => window.hbSetPanelCollapsed(shell, key, true));
+                }
+            }
             Object.values(PANEL_SELECTOR).forEach((sel) => {
                 const panel = document.querySelector(sel);
                 if (panel) panel.hidden = true;
@@ -108,22 +120,51 @@
         };
         window.hbEditorShowPanel = showPanel;
 
+        // The chosen panel survives a refresh: each nav click stores its
+        // "<panel>:<tab>" key, and boot() replays it once so the editor reopens
+        // where it was left instead of always resetting to Components.
+        const NAV_STORE = 'hb-editor:active-nav';
+
+        const activateNav = (btn, persist) => {
+            const [panelKey, tabIndex] = (btn.dataset.hbNav || '').split(':');
+            if (!PANEL_SELECTOR[panelKey]) return;
+
+            document.querySelectorAll('[data-hb-nav]').forEach((other) => {
+                other.classList.toggle('hb-navitem--active', other === btn);
+                other.setAttribute('aria-current', other === btn ? 'true' : 'false');
+            });
+
+            if (persist) {
+                try { localStorage.setItem(NAV_STORE, btn.dataset.hbNav || ''); } catch (e) { /* private mode */ }
+            }
+            showPanel(panelKey, tabIndex);
+        };
+
         const boot = () => {
             document.querySelectorAll('[data-hb-nav]').forEach((btn) => {
                 if (btn.__hbNavWired) return;
                 btn.__hbNavWired = true;
-                btn.addEventListener('click', () => {
-                    const [panelKey, tabIndex] = (btn.dataset.hbNav || '').split(':');
-                    if (!PANEL_SELECTOR[panelKey]) return;
-
-                    document.querySelectorAll('[data-hb-nav]').forEach((other) => {
-                        other.classList.toggle('hb-navitem--active', other === btn);
-                        other.setAttribute('aria-current', other === btn ? 'true' : 'false');
-                    });
-
-                    showPanel(panelKey, tabIndex);
-                });
+                btn.addEventListener('click', () => activateNav(btn, true));
             });
+
+            // Restore once, after the rail is wired. Restoring must not reopen a
+            // deliberately collapsed panel area, so the collapse state is stashed
+            // and put back around the showPanel call.
+            if (!document.__hbNavRestored) {
+                document.__hbNavRestored = true;
+                let stored = null;
+                try { stored = localStorage.getItem(NAV_STORE); } catch (e) { /* private mode */ }
+                const btn = stored ? document.querySelector('[data-hb-nav="' + stored.replace(/"/g, '\\"') + '"]') : null;
+                if (btn && stored !== 'cb:0') {
+                    const shell = document.querySelector('.hb-editor');
+                    const wasCollapsed = !!(shell && shell.classList.contains('hb-editor--panel-collapsed'));
+                    activateNav(btn, false);
+                    if (wasCollapsed && shell) {
+                        if (window.hbSetPanelCollapsed) window.hbSetPanelCollapsed(shell, 'panel', true);
+                        else shell.classList.add('hb-editor--panel-collapsed');
+                    }
+                }
+            }
         };
         if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', boot, { once: true });
         else boot();

@@ -486,6 +486,85 @@ class EditorRendersTest extends TestCase
         $this->assertMatchesRegularExpression('/value="' . $tag->id . '"\s*checked/', $html);
     }
 
+    /**
+     * Refresh must not be a reset (2026-08-10). Autosave deliberately never
+     * creates a post, so before this the blank /editor lost everything on
+     * refresh until the first explicit Save. The blank page now mirrors the
+     * document to localStorage and restores it; a post page must NOT ship that
+     * script — its persistence is the DB via /editor/{id}.
+     */
+    public function test_the_blank_editor_mirrors_an_unsaved_draft_and_a_post_page_does_not(): void
+    {
+        $blank = $this->get('/editor')->getContent();
+        $this->assertStringContainsString('hb-editor:unsaved-draft', $blank);
+        $this->assertStringContainsString("document.addEventListener('hb:post-id'", $blank);
+
+        $this->actingAs(new \Illuminate\Auth\GenericUser(['id' => 7]));
+        $this->app->instance(\Heisenberg\Contracts\RoleGate::class, new class implements \Heisenberg\Contracts\RoleGate
+        {
+            public function is(\Illuminate\Contracts\Auth\Authenticatable $user, string $tier): bool
+            {
+                return true;
+            }
+
+            public function isAny(\Illuminate\Contracts\Auth\Authenticatable $user, array $tiers): bool
+            {
+                return true;
+            }
+
+            public function rolesOf(\Illuminate\Contracts\Auth\Authenticatable $user): array
+            {
+                return ['authors'];
+            }
+
+            public function systemActor(): ?\Illuminate\Contracts\Auth\Authenticatable
+            {
+                return null;
+            }
+        });
+        $post = \Heisenberg\Models\Post::create(['title_en' => 'Saved post', 'status' => 'draft']);
+        $this->assertStringNotContainsString('hb-editor:unsaved-draft', $this->get("/editor/{$post->id}")->getContent());
+    }
+
+    /**
+     * Clicking a rail item means "show me that panel": with the panel area
+     * collapsed it must reopen instead of switching invisibly, and the chosen
+     * panel survives a refresh via localStorage.
+     */
+    public function test_the_sidebar_reopens_a_collapsed_panel_and_remembers_the_active_one(): void
+    {
+        $html = $this->get('/editor')->getContent();
+
+        $this->assertStringContainsString("hbSetPanelCollapsed(shell, 'panel', false)", $html);
+        $this->assertStringContainsString('hb-editor:active-nav', $html);
+    }
+
+    /**
+     * Restores that need the parsed DOM run at DOMContentLoaded — without the
+     * boot gate the browser paints the fresh-boot layout first and the restored
+     * state lands as a visible "readjust" flash. The gate must be added
+     * synchronously before paint and must carry the timeout failsafe.
+     */
+    public function test_the_boot_gate_hides_the_first_paint_until_state_is_restored(): void
+    {
+        $html = $this->get('/editor')->getContent();
+
+        $this->assertStringContainsString("classList.add('hb-editor--booting')", $html);
+        $this->assertStringContainsString("classList.remove('hb-editor--booting')", $html);
+        // The failsafe: a throwing restore script must never leave the editor hidden.
+        $this->assertStringContainsString('setTimeout(() => shell.classList.remove', $html);
+    }
+
+    /** The List View walks innerBlocks — nested children render indented, foldable, not hidden. */
+    public function test_the_navigator_list_view_walks_nested_blocks(): void
+    {
+        $html = $this->get('/editor')->getContent();
+
+        $this->assertStringContainsString('data-nav-depth', $html);
+        $this->assertStringContainsString('data-nav-twist', $html);
+        $this->assertStringContainsString('walk(kids, depth + 1)', $html);
+    }
+
     public function test_editor_and_preview_pages_for_a_post_require_view_authorization(): void
     {
         $post = \Heisenberg\Models\Post::create(['title_en' => 'Secret draft', 'status' => 'draft']);
