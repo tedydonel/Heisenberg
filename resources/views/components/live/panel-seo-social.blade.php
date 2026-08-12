@@ -56,8 +56,11 @@
     .hb-seo-preview__title { font-size: var(--hb-fs-base, 13px); font-weight: 500; color: var(--hb-success, #3BD186); }
     .hb-seo-preview__desc { font-size: var(--hb-fs-xs, 11px); line-height: 1.4; color: var(--hb-text-secondary, #5A5A5A); }
 
-    .hb-seo-checklist { display: flex; flex-direction: column; gap: var(--hb-space-2, 8px); padding: 0 var(--hb-space-3, 12px) var(--hb-space-3, 12px); flex: none; }
+    .hb-seo-checklist { display: flex; flex-direction: column; gap: 10px; padding: 0 var(--hb-space-3, 12px) var(--hb-space-3, 12px); flex: none; }
     .hb-seo-checklist__empty { font-family: var(--hb-font-sans, Rubik, sans-serif); font-size: var(--hb-fs-xs, 11px); color: var(--hb-text-muted, #9A9A9A); }
+    .hb-seo-checklist .hb-statuscheckrow { align-items: flex-start; }
+    .hb-seo-checklist .hb-statuscheckrow__icon { margin-top: 1px; }
+    .hb-seo-checklist .hb-statuscheckrow__text { font-size: var(--hb-fs-xs, 11px); line-height: 1.35; }
 
     .hb-seo-toggle-row { display: flex; align-items: center; justify-content: space-between; gap: var(--hb-space-2, 8px); padding: 0 var(--hb-space-3, 12px); height: 32px; flex: none; }
     .hb-seo-toggle-row__label { font-family: var(--hb-font-sans, Rubik, sans-serif); font-size: var(--hb-fs-sm, 12px); color: var(--hb-text-secondary, #5A5A5A); }
@@ -244,14 +247,20 @@
         </div>
 
         {{-- Real checklist (2026-08-11) — rendered client-side from SeoAnalysisController's
-             `checks[]`, cloned from the hidden <template> prototypes below (one per status) so
-             every row is a genuine ui/status-check-row instance, never hand-built markup. --}}
+             `checks[]`, cloned from the hidden prototypes below (one per status) so every row is
+             a genuine ui/status-check-row instance, never hand-built markup.
+
+             The prototypes live in a plain hidden div, NOT a <template> (2026-08-12): a
+             template's content is inert, so ui/status-check-row's own @once <style> block —
+             emitted at its FIRST render, which is here — landed inside the template and was
+             never applied by the browser. Every status icon rendered black because the
+             .hb-statuscheckrow__icon--* color rules were not in the document at all. --}}
         <div class="hb-seo-checklist" data-hb-seo-checklist>
-            <template data-hb-seo-check-prototypes>
+            <div data-hb-seo-check-prototypes hidden>
                 <x-ui.status-check-row status="pass" text="" data-hb-check-proto="pass" />
                 <x-ui.status-check-row status="warn" text="" data-hb-check-proto="warn" />
                 <x-ui.status-check-row status="fail" text="" data-hb-check-proto="fail" />
-            </template>
+            </div>
             <span class="hb-seo-checklist__empty" data-hb-seo-checklist-empty>{{ __('heisenberg::editor.panel_seo_social.checklist_empty') }}</span>
         </div>
 
@@ -464,8 +473,8 @@
                 const checkProtoHost = root.querySelector('[data-hb-seo-check-prototypes]');
 
                 const rowPrototype = (status) => {
-                    if (!checkProtoHost || !checkProtoHost.content) return null;
-                    const proto = checkProtoHost.content.querySelector('[data-hb-check-proto="' + status + '"]');
+                    if (!checkProtoHost) return null;
+                    const proto = checkProtoHost.querySelector('[data-hb-check-proto="' + status + '"]');
                     return proto ? proto.cloneNode(true) : null;
                 };
 
@@ -474,7 +483,16 @@
                     checklistEl.querySelectorAll('[data-hb-seo-check-row]').forEach((row) => row.remove());
                     const list = Array.isArray(checks) ? checks : [];
                     if (checklistEmptyEl) checklistEmptyEl.hidden = list.length > 0;
-                    list.forEach((check) => {
+                    const seenKeys = new Set();
+                    const merged = list.filter((check) => {
+                        const group = check && check.group;
+                        if (!group) return true;
+                        const key = group + ' ' + check.status + ' ' + check.message;
+                        if (seenKeys.has(key)) return false;
+                        seenKeys.add(key);
+                        return true;
+                    });
+                    merged.forEach((check) => {
                         const status = ['pass', 'warn', 'fail'].indexOf(check && check.status) !== -1 ? check.status : 'pass';
                         const row = rowPrototype(status);
                         if (!row) return;

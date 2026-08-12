@@ -173,4 +173,52 @@ class SeoPanelWiringTest extends TestCase
 
         $this->assertFalse($this->markerFollowedByWithin($html, 'data-hb-seo-field="meta_title"', 'disabled', 300));
     }
+
+    // ── checklist row color/size (owner-reported: font too big, icons black) ─
+
+    public function test_the_warn_check_icon_uses_the_warning_token_not_a_fixed_hex(): void
+    {
+        $html = $this->blankEditorHtml();
+
+        $this->assertStringContainsString('.hb-statuscheckrow__icon--warn { color: var(--hb-warning', $html);
+        $this->assertStringNotContainsString('.hb-statuscheckrow__icon--warn { color: #8A5A00', $html);
+    }
+
+    public function test_the_check_row_prototypes_are_not_inside_an_inert_template_element(): void
+    {
+        $html = $this->blankEditorHtml();
+
+        // ui/status-check-row emits its stylesheet via @once, at its FIRST render — which is the
+        // prototype block below. A <template>'s content is inert, so emitting there put the
+        // .hb-statuscheckrow__icon--* color rules somewhere the browser never applies them and
+        // every status icon rendered black. The prototypes must live in a plain hidden element.
+        $this->assertStringContainsString('data-hb-seo-check-prototypes', $html);
+        $this->assertStringNotContainsString('<template data-hb-seo-check-prototypes', $html);
+
+        $stylePos = strpos($html, '.hb-statuscheckrow__icon--pass { color:');
+        $this->assertNotFalse($stylePos, 'the status-check-row stylesheet never reached the page');
+        $templatePos = strpos($html, '<template');
+        if ($templatePos !== false) {
+            $this->assertLessThan(
+                $templatePos,
+                $stylePos,
+                'the icon color rules must be emitted before/outside any <template>, or they are inert',
+            );
+        }
+    }
+
+    public function test_the_checklist_scopes_a_smaller_row_font_to_the_seo_panel_only(): void
+    {
+        $html = $this->blankEditorHtml();
+
+        $this->assertStringContainsString('.hb-seo-checklist .hb-statuscheckrow__text { font-size: var(--hb-fs-xs', $html);
+    }
+
+    public function test_the_checklist_script_dedupes_identical_group_status_message_rows(): void
+    {
+        $html = $this->blankEditorHtml();
+
+        $this->assertStringContainsString('seenKeys', $html);
+        $this->assertStringContainsString("group + ' ' + check.status + ' ' + check.message", $html);
+    }
 }
