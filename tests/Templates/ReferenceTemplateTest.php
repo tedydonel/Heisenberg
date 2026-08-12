@@ -56,12 +56,10 @@ class ReferenceTemplateTest extends TestCase
         ];
         $this->assertSame($expected, array_keys($article['capabilities']));
 
-        // seoMeta is the one capability shipped off — no backing data source exists yet.
-        $this->assertFalse($article['capabilities']['seoMeta']['enabled']);
+        // Every capability is enabled in the worked example (2026-08-11: seoMeta flipped on
+        // once NativeSeoMetaProvider gave it a real backing data source — docs/seo-system.md
+        // Wave S1).
         foreach ($expected as $key) {
-            if ($key === 'seoMeta') {
-                continue;
-            }
             $this->assertTrue($article['capabilities'][$key]['enabled'], "{$key} should be enabled in the worked example");
         }
     }

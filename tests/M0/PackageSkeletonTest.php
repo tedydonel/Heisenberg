@@ -81,6 +81,43 @@ class PackageSkeletonTest extends TestCase
     }
 
     /**
+     * NativeCommentProvider is the default PostCommentProvider binding (2026-08-11) —
+     * native comment storage now exists, so the fallback default in
+     * HeisenbergServiceProvider's post-template contract loop is NativeCommentProvider,
+     * not NullPostCommentProvider (the other three post-template adapters keep their null
+     * defaults; only this one seam changed — see that loop's docblock).
+     */
+    public function test_post_comment_provider_resolves_to_the_native_adapter_by_default(): void
+    {
+        $this->assertInstanceOf(
+            \Heisenberg\Adapters\NativeCommentProvider::class,
+            app(\Heisenberg\Contracts\PostCommentProvider::class)
+        );
+        $this->assertSame(
+            app(\Heisenberg\Contracts\PostCommentProvider::class),
+            app(\Heisenberg\Contracts\PostCommentProvider::class)
+        );
+    }
+
+    /**
+     * NativeSeoMetaProvider is the default PostSeoMetaProvider binding (2026-08-11,
+     * docs/seo-system.md Wave S1) — same posture flip as comments_provider above: native
+     * SeoMeta storage now exists, so the fallback default in HeisenbergServiceProvider's
+     * post-template contract loop is NativeSeoMetaProvider, not NullPostSeoMetaProvider.
+     */
+    public function test_post_seo_meta_provider_resolves_to_the_native_adapter_by_default(): void
+    {
+        $this->assertInstanceOf(
+            \Heisenberg\Adapters\NativeSeoMetaProvider::class,
+            app(\Heisenberg\Contracts\PostSeoMetaProvider::class)
+        );
+        $this->assertSame(
+            app(\Heisenberg\Contracts\PostSeoMetaProvider::class),
+            app(\Heisenberg\Contracts\PostSeoMetaProvider::class)
+        );
+    }
+
+    /**
      * The template registry is container-bound and config-wired (2026-08-10) —
      * before this, every host rendering posts through its own template contract
      * had to hand-construct the validator/registry pair the way
