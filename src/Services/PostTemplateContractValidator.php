@@ -363,6 +363,20 @@ class PostTemplateContractValidator
         if (array_key_exists('sortOrder', $def) && ! in_array($def['sortOrder'], self::COMMENT_SORT_ORDERS, true)) {
             $errors[] = "capability 'comments' sortOrder must be one of: " . implode(', ', self::COMMENT_SORT_ORDERS);
         }
+
+        // 'threaded'/'maxDepth' (2026-08-11): whether a template renders nested replies at
+        // all, and how deep — the template-facing counterpart to
+        // `config('heisenberg.comments.max_depth')`, which caps storage-side; a template may
+        // declare a shallower maxDepth than the config cap (e.g. render only 2 levels of a
+        // 3-deep thread) but never a deeper one — a template can only ever narrow what
+        // storage allows, not widen it.
+        if (array_key_exists('threaded', $def) && ! is_bool($def['threaded'])) {
+            $errors[] = "capability 'comments' threaded must be a boolean";
+        }
+
+        if (array_key_exists('maxDepth', $def) && ! (is_int($def['maxDepth']) && $def['maxDepth'] >= 1 && $def['maxDepth'] <= 10)) {
+            $errors[] = "capability 'comments' maxDepth must be an integer 1-10";
+        }
     }
 
     /**

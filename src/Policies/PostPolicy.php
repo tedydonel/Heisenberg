@@ -49,10 +49,23 @@ class PostPolicy
         $this->roleGate = new LocalDevRoleGate($roleGate);
     }
 
-    /** Owner OR anyone holding the `authors`/`admins` editorial tiers may load a post into the editor. */
+    /**
+     * Owner OR anyone holding the `authors`/`admins` editorial tiers may load a post into the
+     * editor. A `published` post is ALSO publicly viewable by anyone, including a real
+     * (non-bypassed) guest — this is what makes the public comments endpoints (CommentController,
+     * routes/comments.php) work at all: a blog visitor reading a published post's thread is not
+     * an owner and holds no editorial tier, but must still pass this check. A `draft`/
+     * `pending_review`/`scheduled`/`archived` post stays invisible to that same visitor (no
+     * status-based exception below applies), so this addition never widens access to unpublished
+     * content.
+     */
     public function view(Authenticatable $user, Post $post): bool
     {
         if ($this->isOwner($user, $post)) {
+            return true;
+        }
+
+        if ($post->status === 'published') {
             return true;
         }
 

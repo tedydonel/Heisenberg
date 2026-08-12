@@ -307,6 +307,35 @@ class PostTemplateContractValidatorTest extends TestCase
         $this->assertInvalid($contract, 'comments');
     }
 
+    public function test_comments_accepts_threaded_and_max_depth(): void
+    {
+        $contract = $this->validContract();
+        $contract['capabilities']['comments']['threaded'] = true;
+        $contract['capabilities']['comments']['maxDepth'] = 3;
+        $this->assertValid($contract);
+    }
+
+    public function test_comments_rejects_a_non_boolean_threaded(): void
+    {
+        $contract = $this->validContract();
+        $contract['capabilities']['comments']['threaded'] = 'yes';
+        $this->assertInvalid($contract, "comments' threaded must be a boolean");
+    }
+
+    public function test_comments_rejects_a_max_depth_of_zero(): void
+    {
+        $contract = $this->validContract();
+        $contract['capabilities']['comments']['maxDepth'] = 0;
+        $this->assertInvalid($contract, 'maxDepth');
+    }
+
+    public function test_comments_rejects_a_max_depth_above_ten(): void
+    {
+        $contract = $this->validContract();
+        $contract['capabilities']['comments']['maxDepth'] = 11;
+        $this->assertInvalid($contract, 'maxDepth');
+    }
+
     public function test_seo_meta_rejects_unknown_field(): void
     {
         $contract = $this->validContract();

@@ -111,13 +111,13 @@ project brief asked to be answered per option, not globally.
 | 1 | Table of contents | **Render** | Derived from the post's own heading blocks at render time. Zero storage. |
 | 2 | Featured image | **Render** | Resolved from the post's own content (first image block) through the existing `MediaResolver` contract. Zero new storage. |
 | 3 | Post views | **Adapter** | No column, no table exists anywhere in this package for a view counter. Nothing to render — a host supplies storage. |
-| 4 | Comments/discussion | **Adapter** | `heisenberg_comments` table name is reserved but no `Comment` model is built (planned M3). A host plugs in their own system now; a native adapter can drop in later at the same config key. |
+| 4 | Comments/discussion | **Adapter** | Native storage ships (2026-08-11): `heisenberg_comments` backs `Heisenberg\Models\Comment`, and `NativeCommentProvider` is the default binding. A host may still bind `NullPostCommentProvider` (disable) or their own class (external system) at the same config key. |
 | 5 | Related posts | **Adapter** | `heisenberg_post_related` table name is reserved but no model is built (planned M3), and the alternative (taxonomy-based) strategy depends on taxonomy work landing separately. Selection strategy is a host decision until then. |
 | 6 | Reading time | **Render** | Pure computation (word count ÷ words-per-minute) over the post's own block content. Zero storage. |
 | 7 | Author box | **Render** | Resolved via a configurable attribute map off the host's own user model — see the caveat below. |
 | 8 | Share buttons | **Render** | Pure UI: a fixed list of networks plus the post's own public URL/title. Zero data dependency. |
 | 9 | Breadcrumbs | **Render** | Structural UI (Home › [Category] › Title) with the category segment optional and configurable — degrades gracefully when a host hasn't added category linkage yet. |
-| 10 | SEO/meta emission | **Adapter (no default)** | `seo_meta` table name is reserved but no model is built, and `Post` carries no SEO columns at all. This is the one capability whose null adapter has *nothing* truthful to return. |
+| 10 | SEO/meta emission | **Adapter** | Native storage ships (2026-08-11, docs/seo-system.md Wave S1): the polymorphic `seo_meta` table backs `Heisenberg\Models\SeoMeta`, and `NativeSeoMetaProvider` is the default binding. A host may still bind `NullPostSeoMetaProvider` (opt out) or their own class (external SEO system) at the same config key. |
 | 11 | Pagination | **Render** | Pure UI/query over already-existing `Post` columns (`published_at`, `locale`, `status`). Zero new storage. |
 
 Seven of the eleven (1, 2, 6, 7, 8, 9, 11) are render concerns Heisenberg could plausibly
@@ -205,21 +205,36 @@ migration). A host wires their own analytics table, Redis counter, or third-part
 "comments": {
   "enabled": true,
   "allowGuests": true,
-  "sortOrder": "newest"          // "newest" | "oldest"
+  "sortOrder": "newest",         // "newest" | "oldest" — top-level ordering only
+  "threaded": true,               // render nested replies at all
+  "maxDepth": 3                   // 1-10; a template-side cap, never deeper than storage allows
 }
 ```
 
 `Heisenberg\Contracts\PostCommentProvider` (`thread(Post $post, string $sortOrder): array`,
-`count(Post $post): int`). Bundled default `Heisenberg\Adapters\NullPostCommentProvider` always
-returns an empty thread. `config('heisenberg.tables.comments')` reserves
-`heisenberg_comments`, and `docs/BLUEPRINT.md` §2.3.6 describes the intended native
-`BlogComment`→`Comment` model in detail (registered + guest "letters", editor replies,
-moderation) — but it is explicitly **planned M3, not built**. The brief's instinct to follow the
-`MediaResolver` pattern here is the right one *for now*: an adopter plugs in their own comment
-system today (their own table, Disqus, a hosted service, whatever they already run), and once
-the native `Comment` model ships, a `NativeCommentProvider` can be bound at the exact same
-config key with **zero change to any template** — the capability's shape does not change, only
-which class answers it.
+`count(Post $post): int`, `submit(Post $post, array $input): array`). **Native storage now
+ships** (2026-08-11): `config('heisenberg.tables.comments')`'s `heisenberg_comments` table
+backs `Heisenberg\Models\Comment` (blueprint §2.3.6 `BlogComment`, scoped down — see the
+model's own docblock for what's deliberately out: no `meta` json, no editor-reply/feature
+flags, no reaction counts), and `Heisenberg\Adapters\NativeCommentProvider` is the **default**
+binding at `heisenberg.post_template.comments_provider`. A host binds
+`Heisenberg\Adapters\NullPostCommentProvider` at the same key to disable comments entirely, or
+its own class to integrate an external system (their own table, Disqus, a hosted service) — the
+capability's shape never changes, only which class answers it.
+
+`thread()` returns approved top-level comments (sorted by `sortOrder`) with their approved
+replies nested underneath (always oldest-first, at every level, regardless of `sortOrder`); a
+reply of an unapproved parent simply doesn't render. `count()` is the total approved count,
+top-level and replies combined. `submit()` takes
+`{parent_id?, author_id?, author_name, author_email?, body, auto_approve?}` and returns
+`{ok, status, comment?, error?}` — a new comment is stored `pending` unless
+`config('heisenberg.comments.auto_approve')` or the input's own `auto_approve` says otherwise; a
+reply is rejected (`error: 'max-depth'`) once it would sit at or past
+`config('heisenberg.comments.max_depth')`, and a `parent_id` from a different post or a
+spam/trash comment is rejected as `error: 'invalid-parent'`. See `PostCommentProvider`'s
+docblock for the full `Item` shape and every field's precise meaning — this doc only summarizes
+it. Request-shape validation (required fields, auth/guest policy per `allowGuests`, rate
+limiting) is an HTTP layer's job, not this contract's.
 
 ### 5. Related posts — Adapter
 
@@ -315,28 +330,35 @@ zero data dependency; a host that has added a category relation of their own (to
 subclass) names its attribute/relation there and the segment appears once that data exists.
 Graceful degradation, not a hard dependency on taxonomy landing first.
 
-### 10. SEO/meta emission — Adapter, with no meaningful default
+### 10. SEO/meta emission — Adapter
 
 ```jsonc
 "seoMeta": {
-  "enabled": false,
+  "enabled": true,
   "fields": ["title", "description", "canonical", "ogImage", "robots"]
 }
 ```
 
-`Heisenberg\Contracts\PostSeoMetaProvider` (`meta(Post $post, string $locale): array`). This is
-the capability the brief specifically flagged as having **no data source at all** —
-`config('heisenberg.tables.seo_meta')` reserves the polymorphic `seo_meta` table
-(`docs/BLUEPRINT.md` §2.3.11's `SeoMeta` model — generic, polymorphic, "no host coupling" — but
-again, planned M3, not built), and `Post` itself has zero SEO columns. Every other adapter
-contract in this package has *some* sane non-trivial default (`NullMediaResolver` still
-scheme-checks and returns the raw URL; `NullAuditSink` correctly no-ops because auditing is
-genuinely optional). This one doesn't — `NullPostSeoMetaProvider::meta()` returns `[]` because
-there is nothing else it could truthfully return. `fields` names which meta fields the template
-*wants* emitted, so the intent survives in the contract even while nothing backs it — a host
-must implement `PostSeoMetaProvider` themselves (reading their own table/columns) to get real
-`<title>`/`<meta>` tags before `SeoMeta` is native. Shipped `enabled: false` in the reference
-template for exactly this reason — turning it on today would silently emit nothing.
+`Heisenberg\Contracts\PostSeoMetaProvider` (`meta(Post $post, string $locale): array`). **Native
+storage now ships** (2026-08-11, docs/seo-system.md Wave S1):
+`config('heisenberg.tables.seo_meta')`'s polymorphic `seo_meta` table (`docs/BLUEPRINT.md`
+§2.3.11/§2.4's `SeoMeta` model — generic, polymorphic, "no host coupling", ported verbatim plus
+the SEO/Social panel's extra fields) backs `Heisenberg\Models\SeoMeta`, and
+`Heisenberg\Adapters\NativeSeoMetaProvider` is the **default** binding at
+`heisenberg.post_template.seo_meta_provider`. A host binds
+`Heisenberg\Adapters\NullPostSeoMetaProvider` at the same key to opt out entirely (always
+empty, e.g. when SEO is managed by something outside this package), or its own class to
+integrate an external system (their own table, a hosted SEO service) — the capability's shape
+never changes, only which class answers it, same posture as `comments`
+([§4](#4-commentsdiscussion--adapter)).
+
+`meta()`'s return shape grows additively: the original `title`/`description`/`canonical`/
+`ogImage`/`robots` plus `ogTitle`/`ogDescription`/`jsonLd` (schema.org JSON-LD,
+`SeoMeta::getJsonLd()`) added in Wave S1 — every key is optional, callers must tolerate any of
+them being absent or null. `fields` still names which meta fields the template *wants*
+emitted (unchanged shape); the reference template flips to `enabled: true` in this wave since
+there's finally a truthful default behind it — see `PreviewController::showPost()` for where
+the seam is actually called and mapped onto the page's `<head>`.
 
 ### 11. Pagination — Render
 
@@ -403,9 +425,9 @@ per-instance disk scan cached for the request, `computeHash()` on the untranslat
 ## Worked example: `heisenberg/article`
 
 The shipped reference template at `resources/templates/article/article.json` — a realistic
-single-post template exercising every render capability plus three of the four adapter
-capabilities (the fourth, `seoMeta`, is deliberately shipped `enabled: false` — see
-[§10](#10-seometa-emission--adapter-with-no-meaningful-default)):
+single-post template exercising every render capability plus all four adapter capabilities,
+`seoMeta` included since [§10](#10-seometa-emission--adapter)'s native default landed
+(2026-08-11):
 
 ```jsonc
 {
@@ -433,7 +455,7 @@ capabilities (the fourth, `seoMeta`, is deliberately shipped `enabled: false` �
     "postViews":       { "enabled": true, "label": "heisenberg::templates.article.views_label" },
     "comments":        { "enabled": true, "allowGuests": true, "sortOrder": "newest" },
     "relatedPosts":    { "enabled": true, "limit": 3 },
-    "seoMeta":         { "enabled": false, "fields": ["title", "description", "canonical", "ogImage", "robots"] }
+    "seoMeta":         { "enabled": true, "fields": ["title", "description", "canonical", "ogImage", "robots"] }
   }
 }
 ```
@@ -463,7 +485,10 @@ namespace, the same convention `resources/lang/{en,fr}/blocks.php` uses for bloc
 **Historical note (2026-08-10): everything below has since landed** — the config keys exist in
 `config/heisenberg.php` (`template_root`/`template_prefix`/`post_template`), the four provider
 bindings are in `HeisenbergServiceProvider` (see its contract-binding map), and both verify
-commands are registered. The section is kept as the record of what wiring meant.
+commands are registered. The section is kept as the record of what wiring meant. (One value has
+since changed again, 2026-08-11: `comments_provider`'s default is now `NativeCommentProvider`,
+not `NullPostCommentProvider` — see [§4](#4-commentsdiscussion--adapter) above. The snippet
+below is left as originally written for historical accuracy.)
 
 Everything in this delivery works standalone (direct instantiation, exactly like the tests in
 `tests/Templates/`) with **zero required changes elsewhere**. Two things were deliberately *not*

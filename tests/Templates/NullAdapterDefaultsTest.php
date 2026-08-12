@@ -44,6 +44,16 @@ class NullAdapterDefaultsTest extends TestCase
         $this->assertSame(0, $provider->count($post));
     }
 
+    public function test_null_post_comment_provider_refuses_to_store_a_submission(): void
+    {
+        $provider = new NullPostCommentProvider();
+        $post = $this->makePost();
+
+        $result = $provider->submit($post, ['author_name' => 'A', 'body' => 'Hi']);
+
+        $this->assertSame(['ok' => false, 'status' => 'disabled'], $result);
+    }
+
     public function test_null_related_posts_provider_returns_nothing(): void
     {
         $provider = new NullRelatedPostsProvider();
