@@ -23,8 +23,21 @@ use Illuminate\Support\Facades\Gate;
  * written when stale. A successful write ends with Post::bumpContentVersion().
  *
  * LIFECYCLE: status/published_at/scheduled_at are never mass-assigned — a status
- * intent is validated in applyTransition() (legal edge + actor tier) before
- * either column is written; autosave payloads skip transitions entirely.
+ * intent is validated in applyTransition() before either column is written, and an
+ * explicit published_at edit is validated in applyPublishedAt() (same `editors`-tier
+ * gate as a publish transition, since the displayed post date is publishing-adjacent).
+ * Both are the ONLY writers of published_at; autosave payloads skip both entirely.
+ *
+ * SLUG: also never mass-assigned (contentAttributes() deliberately excludes it) —
+ * applySlug() is the only writer after creation, validating shape + per-locale
+ * uniqueness before the write (a 422, not Post::uniqueSlug()'s silent `-2` suffix).
+ * update()-only, non-autosave; Post::booted()'s `updating` hook still regenerates
+ * from the title, but ONLY when the slug is empty (see that method's docblock) —
+ * `slug: ''` is applySlug()'s own way of asking for a fresh, title-derived one.
+ *
+ * SEO: a separate `SeoMeta` row (docs/seo-system.md §3), never part of $post's own
+ * $fillable — applySeo() `updateOrCreate`s it from the request's `seo` map, non-autosave
+ * only, same "next explicit save only" posture as slug/published_at. See its own docblock.
  */
 class PostController
 {
@@ -75,10 +88,19 @@ class PostController
         $transitionFailure = null;
 
         $post = DB::transaction(function () use (
-            $request, $existing, $subject, $actor, $requestedStatus, &$conflict, &$transitionFailure
+            $request, $existing, $subject, $actor, $requestedStatus, $isAutosave, &$conflict, &$transitionFailure
         ) {
             if ($existing === null) {
                 $post = $subject;
+                // docs/email-system.md §3/§7-E3: `type` is create-only — a document never
+                // changes type via this (or any) write path, same posture McpToolRegistry::
+                // writePost() already established for its own create_post tool. Direct property
+                // assignment, same "not mass-assigned" reasoning Post::$fillable's own docblock
+                // gives for status/translated_from_version. An update request that happens to
+                // carry `type` (e.g. an unmodified client echo) simply never reaches here.
+                if ($request->filled('type')) {
+                    $post->type = (string) $request->input('type');
+                }
                 // contentAttributes() normalises a blank/null title to the placeholder — see there.
                 $post->fill($this->contentAttributes($request));
                 $post->save();
@@ -97,11 +119,55 @@ class PostController
                 $post->save();
             }
 
-            if ($requestedStatus !== null && $requestedStatus !== '' && $requestedStatus !== $post->status) {
-                $transitionFailure = $this->applyTransition($post, $actor, (string) $requestedStatus, $request);
+            // Slug + published_at are set on $post here (property only, not yet the row's last
+            // word) so that whichever save actually persists them below — applyTransition()'s own
+            // $post->save() when a transition also rides this request, or the isDirty() catch-all
+            // a few lines down otherwise — writes the FULL, final in-memory state in one UPDATE.
+            // Order matters for published_at specifically: it must land before applyTransition()
+            // runs so a preset/backdated date is already non-null when that method's own
+            // stamp-only-when-null publish logic checks it (see that method's docblock).
+            if (! $isAutosave) {
+                if ($existing !== null && $request->has('slug')) {
+                    $transitionFailure = $this->applySlug($post, (string) $request->input('slug'));
+                    if ($transitionFailure !== null) {
+                        return null;
+                    }
+                }
+                if ($request->has('published_at')) {
+                    $transitionFailure = $this->applyPublishedAt($post, $actor, $request->input('published_at'));
+                    if ($transitionFailure !== null) {
+                        return null;
+                    }
+                }
+                // SEO/Social panel (docs/seo-system.md §3) — same gate posture as slug/
+                // published_at above: the actor already passed the post-update authorization at
+                // the top of save(), and a SeoMeta row isn't a separately-authorized resource, so
+                // no extra Gate check runs here. Never fails (no shape left to reject —
+                // SavePostRequest already validated it), so unlike applySlug()/applyPublishedAt()
+                // it has no failure tuple to propagate.
+                if ($request->has('seo')) {
+                    $this->applySeo($post, (array) $request->input('seo', []));
+                }
+            }
+
+            // `scheduled -> scheduled` isn't an edge (it's not even listed under 'scheduled' in
+            // the transitions map — see applyTransition()'s $isReschedule exemption below), but
+            // it IS a legitimate reschedule: the Summary's datetime field stays editable on an
+            // already-scheduled post, and a changed scheduled_at must actually persist rather
+            // than silently no-op just because the status string itself didn't move.
+            $isReschedule = $requestedStatus === 'scheduled' && $post->status === 'scheduled';
+            if ($requestedStatus !== null && $requestedStatus !== '' && ($requestedStatus !== $post->status || $isReschedule)) {
+                $transitionFailure = $this->applyTransition($post, $actor, (string) $requestedStatus, $request, $isReschedule);
                 if ($transitionFailure !== null) {
                     return null; // reject the whole save — no partial lifecycle state
                 }
+            }
+
+            // Catch-all persist for a slug/published_at edit that rode this request WITHOUT a
+            // status transition (applyTransition() above already saved when one happened — this
+            // is a no-op UPDATE in that case, since $post has nothing left dirty).
+            if ($post->isDirty()) {
+                $post->save();
             }
 
             // Snapshot the OLD tree before replaceBlocks() discards it — this is the
@@ -138,15 +204,19 @@ class PostController
      *    status requires (config('heisenberg.lifecycle.role_permissions'),
      *    via PostPolicy::transitionAllowed()) — an authorization problem.
      *
+     * $isReschedule (save()'s `scheduled -> scheduled` case) skips the edge check — the
+     * transitions map has no self-loop to check against — but still runs the SAME tier
+     * gate a first `-> scheduled` transition does, so rescheduling stays `editors`-only.
+     *
      * @return array{status: int, message: string}|null
      */
-    private function applyTransition(Post $post, Authenticatable $actor, string $target, Request $request): ?array
+    private function applyTransition(Post $post, Authenticatable $actor, string $target, Request $request, bool $isReschedule = false): ?array
     {
         $transitions = (array) config('heisenberg.lifecycle.transitions', []);
         $current = (string) $post->status;
         $allowed = (array) ($transitions[$current] ?? []);
 
-        if (! in_array($target, $allowed, true)) {
+        if (! $isReschedule && ! in_array($target, $allowed, true)) {
             return ['status' => 422, 'message' => "Cannot move a post from \"{$current}\" to \"{$target}\"."];
         }
 
@@ -167,16 +237,207 @@ class PostController
     }
 
     /**
+     * Validate + apply an explicit slug edit — update()-only, non-autosave (see save()'s
+     * caller). `slug === ''` (trimmed) asks for a fresh, title-derived one: setting the
+     * in-memory attribute to '' and leaving it there for Post::booted()'s `updating` hook,
+     * which now regenerates from the title precisely when the slug is empty — the same
+     * generator creation already uses, not a second copy of it (that hook ALSO propagates the
+     * regenerated slug to every sibling — see its own docblock — so an emptied slug needs no
+     * extra propagation logic here). A non-empty slug must match the shape Str::slug() actually
+     * emits (lowercase, digits, single hyphens, no leading/trailing/doubled ones).
+     *
+     * SHARED-SLUG INVARIANT (docs/content-translation.md §1): a translation group presents as
+     * ONE post with one slug — locale comes from the host's URL prefix, not the slug text — so
+     * a rename here is validated and applied to the WHOLE group, not just this row. The slug
+     * must be free among this post's OWN locale (excluding itself) AND, independently, among
+     * EVERY SIBLING's own locale (excluding that sibling) — checked BEFORE any write, because
+     * Post::uniqueSlug() would otherwise silently suffix a collision (`-2`, `-3`, …) rather than
+     * reject it: fine for an auto-derived slug, wrong for a value the user typed on purpose. Any
+     * single collision fails the WHOLE request (naming which language blocked it) with no
+     * partial write — this method only ever mutates in-memory attributes and explicitly saves
+     * the siblings itself; $post's own save is left to save()'s existing catch-all so the
+     * post's other dirty attributes land in the same UPDATE.
+     *
+     * @return array{status:int, message:string}|null
+     */
+    private function applySlug(Post $post, string $rawSlug): ?array
+    {
+        $slug = trim($rawSlug);
+
+        if ($slug === '') {
+            $post->slug = '';
+
+            return null;
+        }
+
+        if (preg_match('/^[a-z0-9]+(?:-[a-z0-9]+)*$/', $slug) !== 1) {
+            return ['status' => 422, 'message' => 'Slug can only contain lowercase letters, numbers and hyphens.'];
+        }
+
+        $exists = $post->newQuery()->withTrashed()
+            ->where('locale', $post->locale ?: 'en')
+            ->where('slug', $slug)
+            ->whereKeyNot($post->getKey())
+            ->exists();
+
+        if ($exists) {
+            return ['status' => 422, 'message' => 'That slug is already in use.'];
+        }
+
+        $siblings = $post->siblings();
+        foreach ($siblings as $sibling) {
+            $siblingConflict = $sibling->newQuery()->withTrashed()
+                ->where('locale', $sibling->locale)
+                ->where('slug', $slug)
+                ->whereKeyNot($sibling->getKey())
+                ->exists();
+
+            if ($siblingConflict) {
+                return ['status' => 422, 'message' => "That slug is already in use in the \"{$sibling->locale}\" translation."];
+            }
+        }
+
+        $post->slug = $slug;
+        foreach ($siblings as $sibling) {
+            $sibling->slug = $slug;
+            $sibling->save();
+        }
+
+        return null;
+    }
+
+    /**
+     * Validate + apply an explicit published_at edit — the second (and, alongside
+     * applyTransition()'s first-publish stamp, only other) writer of this column. Gated by
+     * the SAME `editors` tier a publish transition itself requires
+     * (PostPolicy::transitionAllowed('published')): the displayed post date is
+     * publishing-adjacent, not ordinary content, regardless of whether a transition is
+     * riding the same request. Both past and future dates are accepted — this backdates or
+     * presets the post's date, it doesn't schedule anything (that's the Summary's separate
+     * `scheduled` status + scheduled_at). `null`/`''` clears it back to unset.
+     *
+     * @return array{status:int, message:string}|null
+     */
+    private function applyPublishedAt(Post $post, Authenticatable $actor, ?string $raw): ?array
+    {
+        if (! $this->policy->transitionAllowed($actor, 'published')) {
+            return ['status' => 403, 'message' => 'You are not authorized to set this post\'s date.'];
+        }
+
+        $post->published_at = ($raw !== null && $raw !== '') ? \Illuminate\Support\Carbon::parse($raw) : null;
+
+        return null;
+    }
+
+    /**
+     * Validate + apply the SEO/Social panel's fields (docs/seo-system.md §3) — the localized
+     * keys (`meta_title`, `meta_description`, `og_title`, `og_description`, `focus_keyphrase`)
+     * map to the POST ROW'S OWN locale columns: the split-row model means the FR sibling's own
+     * panel edits its OWN `_fr` columns, never the other locale's (same posture `title_en`/
+     * `title_fr` already have — a locale row only ever writes its own half). `robots_index`/
+     * `robots_follow` compose into the single `robots` column ('index'|'noindex', ', ',
+     * 'follow'|'nofollow') — the shape {@see \Heisenberg\Services\SeoAnalyzer} and the preview's
+     * own head logic already parse. Only keys actually PRESENT in `$seo` are touched (mirrors
+     * `contentAttributes()`'s "an absent key leaves the column alone" posture) — a partial
+     * payload from a future AI/API caller never clobbers fields it didn't mean to touch.
+     * `updateOrCreate` on `(able_type, able_id)` is SeoMeta's only write path (see its own
+     * docblock); nothing here mass-assigns a `SeoMeta` a caller-supplied `id`.
+     */
+    private function applySeo(Post $post, array $seo): void
+    {
+        $locale = $post->locale === 'fr' ? 'fr' : 'en';
+
+        $attributes = [];
+        foreach (['meta_title', 'meta_description', 'og_title', 'og_description', 'focus_keyphrase'] as $field) {
+            if (array_key_exists($field, $seo)) {
+                $value = $seo[$field];
+                $attributes["{$field}_{$locale}"] = ($value === null || $value === '') ? null : (string) $value;
+            }
+        }
+        foreach (['og_image', 'canonical_url', 'schema_type'] as $field) {
+            if (array_key_exists($field, $seo)) {
+                $value = $seo[$field];
+                $attributes[$field] = ($value === null || $value === '') ? null : (string) $value;
+            }
+        }
+
+        if (array_key_exists('robots_index', $seo) || array_key_exists('robots_follow', $seo)) {
+            $current = (string) ($post->seoMeta?->robots ?: 'index, follow');
+            $index = array_key_exists('robots_index', $seo) ? (bool) $seo['robots_index'] : ! str_contains($current, 'noindex');
+            $follow = array_key_exists('robots_follow', $seo) ? (bool) $seo['robots_follow'] : ! str_contains($current, 'nofollow');
+            $attributes['robots'] = ($index ? 'index' : 'noindex') . ', ' . ($follow ? 'follow' : 'nofollow');
+        }
+        if (array_key_exists('in_sitemap', $seo)) {
+            $attributes['in_sitemap'] = (bool) $seo['in_sitemap'];
+        }
+
+        if ($attributes === []) {
+            return;
+        }
+
+        $class = $this->seoMetaClass();
+        $class::query()->updateOrCreate(
+            ['able_type' => $post->getMorphClass(), 'able_id' => $post->getKey()],
+            $attributes,
+        );
+    }
+
+    /**
+     * The saved SeoMeta state, echoed in the save response (payload()'s docblock) so
+     * panel-seo-social.blade.php's own script can resync its "last confirmed" snapshot after
+     * every save — same "the server's echo is the only thing a live panel trusts post-save"
+     * posture `post.slug`/`post.status` already have. Deliberately reads the RAW own-locale
+     * columns (not {@see \Heisenberg\Models\SeoMeta}'s cross-locale-fallback accessors the
+     * SEED payload uses, EditorController::postSeo()): right after a save the own-locale column
+     * holds exactly what the user just submitted, including an intentionally emptied field — the
+     * fallback accessor would silently show the OTHER locale's stale text instead of the blank
+     * the user just asked for, which is correct for a first-load SEED (a starting point) but
+     * wrong for an ECHO (the truth about what this save just did).
+     *
+     * @return array<string, mixed>
+     */
+    private function seoPayload(Post $post): array
+    {
+        $locale = $post->locale === 'fr' ? 'fr' : 'en';
+        $seo = $this->seoMetaClass()::query()
+            ->where('able_type', $post->getMorphClass())
+            ->where('able_id', $post->getKey())
+            ->first();
+        $robots = (string) ($seo?->robots ?? 'index, follow');
+
+        return [
+            'meta_title' => (string) ($seo?->{"meta_title_{$locale}"} ?? ''),
+            'meta_description' => (string) ($seo?->{"meta_description_{$locale}"} ?? ''),
+            'og_title' => (string) ($seo?->{"og_title_{$locale}"} ?? ''),
+            'og_description' => (string) ($seo?->{"og_description_{$locale}"} ?? ''),
+            'focus_keyphrase' => (string) ($seo?->{"focus_keyphrase_{$locale}"} ?? ''),
+            'og_image' => (string) ($seo?->og_image ?? ''),
+            'canonical_url' => (string) ($seo?->canonical_url ?? ''),
+            'robots_index' => ! str_contains($robots, 'noindex'),
+            'robots_follow' => ! str_contains($robots, 'nofollow'),
+            'in_sitemap' => (bool) ($seo?->in_sitemap ?? true),
+        ];
+    }
+
+    /** @return class-string<\Heisenberg\Models\SeoMeta> */
+    private function seoMetaClass(): string
+    {
+        return (string) config('heisenberg.models.seo_meta', \Heisenberg\Models\SeoMeta::class);
+    }
+
+    /**
      * The mass-assignable content fields this endpoint will ever write.
      * Deliberately excludes `author_id` (ownership never changes via a
-     * content save) and status/published_at/scheduled_at (the lifecycle
-     * guard in applyTransition() is the ONLY path that may set them).
+     * content save), `slug` (applySlug() is the only path that may set it
+     * after creation) and status/published_at/scheduled_at (the lifecycle
+     * guard in applyTransition(), plus applyPublishedAt() for an explicit
+     * date edit, are the ONLY paths that may set them).
      *
      * @return array<string, mixed>
      */
     private function contentAttributes(SavePostRequest $request): array
     {
-        $attributes = $request->only(['title_en', 'title_fr', 'slug', 'locale', 'excerpt_en', 'excerpt_fr']);
+        $attributes = $request->only(['title_en', 'title_fr', 'locale', 'excerpt_en', 'excerpt_fr']);
 
         // title_en is NOT NULL with no DB default, and the web middleware nulls '' — normalize
         // a sent-but-empty title to the canvas placeholder. An absent key leaves the column alone.
@@ -282,6 +543,7 @@ class PostController
                 'published_at' => $post->published_at?->toIso8601String(),
                 'scheduled_at' => $post->scheduled_at?->toIso8601String(),
                 'content_version' => $post->content_version,
+                'seo' => $this->seoPayload($post),
             ],
             'blocks' => $post->blocks->map(fn ($block) => $block->content)->values()->all(),
         ];

@@ -78,6 +78,16 @@ class PostSettingsController
      * PostController::update() (which would wipe the block tree trying to save one scalar FK).
      * The id, when present, must point at a real PublicFile row — `exists` rejects dead ids so
      * the FK is never violated despite the nullOnDelete() cascade at the database level.
+     *
+     * PROPAGATES group-wide (docs/content-translation.md): a featured image illustrates the
+     * article, not a specific language's row of it — same "one logical post" posture as the
+     * shared slug (Post::booted()'s `updating` hook). Setting OR clearing here writes the same
+     * value onto every sibling in the translation group too, inside a transaction, so an author
+     * translating a post that had no featured image yet — then setting one afterwards — never
+     * has to set it twice (the owner-reported gap this fixes). Plain query UPDATE on the
+     * siblings, not another ->save() per row: a sibling's own content/title is untouched, only
+     * its featured_image_id column changes, and re-entering model hooks for that would be
+     * pointless (same reasoning as the `updating` hook's own sibling slug write).
      */
     public function updateFeaturedImage(Request $request, string $post): JsonResponse
     {
@@ -88,8 +98,17 @@ class PostSettingsController
             'featured_image_id' => ['nullable', 'integer', 'exists:' . $this->publicFilesTable() . ',id'],
         ]);
 
-        $model->featured_image_id = $validated['featured_image_id'];
-        $model->save();
+        $model->getConnection()->transaction(function () use ($model, $validated): void {
+            $model->featured_image_id = $validated['featured_image_id'];
+            $model->save();
+
+            $siblings = $model->siblings();
+            if ($siblings->isNotEmpty()) {
+                $model::query()
+                    ->whereKey($siblings->pluck($model->getKeyName())->all())
+                    ->update(['featured_image_id' => $validated['featured_image_id']]);
+            }
+        });
 
         return response()->json([
             'post_id' => $model->id,

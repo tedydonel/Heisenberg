@@ -14,11 +14,15 @@ use Heisenberg\Services\BlockRegistryService;
 use Heisenberg\Services\FontCatalogService;
 use Heisenberg\Services\SavedThemeRepository;
 use Heisenberg\Services\ThemeRepository;
+use Heisenberg\Services\TranslationStatusService;
 use Heisenberg\Support\BlockViewData;
+use Heisenberg\Support\LocaleConfig;
 use Illuminate\Contracts\View\View;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response;
 use Illuminate\Support\Facades\Gate;
+use Illuminate\Support\Facades\Lang;
+use Illuminate\Support\Facades\Route;
 use Illuminate\Support\Facades\Storage;
 
 final class EditorController
@@ -27,7 +31,7 @@ final class EditorController
     private const DEFAULT_PAGE_PADDING_X = 56;
     private const DEFAULT_PAGE_PADDING_Y = 56;
 
-    public function index(BlockRegistryService $registry, ThemeRepository $themes, SavedThemeRepository $savedThemes, FontCatalogService $fonts): View
+    public function index(Request $request, BlockRegistryService $registry, ThemeRepository $themes, SavedThemeRepository $savedThemes, FontCatalogService $fonts): View
     {
         // The editor is one big server-rendered component tree; the FIRST render
         // after a view-cache rebuild compiles/loads hundreds of Blade views and
@@ -36,7 +40,15 @@ final class EditorController
         // Same pattern as AiController::stream(); harmless where the limit is 0.
         @set_time_limit(120);
 
-        return view('heisenberg::editor.index', array_merge($this->sharedViewData($registry, $themes, $savedThemes, $fonts), [
+        // "New email" entry point (docs/email-system.md §7-E3): GET /editor?type=email seeds a
+        // blank, unsaved EMAIL document — same blank-document shape as a plain /editor, just
+        // stamped with the type the FIRST save will carry (see PostController::save()'s
+        // create-only `type` handling). Any value other than the literal 'email' is a plain post,
+        // same "unknown = the safe default" posture the lifecycle status resolution already uses.
+        $documentType = $this->documentType($request->query('type'));
+        $shared = $this->sharedViewData($registry, $themes, $savedThemes, $fonts);
+
+        return view('heisenberg::editor.index', array_merge($shared, [
             // No post yet — the first Save is what gives it an id; the Post tab's
             // taxonomy/layout controls render disabled until hb:post-id fires.
             'postId' => null,
@@ -49,7 +61,26 @@ final class EditorController
             'postPagePaddingY' => self::DEFAULT_PAGE_PADDING_Y,
             'postAllowComments' => true,
             'postMeta' => $this->postMeta(null),
+            // The SEO/Social panel's shared slug (bare, no leading `/`) + seed payload
+            // (docs/seo-system.md §3, Wave S2a) — null model means the blank /editor document,
+            // same defaults a first save would produce. The panel itself renders disabled until
+            // hb:post-id fires, matching every other Summary control's "save first" posture.
+            'postSlug' => '',
+            'postSeo' => $this->postSeo(null),
             'postTocEntries' => [],
+            // No post yet — the Summary's schedule/publish-date inputs have nothing to seed.
+            'postScheduledAt' => null,
+            'postPublishedAt' => null,
+            // The Translations disclosure's "unsaved" marker (docs/content-translation.md §5) —
+            // null renders the muted "save the post first" line instead of a locale row list;
+            // there is no source post id yet to translate FROM.
+            'postTranslations' => null,
+            'documentType' => $documentType,
+            // The Components/quick-insert palette (docs/email-system.md §7-E3): every enabled
+            // block for a plain post, but only the `email`-surface subset (BlockRegistryService::
+            // contractsFor('email')) once this document is one — filtered SERVER-SIDE, never by
+            // client JS re-reading the full registry. See paletteBlocks()'s own docblock.
+            'paletteBlocks' => $this->paletteBlocks($registry, $shared['registry'], $documentType),
         ]));
     }
 
@@ -66,7 +97,7 @@ final class EditorController
 
         /** @var class-string<Post> $class */
         $class = (string) config('heisenberg.models.post', Post::class);
-        $model = $class::query()->with(['blocks', 'categories', 'tags', 'featuredImage', 'tocEntries'])->findOrFail($post);
+        $model = $class::query()->with(['blocks', 'categories', 'tags', 'featuredImage', 'tocEntries', 'seoMeta'])->findOrFail($post);
 
         Gate::forUser($request->user() ?? new GuestActor())->authorize('view', $model);
 
@@ -81,7 +112,12 @@ final class EditorController
             $featuredImage = $payload;
         }
 
-        return view('heisenberg::editor.index', array_merge($this->sharedViewData($registry, $themes, $savedThemes, $fonts), [
+        // A document never changes type (docs/email-system.md §3) — reads straight off the
+        // saved row rather than re-deriving anything.
+        $documentType = $this->documentType((string) $model->type);
+        $shared = $this->sharedViewData($registry, $themes, $savedThemes, $fonts);
+
+        return view('heisenberg::editor.index', array_merge($shared, [
             'postId' => $model->getKey(),
             'postTitle' => (string) ($model->title_en ?? ''),
             'contentVersion' => (int) $model->content_version,
@@ -96,13 +132,67 @@ final class EditorController
             'postAllowComments' => $model->allow_comments ?? true,
             'postFeaturedImage' => $featuredImage,
             'postMeta' => $this->postMeta($model),
+            // The SEO/Social panel's shared slug + seed payload (docs/seo-system.md §3) — see
+            // postSeo()'s own docblock for the accessor-fallback rationale.
+            'postSlug' => (string) $model->slug,
+            'postSeo' => $this->postSeo($model),
+            // Seeds the Summary's schedule/publish-date <input type="datetime-local"> pair, each
+            // of which expects a timezone-less "Y-m-d\TH:i" — a bare ISO offset string won't
+            // populate the widget.
+            'postScheduledAt' => $model->scheduled_at?->format('Y-m-d\TH:i'),
+            'postPublishedAt' => $model->published_at?->format('Y-m-d\TH:i'),
             // The Post tab's authored table of contents (Post::tocEntries(), ordered) — {label,
             // anchor} pairs only; the modal's own script owns render/reorder/save.
             'postTocEntries' => $model->tocEntries->map(fn ($entry) => [
                 'label' => $entry->label,
                 'anchor' => $entry->anchor,
             ])->values()->all(),
+            // The Translations disclosure's live rows (docs/content-translation.md §5) — one per
+            // configured locale, {locale, status, post_id}. See TranslationStatusService's own
+            // docblock for the status bucketing rules.
+            'postTranslations' => (new TranslationStatusService())->statuses($model),
+            'documentType' => $documentType,
+            // See index()'s own note — filtered server-side to the email surface once this
+            // document is one.
+            'paletteBlocks' => $this->paletteBlocks($registry, $shared['registry'], $documentType),
         ]));
+    }
+
+    /**
+     * Normalize an untrusted `type` (a query string param on index(), or the saved row's own
+     * column on show()) to one of the two known values — anything else, including an absent
+     * param, reads as the existing default 'post' (docs/email-system.md §3).
+     */
+    private function documentType(?string $raw): string
+    {
+        return $raw === 'email' ? 'email' : 'post';
+    }
+
+    /**
+     * The Components tab + quick-inserter's block palette (docs/email-system.md §7-E3): the
+     * full client registry for a plain post, or — once $documentType is 'email' — only the
+     * subset {@see BlockRegistryService::contractsFor()} reports for the `email` surface (10 of
+     * the 12 shipped contracts; embed/icon excluded, §4). Filtering happens HERE, against the
+     * already-localized $fullRegistry (BlockViewData::clientBlocks()'s shape), so
+     * panel-components-blocks.blade.php and quick-inserter.blade.php — both handed this array
+     * instead of the full `$registry` prop — never see a card for a block the email surface
+     * doesn't support; there is no client-side re-filtering to keep in sync.
+     *
+     * @param array<string, array<string, mixed>> $fullRegistry BlockViewData::clientBlocks()'s shape
+     * @return array<string, array<string, mixed>>
+     */
+    private function paletteBlocks(BlockRegistryService $registry, array $fullRegistry, string $documentType): array
+    {
+        if ($documentType !== 'email') {
+            return $fullRegistry;
+        }
+
+        $emailNames = array_map(
+            static fn (array $contract): string => (string) ($contract['name'] ?? ''),
+            $registry->contractsFor('email'),
+        );
+
+        return array_intersect_key($fullRegistry, array_flip($emailNames));
     }
 
     /**
@@ -112,46 +202,138 @@ final class EditorController
      * (every successful save echoes the post payload), blocks from `hb:blocks-changed`.
      * A null model is the blank /editor document — the same defaults a first save produces.
      *
+     * The `status` row additionally carries `raw` (the un-translated status key the client
+     * compares against) and `options` (current status + its legal transitions.php targets,
+     * each {value,label}) — inspector.blade.php renders those as a ui/select so the Summary
+     * can actually DRIVE a transition, not just display one. The server remains the sole
+     * enforcer of tier permissions (PostController::applyTransition); this list only decides
+     * what's worth offering in the menu.
+     *
+     * The `url` row's `raw` is the bare slug (never the leading `/`) — inspector.blade.php
+     * seeds the editable slug input from it, separate from `value`'s already-formatted
+     * "/slug" or "—" display text.
+     *
+     * The `blocks` row (a live block count) was removed 2026-08-11 — nothing else in the
+     * Summary depended on it, and the owner asked for it gone outright.
+     *
      * @return list<array{key: string, label: string, value: string}>
      */
     private function postMeta(?Post $model): array
     {
-        $blocks = 0;
-        if ($model !== null) {
-            $count = function (array $list) use (&$count): int {
-                $n = 0;
-                foreach ($list as $block) {
-                    $n += 1 + (is_array($block['innerBlocks'] ?? null) ? $count($block['innerBlocks']) : 0);
-                }
-
-                return $n;
-            };
-            $blocks = $count($model->blocks->map(fn ($b) => $b->content)->all());
-        }
+        $currentStatus = (string) ($model?->status ?? 'draft');
+        $transitions = (array) config('heisenberg.lifecycle.transitions', []);
+        $targets = array_values(array_unique(array_merge([$currentStatus], (array) ($transitions[$currentStatus] ?? []))));
 
         return [
             [
                 'key' => 'status',
                 'label' => (string) __('heisenberg::editor.inspector.summary_status'),
-                'value' => ucfirst((string) ($model?->status ?? 'draft')),
+                'value' => $this->statusLabel($currentStatus),
+                'raw' => $currentStatus,
+                'options' => array_map(fn (string $status) => [
+                    'value' => $status,
+                    'label' => $this->statusLabel($status),
+                ], $targets),
             ],
             [
+                // Rendered as an editable datetime-local input (postPublishedAt seeds it, see
+                // show()/index()) — 'value' is unused for this key but kept for shape parity
+                // with the other rows.
                 'key' => 'publish',
                 'label' => (string) __('heisenberg::editor.inspector.summary_publish'),
-                'value' => $model?->published_at?->format('M j, Y H:i')
-                    ?? (string) __('heisenberg::editor.inspector.summary_immediately'),
+                'value' => '',
             ],
             [
                 'key' => 'url',
                 'label' => (string) __('heisenberg::editor.inspector.summary_url'),
                 'value' => ($model !== null && (string) $model->slug !== '') ? '/' . $model->slug : '—',
-            ],
-            [
-                'key' => 'blocks',
-                'label' => (string) __('heisenberg::editor.inspector.summary_blocks'),
-                'value' => (string) $blocks,
+                'raw' => (string) ($model?->slug ?? ''),
             ],
         ];
+    }
+
+    /**
+     * The SEO/Social panel's seed payload (docs/seo-system.md §3, Wave S2a). The five localized
+     * fields go through {@see \Heisenberg\Models\SeoMeta}'s own fallback accessors — own-locale
+     * first, cross-locale fallback, the same {@see \Heisenberg\Models\PublicFile::getAlt()}
+     * posture {@see \Heisenberg\Services\SeoAnalyzer}'s own `resolve()` already uses — so the
+     * panel's starting point matches "what would actually be used publicly right now", not a
+     * blank field next to content that already exists on the other locale's row. This is
+     * deliberately DIFFERENT from PostController::seoPayload()'s post-save echo, which reads the
+     * raw own-locale columns instead — see that method's own docblock for why the two need to
+     * differ. `og_image`/`canonical_url` have no locale half to fall back across. A null model
+     * (blank /editor document) or a post with no SeoMeta row yet both resolve to the same shape
+     * a first save would produce ('index, follow' + sitemap on, matching the migration's own
+     * column defaults).
+     *
+     * @return array<string, mixed>
+     */
+    private function postSeo(?Post $model): array
+    {
+        $locale = ((string) ($model?->locale ?? 'en')) === 'fr' ? 'fr' : 'en';
+        $seo = $model?->seoMeta;
+        $robots = (string) ($seo?->robots ?? 'index, follow');
+
+        return [
+            'meta_title' => $seo?->metaTitle($locale) ?? '',
+            'meta_description' => $seo?->metaDescription($locale) ?? '',
+            'og_title' => $seo?->ogTitle($locale) ?? '',
+            'og_description' => $seo?->ogDescription($locale) ?? '',
+            'focus_keyphrase' => $seo?->focusKeyphrase($locale) ?? '',
+            'og_image' => (string) ($seo?->og_image ?? ''),
+            'canonical_url' => (string) ($seo?->canonical_url ?? ''),
+            'robots_index' => ! str_contains($robots, 'noindex'),
+            'robots_follow' => ! str_contains($robots, 'nofollow'),
+            'in_sitemap' => $seo?->in_sitemap ?? true,
+        ];
+    }
+
+    /**
+     * `__ID__` template for the SEO score endpoint (docs/seo-system.md §4, Wave S2b) — that
+     * route/controller is built in a PARALLEL wave (see this file's own CONCURRENCY note in the
+     * class docblock area, or the task that produced this method); `Route::has()` guards against
+     * it not having landed yet so THIS file's own tests never depend on the other wave's landing
+     * order, falling back to the exact same literal URL shape the named route resolves to.
+     */
+    private function postSeoAnalyzeUrlTemplate(): string
+    {
+        return Route::has('heisenberg.editor.seo.analyze')
+            ? route('heisenberg.editor.seo.analyze', ['post' => '__ID__'])
+            : '/editor/posts/__ID__/seo/analyze';
+    }
+
+    /**
+     * Translated display name for a lifecycle status — `summary_status_{status}` in
+     * editor.php's `inspector` group. Falls back to a humanized version of the raw key so a
+     * host that reconfigures `heisenberg.lifecycle.transitions` with its own status names
+     * never renders a raw, untranslated lang key.
+     */
+    private function statusLabel(string $status): string
+    {
+        $key = 'heisenberg::editor.inspector.summary_status_' . $status;
+
+        return Lang::has($key) ? (string) __($key) : ucfirst(str_replace('_', ' ', $status));
+    }
+
+    /**
+     * Every status name the transitions graph can ever mention (sources AND targets),
+     * translated — the client-side payload inspector.blade.php's script uses to relabel
+     * the status select's options after each save, when the post's CURRENT status (and so
+     * its legal next edges) has changed. See postMeta()'s docblock for the per-row options.
+     *
+     * @param array<string, list<string>> $transitions
+     * @return array<string, string>
+     */
+    private function statusLabels(array $transitions): array
+    {
+        $statuses = array_unique(array_merge(array_keys($transitions), ...array_values($transitions)));
+
+        $labels = [];
+        foreach ($statuses as $status) {
+            $labels[$status] = $this->statusLabel($status);
+        }
+
+        return $labels;
     }
 
     /**
@@ -160,7 +342,14 @@ final class EditorController
      */
     private function sharedViewData(BlockRegistryService $registry, ThemeRepository $themes, SavedThemeRepository $savedThemes, FontCatalogService $fonts): array
     {
+        // Seeds the Summary status control's client-side option rebuild (inspector.blade.php) —
+        // the FULL map, never hardcoded client-side, so a host's own config('heisenberg.lifecycle.
+        // transitions') override is honoured without an editor.php code change.
+        $postStatusTransitions = (array) config('heisenberg.lifecycle.transitions', []);
+
         return [
+            'postStatusTransitions' => $postStatusTransitions,
+            'postStatusLabels' => $this->statusLabels($postStatusTransitions),
             'registry' => BlockViewData::clientBlocks($registry),
             'blocksCss' => BlockViewData::blocksCss($registry),
             'theme' => $themes->load(),
@@ -192,6 +381,31 @@ final class EditorController
             'postDiscussionUrlTemplate' => route('heisenberg.editor.posts.store') . '/__ID__/discussion',
             'postFeaturedImageUrlTemplate' => route('heisenberg.editor.posts.store') . '/__ID__/featured-image',
             'postTocUrlTemplate' => route('heisenberg.editor.posts.store') . '/__ID__/toc',
+            // SEO score & checklist (docs/seo-system.md §4) — see postSeoAnalyzeUrlTemplate()'s
+            // own docblock for the Route::has() guard.
+            'postSeoAnalyzeUrlTemplate' => $this->postSeoAnalyzeUrlTemplate(),
+            // Create/re-translate a sibling row (PostTranslationController, docs/content-translation.md
+            // §4/§5) — same __ID__ template convention as the routes above.
+            'postTranslationsUrlTemplate' => route('heisenberg.editor.posts.store') . '/__ID__/translations',
+            // Email authoring's two read-only endpoints (docs/email-system.md §7-E3,
+            // EmailPreviewController) — same __ID__ template convention as every other
+            // post-scoped URL above. Both are gated exactly like the post preview route
+            // (PostPolicy `view`), so they resolve for any documentType; the topbar/footer
+            // scripts only ever call them when the CURRENT document is an email.
+            'emailPreviewUrlTemplate' => route('heisenberg.editor.email.preview', ['post' => '__ID__']),
+            'emailSizeUrlTemplate' => route('heisenberg.editor.email.size', ['post' => '__ID__']),
+            // "Open" on a Translations row navigates to a DIFFERENT post's editor document — a real
+            // page load, not a client-side patch (unlike every other __ID__ template above, which
+            // PUTs/POSTs against the CURRENT post). heisenberg.editor.show is `/editor/{post}`; the
+            // route() helper never validates its whereNumber() constraint when GENERATING a URL
+            // (that only gates incoming requests), so the __ID__ placeholder survives untouched.
+            'postEditorUrlTemplate' => route('heisenberg.editor.show', ['post' => '__ID__']),
+            // The topbar's language dropdown (docs/content-translation.md §5) falls back to this
+            // when there is no post yet to read a `source` row's locale from (index()'s blank
+            // document — postTranslations is null there). LocaleConfig::default() is the same
+            // "which locale does a brand-new post get" source of truth PostController's own
+            // create path already reads from.
+            'localeDefault' => LocaleConfig::default(),
             // Initial-render seed only — the real, policy-gated read/write happens in the
             // taxonomy controllers once the user acts.
             'categoryOptions' => $this->categoryOptions(),

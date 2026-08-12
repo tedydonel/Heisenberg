@@ -9,12 +9,15 @@ use Heisenberg\Models\Category;
 use Heisenberg\Models\Post;
 use Heisenberg\Models\PublicFile;
 use Heisenberg\Models\Revision;
+use Heisenberg\Models\SeoMeta;
 use Heisenberg\Models\Tag;
 use Heisenberg\Policies\PostPolicy;
 use Heisenberg\Support\BlockViewData;
+use Heisenberg\Support\LocaleConfig;
 use Illuminate\Contracts\Auth\Authenticatable;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Str;
 
 /**
  * The tools Heisenberg exposes over MCP — to external AIs via the inbound
@@ -77,6 +80,7 @@ class McpToolRegistry
         private ShortcodeSerializer $serializer,
         private ThemeRepository $themes,
         private PostPolicy $postPolicy,
+        private TranslationStatusService $translationStatus,
     ) {
     }
 
@@ -156,7 +160,11 @@ class McpToolRegistry
         }
 
         try {
-            return $this->ok($tools[$name]['handler']($arguments));
+            // $surface is passed as a second argument for the handful of handlers whose
+            // behavior differs by surface (create_translation's draft-only posture on the
+            // external server, see below) — every other handler simply ignores it, PHP
+            // does not error when a closure is called with more arguments than it declares.
+            return $this->ok($tools[$name]['handler']($arguments, $surface));
         } catch (McpToolException $e) {
             return $this->error($e->getMessage());
         } catch (\Throwable $e) {
@@ -314,14 +322,20 @@ class McpToolRegistry
 
             // ── posts ────────────────────────────────────────────────
             'list_posts' => [
-                'description' => 'List posts, newest first.',
+                'description' => 'List posts, newest first. Defaults to type "post" (blog/page documents) — pass type "email" to list email documents instead (docs/email-system.md §3).',
                 'tier' => self::TIER_READ,
                 'inputSchema' => $this->schema([
                     'limit' => ['type' => 'integer', 'description' => 'Max rows (1-100, default 20).'],
                     'status' => ['type' => 'string', 'description' => 'Filter by status, e.g. draft or published.'],
+                    'type' => ['type' => 'string', 'description' => 'post or email. Defaults to post.'],
                 ]),
                 'handler' => function (array $args): array {
-                    $query = $this->postClass()::query()->orderByDesc('id');
+                    $type = trim((string) ($args['type'] ?? '')) ?: 'post';
+                    if (! in_array($type, ['post', 'email'], true)) {
+                        throw new McpToolException("type must be 'post' or 'email' (got '{$type}').");
+                    }
+
+                    $query = $this->postClass()::query()->where('type', $type)->orderByDesc('id');
                     if (($status = trim((string) ($args['status'] ?? ''))) !== '') {
                         $query->where('status', $status);
                     }
@@ -338,7 +352,7 @@ class McpToolRegistry
             ],
 
             'get_post' => [
-                'description' => 'One post with its content as BOTH shortcode (`code` — edit this) and raw block JSON. To change the content, edit the shortcode and pass it back to update_post; pass content_version back too, to avoid clobbering a concurrent edit.',
+                'description' => 'One post with its content as BOTH shortcode (`code` — edit this) and raw block JSON. To change the content, edit the shortcode and pass it back to update_post; pass content_version back too, to avoid clobbering a concurrent edit. `translations` maps every configured locale to that locale\'s row in this post\'s translation group (docs/content-translation.md) — the post\'s OWN locale reports status "source"; a locale with no sibling reports "missing" (post_id null); use create_translation to fill a gap.',
                 'tier' => self::TIER_READ,
                 'inputSchema' => $this->schema([
                     'id' => ['type' => 'integer', 'description' => 'Post id.'],
@@ -347,6 +361,11 @@ class McpToolRegistry
                     $post = $this->findPost($args['id'] ?? null);
                     $blocks = $this->currentBlocks($post);
 
+                    $translations = [];
+                    foreach ($this->translationStatus->statuses($post) as $row) {
+                        $translations[$row['locale']] = ['post_id' => $row['post_id'], 'status' => $row['status']];
+                    }
+
                     return [
                         'id' => $post->getKey(),
                         'title' => (string) ($post->title_en ?? ''),
@@ -354,12 +373,13 @@ class McpToolRegistry
                         'content_version' => (int) $post->content_version,
                         'code' => $this->serializer->serialize($blocks),
                         'blocks' => $blocks,
+                        'translations' => $translations,
                     ];
                 },
             ],
 
             'create_post' => [
-                'description' => 'Create a post. Supply content as `code` (Heisenberg shortcode — preferred) or `blocks` (raw block JSON). Content is validated against the live block contracts and sanitized exactly as the editor does.',
+                'description' => 'Create a post. Supply content as `code` (Heisenberg shortcode — preferred) or `blocks` (raw block JSON). Content is validated against the live block contracts and sanitized exactly as the editor does. Pass `type: "email"` to author an email document instead of a blog/page post (docs/email-system.md §3) — same authoring path, draft-only posture unchanged; render it with the EmailRenderer service or the bundled HeisenbergMailable, this tool never sends anything.',
                 'tier' => self::TIER_AUTHORS,
                 'surface' => self::SURFACE_EXTERNAL,
                 'inputSchema' => $this->schema([
@@ -372,6 +392,7 @@ class McpToolRegistry
                     'excerpt_fr' => ['type' => 'string', 'description' => 'Excerpt (French).'],
                     'locale' => ['type' => 'string', 'description' => 'en or fr. Defaults to the model default (en).'],
                     'status' => ['type' => 'string', 'description' => 'Defaults to draft. Any other value is rejected here — creating a post never publishes it. Changing status afterward is a separate, surface-gated action (see set_post_status), not always available.'],
+                    'type' => ['type' => 'string', 'description' => 'post or email. Defaults to post.'],
                 ], ['title']),
                 'handler' => fn (array $args): array => $this->writePost(null, $args),
             ],
@@ -405,11 +426,40 @@ class McpToolRegistry
                 ]),
                 'handler' => function (array $args): array {
                     $blocks = $this->contentBlocks($args);
-                    $locale = (string) ($args['locale'] ?? 'en');
-                    $locale = in_array($locale, ['en', 'fr'], true) ? $locale : 'en';
+                    $locale = (string) ($args['locale'] ?? LocaleConfig::default());
+                    $locale = LocaleConfig::isValid($locale) ? $locale : LocaleConfig::default();
 
                     return ['html' => $this->renderer->renderBlocks($blocks, $locale)];
                 },
+            ],
+
+            // ── translations (both surfaces) ────────────────────────
+            // The split-row model (docs/content-translation.md §1): a post's translation is
+            // its OWN heisenberg_posts row, sharing `translation_group_id` with its siblings.
+            // This is the one tool that writes a sibling row: the caller reads the source
+            // with get_post, translates the shortcode itself (structure/ids/attribute names/
+            // media untouched — only human-readable text changes), and this tool writes the
+            // sibling in one validated call, going through the exact same shortcode->blocks
+            // validation create_post/update_post use (BlocksPayloadService, live contracts) —
+            // there is no separate, looser path for translated content.
+            'create_translation' => [
+                'description' => 'Create or update a translation of a post — a sibling row in its translation group (docs/content-translation.md). '
+                    . 'Reads the source with get_post, then pass the TRANSLATED shortcode as `code` (same block sequence and structure as the '
+                    . 'source; only human-readable text is translated — never block names, attribute names, ids, URLs or media references). '
+                    . 'If the target locale already has a sibling, its content is replaced (its lifecycle status is never touched); otherwise a '
+                    . 'new draft sibling is created. Validated exactly like create_post/update_post. Translations SHARE ONE SLUG with their '
+                    . 'source (locale comes from the host\'s URL prefix, not the slug) — a new sibling always gets the source post\'s exact '
+                    . 'slug; the response\'s `slug` field reports it.',
+                'tier' => self::TIER_AUTHORS,
+                'inputSchema' => $this->schema([
+                    'post_id' => ['type' => 'integer', 'description' => 'Source post id to translate FROM.'],
+                    'target_locale' => ['type' => 'string', 'description' => 'Locale to translate into (must differ from the source post\'s own locale), e.g. "fr".'],
+                    'title' => ['type' => 'string', 'description' => 'Translated title.'],
+                    'code' => ['type' => 'string', 'description' => 'The translated content as Heisenberg shortcode — same block sequence as the source, text translated.'],
+                    'excerpt' => ['type' => 'string', 'description' => 'Translated excerpt, in the target locale.'],
+                    'slug' => ['type' => 'string', 'description' => 'IGNORED — accepted only for backward wire-compatibility. Translations always share the source post\'s exact slug (docs/content-translation.md §1); the response\'s `slug` field always reports the real, shared value.'],
+                ], ['post_id', 'target_locale', 'title', 'code']),
+                'handler' => fn (array $args, string $surface): array => $this->createTranslation($args, $surface),
             ],
 
             // ── lifecycle (editor surface only) ─────────────────────
@@ -477,6 +527,50 @@ class McpToolRegistry
                 },
             ],
 
+            // Bilingual taxonomy edit (docs/content-translation.md §6): category/tag names and
+            // descriptions live on ONE row (unlike Post, which splits per locale — §1), so
+            // "translating" a category is just filling in its name_fr/description_fr columns.
+            'update_category' => [
+                'description' => 'Update a category\'s bilingual name/description (e.g. fill in name_fr after create_category only set name_en). Supply at least one field; any field left out keeps its current value.',
+                'tier' => self::TIER_AUTHORS,
+                'inputSchema' => $this->schema([
+                    'category_id' => ['type' => 'integer'],
+                    'name_en' => ['type' => 'string'],
+                    'name_fr' => ['type' => 'string'],
+                    'description_en' => ['type' => 'string'],
+                    'description_fr' => ['type' => 'string'],
+                ], ['category_id']),
+                'handler' => function (array $args): array {
+                    $class = (string) config('heisenberg.models.category', Category::class);
+                    $category = $class::query()->find((int) ($args['category_id'] ?? 0));
+                    if ($category === null) {
+                        throw new McpToolException('No category with id ' . (int) ($args['category_id'] ?? 0) . '.');
+                    }
+
+                    $fields = $this->bilingualUpdateFields(
+                        $args,
+                        ['name_en', 'name_fr', 'description_en', 'description_fr'],
+                        ['name_en' => 255, 'name_fr' => 255],
+                    );
+                    if (array_key_exists('name_en', $fields) && trim($fields['name_en']) === '') {
+                        throw new McpToolException('name_en cannot be set to an empty string.');
+                    }
+
+                    foreach ($fields as $field => $value) {
+                        $category->{$field} = $value;
+                    }
+                    $category->save();
+
+                    return [
+                        'id' => $category->getKey(),
+                        'name_en' => $category->name_en,
+                        'name_fr' => $category->name_fr,
+                        'description_en' => $category->description_en,
+                        'description_fr' => $category->description_fr,
+                    ];
+                },
+            ],
+
             'create_tag' => [
                 'description' => 'Create a tag. The slug is derived from name_en automatically (numeric-suffixed on collision) unless an explicit `slug` is supplied.',
                 'tier' => self::TIER_AUTHORS,
@@ -498,6 +592,35 @@ class McpToolRegistry
                     ], static fn (mixed $v): bool => $v !== null));
 
                     return ['id' => $tag->getKey(), 'name_en' => $tag->name_en, 'slug' => $tag->slug];
+                },
+            ],
+
+            'update_tag' => [
+                'description' => 'Update a tag\'s bilingual name (e.g. fill in name_fr after create_tag only set name_en). Supply at least one field; any field left out keeps its current value.',
+                'tier' => self::TIER_AUTHORS,
+                'inputSchema' => $this->schema([
+                    'tag_id' => ['type' => 'integer'],
+                    'name_en' => ['type' => 'string'],
+                    'name_fr' => ['type' => 'string'],
+                ], ['tag_id']),
+                'handler' => function (array $args): array {
+                    $class = (string) config('heisenberg.models.tag', Tag::class);
+                    $tag = $class::query()->find((int) ($args['tag_id'] ?? 0));
+                    if ($tag === null) {
+                        throw new McpToolException('No tag with id ' . (int) ($args['tag_id'] ?? 0) . '.');
+                    }
+
+                    $fields = $this->bilingualUpdateFields($args, ['name_en', 'name_fr'], ['name_en' => 255, 'name_fr' => 255]);
+                    if (array_key_exists('name_en', $fields) && trim($fields['name_en']) === '') {
+                        throw new McpToolException('name_en cannot be set to an empty string.');
+                    }
+
+                    foreach ($fields as $field => $value) {
+                        $tag->{$field} = $value;
+                    }
+                    $tag->save();
+
+                    return ['id' => $tag->getKey(), 'name_en' => $tag->name_en, 'name_fr' => $tag->name_fr];
                 },
             ],
 
@@ -582,6 +705,89 @@ class McpToolRegistry
                 },
             ],
 
+            // Metadata only — a much narrower grant than uploading bytes (list_media's docblock
+            // above), so this is fine on the AUTHORS tier even though the surface stays
+            // upload-free. `alt_text_en/_fr` and `caption_en/_fr` are the bilingual fields the
+            // media library panel already draws; write REAL French, not a copy of the English
+            // text (docs/content-translation.md's own posture, applied to media).
+            'update_media' => [
+                'description' => 'Update a media file\'s alt text, caption and/or credit line (both locales for alt/caption). Supply at least one field; any field left out keeps its current value. Does not touch the file bytes.',
+                'tier' => self::TIER_AUTHORS,
+                'inputSchema' => $this->schema([
+                    'file_id' => ['type' => 'integer', 'description' => 'Public file id (see list_media).'],
+                    'alt_text_en' => ['type' => 'string', 'description' => 'Alt text, English. Max 255 characters.'],
+                    'alt_text_fr' => ['type' => 'string', 'description' => 'Alt text, French. Max 255 characters.'],
+                    'caption_en' => ['type' => 'string', 'description' => 'Caption, English. Max 500 characters.'],
+                    'caption_fr' => ['type' => 'string', 'description' => 'Caption, French. Max 500 characters.'],
+                    'credit' => ['type' => 'string', 'description' => 'Credit/attribution line. Max 255 characters.'],
+                ], ['file_id']),
+                'handler' => fn (array $args): array => $this->updateMedia($args),
+            ],
+
+            // ── SEO ──────────────────────────────────────────────────
+            // docs/seo-system.md §6. get_seo/analyze_seo are read-only; update_seo is the one
+            // write path, matching NativeSeoMetaProvider/PostController::applySeo's own
+            // updateOrCreate-on-(able_type,able_id) shape so the DB never carries two rows for
+            // one post. Available on both surfaces — SEO metadata is a post attribute, not the
+            // live canvas, so it makes as much sense to an external agent as set_page_layout/
+            // set_discussion/set_featured_image below (page-settings tools, same "no `surface`
+            // entry" posture).
+            'get_seo' => [
+                'description' => 'Read a post\'s SEO/social metadata row (all fields, both locales) — the SeoMeta row create_post/update_post never touch. `has_seo` is false when the post has no row yet (nothing has been set). Does not run the SEO analyzer — call analyze_seo for that.',
+                'tier' => self::TIER_READ,
+                'inputSchema' => $this->schema(['post_id' => ['type' => 'integer']], ['post_id']),
+                'handler' => function (array $args): array {
+                    $post = $this->findPost($args['post_id'] ?? null);
+                    $seo = $this->seoMetaClass()::query()
+                        ->where('able_type', $post->getMorphClass())
+                        ->where('able_id', $post->getKey())
+                        ->first();
+
+                    return [
+                        'post_id' => $post->getKey(),
+                        'has_seo' => $seo !== null,
+                        'seo' => $seo === null ? null : $this->seoMetaPayload($seo),
+                    ];
+                },
+            ],
+
+            'update_seo' => [
+                'description' => 'Set a post\'s SEO/social metadata. `locale` routes meta_title/meta_description/og_title/og_description/focus_keyphrase to that locale\'s column (defaults to the post\'s own locale); og_image/canonical_url/robots/schema_type/schema_data/in_sitemap are locale-neutral and apply directly. Supply at least one field. updateOrCreate\'s the row (no prior get_seo call required). robots is comma-separated tokens from index/noindex/follow/nofollow. schema_data is a JSON object merged under the computed JSON-LD defaults (see get_seo). Returns the updated row, same shape as get_seo.',
+                'tier' => self::TIER_AUTHORS,
+                'inputSchema' => $this->schema([
+                    'post_id' => ['type' => 'integer'],
+                    'locale' => ['type' => 'string', 'description' => 'Which locale meta_title/meta_description/og_title/og_description/focus_keyphrase apply to. Defaults to the post\'s own locale.'],
+                    'meta_title' => ['type' => 'string', 'description' => 'Localized. Ideal length 30-60 characters. Max 255.'],
+                    'meta_description' => ['type' => 'string', 'description' => 'Localized. Ideal length 50-160 characters. Max 255.'],
+                    'og_title' => ['type' => 'string', 'description' => 'Localized. Max 255.'],
+                    'og_description' => ['type' => 'string', 'description' => 'Localized. Max 255.'],
+                    'og_image' => ['type' => 'string', 'description' => 'Locale-neutral. An image URL. Max 255.'],
+                    'canonical_url' => ['type' => 'string', 'description' => 'Locale-neutral. An absolute URL. Max 255.'],
+                    'robots' => ['type' => 'string', 'description' => 'Locale-neutral. Comma-separated tokens from index/noindex/follow/nofollow, e.g. "index, follow". Max 255.'],
+                    'focus_keyphrase' => ['type' => 'string', 'description' => 'Localized. The phrase analyze_seo scores this post against. Max 255.'],
+                    'in_sitemap' => ['type' => 'boolean', 'description' => 'Locale-neutral. Include this post in /sitemap.xml.'],
+                    'schema_type' => ['type' => 'string', 'description' => 'Locale-neutral. Schema.org @type, e.g. "Article". Max 255.'],
+                    'schema_data' => ['type' => 'object', 'description' => 'Locale-neutral. Extra JSON-LD keys merged under the computed defaults.'],
+                ], ['post_id']),
+                'handler' => fn (array $args): array => $this->updateSeo($args),
+            ],
+
+            'analyze_seo' => [
+                'description' => 'Run the SEO checklist/score against a post\'s SAVED SeoMeta + content (no draft overrides — this is the tool surface, not the editor panel\'s live re-scoring). Returns {score, rating, checks[]} — each check has id/group/status(pass|warn|fail)/weight/message. Workflow: analyze_seo, fix the worst-weighted fail/warn checks with update_seo (or by editing content), analyze_seo again.',
+                'tier' => self::TIER_READ,
+                'inputSchema' => $this->schema([
+                    'post_id' => ['type' => 'integer'],
+                    'locale' => ['type' => 'string', 'description' => 'Defaults to the post\'s own locale.'],
+                ], ['post_id']),
+                'handler' => function (array $args): array {
+                    $post = $this->findPost($args['post_id'] ?? null);
+                    $locale = $this->resolveSeoLocale($args, $post);
+                    $analyzer = app(\Heisenberg\Services\SeoAnalyzer::class);
+
+                    return $analyzer->analyze($post, $locale);
+                },
+            ],
+
             // ── page settings ────────────────────────────────────────
             'set_page_layout' => [
                 'description' => 'Set a post\'s page padding, in pixels (0-400). Mirrors the editor\'s Page Layout panel. Does not touch content or content_version.',
@@ -628,6 +834,21 @@ class McpToolRegistry
 
                     return ['post_id' => $post->getKey(), 'allow_comments' => $post->allow_comments];
                 },
+            ],
+
+            // Mirrors PostSettingsController::updateFeaturedImage's posture exactly (direct
+            // property write on the guarded `featured_image_id` column — see Post::$fillable's
+            // own docblock) — no `surface` entry, same as set_page_layout/set_discussion just
+            // above: a featured image is a lightweight post setting, not a content write that
+            // needs the draft-only external-surface posture create_post/update_post hold.
+            'set_featured_image' => [
+                'description' => 'Set (or clear) a post\'s featured image. Pass file_id to set it, or omit/null to clear it. Mirrors the editor\'s Featured image setting. Does not touch content or content_version. A featured image is language-neutral: this propagates the same file_id (or null, when clearing) to every sibling in the post\'s translation group, so a group never ends up with the image set on only one locale.',
+                'tier' => self::TIER_AUTHORS,
+                'inputSchema' => $this->schema([
+                    'post_id' => ['type' => 'integer'],
+                    'file_id' => ['type' => 'integer', 'description' => 'Public file id (see list_media). Omit or pass null to clear the featured image.'],
+                ], ['post_id']),
+                'handler' => fn (array $args): array => $this->setFeaturedImage($args),
             ],
 
             // ── revisions ────────────────────────────────────────────
@@ -727,7 +948,7 @@ class McpToolRegistry
      */
     private function writePost(?Post $existing, array $args, string $revisionType = 'manual'): array
     {
-        $blocks = $this->contentBlocks($args, allowEmpty: $existing !== null);
+        $blocks = $this->validatedContentBlocks($args, allowEmpty: $existing !== null);
 
         // Optimistic concurrency, same rule as PostController::save(): if the
         // caller quotes a version, it must still be current.
@@ -747,31 +968,9 @@ class McpToolRegistry
         }
 
         $locale = array_key_exists('locale', $args) ? trim((string) $args['locale']) : null;
-        if ($locale !== null && $locale !== '' && ! in_array($locale, ['en', 'fr'], true)) {
-            throw new McpToolException("locale must be 'en' or 'fr' (got '{$locale}').");
-        }
-
-        if ($blocks !== null) {
-            // The parser produces bare models, exactly as the JS parser does —
-            // in the browser it is replaceDoc() that stamps each one with an id,
-            // the contract's schemaVersion and the attribute defaults. There is
-            // no replaceDoc here, so this is that step. Without it every write
-            // fails validation on `missing key 'id'`.
-            $blocks = $this->hydrateBlocks($blocks);
-
-            $checked = $this->payload->validatePayload([
-                'schemaVersion' => 1,
-                // Computed live rather than quoted by the caller: an MCP client
-                // holds no page snapshot that could be stale.
-                'registryHash' => $this->registry->computeHash(),
-                'blocks' => $blocks,
-            ]);
-
-            if (! ($checked['valid'] ?? false)) {
-                throw new McpToolException('Content rejected: ' . implode('; ', (array) ($checked['errors'] ?? ['invalid payload'])));
-            }
-
-            $blocks = $checked['blocks'] ?? $blocks;
+        if ($locale !== null && $locale !== '' && ! LocaleConfig::isValid($locale)) {
+            $allowed = implode(', ', LocaleConfig::locales());
+            throw new McpToolException("locale must be one of: {$allowed} (got '{$locale}').");
         }
 
         $title = array_key_exists('title', $args) ? trim((string) $args['title']) : null;
@@ -779,8 +978,22 @@ class McpToolRegistry
             throw new McpToolException('title is required to create a post.');
         }
 
-        return DB::transaction(function () use ($existing, $args, $title, $locale, $blocks, $revisionType): array {
+        // docs/email-system.md §3: `type` is create-only (an existing document's type never
+        // changes via this generic write path — same "not a content edit" posture `status`
+        // transitions have) and validated against the two known values.
+        $type = null;
+        if ($existing === null && array_key_exists('type', $args)) {
+            $type = trim((string) $args['type']) ?: 'post';
+            if (! in_array($type, ['post', 'email'], true)) {
+                throw new McpToolException("type must be 'post' or 'email' (got '{$type}').");
+            }
+        }
+
+        return DB::transaction(function () use ($existing, $args, $title, $locale, $blocks, $revisionType, $type): array {
             $post = $existing ?? new ($this->postClass())();
+            if ($type !== null) {
+                $post->type = $type;
+            }
 
             if ($title !== null && $title !== '') {
                 $post->title_en = $title;
@@ -813,15 +1026,7 @@ class McpToolRegistry
                     $this->captureRevision($post, $revisionType);
                 }
 
-                $post->blocks()->delete();
-                foreach (array_values($blocks) as $index => $block) {
-                    $name = (string) ($block['name'] ?? '');
-                    $post->blocks()->create([
-                        'type' => str_contains($name, '/') ? substr($name, strrpos($name, '/') + 1) : $name,
-                        'content' => $block,
-                        'order' => $index,
-                    ]);
-                }
+                $this->replaceBlocks($post, $blocks);
                 $post->bumpContentVersion();
             }
 
@@ -835,6 +1040,221 @@ class McpToolRegistry
                 'blocks' => $blocks === null ? null : count($blocks),
             ];
         });
+    }
+
+    /**
+     * Shortcode/JSON -> validated, hydrated block models, ready to persist. The exact
+     * pipeline `write_canvas` validates against (parse via {@see self::contentBlocks()},
+     * against the SAME live contracts — {@see ShortcodeParser} reports the identical
+     * line-numbered errors either way) PLUS the hydrate + {@see BlocksPayloadService}
+     * step that stamps ids/schemaVersion/attribute defaults and re-checks the result —
+     * the extra step every path that actually WRITES to the database needs (write_canvas
+     * never persists, so it stops after the parse). {@see self::writePost()} and
+     * {@see self::createTranslation()} — the two tools that materialize a content tree —
+     * both funnel through here, so "valid content" cannot mean something different
+     * between authoring a post and translating one.
+     *
+     * @param  array<string, mixed>            $args
+     * @return list<array<string, mixed>>|null null means "no content supplied"
+     */
+    private function validatedContentBlocks(array $args, bool $allowEmpty = false): ?array
+    {
+        $blocks = $this->contentBlocks($args, allowEmpty: $allowEmpty);
+        if ($blocks === null) {
+            return null;
+        }
+
+        // The parser produces bare models, exactly as the JS parser does — in the
+        // browser it is replaceDoc() that stamps each one with an id, the contract's
+        // schemaVersion and the attribute defaults. There is no replaceDoc here, so
+        // this is that step. Without it every write fails validation on `missing key 'id'`.
+        $blocks = $this->hydrateBlocks($blocks);
+
+        $checked = $this->payload->validatePayload([
+            'schemaVersion' => 1,
+            // Computed live rather than quoted by the caller: an MCP client holds no
+            // page snapshot that could be stale.
+            'registryHash' => $this->registry->computeHash(),
+            'blocks' => $blocks,
+        ]);
+
+        if (! ($checked['valid'] ?? false)) {
+            throw new McpToolException('Content rejected: ' . implode('; ', (array) ($checked['errors'] ?? ['invalid payload'])));
+        }
+
+        return $checked['blocks'] ?? $blocks;
+    }
+
+    /**
+     * Materialize `$blocks` as `$post`'s ONLY block rows — replaces whatever was there.
+     * Shared by {@see self::writePost()} and {@see self::createTranslation()}, the two
+     * paths that persist a content tree, so there is exactly one place that knows how a
+     * hydrated+validated block model becomes a `heisenberg_post_blocks` row. Does NOT
+     * bump `content_version` or snapshot a revision — a caller replacing an EXISTING
+     * post's tree must call {@see self::captureRevision()} first and bump the version
+     * after, same as `writePost()` does around its own call to this method.
+     *
+     * @param list<array<string, mixed>> $blocks
+     */
+    private function replaceBlocks(Post $post, array $blocks): void
+    {
+        $post->blocks()->delete();
+        foreach (array_values($blocks) as $index => $block) {
+            $name = (string) ($block['name'] ?? '');
+            $post->blocks()->create([
+                'type' => str_contains($name, '/') ? substr($name, strrpos($name, '/') + 1) : $name,
+                'content' => $block,
+                'order' => $index,
+            ]);
+        }
+    }
+
+    /**
+     * `create_translation` — writes a sibling row in `$args['post_id']`'s translation
+     * group (docs/content-translation.md §1, §6). Creates the sibling as a draft when
+     * the target locale has none yet; otherwise replaces its content tree in place
+     * WITHOUT ever touching its lifecycle status (publishing/unpublishing a translation
+     * stays a human decision via the normal Summary control / `set_post_status`).
+     *
+     * Surface posture: the EXTERNAL server refuses to update an already-published (or
+     * otherwise non-draft) sibling at all — the same draft-only posture `create_post`/
+     * `update_post` hold on that surface — because there is no human reviewing the
+     * result before it goes live. The EDITOR surface may update a published sibling: a
+     * human is driving and reviews the diff before saving, same reasoning
+     * `set_post_status` already rests on.
+     *
+     * @param  array<string, mixed> $args
+     * @return array{post_id: int|string, locale: string, status: string, slug: string, outdated: bool}
+     */
+    private function createTranslation(array $args, string $surface): array
+    {
+        $source = $this->findPost($args['post_id'] ?? null);
+
+        $targetLocale = trim((string) ($args['target_locale'] ?? ''));
+        if ($targetLocale === '' || ! LocaleConfig::isValid($targetLocale)) {
+            $allowed = implode(', ', LocaleConfig::locales());
+            throw new McpToolException("target_locale must be one of: {$allowed} (got '{$targetLocale}').");
+        }
+
+        $sourceLocale = (string) ($source->locale ?: LocaleConfig::default());
+        if ($targetLocale === $sourceLocale) {
+            throw new McpToolException("target_locale ('{$targetLocale}') must differ from the source post's own locale ('{$sourceLocale}').");
+        }
+
+        $title = trim((string) ($args['title'] ?? ''));
+        if ($title === '') {
+            throw new McpToolException('title is required.');
+        }
+
+        // Same validation write_canvas/create_post/update_post use — see
+        // validatedContentBlocks()'s own docblock. allowEmpty is always false here:
+        // a translation with no content is never useful, whether creating or updating.
+        $blocks = $this->validatedContentBlocks(['code' => (string) ($args['code'] ?? '')]);
+
+        $hasExcerpt = array_key_exists('excerpt', $args) && is_string($args['excerpt']);
+        $excerpt = $hasExcerpt ? $args['excerpt'] : null;
+
+        // `slug` (if supplied) is accepted for wire-compat only and otherwise IGNORED — see the
+        // shared-slug invariant, docs/content-translation.md §1: a translation group presents as
+        // ONE post, so a sibling always carries its source's EXACT slug, never a caller-supplied
+        // one that could diverge from it. The response's own `slug` key always reports the real,
+        // shared value, so a caller that passed a different one learns the truth instead of
+        // silently assuming its input won.
+
+        return DB::transaction(function () use ($source, $targetLocale, $title, $blocks, $hasExcerpt, $excerpt, $surface): array {
+            $sibling = $source->sibling($targetLocale);
+
+            if ($sibling === null) {
+                // Checked BEFORE any write (no partial state): an unrelated post already holding
+                // the source's exact slug text in $targetLocale refuses the WHOLE translation
+                // rather than silently drifting the sibling onto a different slug than its source.
+                $slugTaken = $this->postClass()::query()->withTrashed()
+                    ->where('locale', $targetLocale)
+                    ->where('slug', $source->slug)
+                    ->exists();
+                if ($slugTaken) {
+                    throw new McpToolException(
+                        "Cannot create the {$targetLocale} translation: its shared slug \"{$source->slug}\" is already used by another post in that language."
+                    );
+                }
+
+                $sibling = new ($this->postClass())();
+                $sibling->translation_group_id = $source->translation_group_id ?: (string) Str::uuid();
+                if (empty($source->translation_group_id)) {
+                    $source->translation_group_id = $sibling->translation_group_id;
+                    $source->save();
+                }
+                $sibling->locale = $targetLocale;
+                // title_en is NOT NULL (migration 2026_01_01_000001) on every row regardless of
+                // its own locale — see the existing en/fr fixtures across tests/Translation/*.
+                // A new row therefore needs BOTH columns populated: the target locale's column
+                // gets the translated title, the OTHER carries the source's own title as a
+                // same-row fallback (Post::title() reads it when the primary column is empty).
+                $sibling->title_en = $targetLocale === 'en' ? $title : (string) ($source->title_en ?: $title);
+                $sibling->title_fr = $targetLocale === 'fr' ? $title : $source->title_fr;
+                if ($hasExcerpt) {
+                    $this->setLocaleField($sibling, $targetLocale, 'excerpt', $excerpt);
+                }
+                $sibling->slug = $source->slug;
+                $sibling->featured_image_id = $source->featured_image_id;
+                $sibling->page_padding_x = $source->page_padding_x;
+                $sibling->page_padding_y = $source->page_padding_y;
+                $sibling->allow_comments = $source->allow_comments;
+                $sibling->status = 'draft';
+                // A translation is the same DOCUMENT in another language — an email's sibling
+                // stays an email. `type` is guarded with DB default 'post', so it must be
+                // copied explicitly or it silently reverts.
+                $sibling->type = $source->type;
+                $sibling->save();
+
+                $this->replaceBlocks($sibling, $blocks);
+                $sibling->bumpContentVersion();
+            } else {
+                if ($surface === self::SURFACE_EXTERNAL && $sibling->status !== 'draft') {
+                    throw new McpToolException(
+                        "The {$targetLocale} translation is already \"{$sibling->status}\"; the external MCP surface only updates draft translations."
+                    );
+                }
+
+                $this->captureRevision($sibling, 'manual');
+
+                $this->setLocaleField($sibling, $targetLocale, 'title', $title);
+                if ($hasExcerpt) {
+                    $this->setLocaleField($sibling, $targetLocale, 'excerpt', $excerpt);
+                }
+                // slug is deliberately left untouched — the shared-slug invariant means it
+                // already matches the source; there is no per-translation slug left to update.
+                $sibling->save();
+
+                $this->replaceBlocks($sibling, $blocks);
+                $sibling->bumpContentVersion();
+            }
+
+            // translated_from_version is deliberately not fillable (see Post::$fillable's
+            // docblock) — direct property write is the only path, same as content_version.
+            $sibling->translated_from_version = (int) $source->content_version;
+            $sibling->save();
+            $sibling->refresh();
+
+            return [
+                'post_id' => $sibling->getKey(),
+                'locale' => $targetLocale,
+                'status' => (string) $sibling->status,
+                // The real, shared slug — see the note above args['slug'] on why a caller-supplied
+                // value never lands here even when one was sent.
+                'slug' => (string) $sibling->slug,
+                // Always false: translated_from_version was just set to the source's
+                // CURRENT content_version, so isTranslationOutdated() cannot yet be true.
+                'outdated' => false,
+            ];
+        });
+    }
+
+    /** Writes `$value` into `{$field}_en` or `{$field}_fr` depending on `$locale` — the bilingual-column shape `title_en`/`title_fr` and `excerpt_en`/`excerpt_fr` share (docs/content-translation.md §3 caps real support at en/fr). */
+    private function setLocaleField(Post $post, string $locale, string $field, ?string $value): void
+    {
+        $column = $field . '_' . ($locale === 'fr' ? 'fr' : 'en');
+        $post->{$column} = $value;
     }
 
     /**
@@ -936,6 +1356,244 @@ class McpToolRegistry
                 'scheduled_at' => $post->scheduled_at?->toIso8601String(),
             ];
         });
+    }
+
+    /**
+     * `update_seo` — validates and `updateOrCreate`s a post's {@see SeoMeta} row
+     * (docs/seo-system.md §6). The localized fields (meta_title, meta_description, og_title,
+     * og_description, focus_keyphrase) route to `{field}_{locale}`; the rest are locale-neutral
+     * columns written as-is. At least one field must be present — an update with nothing to
+     * change is a caller mistake, same posture as {@see self::bilingualUpdateFields()}.
+     *
+     * @param array<string, mixed> $args
+     */
+    private function updateSeo(array $args): array
+    {
+        $post = $this->findPost($args['post_id'] ?? null);
+        $locale = $this->resolveSeoLocale($args, $post);
+
+        $localizedFields = ['meta_title', 'meta_description', 'og_title', 'og_description', 'focus_keyphrase'];
+        $neutralStringFields = ['og_image' => 255, 'canonical_url' => 255, 'robots' => 255, 'schema_type' => 255];
+        $allFields = [...$localizedFields, ...array_keys($neutralStringFields), 'in_sitemap', 'schema_data'];
+
+        if (array_intersect_key($args, array_flip($allFields)) === []) {
+            throw new McpToolException('Supply at least one of: ' . implode(', ', $allFields) . '.');
+        }
+
+        $data = [];
+
+        foreach ($localizedFields as $field) {
+            if (! array_key_exists($field, $args) || ! is_string($args[$field])) {
+                continue;
+            }
+            $value = trim($args[$field]);
+            if (mb_strlen($value) > 255) {
+                throw new McpToolException("{$field} must be 255 characters or fewer (got " . mb_strlen($value) . ').');
+            }
+            $data["{$field}_{$locale}"] = $value;
+        }
+
+        foreach ($neutralStringFields as $field => $cap) {
+            if (! array_key_exists($field, $args) || ! is_string($args[$field])) {
+                continue;
+            }
+            $value = trim($args[$field]);
+            if (mb_strlen($value) > $cap) {
+                throw new McpToolException("{$field} must be {$cap} characters or fewer (got " . mb_strlen($value) . ').');
+            }
+            if ($field === 'robots' && $value !== '') {
+                $this->validateRobots($value);
+            }
+            $data[$field] = $value;
+        }
+
+        if (array_key_exists('in_sitemap', $args)) {
+            if (! is_bool($args['in_sitemap'])) {
+                throw new McpToolException('in_sitemap must be a boolean.');
+            }
+            $data['in_sitemap'] = $args['in_sitemap'];
+        }
+
+        if (array_key_exists('schema_data', $args)) {
+            if (! is_array($args['schema_data'])) {
+                throw new McpToolException('schema_data must be a JSON object.');
+            }
+            $data['schema_data'] = $args['schema_data'];
+        }
+
+        $seo = $this->seoMetaClass()::query()->updateOrCreate(
+            ['able_type' => $post->getMorphClass(), 'able_id' => $post->getKey()],
+            $data,
+        );
+
+        return [
+            'post_id' => $post->getKey(),
+            'has_seo' => true,
+            'seo' => $this->seoMetaPayload($seo),
+        ];
+    }
+
+    /** Comma-separated tokens, each one of index/noindex/follow/nofollow (case-insensitive). */
+    private function validateRobots(string $robots): void
+    {
+        $allowed = ['index', 'noindex', 'follow', 'nofollow'];
+        foreach (explode(',', $robots) as $token) {
+            $token = strtolower(trim($token));
+            if (! in_array($token, $allowed, true)) {
+                throw new McpToolException(
+                    "robots may only contain comma-separated tokens from index/noindex/follow/nofollow (got \"" . trim($token) . '").'
+                );
+            }
+        }
+    }
+
+    /** @return array<string, mixed> same shape get_seo and update_seo both return under `seo`. */
+    private function seoMetaPayload(SeoMeta $seo): array
+    {
+        return [
+            'meta_title_en' => $seo->meta_title_en,
+            'meta_title_fr' => $seo->meta_title_fr,
+            'meta_description_en' => $seo->meta_description_en,
+            'meta_description_fr' => $seo->meta_description_fr,
+            'og_title_en' => $seo->og_title_en,
+            'og_title_fr' => $seo->og_title_fr,
+            'og_description_en' => $seo->og_description_en,
+            'og_description_fr' => $seo->og_description_fr,
+            'focus_keyphrase_en' => $seo->focus_keyphrase_en,
+            'focus_keyphrase_fr' => $seo->focus_keyphrase_fr,
+            'og_image' => $seo->og_image,
+            'canonical_url' => $seo->canonical_url,
+            'robots' => $seo->robots,
+            'schema_type' => $seo->schema_type,
+            'schema_data' => $seo->schema_data,
+            'in_sitemap' => (bool) $seo->in_sitemap,
+        ];
+    }
+
+    /** `locale` argument when valid, else the post's own locale, else the app default — used by every SEO tool. */
+    private function resolveSeoLocale(array $args, Post $post): string
+    {
+        $locale = trim((string) ($args['locale'] ?? ''));
+        if ($locale === '') {
+            $locale = (string) ($post->locale ?: LocaleConfig::default());
+        }
+        if (! LocaleConfig::isValid($locale)) {
+            $allowed = implode(', ', LocaleConfig::locales());
+            throw new McpToolException("locale must be one of: {$allowed} (got '{$locale}').");
+        }
+
+        return $locale;
+    }
+
+    /** @return class-string<SeoMeta> */
+    private function seoMetaClass(): string
+    {
+        return (string) config('heisenberg.models.seo_meta', SeoMeta::class);
+    }
+
+    /**
+     * `update_media` — alt/caption (bilingual) + credit on a {@see PublicFile}. Reuses
+     * {@see self::bilingualUpdateFields()} (the same "at least one field, each capped at its
+     * column's length" rule `update_category`/`update_tag` already use) — the field/cap set is
+     * just different here, the validation shape is identical.
+     *
+     * @param array<string, mixed> $args
+     */
+    private function updateMedia(array $args): array
+    {
+        $class = (string) config('heisenberg.models.public_file', PublicFile::class);
+        $file = $class::query()->find((int) ($args['file_id'] ?? 0));
+        if ($file === null) {
+            throw new McpToolException('No media file with id ' . (int) ($args['file_id'] ?? 0) . '.');
+        }
+
+        $fields = $this->bilingualUpdateFields(
+            $args,
+            ['alt_text_en', 'alt_text_fr', 'caption_en', 'caption_fr', 'credit'],
+            ['alt_text_en' => 255, 'alt_text_fr' => 255, 'caption_en' => 500, 'caption_fr' => 500, 'credit' => 255],
+        );
+
+        foreach ($fields as $field => $value) {
+            $file->{$field} = $value;
+        }
+        $file->save();
+
+        return [
+            'id' => $file->getKey(),
+            'url' => (string) $file->url,
+            'alt_text_en' => $file->alt_text_en,
+            'alt_text_fr' => $file->alt_text_fr,
+            'caption_en' => $file->caption_en,
+            'caption_fr' => $file->caption_fr,
+            'credit' => $file->credit,
+        ];
+    }
+
+    /**
+     * `set_featured_image` — direct property write on `Post::$featured_image_id` (guarded, same
+     * posture as {@see \Heisenberg\Http\Controllers\PostSettingsController::updateFeaturedImage()}).
+     * `file_id` null/omitted clears it; a non-null id must point at a real, image-type
+     * {@see PublicFile} — {@see PublicFile::isImageType()} makes that check cheap enough not to
+     * skip: a featured image slot rendered as a PDF icon is a worse failure mode than refusing
+     * the write here.
+     *
+     * PROPAGATES group-wide, same posture and same reasoning as
+     * {@see \Heisenberg\Http\Controllers\PostSettingsController::updateFeaturedImage()}'s own
+     * docblock: an agent must not create the "set it twice" inconsistency the UI now prevents.
+     * The response shape is unchanged (still just this post's own id/featured_image_id) —
+     * propagation is a side effect, not a new return value.
+     *
+     * @param array<string, mixed> $args
+     */
+    private function setFeaturedImage(array $args): array
+    {
+        $post = $this->findPost($args['post_id'] ?? null);
+        $fileId = $args['file_id'] ?? null;
+
+        if ($fileId === null) {
+            return DB::transaction(function () use ($post): array {
+                $post->featured_image_id = null;
+                $post->save();
+                $this->propagateFeaturedImageToSiblings($post, null);
+
+                return ['post_id' => $post->getKey(), 'featured_image_id' => null];
+            });
+        }
+
+        $class = (string) config('heisenberg.models.public_file', PublicFile::class);
+        $file = $class::query()->find((int) $fileId);
+        if ($file === null) {
+            throw new McpToolException('No media file with id ' . (int) $fileId . '.');
+        }
+        if (! $file->isImageType()) {
+            throw new McpToolException("File {$file->getKey()} is type \"{$file->type}\", not an image — the featured image must be an image file.");
+        }
+
+        return DB::transaction(function () use ($post, $file): array {
+            $post->featured_image_id = $file->getKey();
+            $post->save();
+            $this->propagateFeaturedImageToSiblings($post, $post->featured_image_id);
+
+            return ['post_id' => $post->getKey(), 'featured_image_id' => $post->featured_image_id];
+        });
+    }
+
+    /**
+     * Plain query UPDATE onto every sibling in `$post`'s translation group — shared by
+     * `setFeaturedImage()` above. Same "no per-row ->save()" reasoning as
+     * `PostSettingsController::updateFeaturedImage()`'s own docblock: a sibling's content/title
+     * is untouched, only its featured_image_id column changes.
+     */
+    private function propagateFeaturedImageToSiblings(Post $post, ?int $featuredImageId): void
+    {
+        $siblings = $post->siblings();
+        if ($siblings->isEmpty()) {
+            return;
+        }
+
+        $post::query()
+            ->whereKey($siblings->pluck($post->getKeyName())->all())
+            ->update(['featured_image_id' => $featuredImageId]);
     }
 
     /** The acting Authenticatable, or a {@see GuestActor} stand-in — same convention every /editor controller uses. */
@@ -1042,6 +1700,42 @@ class McpToolRegistry
         }
 
         throw new McpToolException('Supply content as `code` (shortcode) or `blocks` (JSON).');
+    }
+
+    /**
+     * The provided-and-valid subset of `$args` for `update_category`/`update_tag` — every
+     * field is optional, but at least one must be present (an update with nothing to change
+     * is a caller mistake, not a no-op worth silently accepting), and each is capped at its
+     * column's actual length (`string` columns are 255 in the categories/tags migrations;
+     * `text` columns like a category's description are not listed in `$caps` and so stay
+     * uncapped here — MySQL/SQLite's own TEXT limit is generous enough not to need a
+     * second, arbitrary ceiling).
+     *
+     * @param  array<string, mixed> $args
+     * @param  list<string>         $fields
+     * @param  array<string, int>   $caps
+     * @return array<string, string>
+     */
+    private function bilingualUpdateFields(array $args, array $fields, array $caps = []): array
+    {
+        $provided = [];
+        foreach ($fields as $field) {
+            if (array_key_exists($field, $args) && is_string($args[$field])) {
+                $provided[$field] = $args[$field];
+            }
+        }
+
+        if ($provided === []) {
+            throw new McpToolException('Supply at least one of: ' . implode(', ', $fields) . '.');
+        }
+
+        foreach ($caps as $field => $cap) {
+            if (array_key_exists($field, $provided) && mb_strlen($provided[$field]) > $cap) {
+                throw new McpToolException("{$field} must be {$cap} characters or fewer (got " . mb_strlen($provided[$field]) . ').');
+            }
+        }
+
+        return $provided;
     }
 
     /** @return list<array<string, mixed>> */

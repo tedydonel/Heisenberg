@@ -57,6 +57,12 @@ return [
         'save_conflict' => 'Cet article a été modifié ailleurs — rechargez et réessayez.',
         'save_invalid' => 'Enregistrement impossible — vérifiez le formulaire.',
         'save_network' => 'Erreur réseau — vérifiez votre connexion.',
+        // Menu déroulant de langue de l'article (docs/content-translation.md §5) — voir / changer
+        // de traduction / en créer une, à partir du même seed postTranslations et des mêmes
+        // libellés de statut que la section Traductions de l'inspecteur ('inspector.post_translations_*').
+        'aria_post_language' => "Langue de l'article",
+        'lang_translate_to' => 'Traduire en :locale…',
+        'lang_creating' => 'Création…',
     ],
 
     // ── Médias : dialogue / bibliothèque / zone de dépôt (live/media/*) ──
@@ -70,6 +76,7 @@ return [
     ],
     'media' => [
         'select_featured_image' => 'Choisir l\'image mise en avant',
+        'select_social_image' => 'Choisir l\'image de partage social',
         'select_image' => 'Choisir une image',
         'tab_upload' => 'Téléverser des fichiers',
         'tab_library' => 'Bibliothèque de médias',
@@ -181,6 +188,46 @@ return [
         'coming_soon' => 'Disponible dans une phase ultérieure.',
     ],
 
+    // ── Page de modération des commentaires (comments/index.blade.php) — la
+    // surface `GET /editor/comments` en JS natif. Le JS ne peut pas appeler
+    // __() : les chaînes dont le script a besoin (gabarit de ligne, boîtes de
+    // confirmation/réponse, pagination) sont aussi injectées dans un bloc JSON
+    // `data-hb-comments-strings` (même posture que `data-hb-nav-strings` du
+    // panneau navigateur). ':id'/':count'/':current'/':total' sont remplacés
+    // côté client, pas interpolés ici.
+    'comments' => [
+        'title' => 'Commentaires',
+        'search_ph' => 'Rechercher des commentaires…',
+        'tab_pending' => 'En attente',
+        'tab_approved' => 'Approuvés',
+        'tab_spam' => 'Indésirables',
+        'tab_trash' => 'Corbeille',
+        'tab_all' => 'Tous',
+        'loading' => 'Chargement…',
+        'empty' => 'Aucun commentaire.',
+        'empty_pending' => 'Aucun commentaire en attente.',
+        'empty_approved' => 'Aucun commentaire approuvé.',
+        'empty_spam' => 'Aucun indésirable.',
+        'empty_trash' => 'La corbeille est vide.',
+        'load_error' => 'Impossible de charger les commentaires.',
+        'author_anonymous' => 'Anonyme',
+        'reply_marker' => 'réponse à #:id',
+        'reply_count_one' => ':count réponse',
+        'reply_count_other' => ':count réponses',
+        'action_approve' => 'Approuver',
+        'action_spam' => 'Indésirable',
+        'action_trash' => 'Corbeille',
+        'action_delete' => 'Supprimer définitivement',
+        'action_reply' => 'Répondre',
+        'confirm_delete_text' => 'Supprimer définitivement ce commentaire ?',
+        'confirm_delete_button' => 'Supprimer',
+        'cancel' => 'Annuler',
+        'reply_placeholder' => 'Rédigez une réponse…',
+        'pager_label' => 'Page :current sur :total',
+        'pager_prev' => 'Précédent',
+        'pager_next' => 'Suivant',
+    ],
+
     // ── Dialogue des révisions (live/revisions-dialog.blade.php) ──
     'revisions' => [
         'title' => 'Révisions',
@@ -290,8 +337,19 @@ return [
         'summary_status' => 'Statut',
         'summary_publish' => 'Publication',
         'summary_url' => 'URL',
-        'summary_blocks' => 'Blocs',
         'summary_immediately' => 'Immédiatement',
+        // Le champ de slug modifiable de la ligne URL (2026-08-11).
+        'summary_slug_label' => 'Slug',
+        'summary_slug_placeholder' => 'slug-article',
+        // Options du contrôle de statut (EditorController::statusLabel()) — le suffixe de la
+        // clé est le nom de statut brut de config('heisenberg.lifecycle.transitions').
+        'summary_status_draft' => 'Brouillon',
+        'summary_status_pending_review' => 'En attente de relecture',
+        'summary_status_published' => 'Publié',
+        'summary_status_scheduled' => 'Programmé',
+        'summary_status_archived' => 'Archivé',
+        'summary_status_save_first' => 'Enregistrez l\'article pour définir son statut.',
+        'summary_schedule_label' => 'Publier le',
         'post_pending_review' => 'En attente de relecture',
         'post_stick_top' => 'Épingler en haut du blog',
         'post_move_trash' => 'Mettre à la corbeille',
@@ -304,6 +362,21 @@ return [
         'post_taxonomy_needs_save' => 'Enregistrez d\'abord l\'article pour ajouter des catégories ou des étiquettes.',
         'post_discussion' => 'Discussion',
         'post_allow_comments' => 'Autoriser les commentaires',
+        // Traductions (docs/content-translation.md §5, Wave T2a) — une ligne par langue
+        // configurée. Les noms de langue réutilisent le groupe 'locales' ci-dessous.
+        'post_translations' => 'Traductions',
+        'post_translations_needs_save' => "Enregistrez d'abord l'article pour le traduire.",
+        'post_translations_this_post' => 'Cet article',
+        'post_translations_status_source' => 'Source',
+        'post_translations_status_missing' => 'Non traduit',
+        'post_translations_status_draft' => 'Brouillon',
+        'post_translations_status_published' => 'Publié',
+        'post_translations_status_outdated' => 'Obsolète',
+        'post_translations_create' => 'Créer la traduction',
+        'post_translations_open' => 'Ouvrir',
+        'post_translations_update' => 'Mettre à jour depuis la source',
+        'post_translations_update_confirm' => 'Écraser le contenu ?',
+        'post_translations_update_success' => 'Mis à jour depuis la source.',
         'post_page_layout' => 'Mise en page',
         'layer_opacity' => 'Opacité du calque',
         'pick_colour' => 'Choisir une couleur',
@@ -348,6 +421,10 @@ return [
         'status_offline' => 'Hors ligne',
         'status_conflict' => 'Conflit',
         'status_error' => 'Erreur',
+        // Puce de taille de l’e-mail (docs/email-system.md §7-E3, live/footer.blade.php).
+        'aria_email_size' => 'Taille de l’e-mail',
+        'email_size_unsaved' => '—',
+        'email_size_warning' => 'Plus de 100 Ko — Gmail pourrait tronquer cet e-mail.',
     ],
 
     // ── Panneau Composants / Blocs (live/panel-components-blocks.blade.php)
@@ -397,6 +474,15 @@ return [
         'checklist_slug_keyphrase' => 'Le slug de l’URL contient l’expression cible',
         'checklist_meta_missing' => 'La méta-description ne contient pas l’expression cible',
         'checklist_density_low' => 'La densité de l’expression cible est trop faible',
+        'checklist_empty' => 'Rien à vérifier pour l’instant.',
+        // ── Note de qualité (docs/seo-system.md §4, Wave S2b) ─────────
+        'score_rating_poor' => 'Faible',
+        'score_rating_needs_work' => 'À améliorer',
+        'score_rating_good' => 'Bon',
+        'score_rating_excellent' => 'Excellent',
+        'score_save_first' => 'Enregistrez l’article pour voir son score SEO.',
+        'score_analyzing' => 'Analyse en cours…',
+        'score_unavailable' => 'Analyse indisponible — réessayez sous peu.',
         'social_preview_heading' => 'Aperçu social',
         'social_set_image' => 'Définir l’image de partage',
         'social_title' => 'Titre social',
@@ -559,6 +645,19 @@ return [
         'aria_stop_opacity' => 'Opacité de l’étape',
         'aria_stop_position' => 'Position de l’étape',
         'aria_stops' => 'Étapes du dégradé',
+    ],
+
+    // ── Sélecteur de date (ui/date-picker.blade.php) ──────────────
+    'date_picker' => [
+        'weekdays' => ['Lu', 'Ma', 'Me', 'Je', 'Ve', 'Sa', 'Di'],
+        'prev_year' => 'Année précédente',
+        'prev_month' => 'Mois précédent',
+        'next_month' => 'Mois suivant',
+        'next_year' => 'Année suivante',
+        'hour' => 'Heure',
+        'minute' => 'Minute',
+        'today' => 'Aujourd’hui',
+        'clear' => 'Effacer',
     ],
 
     // ── Sélecteur de langue (puce du pied de page) ────────────────

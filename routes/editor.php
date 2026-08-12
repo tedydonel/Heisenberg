@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 use Heisenberg\Http\Controllers\CategoryController;
 use Heisenberg\Http\Controllers\EditorController;
+use Heisenberg\Http\Controllers\EmailPreviewController;
 use Heisenberg\Http\Controllers\FontController;
 use Heisenberg\Http\Controllers\LocaleController;
 use Heisenberg\Http\Controllers\PostCategoryController;
@@ -11,8 +12,10 @@ use Heisenberg\Http\Controllers\PostController;
 use Heisenberg\Http\Controllers\PostRevisionsController;
 use Heisenberg\Http\Controllers\PostSettingsController;
 use Heisenberg\Http\Controllers\PostTagController;
+use Heisenberg\Http\Controllers\PostTranslationController;
 use Heisenberg\Http\Controllers\PreviewController;
 use Heisenberg\Http\Controllers\SavedThemeController;
+use Heisenberg\Http\Controllers\SeoAnalysisController;
 use Heisenberg\Http\Controllers\TagController;
 use Heisenberg\Http\Controllers\ThemeController;
 use Illuminate\Support\Facades\Route;
@@ -75,6 +78,11 @@ Route::middleware(config('heisenberg.middleware.editor', ['web']))->group(functi
     Route::put('/editor/posts/{post}/discussion', [PostSettingsController::class, 'updateDiscussion'])->whereNumber('post')->name('heisenberg.editor.posts.discussion.update');
     Route::put('/editor/posts/{post}/featured-image', [PostSettingsController::class, 'updateFeaturedImage'])->whereNumber('post')->name('heisenberg.editor.posts.featured-image.update');
     Route::put('/editor/posts/{post}/toc', [PostSettingsController::class, 'updateToc'])->whereNumber('post')->name('heisenberg.editor.posts.toc.update');
+    // Create/re-translate a post's sibling row (docs/content-translation.md §4, Wave T2a) — body
+    // {locale, update?: bool}: creates the sibling (409 if it exists and `update` isn't true), or
+    // overwrites its blocks/TOC from the source when `update: true`. See
+    // PostTranslationController's own docblock for the full create-vs-update contract.
+    Route::post('/editor/posts/{post}/translations', [PostTranslationController::class, 'store'])->whereNumber('post')->name('heisenberg.editor.posts.translations.store');
     // "Preview in another page" (topbar's eye button) — reaches the SAME
     // PreviewController the deprecated builder route group already wires at
     // POST/GET /builder/preview (routes/web.php), but under the editor's own
@@ -91,9 +99,15 @@ Route::middleware(config('heisenberg.middleware.editor', ['web']))->group(functi
     Route::post('/editor/preview', [PreviewController::class, 'store'])->name('heisenberg.editor.preview.store');
     Route::get('/editor/preview', [PreviewController::class, 'show'])->name('heisenberg.editor.preview');
     Route::get('/editor/{post}/preview', [PreviewController::class, 'showPost'])->whereNumber('post')->name('heisenberg.editor.preview.post');
+    // Email authoring (docs/email-system.md §7-E3, EmailPreviewController) — a browser-renderable
+    // preview (cid: swapped for real URLs, see that controller's own docblock) and a size chip
+    // feed for the topbar/footer. Both gated exactly like the post preview route above.
+    Route::get('/editor/{post}/email-preview', [EmailPreviewController::class, 'show'])->whereNumber('post')->name('heisenberg.editor.email.preview');
+    Route::get('/editor/{post}/email-size', [EmailPreviewController::class, 'size'])->whereNumber('post')->name('heisenberg.editor.email.size');
     // Locale switcher — POST flips the active locale (session), then redirects
     // back to the referer (or a provided `return` query param). Whitelist lives
-    // in LocaleController::LOCALES; anything outside it 404s.
+    // in Heisenberg\Support\LocaleConfig (config('heisenberg.locales'), docs/content-translation.md
+    // §3); anything outside it 404s.
     Route::post('/locale/{locale}', [LocaleController::class, 'switch'])
         ->where('locale', '[a-z]{2}')
         ->name('heisenberg.locale.switch');
@@ -111,4 +125,11 @@ Route::middleware(config('heisenberg.middleware.editor', ['web']))->group(functi
     Route::get('/heisenberg-assets/icon/{set}/{slug}.svg', [EditorController::class, 'icon'])
         ->where(['set' => '[a-z0-9-]+', 'slug' => '[a-z0-9-]+'])
         ->name('heisenberg.editor.asset.icon');
+    // SEO score & checklist (docs/seo-system.md §4, Wave S2b) — the SEO/Social panel's live
+    // score ring calls this debounced on every field edit, sending its UNSAVED values as `o_*`
+    // query overrides (see SeoAnalysisController's own docblock). `locale` defaults to the
+    // post's own row locale, not the app/request one.
+    Route::get('/editor/posts/{post}/seo/analyze', [SeoAnalysisController::class, 'show'])
+        ->whereNumber('post')
+        ->name('heisenberg.editor.seo.analyze');
 });

@@ -56,6 +56,8 @@ class EditorPrompt
         $blocks = $this->blockContracts();
         $tokens = $this->designTokens();
         $discipline = $this->toolDiscipline();
+        $locales = $this->locales();
+        $seo = $this->seo();
 
         return <<<PROMPT
         {$identity}
@@ -73,6 +75,10 @@ class EditorPrompt
         A literal is fine when nothing in the token list fits.
 
         {$discipline}
+
+        {$locales}
+
+        {$seo}
 
         Rules:
         - Body text may contain inline HTML (<strong>, <em>, <a href="...">). Block-level HTML may not.
@@ -155,7 +161,7 @@ class EditorPrompt
         Beyond that you can:
         - Set the page's title with set_page_title (it fills the editor's title field live).
         - Manage the post's taxonomy (categories, tags) through tools.
-        - Read saved posts and media through tools.
+        - Read saved posts and media, and translate a saved post (create_translation, see LOCALES).
         The exact tool argument shapes arrive via the tool-calling channel, not here.
         TXT;
     }
@@ -176,7 +182,9 @@ class EditorPrompt
 
         Plain attributes are contract attributes (anchor, url, variant, ...). Types coerce
         per the contract: booleans from true/1, numbers via normal parsing, object/media/array
-        attributes take a JSON string. An enum violation is an error.
+        attributes take a JSON string. An enum violation is an error. `anchor` is the block's
+        HTML id — set it so a link or the post's table of contents can jump straight to that
+        block; must match /^[A-Za-z][\w-]*$/.
 
         Style attributes are CSS-familiar short names over the block's `supports` paths — the
         full dotted path (e.g. typography.fontSize) is always accepted too, as an escape hatch
@@ -522,6 +530,37 @@ class EditorPrompt
         - Tool errors are descriptive (unknown block, line-numbered parse errors). Fix from
           the error message alone and resubmit — do not re-describe blocks or retry the same
           call unchanged.
+        TXT;
+    }
+
+    /** §6 — the split-row translation model and create_translation (docs/content-translation.md). */
+    private function locales(): string
+    {
+        return <<<TXT
+        LOCALES — a translation is its own post, not a variant inside this one
+        Each locale is a SEPARATE post row (own id/slug/status) sharing a translation group
+        ("siblings"); no per-locale text lives inside a block. get_post's `translations` map:
+        locale -> {post_id, status} (source/missing/draft/published/outdated).
+        create_translation(source post_id, target_locale, title, code) writes the sibling.
+        Translate ONLY human-readable text (headings, body copy, labels, alt text) — never
+        block/attribute names, ids, URLs or media refs — same block sequence as the source.
+        Title/excerpt translate too; slug localizes or defaults. First call/locale creates a
+        draft sibling; later calls update it without touching its status.
+        TXT;
+    }
+
+    /** §7 — SEO/social metadata + score, and media metadata (docs/seo-system.md §6). */
+    private function seo(): string
+    {
+        return <<<TXT
+        SEO — get_seo reads a post's meta/social row (both locales); update_seo writes it.
+        `locale` routes meta_title/meta_description/og_title/og_description/focus_keyphrase to
+        that locale's column (default: the post's own locale); og_image/canonical_url/robots/
+        schema_type/schema_data/in_sitemap are locale-neutral. Good meta: title 30-60 chars,
+        description 50-160 chars, set focus_keyphrase and use it in title/slug/description/intro.
+        Workflow: analyze_seo -> fix the worst fail/warn checks -> analyze_seo again.
+        MEDIA — update_media sets alt_text_en/_fr + caption_en/_fr (write REAL French, never a
+        copy) and credit. set_featured_image sets/clears a post's featured image.
         TXT;
     }
 }

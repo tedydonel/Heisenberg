@@ -5,12 +5,16 @@ declare(strict_types=1);
 namespace Heisenberg\Http\Controllers;
 
 use Heisenberg\Adapters\GuestActor;
+use Heisenberg\Contracts\PostCommentProvider;
+use Heisenberg\Contracts\PostSeoMetaProvider;
+use Heisenberg\Contracts\PostUrlResolver;
 use Heisenberg\Models\Post;
 use Heisenberg\Services\BlockRenderer;
 use Heisenberg\Services\BlockRegistryService;
 use Heisenberg\Services\FontCatalogService;
 use Heisenberg\Services\ThemeRepository;
 use Heisenberg\Support\BlockViewData;
+use Heisenberg\Support\LocaleConfig;
 use Illuminate\Contracts\Auth\Authenticatable;
 use Illuminate\Contracts\View\View;
 use Illuminate\Http\JsonResponse;
@@ -52,6 +56,9 @@ class PreviewController
         private BlockRegistryService $registry,
         private ThemeRepository $themes,
         private FontCatalogService $fonts,
+        private PostCommentProvider $comments,
+        private PostSeoMetaProvider $seoMeta,
+        private PostUrlResolver $urls,
     ) {
     }
 
@@ -99,9 +106,15 @@ class PreviewController
      * PostPolicy view check as PostController::show() and EditorController::show():
      * this page ships the post's full rendered content, so an anonymous
      * visitor must not be able to read drafts by ID.
-     * `Post` has no SEO fields of its own yet, so $seo is always empty here
-     * — the title-only head fallback in preview.blade.php applies, same as
-     * the "nothing in the session yet" branch of show() above.
+     * `$seo` is resolved through {@see PostSeoMetaProvider} (docs/seo-system.md Wave S1) —
+     * empty when the bound provider has nothing for this post (no row, or the null adapter),
+     * in which case the title-only head fallback in preview.blade.php applies, same as the
+     * "nothing in the session yet" branch of show() above.
+     *
+     * Title reads through {@see Post::title()} (docs/content-translation.md §7) — own-locale
+     * column first, cross-locale fallback, `''` never null — rather than the old hardcoded
+     * `title_en` read, so a FR-only row (empty `title_en`) previews with its real FR title
+     * instead of "Untitled post".
      */
     public function showPost(Request $request, string $post): View
     {
@@ -113,10 +126,14 @@ class PreviewController
 
         return $this->renderDoc(
             blocks: $model->blocks->map(fn ($block) => $block->content)->values()->all(),
-            title: (string) ($model->title_en ?? '') ?: 'Untitled post',
-            seo: [],
+            title: $model->title() ?: 'Untitled post',
+            seo: $this->seoPayload($model),
             hasDoc: true,
             featured: $this->featuredPayload($model->featuredImage),
+            // hreflang alternates (docs/seo-system.md §5, docs/content-translation.md §7) — empty
+            // when the post has no PUBLISHED sibling (a solo post emits no <link rel="alternate">
+            // at all; see alternatesPayload()'s own docblock).
+            alternates: $this->alternatesPayload($model),
             // The AUTHORED table of contents (Post::tocEntries()) — renders ONLY when the post
             // has rows here; see preview.blade.php and Post::tocEntries()'s own docblock for why
             // this is deliberately distinct from the tableOfContents capability's render-time
@@ -125,11 +142,15 @@ class PreviewController
                 'label' => $entry->label,
                 'anchor' => $entry->anchor,
             ])->values()->all(),
+            // Native comments section (docs/ai-mcp-plan.md's sibling, PostCommentProvider) —
+            // absent entirely (null) when the post opted out via allow_comments === false;
+            // `null` (the default, "use the built-in default") and `true` both render it.
+            comments: $model->allow_comments === false ? null : $this->commentsPayload($request, $model),
         );
     }
 
     /** @param list<array<string, mixed>> $blocks */
-    private function renderDoc(array $blocks, string $title, array $seo, bool $hasDoc, ?array $featured, array $toc = []): View
+    private function renderDoc(array $blocks, string $title, array $seo, bool $hasDoc, ?array $featured, array $toc = [], ?array $comments = null, array $alternates = []): View
     {
         $theme = $this->themes->load();
 
@@ -154,7 +175,131 @@ class PreviewController
             'seo' => $seo,
             'featured' => $featured,
             'toc' => $toc,
+            'comments' => $comments,
+            'alternates' => $alternates,
         ]);
+    }
+
+    /**
+     * Maps {@see PostSeoMetaProvider}'s return shape onto what preview.blade.php's head logic
+     * expects: `title`/`description`/`canonical`/`ogTitle`/`ogDescription`/`ogImage` pass
+     * straight through (same key names on both sides), and the view's `noindex`/`nofollow`
+     * booleans are derived here from the provider's single `robots` directive string (e.g.
+     * `'noindex, follow'`) — the provider/model store the one W3C-shaped string; the view was
+     * already built around two independent booleans, and Wave S1 deliberately keeps the view
+     * untouched (see docs/seo-system.md §2). `jsonLd` passes through as-is for the
+     * `<script type="application/ld+json">` block.
+     *
+     * @return array<string, mixed>
+     */
+    private function seoPayload(Post $model): array
+    {
+        $meta = $this->seoMeta->meta($model, app()->getLocale());
+        if ($meta === []) {
+            return [];
+        }
+
+        $robots = strtolower((string) ($meta['robots'] ?? ''));
+
+        return [
+            'title' => $meta['title'] ?? null,
+            'description' => $meta['description'] ?? null,
+            'canonical' => $meta['canonical'] ?? null,
+            'ogTitle' => $meta['ogTitle'] ?? null,
+            'ogDescription' => $meta['ogDescription'] ?? null,
+            'ogImage' => $meta['ogImage'] ?? null,
+            'noindex' => str_contains($robots, 'noindex'),
+            'nofollow' => str_contains($robots, 'nofollow'),
+            'jsonLd' => $meta['jsonLd'] ?? [],
+        ];
+    }
+
+    /**
+     * Builds the comments payload the view renders (see preview.blade.php's
+     * `.hb-preview-comments` section). `created_at` is formatted server-side
+     * here (not left for JS) so the section is consistent regardless of
+     * whether the provider handed back a Carbon instance (the native
+     * adapter) or a plain string (any custom adapter).
+     */
+    private function commentsPayload(Request $request, Post $model): array
+    {
+        $thread = $this->comments->thread($model, 'newest');
+        $user = $request->user();
+        $allowGuests = (bool) config('heisenberg.comments.allow_guests', true);
+
+        return [
+            'count' => $thread['count'],
+            'items' => $this->formatItems($thread['items']),
+            'post_id' => $model->getKey(),
+            'submit_url' => route('heisenberg.comments.store', $model->getKey()),
+            'can_submit' => $user !== null || $allowGuests,
+            'is_guest' => $user === null,
+            'max_depth' => (int) config('heisenberg.comments.max_depth', 3),
+        ];
+    }
+
+    /** @param list<array<string, mixed>> $items */
+    private function formatItems(array $items): array
+    {
+        return array_map(function (array $item): array {
+            $item['created_at'] = $this->formatDate($item['created_at'] ?? null);
+            $item['replies'] = $this->formatItems($item['replies'] ?? []);
+
+            return $item;
+        }, $items);
+    }
+
+    private function formatDate(mixed $value): string
+    {
+        if ($value instanceof \DateTimeInterface) {
+            return $value->format('M j, Y H:i');
+        }
+
+        if (is_string($value) && $value !== '') {
+            try {
+                return \Illuminate\Support\Carbon::parse($value)->format('M j, Y H:i');
+            } catch (\Throwable) {
+                return $value;
+            }
+        }
+
+        return '';
+    }
+
+    /**
+     * hreflang alternates (docs/seo-system.md §5, docs/content-translation.md §7) — `list<{locale,
+     * url}>`, one entry per PUBLISHED row in the post's translation group (including `$model`
+     * itself when it is published), plus a trailing `{locale: 'x-default', url}` entry pointing at
+     * the group's `heisenberg.default_locale` row, IF that row is among the published ones.
+     *
+     * Returns `[]` (no `<link rel="alternate">` at all) unless there are at least 2 published rows
+     * to relate — a solo post (no sibling, or a sibling that's still a draft) has nothing to
+     * cross-link, and emitting a single self-referencing hreflang would be noise, not signal. URLs
+     * come from the {@see PostUrlResolver} contract — the SAME resolver `SitemapController` uses, so the sitemap
+     * and this page's own <head> never disagree about a post's public address.
+     *
+     * @return list<array{locale:string,url:string}>
+     */
+    private function alternatesPayload(Post $model): array
+    {
+        $rows = $model->status === 'published' ? collect([$model]) : collect();
+        $rows = $rows->concat($model->siblings()->filter(fn (Post $sibling) => $sibling->status === 'published'));
+
+        if ($rows->count() < 2) {
+            return [];
+        }
+
+        $alternates = $rows->map(fn (Post $row) => [
+            'locale' => (string) $row->locale,
+            'url' => $this->urls->url($row),
+        ])->values()->all();
+
+        $default = $rows->firstWhere('locale', LocaleConfig::default());
+        if ($default !== null) {
+            $alternates[] = ['locale' => 'x-default', 'url' => $this->urls->url($default)];
+        }
+
+        return $alternates;
     }
 
     /**

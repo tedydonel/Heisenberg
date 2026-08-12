@@ -20,7 +20,7 @@ all, while the external server keeps them and never sees `write_canvas` (see
 | Read a block's full contract | `describe_block` | Accepts `name` **or** `names[]` to batch several in one round. |
 | **Write the live page** (build/edit the canvas in front of the user) | `write_canvas` | **Editor surface only.** Shortcode `code` + `mode` (`append`/`replace`); validated server-side against the live contracts, applied client-side by the AI panel when the tool frame arrives on the stream. Unsaved until the user saves. |
 | List posts | `list_posts` | Newest first. |
-| Read a post (shortcode + block JSON + `content_version`) | `get_post` | The `content_version` guards concurrent edits. |
+| Read a post (shortcode + block JSON + `content_version`) | `get_post` | The `content_version` guards concurrent edits. Also returns `translations`: `{<locale>: {post_id, status}}` for the post's whole translation group (docs/content-translation.md §2) — status is `source` for the post's own locale, else `missing`/`draft`/`published`/`outdated`. |
 | Create a post | `create_post` | Content as shortcode `code` or raw `blocks`; validated + sanitized as the editor does. |
 | Update a post's title/content | `update_post` | Now also accepts `slug`, `excerpt_en`/`excerpt_fr`, `locale`; honors `content_version`. |
 | Set/change post **slug** | `update_post` | Previously auto-derived only. |
@@ -31,6 +31,8 @@ all, while the external server keeps them and never sees `write_canvas` (see
 | Attach category / tag | `attach_category` / `attach_tag` | — |
 | **Detach** category / tag | `detach_category` / `detach_tag` | New — mirrors attach. |
 | **Create** a category / tag | `create_category` / `create_tag` | Name → slug; returns the new id. |
+| **Update** a category / tag's bilingual name/description | `update_category` / `update_tag` | Supply at least one field (`name_en`/`name_fr`/`description_en`/`description_fr`, tags have no description); names capped at 255 chars, the columns' own limit. Both surfaces. |
+| **Translate a post** (create or update its sibling in another locale) | `create_translation` | **Both surfaces.** `{post_id, target_locale, title, code, excerpt?, slug?}`; `code` is validated exactly like `create_post`/`update_post`. Missing sibling → new draft; existing sibling → content replaced, status never touched. External surface refuses to update an already-non-draft sibling (same draft-only posture as `create_post`/`update_post`); editor surface may, since a human reviews the result. See docs/content-translation.md §6. |
 | Set page layout (padding) | `set_page_layout` | Mirrors `PostSettingsController::updateLayout`. |
 | Set discussion (allow comments) | `set_discussion` | Mirrors `updateDiscussion`. |
 | List revisions | `list_revisions` | Ids + timestamps + type. |
@@ -38,6 +40,11 @@ all, while the external server keeps them and never sees `write_canvas` (see
 | Read the active theme's design tokens | `get_theme` | Returns the `--hb-t-*` variables so the assistant honors the site theme. |
 | Render without saving | `render_preview` | Shortcode/blocks → HTML. |
 | List media | `list_media` | Read-only. |
+| **Update media metadata** (alt text, caption, credit) | `update_media` | Both surfaces. `{file_id, alt_text_en?, alt_text_fr?, caption_en?, caption_fr?, credit?}`; at least one field; alt/caption capped at the column's own length (255/500), credit at 255. Still read-only on bytes — `list_media`'s docblock. |
+| **Set/clear a post's featured image** | `set_featured_image` | Both surfaces, no draft-only restriction (see Surface split). `{post_id, file_id?}`; omitting/nulling `file_id` clears it; a non-null id must be a real, image-type `PublicFile`. Mirrors `PostSettingsController::updateFeaturedImage`. |
+| **Read a post's SEO/social metadata** | `get_seo` | Both surfaces. Full `SeoMeta` row (both locales) + `has_seo`; `null` when unset. Does not run the analyzer. |
+| **Set SEO/social metadata** | `update_seo` | Both surfaces. `{post_id, locale?, meta_title?, meta_description?, og_title?, og_description?, og_image?, canonical_url?, robots?, focus_keyphrase?, in_sitemap?, schema_type?, schema_data?}`; `locale` (default the post's own) routes the localized fields to their `_{locale}` column, the rest are locale-neutral; `updateOrCreate`s on `(able_type, able_id)`; at least one field; strings capped at 255; `robots` limited to comma-separated `index`/`noindex`/`follow`/`nofollow` tokens; `schema_data` must be a JSON object. |
+| **Score a post's SEO** | `analyze_seo` | Both surfaces. `{post_id, locale?}` → `SeoAnalyzer::analyze()`'s `{score, rating, checks[]}` verbatim (docs/seo-system.md §4), against the post's SAVED state — no draft overrides (that's the editor panel's own live-scoring path, not this tool). |
 
 ### Whole-document reach — the direct code path everywhere
 
@@ -58,9 +65,10 @@ the editor's undo stack and stay unsaved until the user saves.
 ## Reversibility
 
 Every destructive or mutating tool (`create_post`, `update_post`,
-`set_post_status`, taxonomy attach/detach/create, `set_page_layout`,
-`set_discussion`) writes through the normal save path, which snapshots a
-revision. `restore_revision` reverses any of them. Nothing bypasses that path.
+`set_post_status`, taxonomy attach/detach/create/update, `set_page_layout`,
+`set_discussion`, `create_translation` when it updates an existing sibling)
+writes through the normal save path, which snapshots a revision.
+`restore_revision` reverses any of them. Nothing bypasses that path.
 `write_canvas` is reversible through the editor's own undo stack instead — it
 never touches the database.
 
@@ -81,6 +89,13 @@ inbound MCP server passes its own. The split (2026-08-09):
   bearer-token API for other AIs — keeps them and stays **draft-only**,
   keeping its original refusal ("posts are created as drafts") intact. Both
   restrictions are enforced at list AND call time.
+- **Both surfaces, but posture differs per-call**: `create_translation` is the
+  one write tool offered everywhere — it writes a sibling *post*, not the live
+  canvas, so it makes sense on the external server too. Creating a sibling is
+  always draft-only on either surface; UPDATING an existing sibling that is no
+  longer a draft is refused on the external surface (mirroring `create_post`/
+  `update_post`'s draft-only posture) but allowed on the editor surface, where
+  a human reviews the result before anything ships.
 
 ## Error safety
 
@@ -94,8 +109,8 @@ a result for every call it makes.
 
 | Capability | Why there is no tool |
 |---|---|
-| ~~**Featured image**~~ | **No longer a gap (2026-08-10):** `heisenberg_posts.featured_image_id` (nullable FK to public files, `nullOnDelete`), `Post::featuredImage`, `PUT /editor/posts/{post}/featured-image` (`PostSettingsController::updateFeaturedImage`, same posture as layout/discussion), rendered by the preview page. Editor-HTTP surface only — no MCP tool for it yet. |
-| **SEO fields** (meta title/description/OG) | Unbound scaffolding only (`NullPostSeoMetaProvider`, `seo_meta` table reserved) — "pending M3". Not reachable from the editor either. |
-| **Media upload** | `list_media` is intentionally read-only; upload is a separate surface the assistant does not drive. |
+| ~~**Featured image**~~ | **No longer a gap (2026-08-11):** `heisenberg_posts.featured_image_id` (nullable FK to public files, `nullOnDelete`), `Post::featuredImage`, `PUT /editor/posts/{post}/featured-image` (`PostSettingsController::updateFeaturedImage`, same posture as layout/discussion), rendered by the preview page, and the MCP `set_featured_image` tool (both surfaces). |
+| ~~**SEO fields**~~ (meta title/description/OG, focus keyphrase, robots, canonical, schema, sitemap inclusion) | **No longer a gap (2026-08-11, docs/seo-system.md Wave A1):** `get_seo`/`update_seo`/`analyze_seo` (both surfaces) reach the full `SeoMeta` row and the `SeoAnalyzer` score/checklist. Reachable from the editor's SEO/Social panel too (Wave S2a/S2b). |
+| **Media upload** | `list_media` is intentionally read-only for bytes; `update_media` (2026-08-11) covers metadata (alt/caption/credit) without opening an upload surface. |
 | **Status changes over the inbound MCP server** | Deliberate: the external API stays draft-only (see Surface split). |
 | **Theme editing** | `get_theme` is read-only by design — the assistant honors the theme, it does not rewrite it. |

@@ -20,10 +20,12 @@ use Heisenberg\Contracts\VirusScanner;
 use Heisenberg\Services\AiProviderRegistry;
 use Heisenberg\Services\AiSettingsRepository;
 use Heisenberg\Models\Category;
+use Heisenberg\Models\Comment;
 use Heisenberg\Models\Post;
 use Heisenberg\Models\PublicFile;
 use Heisenberg\Models\Tag;
 use Heisenberg\Policies\CategoryPolicy;
+use Heisenberg\Policies\CommentPolicy;
 use Heisenberg\Policies\PostPolicy;
 use Heisenberg\Policies\PublicFilePolicy;
 use Heisenberg\Policies\TagPolicy;
@@ -235,6 +237,13 @@ class HeisenbergServiceProvider extends ServiceProvider
             $app['config']->get('heisenberg.theme_path'),
         ));
         $this->app->singleton(\Heisenberg\Services\FontCatalogService::class, fn () => new \Heisenberg\Services\FontCatalogService());
+
+        // docs/email-system.md §5 — beside BlockRenderer, never replacing it; same singleton
+        // posture as the rest of this graph (both its own dependencies are already singletons).
+        $this->app->singleton(\Heisenberg\Services\EmailRenderer::class, fn ($app) => new \Heisenberg\Services\EmailRenderer(
+            $app->make(BlockRenderer::class),
+            $app->make(\Heisenberg\Services\ThemeRepository::class),
+        ));
     }
 
     public function boot(): void
@@ -244,6 +253,9 @@ class HeisenbergServiceProvider extends ServiceProvider
             $this->registerResources();
             $this->registerRoutes();
             $this->registerMediaRoutes();
+            $this->registerCommentRoutes();
+            $this->registerTranslationRoutes();
+            $this->registerSeoRoutes();
             $this->registerAiRoutes();
             $this->registerMcpRoutes();
             $this->registerPolicies();
@@ -314,6 +326,46 @@ class HeisenbergServiceProvider extends ServiceProvider
     }
 
     /**
+     * Load the native comments routes (routes/comments.php: the public
+     * thread/submit pair plus the moderation surface). Same opt-out posture
+     * as the media group — a host that binds its own PostCommentProvider
+     * (or NullPostCommentProvider) sets heisenberg.comments.routes false and
+     * these endpoints disappear entirely.
+     */
+    protected function registerCommentRoutes(): void
+    {
+        if ($this->app['config']->get('heisenberg.comments.routes', true)) {
+            $this->loadRoutesFrom(__DIR__ . '/../routes/comments.php');
+        }
+    }
+
+    /**
+     * Load the public translations API route (routes/translations.php: GET
+     * /heisenberg/posts/{post}/translations, docs/content-translation.md §7) — lets a host build
+     * its own language-switcher buttons off the group's shared slug. Same opt-out posture as the
+     * comments group above.
+     */
+    protected function registerTranslationRoutes(): void
+    {
+        if ($this->app['config']->get('heisenberg.translations.routes', true)) {
+            $this->loadRoutesFrom(__DIR__ . '/../routes/translations.php');
+        }
+    }
+
+    /**
+     * Load the sitemap route (routes/seo.php: GET /sitemap.xml, docs/seo-system.md §5). Same
+     * opt-out posture as the comments group — a host that publishes its own sitemap (or maps
+     * `heisenberg.seo.url_template` at a real blog and wants a different generator entirely)
+     * sets `heisenberg.seo.sitemap` false and this endpoint disappears.
+     */
+    protected function registerSeoRoutes(): void
+    {
+        if ($this->app['config']->get('heisenberg.seo.sitemap', true)) {
+            $this->loadRoutesFrom(__DIR__ . '/../routes/seo.php');
+        }
+    }
+
+    /**
      * Load the opt-in AI routes (routes/ai.php: the assistant panel's own
      * settings API). Separate config key + middleware from the editor and media
      * groups, so a host can mount the editor without the AI surface. Enabled by
@@ -362,6 +414,12 @@ class HeisenbergServiceProvider extends ServiceProvider
         // same swap-the-model-class caveat as above.
         Gate::policy(Category::class, CategoryPolicy::class);
         Gate::policy(Tag::class, TagPolicy::class);
+
+        // Comments moderation policy (routes/comments.php's moderation group) — bound against the
+        // default Comment class, same swap-the-model-class caveat as above (a host that swaps
+        // config('heisenberg.models.comment') for a subclass registers its own Gate::policy() for
+        // that class).
+        Gate::policy(Comment::class, CommentPolicy::class);
     }
 
     /**
@@ -400,17 +458,33 @@ class HeisenbergServiceProvider extends ServiceProvider
             );
         });
 
+        // A post's public URL — the sitemap and PreviewController's hreflang alternates both
+        // resolve THIS contract, never SeoUrlResolver by concrete class, so a host binding
+        // `heisenberg.seo.url_resolver` controls every public URL Heisenberg emits (docs/seo-
+        // system.md §5). SeoUrlResolver (the config('heisenberg.seo.url_template') string/map
+        // logic) is the bundled default, same seam shape as media_resolver/role_gate above.
+        $this->app->singleton(\Heisenberg\Contracts\PostUrlResolver::class, function ($app) {
+            return $app->make(
+                (string) $app['config']->get('heisenberg.seo.url_resolver', \Heisenberg\Services\SeoUrlResolver::class)
+            );
+        });
+
         // Post-template capabilities that need storage this package does not own (post views,
         // comments, related posts, SEO meta). Same null-object seam as the four above: an
-        // interface, a bundled no-op default, and a config key naming the bound class — so an
-        // adopter plugs in their own system instead of inheriting ours.
+        // interface, a bundled default, and a config key naming the bound class — so an
+        // adopter plugs in their own system instead of inheriting ours. Two of the four still
+        // fall back to a null-object default; comments_provider and seo_meta_provider are the
+        // exceptions — native storage now exists for both, so their fallback here is
+        // NativeCommentProvider (2026-08-11) / NativeSeoMetaProvider (2026-08-11,
+        // docs/seo-system.md Wave S1), not the null adapter (a host still binds the null
+        // adapter explicitly in config/heisenberg.php to disable either).
         // See docs/post-template-schema.md for why these four are adapters and the other seven
         // template capabilities are rendered directly.
         foreach ([
             \Heisenberg\Contracts\PostViewsProvider::class    => ['post_views_provider', \Heisenberg\Adapters\NullPostViewsProvider::class],
-            \Heisenberg\Contracts\PostCommentProvider::class  => ['comments_provider', \Heisenberg\Adapters\NullPostCommentProvider::class],
+            \Heisenberg\Contracts\PostCommentProvider::class  => ['comments_provider', \Heisenberg\Adapters\NativeCommentProvider::class],
             \Heisenberg\Contracts\RelatedPostsProvider::class => ['related_posts_provider', \Heisenberg\Adapters\NullRelatedPostsProvider::class],
-            \Heisenberg\Contracts\PostSeoMetaProvider::class  => ['seo_meta_provider', \Heisenberg\Adapters\NullPostSeoMetaProvider::class],
+            \Heisenberg\Contracts\PostSeoMetaProvider::class  => ['seo_meta_provider', \Heisenberg\Adapters\NativeSeoMetaProvider::class],
         ] as $contract => [$configKey, $default]) {
             $this->app->singleton($contract, fn ($app) => $app->make(
                 (string) $app['config']->get("heisenberg.post_template.{$configKey}", $default)

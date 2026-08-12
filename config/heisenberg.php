@@ -20,25 +20,40 @@ return [
     'user_model'  => env('HEISENBERG_USER_MODEL', \App\Models\User::class),
     'users_table' => 'users',
 
+    // ── Locales (docs/content-translation.md §3) ────────────────
+    // Single source of truth for every locale-aware surface: the editor's footer switcher
+    // (LocaleController/EditorLocaleMiddleware), the Translations section (TranslationStatusService),
+    // and the MCP `locale` argument validation (McpToolRegistry). `editor.locales` below is now a
+    // deprecated alias — still read as a FALLBACK by the three call sites above when this key is
+    // absent (never the other way around: this key wins whenever both are set), kept only so a host
+    // that already overrode `editor.locales` doesn't silently lose that override on upgrade.
+    //
+    // Honest limits: adding a locale here is a config change, but NOT yet full support — the posts
+    // table only carries `title_<locale>`/`excerpt_en`/`rendered_html_<locale>` columns for `en`
+    // and `fr` (migration 2026_01_01_000001). Listing a third locale here today would pass locale
+    // validation but have nowhere to store that locale's title/excerpt/rendered HTML; the column
+    // shape needs a follow-up migration before this list can safely grow past two entries.
+    'locales' => ['en', 'fr'],
+    'default_locale' => 'en',
+
     // ── Models (host may swap any) ────────────────────────────
-    // post/block/public_file/category/tag exist today; a Revision model +
+    // post/block/public_file/category/tag/comment/seo_meta exist today; a Revision model +
     // migration also already ship (see src/Models/Revision.php) but that
     // config entry is a separate agent's concern and is left as it was. The
-    // comment/pattern/seo_meta domain models are still planned M3 work
-    // (docs/BLUEPRINT.md §2) and are deliberately commented out below:
-    // resolving `config('heisenberg.models')` must never throw a
-    // class-not-found fatal for a class that isn't built yet. Uncomment each
-    // entry as its model ships.
+    // pattern domain model is still planned M3 work (docs/BLUEPRINT.md §2) and is
+    // deliberately commented out below: resolving `config('heisenberg.models')` must never
+    // throw a class-not-found fatal for a class that isn't built yet. Uncomment each entry
+    // as its model ships.
     'models' => [
         'post'        => \Heisenberg\Models\Post::class,
         'block'       => \Heisenberg\Models\Block::class,
         'public_file' => \Heisenberg\Models\PublicFile::class,
         'category'    => \Heisenberg\Models\Category::class,
         'tag'         => \Heisenberg\Models\Tag::class,
-        // 'comment'  => \Heisenberg\Models\Comment::class,  // M3
+        'comment'     => \Heisenberg\Models\Comment::class,
+        'seo_meta'    => \Heisenberg\Models\SeoMeta::class,
         // 'revision' => \Heisenberg\Models\Revision::class, // M3 (already shipped; see note above)
         // 'pattern'  => \Heisenberg\Models\Pattern::class,  // M3
-        // 'seo_meta' => \Heisenberg\Models\SeoMeta::class,  // M3
     ],
 
     // ── Tables (default heisenberg_ prefix; set to GTC names to migrate in place) ──
@@ -77,11 +92,62 @@ return [
     // a host points these at their own implementation. The other seven capabilities (TOC, featured
     // image, reading time, author box, share buttons, breadcrumbs, pagination) are rendered from
     // data that already exists and need no binding.
+    // comments_provider defaults to the NATIVE adapter (2026-08-11): native storage
+    // (heisenberg_comments, Heisenberg\Models\Comment) now exists, so an adopter gets a
+    // working comment thread out of the box instead of an always-empty null one. Bind
+    // NullPostCommentProvider here to disable comments entirely, or your own class to
+    // integrate an external system (Disqus, a hosted service, a different table) — see
+    // PostCommentProvider's docblock. seo_meta_provider defaults to the NATIVE adapter too
+    // (2026-08-11, docs/seo-system.md Wave S1): the polymorphic `seo_meta` table +
+    // Heisenberg\Models\SeoMeta now exist, so a preview page gets real
+    // title/description/canonical/OG/JSON-LD instead of always-empty. Bind
+    // NullPostSeoMetaProvider here to opt out, or your own class to integrate an external
+    // SEO system — see PostSeoMetaProvider's docblock.
     'post_template' => [
         'post_views_provider'    => \Heisenberg\Adapters\NullPostViewsProvider::class,
-        'comments_provider'      => \Heisenberg\Adapters\NullPostCommentProvider::class,
+        'comments_provider'      => \Heisenberg\Adapters\NativeCommentProvider::class,
         'related_posts_provider' => \Heisenberg\Adapters\NullRelatedPostsProvider::class,
-        'seo_meta_provider'      => \Heisenberg\Adapters\NullPostSeoMetaProvider::class,
+        'seo_meta_provider'      => \Heisenberg\Adapters\NativeSeoMetaProvider::class,
+    ],
+
+    // ── Comments (docs/post-template-schema.md "Comments/discussion") ─────────
+    // Native comment storage config — read by NativeCommentProvider and (for
+    // allow_guests) by a later HTTP-layer agent's submission endpoint.
+    'comments' => [
+        'routes'       => true,  // load routes/comments.php (public thread/submit + moderation)
+        'allow_guests' => true,   // guests may submit on posts they can view (published)
+        'auto_approve' => false, // new comments start 'pending'; moderators' own comments always approve
+        'max_depth'    => 3,     // reply nesting cap; 1 = flat (no replies)
+        'per_page'     => 50,    // moderation list page size
+    ],
+    // ── Public translations API (docs/content-translation.md §7) ──────────────
+    // A translation group presents as ONE post with ONE shared slug (locale comes from the
+    // host's URL prefix, never the slug) — this endpoint (routes/translations.php,
+    // PostTranslationsApiController) lets a host build its own language-switcher buttons: it
+    // lists the group's members (self included) that the requesting actor may view, with the
+    // shared slug at the top level. Same opt-out posture as `comments` above.
+    'translations' => [
+        'routes' => true, // load routes/translations.php (GET /heisenberg/posts/{post}/translations)
+    ],
+    // ── SEO (docs/seo-system.md §4/§5, Wave S2b) ──────────────────────────
+    // 'sitemap': load routes/seo.php (GET /sitemap.xml) — see
+    // HeisenbergServiceProvider::registerSeoRoutes(). 'url_template': a post's PUBLIC address,
+    // either a STRING, e.g. 'https://example.com/{locale}/blog/{slug}' ({locale}/{slug}
+    // placeholders substituted for every locale alike), or a MAP keyed by locale, e.g.
+    // ['en' => 'https://example.com/blog/{slug}', 'fr' => 'https://example.com/fr/blog/{slug}']
+    // — lets a host give its default locale an unprefixed URL while other locales carry a
+    // prefix (a '*' catch-all key is also honored). null (the default), or a map with no
+    // matching entry, falls back to this package's own post-scoped preview route — a DEV
+    // DEFAULT ONLY (see SeoUrlResolver's docblock). A host shipping a real sitemap/hreflang
+    // should set this to its actual blog route shape. 'url_resolver': the full override seam
+    // (Heisenberg\Contracts\PostUrlResolver) — a class name to bind INSTEAD of the
+    // template-driven default below, for a URL shape templates can't express (per-locale
+    // domains, id-based URLs, a host's own route helpers). Defaults to SeoUrlResolver, exactly
+    // like media_resolver/role_gate above.
+    'seo' => [
+        'sitemap'      => true,
+        'url_template' => null,
+        'url_resolver' => \Heisenberg\Services\SeoUrlResolver::class,
     ],
     'css_prefix'   => 'hb',           // emitted CSS class/var prefix (gtc-block -> hb-block)
     'components'   => [
@@ -139,9 +205,10 @@ return [
 
     'editor' => [
             'routes' => true,
-            // Locales the editor exposes via the footer switcher. Must match
-            // LocaleController::LOCALES and EditorLocaleMiddleware::LOCALES —
-            // changing any of the three is a coordinated change.
+            // DEPRECATED alias of top-level `heisenberg.locales` (docs/content-translation.md §3)
+            // — kept only as the fallback LocaleController/EditorLocaleMiddleware/McpToolRegistry
+            // read when `heisenberg.locales` is absent. Set `heisenberg.locales` instead; this key
+            // has no effect once that one is present.
             'locales' => ['en', 'fr'],
         ],
 
@@ -410,16 +477,46 @@ return [
         'media.create'    => ['admin', 'editor', 'author'],
         'media.updateAny' => ['admin', 'editor'],
         'media.deleteAny' => ['admin', 'editor'],
+
+        // Approve/spam/trash/reply on any comment (a later HTTP-layer agent's moderation
+        // surface). Same admin+editor tier as the media.update/deleteAny abilities above —
+        // an author may submit content but doesn't moderate other people's comments.
+        'comments.moderate' => ['admin', 'editor'],
     ],
 
     // ── Publishing lifecycle ──────────────────────────────────
+    // Graph shape decided 2026-08-12 (owner bug: an admin had no way to publish a post —
+    // `draft` had no edge to `published`/`scheduled` at all, so the Status control's
+    // options — built by walking THIS map, see EditorController::postMeta() — could never
+    // offer them). `role_permissions` below stays the ONLY authority on WHO may land on a
+    // given status; this map only decides which edges exist at all, WordPress-like:
+    //  - draft -> published / scheduled (NEW): an editor/admin publishes (or schedules) a
+    //    draft directly, same as WordPress's Publish button on a brand-new post — no
+    //    detour through pending_review required. An author still can't reach either target:
+    //    role_permissions gates 'published'/'scheduled' at the 'editors' tier, so the edge
+    //    existing here never widens WHO may use it.
+    //  - published -> draft (NEW): unpublish back to draft — the direct inverse of the edge
+    //    above, and the only way to pull a live post down short of archiving it.
+    //  - published -> scheduled: deliberately NOT added. "Reschedule a live post" isn't a
+    //    real single step (there's no future date to move TO — it's already live); the
+    //    honest path is published -> draft -> scheduled, or PostController's existing
+    //    scheduled -> scheduled reschedule-in-place edge for an already-scheduled post.
+    //  - archived -> published (NEW): a one-step restore-to-live, mirroring the existing
+    //    archived -> draft edge — both are "bring an archived post back", just to a
+    //    different landing status. Same 'editors' tier as every other archived/* and */
+    //    published edge, so this doesn't loosen who can do it, only how many clicks it
+    //    takes.
+    //  - pending_review -> archived: deliberately NOT added — archiving is reserved for
+    //    content that was actually live or was a live post being pulled down, not a
+    //    review queue; a reviewer rejects back to draft (existing pending_review -> draft
+    //    edge) instead of archiving outright.
     'lifecycle' => [
         'transitions' => [
-            'draft'          => ['pending_review', 'archived'],
+            'draft'          => ['pending_review', 'published', 'scheduled', 'archived'],
             'pending_review' => ['published', 'scheduled', 'draft'],
-            'published'      => ['archived'],
+            'published'      => ['archived', 'draft'],
             'scheduled'      => ['published', 'archived', 'draft'],
-            'archived'       => ['draft'],
+            'archived'       => ['draft', 'published'],
         ],
         'role_permissions' => [          // target status -> tier
             'pending_review' => 'authors',
@@ -470,6 +567,14 @@ return [
         'media'     => ['web'],
         'editor'    => ['web'],
         'ai'        => ['web'],
+        'comments'  => ['web'],
+        // `middleware.seo` gates the sitemap (routes/seo.php: GET /sitemap.xml) — the lightest
+        // stack a crawler's/visitor's unauthenticated GET needs, same posture as `comments`.
+        'seo'       => ['web'],
+        // `middleware.translations` gates the public translations API (routes/translations.php)
+        // — same lightest-stack posture as `comments`/`seo`: a blog visitor's language-switcher
+        // fetch must not require the editor stack.
+        'translations' => ['web'],
         'mcp'       => [],
     ],
 

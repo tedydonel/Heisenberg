@@ -163,6 +163,53 @@ class McpServerTest extends TestCase
         $this->assertSame('heisenberg/heading', $post->blocks()->orderBy('order')->first()->content['name']);
     }
 
+    /** docs/email-system.md §3: create_post's `type` arg, defaulting to 'post'. */
+    public function test_create_post_defaults_to_type_post(): void
+    {
+        $created = $this->toolData('create_post', ['title' => 'A post', 'code' => '[p]x[/p]']);
+
+        $this->assertSame('post', Post::query()->findOrFail($created['id'])->type);
+    }
+
+    public function test_create_post_accepts_type_email(): void
+    {
+        $created = $this->toolData('create_post', ['title' => 'An email', 'code' => '[p]x[/p]', 'type' => 'email']);
+
+        $this->assertSame('email', Post::query()->findOrFail($created['id'])->type);
+        $this->assertSame('draft', $created['status'], 'draft-only posture is unchanged for email documents too');
+    }
+
+    public function test_create_post_rejects_an_unknown_type(): void
+    {
+        $call = $this->callTool('create_post', ['title' => 'Nope', 'code' => '[p]x[/p]', 'type' => 'sms']);
+
+        $this->assertTrue($call['isError']);
+        $this->assertStringContainsString('type', $call['text']);
+        $this->assertSame(0, Post::query()->count());
+    }
+
+    public function test_list_posts_defaults_to_type_post_and_excludes_emails(): void
+    {
+        $post = $this->toolData('create_post', ['title' => 'A post', 'code' => '[p]x[/p]']);
+        $email = $this->toolData('create_post', ['title' => 'An email', 'code' => '[p]x[/p]', 'type' => 'email']);
+
+        $ids = array_column($this->toolData('list_posts'), 'id');
+
+        $this->assertContains($post['id'], $ids);
+        $this->assertNotContains($email['id'], $ids);
+    }
+
+    public function test_list_posts_type_email_returns_only_emails(): void
+    {
+        $post = $this->toolData('create_post', ['title' => 'A post', 'code' => '[p]x[/p]']);
+        $email = $this->toolData('create_post', ['title' => 'An email', 'code' => '[p]x[/p]', 'type' => 'email']);
+
+        $ids = array_column($this->toolData('list_posts', ['type' => 'email']), 'id');
+
+        $this->assertContains($email['id'], $ids);
+        $this->assertNotContains($post['id'], $ids);
+    }
+
     public function test_get_post_returns_content_as_shortcode_that_round_trips(): void
     {
         $code = "[h2]\n  Hello\n[/h2]\n";

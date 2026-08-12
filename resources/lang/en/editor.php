@@ -56,6 +56,12 @@ return [
         'save_conflict' => 'This post was changed elsewhere — reload and try again.',
         'save_invalid' => 'Could not save — check the form.',
         'save_network' => 'Network error — check your connection.',
+        // Post-language dropdown (docs/content-translation.md §5) — view/switch/create
+        // translations for the post currently open, reusing the same postTranslations seed and
+        // status labels as the inspector's own Translations section ('inspector.post_translations_*').
+        'aria_post_language' => 'Post language',
+        'lang_translate_to' => 'Translate to :locale…',
+        'lang_creating' => 'Creating…',
     ],
 
     // ── Media dialog / library / dropzone (live/media/*) ──────────
@@ -69,6 +75,7 @@ return [
     ],
     'media' => [
         'select_featured_image' => 'Select Featured Image',
+        'select_social_image' => 'Select Social Share Image',
         'select_image' => 'Select Image',
         'tab_upload' => 'Upload Files',
         'tab_library' => 'Media Library',
@@ -82,6 +89,45 @@ return [
         'uploading' => 'Uploading…',
         'dropzone_title' => 'Drop files to upload',
         'dropzone_desc' => 'Images are optimized automatically. Documents are stored as originals. Maximum size: 10 MB each.',
+    ],
+
+    // ── Comments moderation page (comments/index.blade.php) — the vanilla-JS
+    // `GET /editor/comments` surface. JS can't call __() so the strings this
+    // page's script needs (row templates, confirm/reply boxes, pager) are also
+    // baked into a `data-hb-comments-strings` JSON blob (same posture as
+    // panel-navigator's `data-hb-nav-strings`). ':id'/':count'/':current'/
+    // ':total' are replaced client-side, not interpolated here.
+    'comments' => [
+        'title' => 'Comments',
+        'search_ph' => 'Search comments…',
+        'tab_pending' => 'Pending',
+        'tab_approved' => 'Approved',
+        'tab_spam' => 'Spam',
+        'tab_trash' => 'Trash',
+        'tab_all' => 'All',
+        'loading' => 'Loading…',
+        'empty' => 'No comments.',
+        'empty_pending' => 'No pending comments.',
+        'empty_approved' => 'No approved comments.',
+        'empty_spam' => 'No spam.',
+        'empty_trash' => 'Trash is empty.',
+        'load_error' => 'Unable to load comments.',
+        'author_anonymous' => 'Anonymous',
+        'reply_marker' => 'reply to #:id',
+        'reply_count_one' => ':count reply',
+        'reply_count_other' => ':count replies',
+        'action_approve' => 'Approve',
+        'action_spam' => 'Spam',
+        'action_trash' => 'Trash',
+        'action_delete' => 'Delete permanently',
+        'action_reply' => 'Reply',
+        'confirm_delete_text' => 'Delete this comment permanently?',
+        'confirm_delete_button' => 'Delete',
+        'cancel' => 'Cancel',
+        'reply_placeholder' => 'Write a reply…',
+        'pager_label' => 'Page :current of :total',
+        'pager_prev' => 'Prev',
+        'pager_next' => 'Next',
     ],
 
     // ── Revisions dialog (live/revisions-dialog.blade.php) ────────
@@ -292,8 +338,19 @@ return [
         'summary_status' => 'Status',
         'summary_publish' => 'Publish',
         'summary_url' => 'URL',
-        'summary_blocks' => 'Blocks',
         'summary_immediately' => 'Immediately',
+        // The URL row's editable slug input (2026-08-11).
+        'summary_slug_label' => 'Slug',
+        'summary_slug_placeholder' => 'post-slug',
+        // Status control options (EditorController::statusLabel()) — key suffix is the raw
+        // config('heisenberg.lifecycle.transitions') status name.
+        'summary_status_draft' => 'Draft',
+        'summary_status_pending_review' => 'Pending review',
+        'summary_status_published' => 'Published',
+        'summary_status_scheduled' => 'Scheduled',
+        'summary_status_archived' => 'Archived',
+        'summary_status_save_first' => 'Save the post to set its status.',
+        'summary_schedule_label' => 'Publish on',
         'post_pending_review' => 'Pending review',
         'post_stick_top' => 'Stick to the top of the blog',
         'post_move_trash' => 'Move to trash',
@@ -306,6 +363,22 @@ return [
         'post_taxonomy_needs_save' => 'Save the post first to add categories or tags.',
         'post_discussion' => 'Discussion',
         'post_allow_comments' => 'Allow comments',
+        // Translations (docs/content-translation.md §5, Wave T2a) — one row per configured
+        // locale (postTranslations, TranslationStatusService::statuses()). Locale display names
+        // reuse the 'locales' group below rather than duplicating en/fr labels a third time.
+        'post_translations' => 'Translations',
+        'post_translations_needs_save' => 'Save the post first to translate it.',
+        'post_translations_this_post' => 'This post',
+        'post_translations_status_source' => 'Source',
+        'post_translations_status_missing' => 'Not translated',
+        'post_translations_status_draft' => 'Draft',
+        'post_translations_status_published' => 'Published',
+        'post_translations_status_outdated' => 'Outdated',
+        'post_translations_create' => 'Create translation',
+        'post_translations_open' => 'Open',
+        'post_translations_update' => 'Update from source',
+        'post_translations_update_confirm' => 'Overwrite content?',
+        'post_translations_update_success' => 'Updated from source.',
         'post_page_layout' => 'Page layout',
         'layer_opacity' => 'Layer opacity',
         'pick_colour' => 'Pick a colour',
@@ -350,6 +423,10 @@ return [
         'status_offline' => 'Offline',
         'status_conflict' => 'Conflict',
         'status_error' => 'Error',
+        // Email size chip (docs/email-system.md §7-E3, live/footer.blade.php).
+        'aria_email_size' => 'Email size',
+        'email_size_unsaved' => '—',
+        'email_size_warning' => 'Over 100 KB — Gmail may clip this email.',
     ],
 
     // ── Components/Blocks panel (live/panel-components-blocks.blade.php)
@@ -399,6 +476,15 @@ return [
         'checklist_slug_keyphrase' => 'URL slug contains the keyphrase',
         'checklist_meta_missing' => "Meta description doesn't contain the keyphrase",
         'checklist_density_low' => 'Keyphrase density is too low',
+        'checklist_empty' => 'Nothing to check yet.',
+        // ── Score rating (docs/seo-system.md §4, Wave S2b — SeoAnalysisController's live payload) ──
+        'score_rating_poor' => 'Poor',
+        'score_rating_needs_work' => 'Needs work',
+        'score_rating_good' => 'Good',
+        'score_rating_excellent' => 'Excellent',
+        'score_save_first' => 'Save the post to see its SEO score.',
+        'score_analyzing' => 'Analyzing…',
+        'score_unavailable' => 'Analysis unavailable — try again shortly.',
         'social_preview_heading' => 'Social Preview',
         'social_set_image' => 'Set social share image',
         'social_title' => 'Social Title',
@@ -561,6 +647,19 @@ return [
         'aria_stop_opacity' => 'Stop opacity',
         'aria_stop_position' => 'Stop position',
         'aria_stops' => 'Gradient stops',
+    ],
+
+    // ── Date picker (ui/date-picker.blade.php) ─────────────────────
+    'date_picker' => [
+        'weekdays' => ['Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa', 'Su'],
+        'prev_year' => 'Previous year',
+        'prev_month' => 'Previous month',
+        'next_month' => 'Next month',
+        'next_year' => 'Next year',
+        'hour' => 'Hour',
+        'minute' => 'Minute',
+        'today' => 'Today',
+        'clear' => 'Clear',
     ],
 
     // ── Locale switcher (built into the footer chip) ──────────────

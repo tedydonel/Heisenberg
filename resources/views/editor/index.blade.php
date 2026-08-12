@@ -10,14 +10,34 @@
          PUT; nothing rewrites these properties in place, so an unsaved edit is not previewed
          until reload. --}}
     <style id="hb-theme-vars">{!! $themeCss ?? '' !!}</style>
-    <x-live.topbar class="hb-editor__topbar" :post-id="$postId ?? null" :content-version="$contentVersion ?? 0" />
-    <x-live.sidebar class="hb-editor__sidebar" />
+    @php
+        $hbDocumentType = $documentType ?? 'post';
+    @endphp
+    <x-live.topbar class="hb-editor__topbar" :post-id="$postId ?? null" :content-version="$contentVersion ?? 0"
+        :post-translations="$postTranslations ?? null"
+        :post-translations-url-template="$postTranslationsUrlTemplate ?? ''"
+        :post-editor-url-template="$postEditorUrlTemplate ?? ''"
+        :locale-default="$localeDefault ?? 'en'"
+        :document-type="$hbDocumentType"
+        :email-preview-url-template="$emailPreviewUrlTemplate ?? ''" />
+    <x-live.sidebar class="hb-editor__sidebar" :document-type="$hbDocumentType" />
     {{-- All 4 panel pairs live in the DOM simultaneously; only one is visible at a time.
          Switching is driven by sidebar nav clicks — see live/sidebar's script, which toggles
          [hidden] here and activates the matching internal panel-tabs tab. --}}
     <div class="hb-editor__panel">
-        <x-live.panel-components-blocks :registry="$registry" />
-        <x-live.panel-seo-social hidden />
+        {{-- Components tab: `paletteBlocks` (EditorController) instead of the full `$registry` —
+             already filtered server-side to the email surface for an email document (docs/
+             email-system.md §7-E3). The quick-inserter below reads the same seed, so it follows
+             automatically with no extra wiring. --}}
+        <x-live.panel-components-blocks :registry="$paletteBlocks ?? $registry" />
+        @if ($hbDocumentType !== 'email')
+        <x-live.panel-seo-social hidden
+            :post-id="$postId ?? null"
+            :post-title="$postTitle ?? ''"
+            :post-slug="$postSlug ?? ''"
+            :post-seo="$postSeo ?? null"
+            :seo-analyze-url-template="$postSeoAnalyzeUrlTemplate ?? ''" />
+        @endif
         <x-live.panel-style-themes hidden :theme="$theme ?? []" :saved-themes="$savedThemes ?? []" :font-options="$fontOptions ?? []"
             :theme-update-url="route('heisenberg.editor.theme.update')" :fonts-search-url="route('heisenberg.editor.fonts.search')"
             :themes-store-url="route('heisenberg.editor.themes.store')" :themes-destroy-url="route('heisenberg.editor.themes.destroy')" />
@@ -32,14 +52,15 @@
         <x-live.panel-navigator hidden :registry="$registry" />
     </div>
     <div class="hb-editor__canvas">
-        <x-live.canvas :title="$postTitle ?? ''" :page-padding-x="$postPagePaddingX ?? 56" :page-padding-y="$postPagePaddingY ?? 56" />
+        <x-live.canvas :title="$postTitle ?? ''" :page-padding-x="$postPagePaddingX ?? 56" :page-padding-y="$postPagePaddingY ?? 56"
+            :document-type="$hbDocumentType" />
         {{-- Code view (shortcode dialect of the block contracts) — hidden until the footer's
              Code Editor chip toggles it; occupies the same slot as the canvas. --}}
         <x-live.code-editor hidden />
         {{-- The quick inserter popup — hidden until an appender fires the runtime's cancelable
              hb:quick-insert, which this component claims (preventDefault) to offer every block
-             instead of the runtime's paragraph fallback. --}}
-        <x-live.quick-inserter :registry="$registry" />
+             instead of the runtime's paragraph fallback. Same filtered seed as the Components tab. --}}
+        <x-live.quick-inserter :registry="$paletteBlocks ?? $registry" />
         {{-- Block image picker — an empty image block's placeholder (decorateImageBlock,
              block-runtime) dispatches the cancelable hb:pick-image with the block id; this
              dialog claims it, and a Library/Upload pick writes url + alt back through the
@@ -109,6 +130,9 @@
     </div>
     <x-live.inspector class="hb-editor__inspector" :registry="$registry" :post-title="$postTitle ?? ''"
         :post-meta="$postMeta ?? []"
+        :post-status-transitions="$postStatusTransitions ?? []" :post-status-labels="$postStatusLabels ?? []"
+        :post-scheduled-at="$postScheduledAt ?? null"
+        :post-published-at="$postPublishedAt ?? null"
         :post-id="$postId ?? null" :post-category-ids="$postCategoryIds ?? []" :post-tag-ids="$postTagIds ?? []"
         :category-options="$categoryOptions ?? []" :tag-options="$tagOptions ?? []"
         :categories-index-url="$categoriesIndexUrl" :tags-index-url="$tagsIndexUrl"
@@ -121,9 +145,14 @@
         :post-featured-image-url-template="$postFeaturedImageUrlTemplate ?? ''"
         :post-toc-entries="$postTocEntries ?? []"
         :post-toc-url-template="$postTocUrlTemplate ?? ''"
+        :post-translations="$postTranslations ?? null"
+        :post-translations-url-template="$postTranslationsUrlTemplate ?? ''"
+        :post-editor-url-template="$postEditorUrlTemplate ?? ''"
         :fonts-search-url="route('heisenberg.editor.fonts.search')"
-        :theme="$theme ?? []" />
-    <x-live.footer class="hb-editor__footer" />
+        :theme="$theme ?? []"
+        :document-type="$hbDocumentType" />
+    <x-live.footer class="hb-editor__footer" :document-type="$hbDocumentType" :post-id="$postId ?? null"
+        :email-size-url-template="$emailSizeUrlTemplate ?? ''" />
 
     {{-- AI settings, opened by the AI panel's header button. Mounted at page level rather than
          inside the panel (which the sidebar hides when another panel is active) so the dialog is

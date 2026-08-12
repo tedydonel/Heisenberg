@@ -183,13 +183,18 @@ class EditorPromptTest extends TestCase
      * describe_block/render_preview round-trips a live model was spending tens
      * of minutes on. Prose additions still have to fit; only contract data may
      * move this number again.
+     *
+     * Raised 13000 → 14000 on 2026-08-11 (docs/seo-system.md §6, Wave A1) for the SEO/media
+     * section (EditorPrompt::seo()): what get_seo/update_seo/analyze_seo do, meta-length
+     * guidance, the analyze->fix->re-analyze workflow, and update_media/set_featured_image —
+     * a fixed capability the model has no other way to learn about, same rationale as LOCALES.
      */
     public function test_system_prompt_stays_within_its_size_budget(): void
     {
         $system = $this->prompt()->system();
 
         $this->assertLessThan(
-            13000,
+            14000,
             strlen($system),
             'system prompt has grown past its size budget — tighten it before adding more'
         );
