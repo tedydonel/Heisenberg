@@ -163,24 +163,35 @@ class BlockRenderer
     {
     }
 
-    public function renderBlocks(array $blocks, string $locale): string
+    /**
+     * `$surface` selects WHICH top-level contract section supplies the template tree —
+     * `'render'` (the default, web output, `render.template`) or `'email'`
+     * (`email.template`, docs/email-system.md §4) — threaded through every recursive call
+     * below unchanged from its default so the web rendering path is byte-for-byte what it
+     * was before this parameter existed; {@see \Heisenberg\Services\EmailRenderer} is the
+     * only caller that ever passes `'email'`. A block whose contract has no section under
+     * `$surface` (or no `template` inside it) renders as EMPTY, not an error — this is how
+     * a block silently drops out of a surface it never opted into (embed/icon have no
+     * `email` section at all; §4).
+     */
+    public function renderBlocks(array $blocks, string $locale, string $surface = 'render'): string
     {
         $html = '';
         foreach ($blocks as $block) {
             if (is_array($block)) {
-                $html .= $this->renderBlock($block, $locale);
+                $html .= $this->renderBlock($block, $locale, $surface);
             }
         }
 
         return $html;
     }
 
-    public function renderBlock(array $block, string $locale): string
+    public function renderBlock(array $block, string $locale, string $surface = 'render'): string
     {
-        return $this->renderBlockAtDepth($block, $locale, 0);
+        return $this->renderBlockAtDepth($block, $locale, 0, $surface);
     }
 
-    private function renderBlockAtDepth(array $block, string $locale, int $depth): string
+    private function renderBlockAtDepth(array $block, string $locale, int $depth, string $surface = 'render'): string
     {
         if ($depth > self::MAX_NESTING_DEPTH) {
             return '';
@@ -188,26 +199,26 @@ class BlockRenderer
 
         // JSON-only: a block must carry a string `name` resolving to a contract.
         return is_string($block['name'] ?? null)
-            ? $this->renderJsonBlock($block, $locale, $depth)
+            ? $this->renderJsonBlock($block, $locale, $depth, $surface)
             : '';
     }
 
-    private function renderJsonBlock(array $block, string $locale, int $depth): string
+    private function renderJsonBlock(array $block, string $locale, int $depth, string $surface = 'render'): string
     {
         $contract = $this->registry->getBlock((string) $block['name']);
         if ($contract === null) {
             return '';
         }
 
-        $template = $contract['render']['template'] ?? null;
+        $template = $contract[$surface]['template'] ?? null;
         if (! is_array($template)) {
             return '';
         }
 
-        return $this->renderNode($template, $block, $contract, $locale, true, $depth);
+        return $this->renderNode($template, $block, $contract, $locale, true, $depth, $surface);
     }
 
-    private function renderNode(array $node, array $block, array $contract, string $locale, bool $isRoot = false, int $depth = 0): string
+    private function renderNode(array $node, array $block, array $contract, string $locale, bool $isRoot = false, int $depth = 0, string $surface = 'render'): string
     {
         if ($this->isEditorOnlyNode($node)) {
             return '';
@@ -229,7 +240,7 @@ class BlockRenderer
         }
 
         if ($type === 'inner-blocks') {
-            return $this->renderInnerBlocks($block, $locale, $depth);
+            return $this->renderInnerBlocks($block, $locale, $depth, $surface);
         }
 
         // text-lines: one element per non-empty line of a plain attribute — the generic
@@ -323,7 +334,7 @@ class BlockRenderer
         $children = '';
         foreach (($node['children'] ?? []) as $child) {
             if (is_array($child)) {
-                $children .= $this->renderNode($child, $block, $contract, $locale, false, $depth);
+                $children .= $this->renderNode($child, $block, $contract, $locale, false, $depth, $surface);
             }
         }
 
@@ -335,12 +346,12 @@ class BlockRenderer
      * OWN contract (its own template + sanitizers), in document order. Each nested
      * block is its own security boundary — a container never sanitizes its children.
      */
-    private function renderInnerBlocks(array $block, string $locale, int $depth): string
+    private function renderInnerBlocks(array $block, string $locale, int $depth, string $surface = 'render'): string
     {
         $html = '';
         foreach (($block['innerBlocks'] ?? []) as $child) {
             if (is_array($child)) {
-                $html .= $this->renderBlockAtDepth($child, $locale, $depth + 1);
+                $html .= $this->renderBlockAtDepth($child, $locale, $depth + 1, $surface);
             }
         }
 

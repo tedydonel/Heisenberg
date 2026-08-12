@@ -71,6 +71,30 @@ class BlockRegistryService
         ];
     }
 
+    /**
+     * Contracts that opt into an alternate render SURFACE — today only `'email'`
+     * (docs/email-system.md §4): a block appears here exactly when its contract declares a
+     * top-level `email` section (`{"template": {...}}`, validated by
+     * {@see BlockContractValidator}), same "presence is the whole signal" rule the palette
+     * filtering itself follows. Localized the same way {@see registry()}'s `blocks` are —
+     * title/description/controls/panels all resolve for `$locale` — so a caller building an
+     * email-surface palette gets the identical shape the web palette gets, just filtered.
+     *
+     * @return list<array<string, mixed>>
+     */
+    public function contractsFor(string $surface, ?string $locale = null): array
+    {
+        $scan = $this->scan();
+        $bare = $this->sortedByName(array_values($scan['contracts']));
+
+        $filtered = array_values(array_filter(
+            $bare,
+            static fn (array $c): bool => is_array($c[$surface] ?? null) && is_array($c[$surface]['template'] ?? null)
+        ));
+
+        return array_map(fn (array $c): array => $this->localizeContract($c, $locale), $filtered);
+    }
+
     /** Canonical, locale-stable hash of the (untranslated) contracts. */
     public function computeHash(?array $blocks = null): string
     {

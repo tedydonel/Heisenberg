@@ -565,6 +565,59 @@
         "publicPartial": "blocks.quote",
         "script": null
     },
+    "email": {
+        "template": {
+            "tag": "table",
+            "attributes": {
+                "role": "presentation",
+                "width": "100%",
+                "cellpadding": "0",
+                "cellspacing": "0",
+                "border": "0",
+                "data-block-name": "{{name}}",
+                "data-block-id": "{{id}}"
+            },
+            "children": [
+                {
+                    "tag": "tr",
+                    "children": [
+                        {
+                            "tag": "td",
+                            "attributes": {
+                                "style": "padding:0 0 16px 20px; border-left:4px solid var(--hb-quote-color, #0a0a0a);"
+                            },
+                            "children": [
+                                {
+                                    "tag": "p",
+                                    "attributes": {
+                                        "style": "margin:0 0 8px 0; font-family: var(--hb-quote-ff, Georgia, 'Times New Roman', serif); font-style:italic; font-size: var(--hb-quote-fs, 18px); line-height: var(--hb-quote-lh, 1.5); color: var(--hb-quote-color, #0a0a0a);"
+                                    },
+                                    "children": [
+                                        {
+                                            "type": "rich-text",
+                                            "attribute": "content"
+                                        }
+                                    ]
+                                },
+                                {
+                                    "tag": "p",
+                                    "attributes": {
+                                        "style": "margin:0; font-family: var(--hb-quote-ff, Arial, Helvetica, sans-serif); font-size:14px; color:#5a5a5a;"
+                                    },
+                                    "children": [
+                                        {
+                                            "type": "rich-text",
+                                            "attribute": "citation"
+                                        }
+                                    ]
+                                }
+                            ]
+                        }
+                    ]
+                }
+            ]
+        }
+    },
     "innerBlocks": {
         "enabled": false
     },

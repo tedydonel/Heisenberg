@@ -388,6 +388,64 @@
         "publicPartial": "blocks.separator",
         "script": null
     },
+    "email": {
+        "template": {
+            "tag": "table",
+            "attributes": {
+                "role": "presentation",
+                "width": "100%",
+                "cellpadding": "0",
+                "cellspacing": "0",
+                "border": "0",
+                "data-block-name": "{{name}}",
+                "data-block-id": "{{id}}"
+            },
+            "children": [
+                {
+                    "tag": "tr",
+                    "children": [
+                        {
+                            "tag": "td",
+                            "attributes": {
+                                "style": "padding:8px 0 24px 0; font-size:0; line-height:0;"
+                            },
+                            "children": [
+                                {
+                                    "tag": "table",
+                                    "attributes": {
+                                        "role": "presentation",
+                                        "width": "100%",
+                                        "cellpadding": "0",
+                                        "cellspacing": "0",
+                                        "border": "0"
+                                    },
+                                    "children": [
+                                        {
+                                            "tag": "tr",
+                                            "children": [
+                                                {
+                                                    "tag": "td",
+                                                    "attributes": {
+                                                        "style": "border-top:1px solid var(--hb-separator-bg, #e4e4e4); font-size:1px; line-height:1px;"
+                                                    },
+                                                    "children": [
+                                                        {
+                                                            "type": "text",
+                                                            "content": " "
+                                                        }
+                                                    ]
+                                                }
+                                            ]
+                                        }
+                                    ]
+                                }
+                            ]
+                        }
+                    ]
+                }
+            ]
+        }
+    },
     "innerBlocks": {
         "enabled": false
     },

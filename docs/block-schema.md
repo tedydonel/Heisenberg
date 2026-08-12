@@ -396,6 +396,38 @@ A recursive node tree compiled to safe HTML by one generic walk. Node shapes:
 - `publicPartial` names a Blade partial for the public view; `script` is `null` or a safe
   relative `.js` path.
 
+## `email` (optional — the email surface, docs/email-system.md §4)
+
+```jsonc
+"email": {
+  "template": { /* a render.template node tree, table-based markup, SAME rules */ }
+}
+```
+
+Presence of a top-level `email` key opts a block into the email palette (and
+`BlockRegistryService::contractsFor('email')`'s result); absence means it never appears
+there — there is no separate allow/deny list to keep in sync. `email.template` is a
+`render.template` node tree, validated by the **exact same** node rules
+(`BlockContractValidator::validateTemplateNode()` — one method, shared) — same node types,
+same token grammar, same URL/tag/attribute rules. There is no looser email-specific shape.
+
+`BlockRenderer::renderBlock($block, $locale, 'email')` (the `$surface` parameter, default
+`'render'`) walks `email.template` instead of `render.template`; a block whose contract has
+no `email` section (or whose section has no `template`) simply renders empty for that
+surface — never an error, exactly how an unknown block name already behaves. The generic
+walk is otherwise identical: `{{...}}` tokens, `rich-text`/`text-lines`/`inner-blocks`
+nodes, URL scheme allow-listing, and the automatic root `style="…"` from `style.variables`
+(§`style` above) all apply unchanged — an email template gets the SAME sanitization
+guarantees as `render.template`, just through table-based markup instead of the web
+DOM.
+
+Ten blocks ship an `email` section (heading, paragraph, image, button, separator, group,
+columns, column, list, quote); `embed` and `icon` deliberately do not (external
+webfont/iframe dependency, revisit later) — see each JSON file under `resources/blocks/`
+for the concrete table markup. `EmailRenderer` (beside `BlockRenderer`, never replacing it)
+is what actually turns these into a self-contained email — token resolution, image `cid:`
+embedding, the canonical shell — see its own class docblock and docs/email-system.md §5.
+
 ## `innerBlocks` / `serialization` / `security`
 
 ```jsonc

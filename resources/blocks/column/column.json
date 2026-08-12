@@ -458,6 +458,47 @@
         "publicPartial": "blocks.column",
         "script": null
     },
+    "email": {
+        "template": {
+            "tag": "td",
+            "class": "hb-email-col",
+            "attributes": {
+                "valign": "top",
+                "data-block-name": "{{name}}",
+                "data-block-id": "{{id}}"
+            },
+            "children": [
+                {
+                    "tag": "table",
+                    "attributes": {
+                        "role": "presentation",
+                        "width": "100%",
+                        "cellpadding": "0",
+                        "cellspacing": "0",
+                        "border": "0"
+                    },
+                    "children": [
+                        {
+                            "tag": "tr",
+                            "children": [
+                                {
+                                    "tag": "td",
+                                    "attributes": {
+                                        "style": "padding:0 12px; background-color: var(--hb-column-bg, transparent); color: var(--hb-column-color, inherit);"
+                                    },
+                                    "children": [
+                                        {
+                                            "type": "inner-blocks"
+                                        }
+                                    ]
+                                }
+                            ]
+                        }
+                    ]
+                }
+            ]
+        }
+    },
     "innerBlocks": {
         "enabled": true,
         "allowedBlocks": "*",

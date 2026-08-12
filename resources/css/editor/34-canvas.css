@@ -18,6 +18,13 @@
 .hb-appender { display: inline-flex; align-items: center; justify-content: center; width: 30px; height: 30px; padding: 0; border: 0; border-radius: var(--hb-radius-sm, 3px); background: none; color: var(--hb-text-secondary, #5A5A5A); box-shadow: inset 0 0 0 1px var(--hb-border, #E4E4E4); cursor: pointer; }
 .hb-appender:hover { background: var(--hb-surface-hover, #F7F7F7); color: var(--hb-text-primary, #0A0A0A); }
 
+/* Email documents (docs/email-system.md §7-E3): a 600px frame — the same content width
+   EmailRenderer's shell builds around (§5.3) — centered, with subtle paper edges so the author
+   sees roughly where the email client's own boundary sits. Declared BEFORE the device-diff rules
+   below (same specificity: single class + .hb-page) so desktop/mobile still narrow the sheet
+   further when picked on an email document — the device selector stays fully functional. */
+.hb-canvas--email .hb-page { width: 600px; margin-left: auto; margin-right: auto; box-shadow: 1px 0 0 var(--hb-border, #E4E4E4), -1px 0 0 var(--hb-border, #E4E4E4); }
+
 /* Device diff view — narrow the sheet to a device width, centered and full height, with a left/right
    paper edge against the stage (mirrors the builder's dev-tablet/dev-mobile). No top gap: the sheet
    still runs the full stage height. Widths descend desktop > tablet(640) > mobile(390); desktop is

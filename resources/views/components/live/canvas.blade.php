@@ -7,8 +7,14 @@
      per-post value (or the 56/56 default — see EditorController's own constants) paints on
      first load, instead of flashing 34-canvas.css's own var() fallback first and only correcting
      once the Page layout section's slider JS boots (see inspector.blade.php's wirePostLayout). --}}
-@props(['title' => '', 'pagePaddingX' => 56, 'pagePaddingY' => 56])
-<div class="hb-canvas" data-hb-canvas>
+@props(['title' => '', 'pagePaddingX' => 56, 'pagePaddingY' => 56, 'documentType' => 'post'])
+{{-- documentType 'email' (docs/email-system.md §7-E3) constrains the page to the same 600px
+     content width EmailRenderer builds its shell around (§5.3) — a hint, not an enforcement:
+     the block engine renders it exactly the same either way, this only narrows the frame so the
+     author sees roughly what an email client will show. See 34-canvas.css's .hb-canvas--email
+     rule, declared BEFORE the device-diff (.hb-canvas--tablet/--mobile) rules so the device
+     selector still wins when both classes land on the canvas together. --}}
+<div class="hb-canvas @if ($documentType === 'email') hb-canvas--email @endif" data-hb-canvas data-hb-document-type="{{ $documentType }}">
     <div class="hb-page" style="--hb-page-padding-x: {{ (int) $pagePaddingX }}px; --hb-page-padding-y: {{ (int) $pagePaddingY }}px;">
         <h1 class="hb-page__title" contenteditable="true" spellcheck="false" data-ph="{{ __('heisenberg::editor.canvas.ph_untitled_post') }}" data-hb-title>{{ $title }}</h1>
         <div class="hb-page__blocks" data-hb-add-label="{{ __('heisenberg::editor.common.add_block') }}">

@@ -128,6 +128,7 @@ class BlockContractValidator
         $this->validateSupports($contract, $errors);
         $this->validateStyle($contract, $errors);
         $this->validateRender($contract, $errors);
+        $this->validateEmail($contract, $errors);
         $this->validateInnerBlocks($contract, $errors);
         $this->validateSerialization($contract, $errors);
         $this->validateSecurity($contract, $errors);
@@ -523,6 +524,39 @@ class BlockContractValidator
             && ! $this->isSafeAssetPath($render['script'], '.js')) {
             $errors[] = "render.script must be null or a safe relative .js path (got '" . $this->stringify($render['script']) . "')";
         }
+    }
+
+    /**
+     * OPTIONAL top-level `email` section (docs/email-system.md §4): presence opts the block
+     * into the email palette, absence means it never appears there — there is no separate
+     * required/forbidden list to keep in sync, the section's mere existence IS the signal
+     * `BlockRegistryService::contractsFor('email')` filters on. When present, `email.template`
+     * is REQUIRED and validated by the exact same {@see self::validateTemplateNode()} rules as
+     * `render.template` — an email template is a node tree through the identical substitution/
+     * sanitization engine (`BlockRenderer`), just a different tree, so it earns no looser shape.
+     *
+     * @param string[] $errors
+     */
+    private function validateEmail(array $contract, array &$errors): void
+    {
+        if (! array_key_exists('email', $contract)) {
+            return; // no email section: this block simply never appears in the email palette
+        }
+
+        $email = $contract['email'];
+        if (! is_array($email)) {
+            $errors[] = 'email must be an object';
+
+            return;
+        }
+
+        if (! isset($email['template']) || ! is_array($email['template'])) {
+            $errors[] = 'email.template is required and must be a node tree';
+
+            return;
+        }
+
+        $this->validateTemplateNode($email['template'], $errors);
     }
 
     /**
