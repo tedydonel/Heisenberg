@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Heisenberg\Http\Middleware;
 
 use Closure;
+use Heisenberg\Support\LocaleConfig;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\App;
 
@@ -19,17 +20,19 @@ use Illuminate\Support\Facades\App;
  * Registered globally in `HeisenbergServiceProvider::boot()` AFTER the
  * `web` middleware group (which guarantees the session exists), so it
  * has access to session state on every editor request.
+ *
+ * Locale whitelist: `Heisenberg\Support\LocaleConfig::locales()` (`heisenberg.locales`, falling
+ * back to `heisenberg.editor.locales`, docs/content-translation.md §3) — same source
+ * `LocaleController::switch()` validates against, so a session value that passed that switch
+ * always passes here too.
  */
 final class EditorLocaleMiddleware
 {
-    /** Locales shipped with the package. Must match LocaleController::LOCALES. */
-    private const LOCALES = ['en', 'fr'];
-
     public function handle(Request $request, Closure $next)
     {
         $locale = $request->session()->get('heisenberg.locale');
 
-        if (is_string($locale) && in_array($locale, self::LOCALES, true)) {
+        if (is_string($locale) && LocaleConfig::isValid($locale)) {
             App::setLocale($locale);
         }
 

@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Heisenberg\Http\Controllers;
 
+use Heisenberg\Support\LocaleConfig;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 
@@ -15,17 +16,17 @@ use Illuminate\Http\Request;
  * (persisted in the session) and bounces the caller back to the editor
  * page so the whole shell re-renders through `__()` with the new locale.
  *
- * Hosts that want to extend this (e.g. additional locales) widen the
- * whitelist here; the brief ships `en` and `fr` only.
+ * Hosts that want to extend this (e.g. additional locales) widen the whitelist via
+ * `heisenberg.locales` (docs/content-translation.md §3) — see `Heisenberg\Support\LocaleConfig`,
+ * the single source every locale-aware surface (this controller, EditorLocaleMiddleware,
+ * TranslationStatusService, McpToolRegistry) reads through. The `LOCALES` constant this class
+ * used to hardcode its own whitelist in is gone; `LocaleConfig` owns the last-resort default now.
  */
 final class LocaleController
 {
-    /** Locales shipped with the package. */
-    private const LOCALES = ['en', 'fr'];
-
     public function switch(Request $request, string $locale): RedirectResponse
     {
-        if (! in_array($locale, self::LOCALES, true)) {
+        if (! in_array($locale, LocaleConfig::locales(), true)) {
             abort(404);
         }
 
