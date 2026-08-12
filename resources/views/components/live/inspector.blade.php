@@ -153,14 +153,16 @@
     .hb-post-meta { display: flex; flex-direction: column; padding: 6px 0; flex: none; }
     .hb-post-meta__row { display: flex; align-items: center; justify-content: space-between; height: 32px; padding: 0 14px; }
     .hb-post-meta__label { font-family: var(--hb-font-sans, Rubik, sans-serif); font-size: var(--hb-fs-sm, 12px); color: var(--hb-text-secondary, #5A5A5A); }
-    .hb-post-meta__value { font-family: var(--hb-font-sans, Rubik, sans-serif); font-size: var(--hb-fs-xs, 11px); font-weight: 500; color: var(--hb-text-primary, #0A0A0A); }
+    .hb-post-meta__value { font-family: var(--hb-font-sans, Rubik, sans-serif); font-size: 9px; font-weight: 500; color: var(--hb-text-primary, #0A0A0A); }
     .hb-post-meta__value--btn {
         max-width: 175px;
         border: 0;
         background: none;
         padding: 0;
         margin: 0;
-        font: inherit;
+        font-family: var(--hb-font-sans, Rubik, sans-serif);
+        font-size: 9px;
+        font-weight: 500;
         text-align: right;
         white-space: nowrap;
         overflow: hidden;

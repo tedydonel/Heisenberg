@@ -522,4 +522,17 @@ class InspectorWiringTest extends TestCase
         );
         $this->assertStringNotContainsString('.hb-post-meta__value--btn:hover { text-decoration: underline; }', $html);
     }
+
+    public function test_summary_value_buttons_set_their_own_font_size_rather_than_inheriting_it(): void
+    {
+        $html = $this->editorHtml();
+
+        // Both the span and the button carry the size explicitly. The button MUST NOT use the
+        // `font` shorthand with `inherit`: it comes after the base class at equal specificity, so
+        // it silently resets font-size back to the panel's inherited size and every edit to the
+        // base rule becomes a no-op (the bug this pins).
+        $this->assertMatchesRegularExpression('/\.hb-post-meta__value \{[^}]*font-size: 9px;/', $html);
+        $this->assertMatchesRegularExpression('/\.hb-post-meta__value--btn \{[^}]*font-size: 9px;/s', $html);
+        $this->assertDoesNotMatchRegularExpression('/\.hb-post-meta__value--btn \{[^}]*font: inherit;/s', $html);
+    }
 }
