@@ -85,7 +85,7 @@
         position: absolute; top: calc(100% + 5px); right: 0; z-index: 60;
         width: max-content; padding: 4px;
         background: var(--hb-bg, #fff); border: 1px solid var(--hb-border, #E4E4E4);
-        border-radius: var(--hb-radius-md, 5px); box-shadow: var(--hb-shadow-lg, 0 8px 28px rgba(0, 0, 0, .14));
+        border-radius: var(--hb-radius-md, 5px); box-shadow: var(--hb-shadow-lg, 3px 4px 4px rgba(0, 0, 0, .1));
         display: flex; flex-direction: column; gap: 2px;
     }
     .hb-topbar__devsel-menu[hidden] { display: none; }
@@ -100,6 +100,41 @@
     .hb-topbar__devsel-opt svg { width: 15px; height: 15px; flex: none; }
     .hb-topbar__devsel-opt:hover { background: var(--hb-surface-hover, #F7F7F7); color: var(--hb-text-primary, #0A0A0A); }
     .hb-topbar__devsel-opt.is-on { background: var(--hb-surface-hover, #F7F7F7); color: var(--hb-text-primary, #0A0A0A); font-weight: 500; }
+    /* Post-language dropdown — a visual sibling of the device dropdown above, same trigger/menu
+       shape, placed just to its left. Unlike the device trigger (icon-only; the icon itself
+       swaps per selection) this one has no per-locale icon, so the trigger grows to fit the
+       CURRENT post's locale name next to a static translate glyph — the one deliberate
+       width exception in this otherwise fixed-size icon-button row. Data comes straight from
+       EditorController's `postTranslations` (TranslationStatusService::statuses(), the same
+       seed live/inspector.blade.php's Translations section reads) — no second payload. */
+    .hb-topbar__langsel { position: relative; display: inline-flex; align-items: center; }
+    .hb-topbar__lang { width: auto; padding: 0 6px; gap: 5px; }
+    .hb-topbar__lang-label {
+        font-family: var(--hb-font-sans, Rubik, sans-serif); font-size: var(--hb-fs-sm, 12px);
+        font-weight: 500; white-space: nowrap; max-width: 90px; overflow: hidden; text-overflow: ellipsis;
+    }
+    .hb-topbar__langsel-menu {
+        position: absolute; top: calc(100% + 5px); right: 0; z-index: 60;
+        width: max-content; min-width: 180px; padding: 4px;
+        background: var(--hb-bg, #fff); border: 1px solid var(--hb-border, #E4E4E4);
+        border-radius: var(--hb-radius-md, 5px); box-shadow: var(--hb-shadow-lg, 3px 4px 4px rgba(0, 0, 0, .1));
+        display: flex; flex-direction: column; gap: 2px;
+    }
+    .hb-topbar__langsel-menu[hidden] { display: none; }
+    .hb-topbar__langsel-opt {
+        display: flex; align-items: center; justify-content: space-between; gap: 10px;
+        min-height: 28px; padding: 4px 8px;
+        border: 0; background: none; border-radius: var(--hb-radius-sm, 3px);
+        font-family: var(--hb-font-sans, Rubik, sans-serif); font-size: var(--hb-fs-sm, 12px); font-weight: 400;
+        color: var(--hb-text-secondary, #5A5A5A); text-align: left; white-space: nowrap;
+    }
+    button.hb-topbar__langsel-opt { width: 100%; cursor: pointer; }
+    button.hb-topbar__langsel-opt:hover { background: var(--hb-surface-hover, #F7F7F7); color: var(--hb-text-primary, #0A0A0A); }
+    button.hb-topbar__langsel-opt:disabled { opacity: .6; cursor: default; }
+    .hb-topbar__langsel-opt.is-on { color: var(--hb-text-primary, #0A0A0A); font-weight: 500; }
+    .hb-topbar__langsel-opt__check { width: 12px; height: 12px; flex: none; color: var(--hb-accent, #000); display: inline-flex; }
+    .hb-topbar__langsel-opt__status { font-size: 11px; color: var(--hb-text-muted, #9A9A9A); flex: none; }
+    .hb-topbar__langsel-opt--create { color: var(--hb-accent, #000); }
 </style>
 <script>
     (() => {
@@ -126,6 +161,10 @@
         let hbPreviewShowUrl = '';
         let hbPreviewPostUrlTemplate = '';
         let hbEditorUrlTemplate = '';
+        // docs/email-system.md §7-E3 — 'email' or 'post', read once like everything else in
+        // hbSeed(). A document never changes type, so this never needs to be re-read.
+        let hbDocumentType = 'post';
+        let hbEmailPreviewUrlTemplate = '';
         // Localized save-failure messages — seeded from the component's data-hb-msg-*
         // attributes (the Blade side owns the __() calls; JS never hardcodes copy).
         let hbMsgConflict = '';
@@ -137,6 +176,28 @@
         let hbSaveInFlight = null;
         let hbAutosaveTimer = null;
         const HB_AUTOSAVE_MS = 3000;
+        // A status/schedule queued by the Summary's status control (inspector.blade.php,
+        // hb:post-status-change) — rides the NEXT EXPLICIT save only (autosave never
+        // transitions, matching PostController's own design), then clears itself. Kept
+        // separate from hbDirty (which autosave optimistically zeroes every ~3s) so a
+        // pending transition can't silently read as "Saved" before an explicit Save applies it.
+        let hbPendingStatus = null;
+        let hbPendingScheduledAt = null;
+        // A slug/published_at edit queued by the Summary's URL/Publish rows
+        // (inspector.blade.php, hb:post-slug-change / hb:post-published-at-change) —
+        // same "next explicit save only, tracked apart from hbDirty" posture as
+        // hbPendingStatus above. `null` means no pending edit; an empty string IS a
+        // real pending value (slug '' asks the server to regenerate from the title;
+        // published_at '' asks it to clear the date), so both are compared against
+        // `null` specifically, never a falsy check.
+        let hbPendingSlug = null;
+        let hbPendingPublishedAt = null;
+        // The SEO/Social panel's queued field edits (panel-seo-social.blade.php,
+        // hb:post-seo-change, docs/seo-system.md §3) — same "next explicit save only, tracked
+        // apart from hbDirty" posture as the three above. Unlike them, this is an OBJECT of
+        // only-the-keys-the-user-actually-touched (never the full 10-field shape) rather than a
+        // single scalar; `null` means nothing queued, same convention.
+        let hbPendingSeo = null;
 
         const hbCsrfToken = () => {
             const meta = document.querySelector('meta[name="csrf-token"]');
@@ -172,6 +233,8 @@
             hbPreviewShowUrl = root.dataset.hbPreviewShowUrl || '';
             hbPreviewPostUrlTemplate = root.dataset.hbPreviewPostUrlTemplate || '';
             hbEditorUrlTemplate = root.dataset.hbEditorUrlTemplate || '';
+            hbDocumentType = root.dataset.hbDocumentType || 'post';
+            hbEmailPreviewUrlTemplate = root.dataset.hbEmailPreviewUrlTemplate || '';
             hbMsgConflict = root.dataset.hbMsgConflict || hbMsgConflict;
             hbMsgInvalid = root.dataset.hbMsgInvalid || hbMsgInvalid;
             hbMsgNetwork = root.dataset.hbMsgNetwork || hbMsgNetwork;
@@ -201,6 +264,44 @@
             hbScheduleAutosave();
         }
 
+        // `status: null` clears a pending choice (the user picked back the already-committed
+        // status) without touching hbDirty — there is nothing new to save if that was the ONLY
+        // outstanding change. No autosave scheduling here: autosave never carries a transition,
+        // so ticking one on a status-only change would just resend content for no reason.
+        function hbSetPendingStatus(status, scheduledAt) {
+            hbPendingStatus = status || null;
+            hbPendingScheduledAt = hbPendingStatus === 'scheduled' ? (scheduledAt || null) : null;
+            hbEmitSaveState(hbHasPending() ? (hbConflicted ? 'conflict' : 'dirty') : 'saved');
+        }
+
+        // `slug`/`publishedAt` null clears a pending edit (the user typed back the already-
+        // committed value) — same shape as hbSetPendingStatus's `status: null`, just for the
+        // Summary's two plain inputs instead of its select.
+        function hbSetPendingSlug(slug) {
+            hbPendingSlug = slug;
+            hbEmitSaveState(hbHasPending() ? (hbConflicted ? 'conflict' : 'dirty') : 'saved');
+        }
+        function hbSetPendingPublishedAt(publishedAt) {
+            hbPendingPublishedAt = publishedAt;
+            hbEmitSaveState(hbHasPending() ? (hbConflicted ? 'conflict' : 'dirty') : 'saved');
+        }
+
+        // `seo: null` (or an object with no keys) clears the pending SEO edit — same "picked
+        // back the committed value" posture as the setters above, just for an object of fields
+        // instead of one scalar. panel-seo-social.blade.php's script only ever sends the keys
+        // that actually differ from its last-confirmed snapshot, so an empty object here really
+        // does mean "nothing left to save", not "save every field as empty".
+        function hbSetPendingSeo(seo) {
+            hbPendingSeo = (seo && Object.keys(seo).length > 0) ? seo : null;
+            hbEmitSaveState(hbHasPending() ? (hbConflicted ? 'conflict' : 'dirty') : 'saved');
+        }
+
+        // Anything queued that isn't ordinary content dirt — status/schedule, slug,
+        // published_at, or SEO — still counts as "something to save".
+        function hbHasPending() {
+            return hbDirty || hbPendingStatus !== null || hbPendingSlug !== null || hbPendingPublishedAt !== null || hbPendingSeo !== null;
+        }
+
         // explicit === true: the user clicked Save (always attempted, creates on first call).
         // explicit === false: an autosave tick (only ever fires once hbPostId is already set).
         function hbPerformSave(explicit) {
@@ -214,8 +315,27 @@
             hbAutosaveTimer = null;
             hbDirty = false; // optimistic — hbMarkDirty() flips this back on if more edits land mid-flight
 
+            // Autosave payloads never carry a transition, slug, or published_at edit
+            // (PostController skips all three outright for `autosave: true`) — only an
+            // explicit Save applies a queued status/scheduled_at/slug/published_at.
+            const includeStatus = explicit && hbPendingStatus !== null;
+            const includeSlug = explicit && hbPendingSlug !== null;
+            const includePublishedAt = explicit && hbPendingPublishedAt !== null;
+            const includeSeo = explicit && hbPendingSeo !== null;
             const extra = { title_en: hbReadTitle(), autosave: !explicit };
             if (hbPostId !== null) extra.content_version = hbContentVersion;
+            // docs/email-system.md §7-E3: the FIRST save of a type=email document carries `type`
+            // so PostController's create-only handling stamps it — see that method's own note.
+            // Never sent once hbPostId exists (every save after the first is an update, where
+            // `type` is simply ignored server-side, so there's no reason to keep resending it).
+            if (hbPostId === null && hbDocumentType === 'email') extra.type = 'email';
+            if (includeStatus) {
+                extra.status = hbPendingStatus;
+                if (hbPendingStatus === 'scheduled' && hbPendingScheduledAt) extra.scheduled_at = hbPendingScheduledAt;
+            }
+            if (includeSlug) extra.slug = hbPendingSlug;
+            if (includePublishedAt) extra.published_at = hbPendingPublishedAt;
+            if (includeSeo) extra.seo = hbPendingSeo;
             const body = window.hbEditor.buildSavePayload(extra);
             const url = hbPostId === null ? hbSaveUrl : hbUpdateUrlTemplate.replace('__ID__', hbPostId);
             const method = hbPostId === null ? 'POST' : 'PUT';
@@ -253,15 +373,41 @@
                             }
                         }
                         hbConflicted = false;
-                        // The Post tab's Summary rows re-read status/publish/url from this —
+                        // The transition/slug/published_at (whichever rode this save) just
+                        // applied — the queued choices are spent.
+                        if (includeStatus) { hbPendingStatus = null; hbPendingScheduledAt = null; }
+                        if (includeSlug) hbPendingSlug = null;
+                        if (includePublishedAt) hbPendingPublishedAt = null;
+                        if (includeSeo) hbPendingSeo = null;
+                        // The Post tab's Summary rows re-read status/slug/publish-date from this —
                         // every 2xx save (manual or autosave) echoes the fresh post payload.
                         if (res.data && res.data.post) {
                             document.dispatchEvent(new CustomEvent('hb:post-saved', { detail: { post: res.data.post } }));
                         }
-                        hbEmitSaveState(hbDirty ? 'dirty' : 'saved');
+                        hbEmitSaveState(hbHasPending() ? 'dirty' : 'saved');
                         return;
                     }
                     hbDirty = true; // the attempted save did not happen — still unsaved
+                    if (includeStatus) {
+                        // The queued transition never applied (whatever failed below) — drop it
+                        // rather than silently resend it on the next retry/autosave; the Summary's
+                        // status control falls back to the post's real, last-confirmed status.
+                        hbPendingStatus = null;
+                        hbPendingScheduledAt = null;
+                        document.dispatchEvent(new CustomEvent('hb:post-status-rejected'));
+                    }
+                    if (includeSlug) {
+                        hbPendingSlug = null;
+                        document.dispatchEvent(new CustomEvent('hb:post-slug-rejected'));
+                    }
+                    if (includePublishedAt) {
+                        hbPendingPublishedAt = null;
+                        document.dispatchEvent(new CustomEvent('hb:post-published-at-rejected'));
+                    }
+                    if (includeSeo) {
+                        hbPendingSeo = null;
+                        document.dispatchEvent(new CustomEvent('hb:post-seo-rejected'));
+                    }
                     if (res.status === 409) {
                         hbConflicted = true;
                         hbEmitSaveState('conflict', { message: (res.data && res.data.message) || hbMsgConflict });
@@ -271,7 +417,9 @@
                         const errors = (res.data && res.data.errors) || {};
                         const messages = [];
                         Object.keys(errors).forEach((key) => { (errors[key] || []).forEach((m) => messages.push(m)); });
-                        hbEmitSaveState('error', { message: messages.join(' ') || hbMsgInvalid, errors: errors });
+                        // A lifecycle transition failure (PostController::applyTransition) has no
+                        // `errors` map, just `message` — fall back to it before the generic string.
+                        hbEmitSaveState('error', { message: messages.join(' ') || (res.data && res.data.message) || hbMsgInvalid, errors: errors });
                         return;
                     }
                     // Always carry the HTTP status: with APP_DEBUG off a 500 body is just
@@ -332,6 +480,38 @@
                 // existing document back up immediately rather than waiting out the debounce.
                 window.addEventListener('online', () => {
                     if (hbDirty && !hbConflicted && hbPostId !== null) hbPerformSave(false);
+                });
+            }
+
+            // The Summary's status control (inspector.blade.php) queues a status/scheduled_at
+            // pick here — see hbSetPendingStatus's docblock for why it's tracked apart from hbDirty.
+            if (!document.__hbStatusPendingWired) {
+                document.__hbStatusPendingWired = true;
+                document.addEventListener('hb:post-status-change', (event) => {
+                    const detail = event.detail || {};
+                    hbSetPendingStatus(detail.status || null, detail.scheduledAt || null);
+                });
+            }
+
+            // Same pending-edit posture as the status control above, for the Summary's URL/slug
+            // and Publish-date rows — see hbSetPendingSlug/hbSetPendingPublishedAt's docblock.
+            if (!document.__hbSlugPublishedAtPendingWired) {
+                document.__hbSlugPublishedAtPendingWired = true;
+                document.addEventListener('hb:post-slug-change', (event) => {
+                    hbSetPendingSlug((event.detail || {}).slug ?? null);
+                });
+                document.addEventListener('hb:post-published-at-change', (event) => {
+                    hbSetPendingPublishedAt((event.detail || {}).publishedAt ?? null);
+                });
+            }
+
+            // The SEO/Social panel's queued field edits (panel-seo-social.blade.php) — same
+            // pending-edit posture as the block above, for an object of fields instead of one
+            // scalar. See hbSetPendingSeo's docblock.
+            if (!document.__hbSeoPendingWired) {
+                document.__hbSeoPendingWired = true;
+                document.addEventListener('hb:post-seo-change', (event) => {
+                    hbSetPendingSeo((event.detail || {}).seo ?? null);
                 });
             }
 
@@ -408,6 +588,16 @@
                     hbSeed();
                     const tab = window.open('about:blank', '_blank');
                     const openOrNavigate = (url) => { if (tab) tab.location = url; else window.open(url, '_blank'); };
+
+                    // An email document, already saved: EmailPreviewController renders through the
+                    // SAME EmailRenderer the Mailable uses (docs/email-system.md §7-E3) rather than
+                    // the ordinary BlockRenderer path below — a never-saved email falls through to
+                    // the generic session-backed preview instead (EmailRenderer needs a persisted
+                    // Post to read its block tree from).
+                    if (hbDocumentType === 'email' && hbPostId !== null) {
+                        openOrNavigate(hbEmailPreviewUrlTemplate.replace('__ID__', hbPostId));
+                        return;
+                    }
 
                     // Already saved at least once — render straight from the DB's stored block
                     // tree (PreviewController::showPost), no session round-trip needed, so the
@@ -489,6 +679,92 @@
                 document.__hbDevOutside = true;
                 document.addEventListener('click', (e) => { if (!e.target.closest('.hb-topbar__devsel')) setDeviceMenu(false); });
             }
+
+            // Post-language dropdown — view/switch/create translations (docs/content-translation.md
+            // §5). Same open/close shape as the device dropdown above. Only rendered with a menu
+            // when EditorController seeded real `postTranslations` rows (an existing, saved post);
+            // a blank /editor document renders just the disabled trigger, so there is nothing here
+            // to wire beyond the (inert) toggle.
+            const setLangMenu = (open) => {
+                document.querySelectorAll('.hb-topbar__langsel-menu').forEach((m) => { m.hidden = !open; });
+                document.querySelectorAll('[data-hb-lang-toggle]').forEach((t) => t.setAttribute('aria-expanded', open ? 'true' : 'false'));
+            };
+            document.querySelectorAll('[data-hb-lang-toggle]').forEach((btn) => {
+                if (btn.__hbLangT) return; btn.__hbLangT = true;
+                btn.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    if (btn.disabled) return;
+                    const menu = document.querySelector('.hb-topbar__langsel-menu');
+                    setLangMenu(!menu || menu.hidden);
+                });
+            });
+            // Existing sibling (draft/published/outdated) — a real page load, the same
+            // "different document" navigation the inspector's Translations section already uses
+            // for its own Open button.
+            document.querySelectorAll('[data-hb-lang-open]').forEach((opt) => {
+                if (opt.__hbLangO) return; opt.__hbLangO = true;
+                opt.addEventListener('click', () => {
+                    hbSeed();
+                    const menu = opt.closest('.hb-topbar__langsel-menu');
+                    const editorUrlTemplate = (menu && menu.dataset.hbEditorUrlTemplate) || hbEditorUrlTemplate;
+                    const targetId = opt.dataset.postId;
+                    if (!targetId || !editorUrlTemplate) return;
+                    window.location.href = editorUrlTemplate.replace('__ID__', targetId);
+                });
+            });
+            // Missing locale — POST the create-translation endpoint (same URL template + CSRF
+            // pattern as inspector.blade.php's wirePostTranslations Create button), then navigate
+            // to the new sibling. A brief busy state on the row itself covers the round trip;
+            // a failure is surfaced through hb:save-state, the exact same channel/footer pill the
+            // Save button's own errors use — no second error surface for this panel.
+            document.querySelectorAll('[data-hb-lang-create]').forEach((opt) => {
+                if (opt.__hbLangC) return; opt.__hbLangC = true;
+                opt.addEventListener('click', () => {
+                    hbSeed();
+                    if (opt.disabled || hbPostId === null) return;
+                    const menu = opt.closest('.hb-topbar__langsel-menu');
+                    const urlTemplate = (menu && menu.dataset.hbTranslationsUrlTemplate) || '';
+                    const editorUrlTemplate = (menu && menu.dataset.hbEditorUrlTemplate) || hbEditorUrlTemplate;
+                    const locale = opt.dataset.locale || '';
+                    if (!urlTemplate) return;
+                    const idleLabel = opt.textContent;
+                    opt.disabled = true;
+                    opt.setAttribute('aria-busy', 'true');
+                    opt.textContent = opt.dataset.busyLabel || idleLabel;
+                    window.fetch(urlTemplate.replace('__ID__', hbPostId), {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'Accept': 'application/json',
+                            'X-CSRF-TOKEN': hbCsrfToken(),
+                            'X-Requested-With': 'XMLHttpRequest',
+                        },
+                        credentials: 'same-origin',
+                        body: JSON.stringify({ locale: locale }),
+                    })
+                        .then((r) => r.json().catch(() => ({})).then((data) => ({ ok: r.ok, data: data })))
+                        .then((res) => {
+                            if (res.ok && res.data && res.data.post_id) {
+                                if (editorUrlTemplate) window.location.href = editorUrlTemplate.replace('__ID__', res.data.post_id);
+                                return;
+                            }
+                            opt.disabled = false;
+                            opt.removeAttribute('aria-busy');
+                            opt.textContent = idleLabel;
+                            hbEmitSaveState('error', { message: (res.data && res.data.message) || hbMsgInvalid });
+                        })
+                        .catch(() => {
+                            opt.disabled = false;
+                            opt.removeAttribute('aria-busy');
+                            opt.textContent = idleLabel;
+                            hbEmitSaveState('error', { message: hbMsgNetwork });
+                        });
+                });
+            });
+            if (!document.__hbLangOutside) {
+                document.__hbLangOutside = true;
+                document.addEventListener('click', (e) => { if (!e.target.closest('.hb-topbar__langsel')) setLangMenu(false); });
+            }
         };
         if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', boot, { once: true });
         else boot();
@@ -497,7 +773,22 @@
 </script>
 @endonce
 
-@props(['postId' => null, 'contentVersion' => 0])
+@props([
+    'postId' => null,
+    'contentVersion' => 0,
+    // The language dropdown's data (docs/content-translation.md §5) — the SAME seed
+    // live/inspector.blade.php's Translations section reads (EditorController's
+    // `postTranslations`/`postTranslationsUrlTemplate`/`postEditorUrlTemplate`), never a second
+    // payload. Null postTranslations is the /editor blank-document state — the dropdown renders
+    // disabled, showing localeDefault, same "needs save" posture as every other Post-tab control.
+    'postTranslations' => null,
+    'postTranslationsUrlTemplate' => '',
+    'postEditorUrlTemplate' => '',
+    'localeDefault' => 'en',
+    // docs/email-system.md §7-E3 — 'post' or 'email'; drives the preview button's target.
+    'documentType' => 'post',
+    'emailPreviewUrlTemplate' => '',
+])
 @php
     $leftButtons = [
         ['icon' => 'house-fill', 'label' => __('heisenberg::editor.topbar.aria_home'), 'toggle' => null, 'tip' => 'aria_home'],
@@ -516,8 +807,22 @@
         ['icon' => 'moon', 'label' => __('heisenberg::editor.topbar.aria_theme'), 'theme' => true],
         // Preview lives here now, not on a separate eye icon in the centre group: "open in a new
         ['icon' => 'arrow-square-out', 'label' => __('heisenberg::editor.topbar.aria_preview'), 'theme' => false, 'preview' => true],
+        // Post-language dropdown — placed immediately left of the device dropdown it mirrors.
+        ['icon' => 'translate', 'label' => __('heisenberg::editor.topbar.aria_post_language'), 'lang' => true],
         ['icon' => 'device-mobile', 'label' => __('heisenberg::editor.topbar.aria_device'), 'device' => true],
     ];
+    // The dropdown's own current-locale row (TranslationStatusService::statuses() always marks
+    // exactly one row 'source' — the post being edited right now). Falls back to localeDefault
+    // when postTranslations is null (the blank /editor document — nothing seeded yet).
+    $hbCurrentLocaleRow = null;
+    if (is_array($postTranslations)) {
+        foreach ($postTranslations as $hbRow) {
+            if (($hbRow['status'] ?? null) === 'source') { $hbCurrentLocaleRow = $hbRow; break; }
+        }
+    }
+    $hbCurrentLocale = $hbCurrentLocaleRow['locale'] ?? $localeDefault;
+    $hbCurrentLocaleLabel = __('heisenberg::editor.locales.' . $hbCurrentLocale);
+    $hbLangDisabled = $postTranslations === null;
     $deviceLabels = [
         'desktop' => __('heisenberg::editor.topbar.device_desktop'),
         'tablet'  => __('heisenberg::editor.topbar.device_tablet'),
@@ -540,6 +845,8 @@
     data-hb-preview-store-url="{{ route('heisenberg.editor.preview.store') }}"
     data-hb-preview-show-url="{{ route('heisenberg.editor.preview') }}"
     data-hb-preview-post-url-template="{{ route('heisenberg.editor.index') }}/__ID__/preview"
+    data-hb-document-type="{{ $documentType }}"
+    data-hb-email-preview-url-template="{{ $emailPreviewUrlTemplate }}"
     {{-- Where this document lives once it has an id. A save from the blank /editor creates the
          post but leaves the browser on /editor, so refreshing re-opened an empty editor and the
          work looked lost (it was in the DB the whole time). After a create we rewrite the URL to
@@ -601,6 +908,54 @@
                             </button>
                         @endforeach
                     </div>
+                </div>
+            @elseif ($btn['lang'] ?? false)
+                {{-- Post-language dropdown (docs/content-translation.md §5) — view/switch/create
+                     translations, wired in the script above. Trigger shows the CURRENT post's
+                     locale name (not just an icon, unlike the device trigger — there is no
+                     per-locale glyph to swap). Disabled with no menu at all when postTranslations
+                     is null: the /editor blank document has no source post to translate FROM yet,
+                     same "save first" posture as the inspector's own Translations section. --}}
+                <div class="hb-topbar__langsel">
+                    <button type="button" class="hb-topbar__btn hb-topbar__btn--sm hb-topbar__lang" data-hb-lang-toggle
+                        aria-haspopup="listbox" aria-expanded="false" aria-label="{{ $btn['label'] }}"
+                        @if ($hbLangDisabled) disabled @endif>
+                        <span class="hb-topbar__icon hb-topbar__icon--sm" aria-hidden="true">
+                            @include('heisenberg::components.ui.icon', ['name' => $btn['icon'], 'size' => 13])
+                        </span>
+                        <span class="hb-topbar__lang-label" data-hb-lang-current-label>{{ $hbCurrentLocaleLabel }}</span>
+                    </button>
+                    @if (! $hbLangDisabled)
+                        <div class="hb-topbar__langsel-menu" role="listbox" hidden
+                            data-hb-translations-url-template="{{ $postTranslationsUrlTemplate }}"
+                            data-hb-editor-url-template="{{ $postEditorUrlTemplate }}">
+                            @foreach ($postTranslations as $hbRow)
+                                @php
+                                    $hbRowLabel = __('heisenberg::editor.locales.' . $hbRow['locale']);
+                                @endphp
+                                @if ($hbRow['status'] === 'source')
+                                    <div class="hb-topbar__langsel-opt is-on" role="option" aria-selected="true">
+                                        <span>{{ $hbRowLabel }}</span>
+                                        <span class="hb-topbar__langsel-opt__check" aria-hidden="true">
+                                            @include('heisenberg::components.ui.icon', ['name' => 'check', 'size' => 12])
+                                        </span>
+                                    </div>
+                                @elseif ($hbRow['status'] === 'missing')
+                                    <button type="button" class="hb-topbar__langsel-opt hb-topbar__langsel-opt--create" role="option" aria-selected="false"
+                                        data-hb-lang-create data-locale="{{ $hbRow['locale'] }}"
+                                        data-hb-lang-busy-label="{{ __('heisenberg::editor.topbar.lang_creating') }}">
+                                        <span>{{ __('heisenberg::editor.topbar.lang_translate_to', ['locale' => $hbRowLabel]) }}</span>
+                                    </button>
+                                @else
+                                    <button type="button" class="hb-topbar__langsel-opt" role="option" aria-selected="false"
+                                        data-hb-lang-open data-post-id="{{ $hbRow['post_id'] }}">
+                                        <span>{{ $hbRowLabel }}</span>
+                                        <span class="hb-topbar__langsel-opt__status">{{ __('heisenberg::editor.inspector.post_translations_status_' . $hbRow['status']) }}</span>
+                                    </button>
+                                @endif
+                            @endforeach
+                        </div>
+                    @endif
                 </div>
             @else
                 <button

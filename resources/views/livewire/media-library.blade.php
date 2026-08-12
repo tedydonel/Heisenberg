@@ -12,7 +12,7 @@
     <style>
         .hb-mlw { display: flex; flex-direction: column; overflow: hidden; width: 900px; max-width: 100%;
             background: var(--hb-bg, #fff); border: 1px solid var(--hb-border, #E4E4E4);
-            border-radius: var(--hb-radius-lg, 8px); box-shadow: 0 24px 64px rgba(0, 0, 0, .16);
+            border-radius: var(--hb-radius-lg, 8px); box-shadow: 3px 4px 4px rgba(0, 0, 0, .1);
             font-family: var(--hb-font-sans, Rubik, sans-serif); }
         .hb-mlw [x-cloak] { display: none !important; }
         .hb-mlw__top { display: flex; align-items: center; justify-content: space-between; height: 32px;

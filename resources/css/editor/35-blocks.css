@@ -161,7 +161,7 @@
     background: var(--hb-bg, #fff);
     border: 1px solid var(--hb-border-strong, #C8C8C8);
     border-radius: var(--hb-radius-sm, 3px);
-    box-shadow: var(--hb-shadow-md, 0 6px 18px rgba(0, 0, 0, .18));
+    box-shadow: var(--hb-shadow-md, 3px 4px 4px rgba(0, 0, 0, .1));
     color: var(--hb-text-primary, #0A0A0A);
     font-family: var(--hb-font-sans, Rubik, sans-serif);
     font-size: var(--hb-fs-sm, 12px);

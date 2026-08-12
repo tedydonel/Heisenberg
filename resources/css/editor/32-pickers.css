@@ -5,7 +5,7 @@
 
 /* --- shared popover shell --- */
 .hb-pop { background: var(--hb-bg, #fff); border: 1px solid var(--hb-border, #E4E4E4); border-radius: var(--hb-radius-lg, 8px);
-    box-shadow: var(--hb-shadow-lg, 0 8px 28px rgba(0, 0, 0, .14)); font-family: var(--hb-font-sans, Rubik, sans-serif); }
+    box-shadow: var(--hb-shadow-lg, 3px 4px 4px rgba(0, 0, 0, .1)); font-family: var(--hb-font-sans, Rubik, sans-serif); }
 
 /* [hidden] must win over the display:flex the picker bodies / menu rows set,
    otherwise tab-switch and search-filter can't actually hide anything. The

@@ -27,6 +27,8 @@
     --hb-danger-subtle: #2E1618;
     --hb-success: #4ADE93;
     --hb-success-soft: #123322;
+    --hb-warning: #F5A524;
+    --hb-warning-soft: #332608;
     --hb-editing: #6E8DFF;
     --hb-editing-soft: #8AA1FF;
 }

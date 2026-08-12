@@ -173,12 +173,19 @@
 </script>
 @endonce
 
+@props(['documentType' => 'post'])
 @php
     $navItems = [
         ['icon' => 'cube-fill', 'label' => __('heisenberg::editor.sidebar.nav_components'), 'panel' => 'cb', 'tab' => 0, 'active' => true],
         ['icon' => 'grid-four-fill', 'label' => __('heisenberg::editor.sidebar.nav_blocks'), 'panel' => 'cb', 'tab' => 1],
-        ['icon' => 'globe-fill', 'label' => __('heisenberg::editor.sidebar.nav_seo'), 'panel' => 'seo', 'tab' => 0],
-        ['icon' => 'share-network-fill', 'label' => __('heisenberg::editor.sidebar.nav_socials'), 'panel' => 'seo', 'tab' => 1],
+        // The SEO/Social panel is meaningless for an email document (docs/email-system.md §3,
+        // §7-E3) — its nav entries are dropped here, server-side, rather than rendered and
+        // hidden: editor/index.blade.php doesn't mount the panel component itself either, so a
+        // rendered nav entry would point at nothing.
+        ...($documentType !== 'email' ? [
+            ['icon' => 'globe-fill', 'label' => __('heisenberg::editor.sidebar.nav_seo'), 'panel' => 'seo', 'tab' => 0],
+            ['icon' => 'share-network-fill', 'label' => __('heisenberg::editor.sidebar.nav_socials'), 'panel' => 'seo', 'tab' => 1],
+        ] : []),
         ['icon' => 'palette-fill', 'label' => __('heisenberg::editor.sidebar.nav_style'), 'panel' => 'style', 'tab' => 0],
         ['icon' => 'swatches-fill', 'label' => __('heisenberg::editor.sidebar.nav_themes'), 'panel' => 'style', 'tab' => 1],
         ['icon' => 'magic-wand-fill', 'label' => __('heisenberg::editor.sidebar.nav_ai'), 'panel' => 'ai', 'tab' => 0],

@@ -25,7 +25,7 @@
         background: var(--hb-bg, #fff);
         border: 1px solid var(--hb-border, #E4E4E4);
         border-radius: var(--hb-radius-lg, 8px);
-        box-shadow: 0 24px 64px rgba(0, 0, 0, .16);
+        box-shadow: 3px 4px 4px rgba(0, 0, 0, .1);
         font-family: var(--hb-font-sans, Rubik, sans-serif);
     }
     .hb-mediadialog:focus { outline: none; }

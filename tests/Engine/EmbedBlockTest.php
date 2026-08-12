@@ -266,4 +266,13 @@ class EmbedBlockTest extends TestCase
         $this->assertStringContainsString('is-featured', $html);
         $this->assertStringContainsString('hb-hide-xs', $html);
     }
+
+    public function test_the_id_attribute_is_omitted_when_anchor_is_blank(): void
+    {
+        // render.template's `id` is `{ "value": "{{attributes.anchor}}", "omitWhenEmpty": true }`
+        // — an unset anchor must not leave a stray id="" on the rendered root.
+        $html = $this->renderEmbed(['url' => 'https://youtu.be/' . self::VIDEO_ID]);
+
+        $this->assertStringNotContainsString(' id=', $html);
+    }
 }

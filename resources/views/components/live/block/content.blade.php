@@ -34,13 +34,23 @@
 
          Unlike the settings section above, this is NOT built from the contract — the three keys
          are fixed, because `render.template` references them by name. A contract that renames
-         them loses this section rather than getting a renamed one. --}}
+         them loses this section rather than getting a renamed one.
+
+         Labelled "Anchor" rather than "Id": the field IS the HTML id attribute, but "Id" read as
+         internal/technical and the field went undiscovered — authors reach for it through the
+         TOC dialog's "jump to" language, not through "id". The hint line ties the two together.
+         data-hb-anchor-warning is presentation-only (see inspector.blade.php's anchor-specific
+         input/focusout listeners, just below handleControlEvent): a duplicate-id nudge and a
+         gentle blur-time normalize to the server's `/^[A-Za-z][\w-]*$/` anchor shape, neither of
+         which touch the model write path above. --}}
     <x-ui.panel-section title="General" collapsible>
         <div class="hb-irow hb-irow--top">
             <div class="hb-icol">
-                <span class="hb-ilbl">Id</span>
-                <x-ui.input value="" placeholder="unique-id"
+                <span class="hb-ilbl">Anchor</span>
+                <x-ui.input value="" placeholder="section-anchor"
                     data-hb-control="anchor" data-hb-control-kind="attributes" data-hb-control-type="text" />
+                <span class="hb-ihint">Links and the table of contents jump to this anchor.</span>
+                <span class="hb-ihint hb-ihint--warning" data-hb-anchor-warning hidden>Another block already uses this anchor.</span>
             </div>
             <div class="hb-icol">
                 <span class="hb-ilbl">Title</span>
@@ -99,5 +109,18 @@
         transition: border-color .12s ease;
     }
     .hb-classchips__input:focus { outline: none; border-color: var(--hb-border-focus, #000); }
+    .hb-ihint {
+        display: block;
+        font-family: var(--hb-font-sans, Rubik, sans-serif);
+        font-size: 10px;
+        line-height: 1.4;
+        color: var(--hb-text-muted, #9A9A9A);
+    }
+    .hb-ihint--warning { color: var(--hb-danger, #D4191A); }
+    /* Author rules always beat the UA [hidden] default (different cascade origin, so
+       specificity can't settle it) — the explicit override here is the same fix this file's
+       own .hb-chips:empty neighbours rely on elsewhere in the panel. */
+    .hb-ihint[hidden] { display: none; }
+    [data-hb-control="anchor"].hb-input--warning { border-color: var(--hb-danger, #D4191A); }
 </style>
 @endonce

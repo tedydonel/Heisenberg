@@ -266,7 +266,14 @@ class PostPersistenceTest extends TestCase
         $this->assertSame('pending_review', Post::find($postId)->status);
     }
 
-    /** An edge that isn't in the transitions graph at all (draft -> published) is a 422, independent of tier. */
+    /**
+     * An edge that isn't in the transitions graph at all is a 422, independent of tier.
+     * `draft -> published` used to be this test's example, but the 2026-08-12 lifecycle
+     * fix (owner bug: an admin had no way to publish a post) deliberately ADDED that edge
+     * — see config/heisenberg.php's `lifecycle.transitions` comment — so this now exercises
+     * an edge that was deliberately left OUT instead: `pending_review -> archived`
+     * (a reviewer rejects back to `draft`, they don't archive outright).
+     */
     public function test_an_illegal_transition_edge_is_rejected_with_422_even_for_an_admin(): void
     {
         $admin = new FakeActor(1, 'admin');
@@ -278,15 +285,378 @@ class PostPersistenceTest extends TestCase
         ));
         $store->assertCreated();
         $postId = $store->json('post.id');
+        $version = $this->promoteToPendingReview($admin, $postId, $store->json('post.content_version'));
+
+        $response = $this->putJson("/editor/posts/{$postId}", $this->envelope(
+            [$this->block('heisenberg/paragraph', ['content' => 'x'])],
+            ['title_en' => 'Skip Ahead', 'content_version' => $version, 'status' => 'archived'],
+        ));
+
+        $response->assertStatus(422);
+        $this->assertSame('pending_review', Post::find($postId)->status);
+    }
+
+    // ── scheduling (the Summary status control's `scheduled` edge) ─────────
+
+    /** Advances a fresh draft to `pending_review`, the only legal edge into `scheduled`. */
+    private function promoteToPendingReview(FakeActor $actor, int|string $postId, int $version): int
+    {
+        $response = $this->putJson("/editor/posts/{$postId}", $this->envelope(
+            [$this->block('heisenberg/paragraph', ['content' => 'x'])],
+            ['title_en' => 'Schedulable', 'content_version' => $version, 'status' => 'pending_review'],
+        ));
+        $response->assertOk();
+
+        return (int) $response->json('post.content_version');
+    }
+
+    public function test_a_transition_to_scheduled_stores_the_provided_future_datetime(): void
+    {
+        $admin = new FakeActor(1, 'admin');
+        $this->actingAs($admin);
+
+        $store = $this->postJson('/editor/posts', $this->envelope(
+            [$this->block('heisenberg/paragraph', ['content' => 'x'])],
+            ['title_en' => 'Schedulable'],
+        ));
+        $store->assertCreated();
+        $postId = $store->json('post.id');
+        $version = $this->promoteToPendingReview($admin, $postId, $store->json('post.content_version'));
+
+        $scheduledAt = now()->addDays(3)->second(0)->toDateTimeString();
+
+        $response = $this->putJson("/editor/posts/{$postId}", $this->envelope(
+            [$this->block('heisenberg/paragraph', ['content' => 'x'])],
+            ['title_en' => 'Schedulable', 'content_version' => $version, 'status' => 'scheduled', 'scheduled_at' => $scheduledAt],
+        ));
+
+        $response->assertOk();
+        $this->assertSame('scheduled', $response->json('post.status'));
+        $this->assertNotNull($response->json('post.scheduled_at'));
+
+        $fresh = Post::find($postId);
+        $this->assertSame('scheduled', $fresh->status);
+        $this->assertSame($scheduledAt, $fresh->scheduled_at->toDateTimeString());
+    }
+
+    public function test_scheduling_with_a_past_datetime_is_rejected_with_422_and_leaves_status_untouched(): void
+    {
+        $admin = new FakeActor(1, 'admin');
+        $this->actingAs($admin);
+
+        $store = $this->postJson('/editor/posts', $this->envelope(
+            [$this->block('heisenberg/paragraph', ['content' => 'x'])],
+            ['title_en' => 'Not Schedulable'],
+        ));
+        $store->assertCreated();
+        $postId = $store->json('post.id');
+        $version = $this->promoteToPendingReview($admin, $postId, $store->json('post.content_version'));
+
+        $response = $this->putJson("/editor/posts/{$postId}", $this->envelope(
+            [$this->block('heisenberg/paragraph', ['content' => 'x'])],
+            [
+                'title_en' => 'Not Schedulable', 'content_version' => $version,
+                'status' => 'scheduled', 'scheduled_at' => now()->subDay()->toDateTimeString(),
+            ],
+        ));
+
+        $response->assertStatus(422);
+        $this->assertArrayHasKey('scheduled_at', $response->json('errors') ?? []);
+
+        $fresh = Post::find($postId);
+        $this->assertSame('pending_review', $fresh->status, 'a rejected transition must not move the status');
+        $this->assertNull($fresh->scheduled_at);
+        $this->assertSame($version, $fresh->content_version, 'a rejected transition must not bump the version or write blocks');
+    }
+
+    /**
+     * `scheduled -> scheduled` isn't an edge in the transitions graph (see config's
+     * `lifecycle.transitions`), but PostController deliberately still treats a resent
+     * `status: scheduled` on an already-scheduled post as a reschedule — the Summary's
+     * datetime field stays editable after the post is already scheduled, and a changed
+     * date must actually persist rather than silently no-op.
+     */
+    public function test_rescheduling_an_already_scheduled_post_updates_the_datetime(): void
+    {
+        $admin = new FakeActor(1, 'admin');
+        $this->actingAs($admin);
+
+        $store = $this->postJson('/editor/posts', $this->envelope(
+            [$this->block('heisenberg/paragraph', ['content' => 'x'])],
+            ['title_en' => 'Reschedulable'],
+        ));
+        $store->assertCreated();
+        $postId = $store->json('post.id');
+        $version = $this->promoteToPendingReview($admin, $postId, $store->json('post.content_version'));
+
+        $firstDate = now()->addDays(2)->second(0)->toDateTimeString();
+        $scheduled = $this->putJson("/editor/posts/{$postId}", $this->envelope(
+            [$this->block('heisenberg/paragraph', ['content' => 'x'])],
+            ['title_en' => 'Reschedulable', 'content_version' => $version, 'status' => 'scheduled', 'scheduled_at' => $firstDate],
+        ));
+        $scheduled->assertOk();
+        $version = $scheduled->json('post.content_version');
+
+        $secondDate = now()->addDays(5)->second(0)->toDateTimeString();
+        $rescheduled = $this->putJson("/editor/posts/{$postId}", $this->envelope(
+            [$this->block('heisenberg/paragraph', ['content' => 'x'])],
+            ['title_en' => 'Reschedulable', 'content_version' => $version, 'status' => 'scheduled', 'scheduled_at' => $secondDate],
+        ));
+
+        $rescheduled->assertOk();
+        $this->assertSame('scheduled', $rescheduled->json('post.status'));
+
+        $fresh = Post::find($postId);
+        $this->assertSame('scheduled', $fresh->status);
+        $this->assertSame($secondDate, $fresh->scheduled_at->toDateTimeString());
+    }
+
+    // ── editable slug (Summary's URL row, 2026-08-11) ───────────────────────
+
+    public function test_a_slug_change_persists(): void
+    {
+        $store = $this->postJson('/editor/posts', $this->envelope(
+            [$this->block('heisenberg/paragraph', ['content' => 'x'])],
+            ['title_en' => 'Slug Test'],
+        ));
+        $store->assertCreated();
+        $postId = $store->json('post.id');
         $version = $store->json('post.content_version');
 
         $response = $this->putJson("/editor/posts/{$postId}", $this->envelope(
             [$this->block('heisenberg/paragraph', ['content' => 'x'])],
-            ['title_en' => 'Skip Ahead', 'content_version' => $version, 'status' => 'published'],
+            ['title_en' => 'Slug Test', 'content_version' => $version, 'slug' => 'my-custom-slug'],
+        ));
+
+        $response->assertOk();
+        $this->assertSame('my-custom-slug', $response->json('post.slug'));
+        $this->assertSame('my-custom-slug', Post::find($postId)->slug);
+    }
+
+    public function test_a_duplicate_slug_is_rejected_with_422(): void
+    {
+        $first = $this->postJson('/editor/posts', $this->envelope(
+            [$this->block('heisenberg/paragraph', ['content' => 'x'])],
+            ['title_en' => 'First Post'],
+        ));
+        $first->assertCreated();
+        $firstSlug = $first->json('post.slug');
+
+        $second = $this->postJson('/editor/posts', $this->envelope(
+            [$this->block('heisenberg/paragraph', ['content' => 'x'])],
+            ['title_en' => 'Second Post'],
+        ));
+        $second->assertCreated();
+        $secondId = $second->json('post.id');
+        $secondVersion = $second->json('post.content_version');
+
+        $response = $this->putJson("/editor/posts/{$secondId}", $this->envelope(
+            [$this->block('heisenberg/paragraph', ['content' => 'x'])],
+            ['title_en' => 'Second Post', 'content_version' => $secondVersion, 'slug' => $firstSlug],
         ));
 
         $response->assertStatus(422);
-        $this->assertSame('draft', Post::find($postId)->status);
+        $this->assertSame('That slug is already in use.', $response->json('message'));
+        $this->assertNotSame($firstSlug, Post::find($secondId)->slug);
+    }
+
+    public function test_an_empty_slug_regenerates_from_the_title(): void
+    {
+        $store = $this->postJson('/editor/posts', $this->envelope(
+            [$this->block('heisenberg/paragraph', ['content' => 'x'])],
+            ['title_en' => 'Original Title'],
+        ));
+        $store->assertCreated();
+        $postId = $store->json('post.id');
+        $version = $store->json('post.content_version');
+
+        // Give it a custom slug first, so regeneration below is actually proven to discard it.
+        $custom = $this->putJson("/editor/posts/{$postId}", $this->envelope(
+            [$this->block('heisenberg/paragraph', ['content' => 'x'])],
+            ['title_en' => 'Original Title', 'content_version' => $version, 'slug' => 'a-custom-slug'],
+        ));
+        $custom->assertOk();
+        $version = $custom->json('post.content_version');
+
+        $response = $this->putJson("/editor/posts/{$postId}", $this->envelope(
+            [$this->block('heisenberg/paragraph', ['content' => 'x'])],
+            ['title_en' => 'Retitled Post', 'content_version' => $version, 'slug' => ''],
+        ));
+
+        $response->assertOk();
+        $this->assertSame('retitled-post', $response->json('post.slug'));
+    }
+
+    public function test_a_custom_slug_survives_a_later_title_only_edit(): void
+    {
+        $store = $this->postJson('/editor/posts', $this->envelope(
+            [$this->block('heisenberg/paragraph', ['content' => 'x'])],
+            ['title_en' => 'Sticky Slug Post'],
+        ));
+        $store->assertCreated();
+        $postId = $store->json('post.id');
+        $version = $store->json('post.content_version');
+
+        $custom = $this->putJson("/editor/posts/{$postId}", $this->envelope(
+            [$this->block('heisenberg/paragraph', ['content' => 'x'])],
+            ['title_en' => 'Sticky Slug Post', 'content_version' => $version, 'slug' => 'hand-picked-slug'],
+        ));
+        $custom->assertOk();
+        $this->assertSame('hand-picked-slug', $custom->json('post.slug'));
+        $version = $custom->json('post.content_version');
+
+        // Title-only edit — no `slug` key at all in this request.
+        $response = $this->putJson("/editor/posts/{$postId}", $this->envelope(
+            [$this->block('heisenberg/paragraph', ['content' => 'x'])],
+            ['title_en' => 'A Brand New Title', 'content_version' => $version],
+        ));
+
+        $response->assertOk();
+        $this->assertSame(
+            'hand-picked-slug',
+            $response->json('post.slug'),
+            'an explicitly-set slug must survive a later title-only edit',
+        );
+    }
+
+    // ── editable post date (Summary's Publish row, 2026-08-11) ─────────────
+
+    public function test_backdating_a_published_posts_date_persists(): void
+    {
+        $editor = new FakeActor(1, 'editor');
+        $this->actingAs($editor);
+
+        $store = $this->postJson('/editor/posts', $this->envelope(
+            [$this->block('heisenberg/paragraph', ['content' => 'x'])],
+            ['title_en' => 'Backdatable'],
+        ));
+        $store->assertCreated();
+        $postId = $store->json('post.id');
+        $version = $store->json('post.content_version');
+
+        $toReview = $this->putJson("/editor/posts/{$postId}", $this->envelope(
+            [$this->block('heisenberg/paragraph', ['content' => 'x'])],
+            ['title_en' => 'Backdatable', 'content_version' => $version, 'status' => 'pending_review'],
+        ));
+        $toReview->assertOk();
+        $version = $toReview->json('post.content_version');
+
+        $published = $this->putJson("/editor/posts/{$postId}", $this->envelope(
+            [$this->block('heisenberg/paragraph', ['content' => 'x'])],
+            ['title_en' => 'Backdatable', 'content_version' => $version, 'status' => 'published'],
+        ));
+        $published->assertOk();
+        $version = $published->json('post.content_version');
+
+        $backdate = now()->subYear()->second(0)->toDateTimeString();
+        $response = $this->putJson("/editor/posts/{$postId}", $this->envelope(
+            [$this->block('heisenberg/paragraph', ['content' => 'x'])],
+            ['title_en' => 'Backdatable', 'content_version' => $version, 'published_at' => $backdate],
+        ));
+
+        $response->assertOk();
+        $this->assertSame($backdate, Post::find($postId)->published_at->toDateTimeString());
+    }
+
+    /**
+     * The CRITICAL interaction: a same-save transition to `published` must never clobber a
+     * preset/backdated `published_at` that rode the SAME request — applyPublishedAt() sets the
+     * date before applyTransition() ever looks at it, so applyTransition()'s own "stamp now()
+     * only when null" publish logic finds it already non-null.
+     */
+    public function test_a_preset_date_on_a_draft_survives_the_publish_transition(): void
+    {
+        $editor = new FakeActor(1, 'editor');
+        $this->actingAs($editor);
+
+        $store = $this->postJson('/editor/posts', $this->envelope(
+            [$this->block('heisenberg/paragraph', ['content' => 'x'])],
+            ['title_en' => 'Presettable'],
+        ));
+        $store->assertCreated();
+        $postId = $store->json('post.id');
+        $version = $store->json('post.content_version');
+
+        $preset = now()->subMonth()->second(0)->toDateTimeString();
+        $withPreset = $this->putJson("/editor/posts/{$postId}", $this->envelope(
+            [$this->block('heisenberg/paragraph', ['content' => 'x'])],
+            ['title_en' => 'Presettable', 'content_version' => $version, 'published_at' => $preset],
+        ));
+        $withPreset->assertOk();
+        $this->assertSame($preset, Post::find($postId)->published_at->toDateTimeString());
+        $version = $withPreset->json('post.content_version');
+
+        $toReview = $this->putJson("/editor/posts/{$postId}", $this->envelope(
+            [$this->block('heisenberg/paragraph', ['content' => 'x'])],
+            ['title_en' => 'Presettable', 'content_version' => $version, 'status' => 'pending_review'],
+        ));
+        $toReview->assertOk();
+        $version = $toReview->json('post.content_version');
+
+        // Same save carries BOTH the transition AND the (unchanged) preset date — proving the
+        // preset wins regardless of ordering, not just when published_at is omitted outright.
+        $published = $this->putJson("/editor/posts/{$postId}", $this->envelope(
+            [$this->block('heisenberg/paragraph', ['content' => 'x'])],
+            ['title_en' => 'Presettable', 'content_version' => $version, 'status' => 'published', 'published_at' => $preset],
+        ));
+
+        $published->assertOk();
+        $this->assertSame('published', $published->json('post.status'));
+        $this->assertSame(
+            $preset,
+            Post::find($postId)->published_at->toDateTimeString(),
+            'publishing must preserve a preset date, not stamp now()',
+        );
+    }
+
+    public function test_an_author_tier_actor_cannot_set_published_at(): void
+    {
+        $author = new FakeActor(42, 'author');
+        $this->actingAs($author);
+
+        $store = $this->postJson('/editor/posts', $this->envelope(
+            [$this->block('heisenberg/paragraph', ['content' => 'x'])],
+            ['title_en' => 'Guarded Date'],
+        ));
+        $store->assertCreated();
+        $postId = $store->json('post.id');
+        $version = $store->json('post.content_version');
+
+        $response = $this->putJson("/editor/posts/{$postId}", $this->envelope(
+            [$this->block('heisenberg/paragraph', ['content' => 'x'])],
+            ['title_en' => 'Guarded Date', 'content_version' => $version, 'published_at' => now()->toDateTimeString()],
+        ));
+
+        $response->assertStatus(403);
+        $this->assertNull(Post::find($postId)->published_at);
+    }
+
+    public function test_autosave_ignores_slug_and_published_at(): void
+    {
+        $editor = new FakeActor(1, 'editor');
+        $this->actingAs($editor);
+
+        $store = $this->postJson('/editor/posts', $this->envelope(
+            [$this->block('heisenberg/paragraph', ['content' => 'x'])],
+            ['title_en' => 'Autosave Guard'],
+        ));
+        $store->assertCreated();
+        $postId = $store->json('post.id');
+        $version = $store->json('post.content_version');
+        $originalSlug = $store->json('post.slug');
+
+        $autosave = $this->putJson("/editor/posts/{$postId}", $this->envelope(
+            [$this->block('heisenberg/paragraph', ['content' => 'x'])],
+            [
+                'title_en' => 'Autosave Guard', 'content_version' => $version, 'autosave' => true,
+                'slug' => 'sneaky-autosave-slug', 'published_at' => now()->toDateTimeString(),
+            ],
+        ));
+
+        $autosave->assertOk();
+        $fresh = Post::find($postId);
+        $this->assertSame($originalSlug, $fresh->slug, 'autosave must never write slug');
+        $this->assertNull($fresh->published_at, 'autosave must never write published_at');
     }
 }
 

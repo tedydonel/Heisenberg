@@ -34,7 +34,7 @@
         width: 280px; max-width: calc(100vw - 16px);
         display: flex; flex-direction: column;
         border-radius: var(--hb-radius-md, 5px);
-        box-shadow: var(--hb-shadow-lg, 0 8px 28px rgba(0, 0, 0, .14));
+        box-shadow: var(--hb-shadow-lg, 3px 4px 4px rgba(0, 0, 0, .1));
         overflow: hidden;
     }
     .hb-qi[hidden] { display: none; }

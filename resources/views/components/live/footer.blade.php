@@ -73,6 +73,15 @@
     .hb-footer__pill--status[data-state="saving"] .hb-footer__icon[data-hb-status-icon="saving"] { animation: hb-status-spin 1s linear infinite; }
     @keyframes hb-status-spin { to { transform: rotate(360deg); } }
 
+    /* Email size chip (docs/email-system.md §7-E3) — muted "—" before the first save (no
+       postId yet, nothing rendered to measure), then "~123 KB" once GET .../email-size answers.
+       Amber past the 100KB warn threshold (Gmail clipping), same transparent-background/tinted-
+       text treatment the status pill above uses for its own danger states. */
+    .hb-footer__pill--email-size { color: var(--hb-text-secondary, #5A5A5A); }
+    .hb-footer__pill--email-size .hb-footer__icon { color: var(--hb-text-muted, #9A9A9A); }
+    .hb-footer__pill--email-size[data-warn="true"] { color: var(--hb-warning, #B45309); }
+    .hb-footer__pill--email-size[data-warn="true"] .hb-footer__icon { color: var(--hb-warning, #B45309); }
+
     /* Flat right-zone buttons (language switcher + code editor) — plain text labels, no pill
        background, no border. The hidden locale POST forms never paint. */
     .hb-foot-chip {
@@ -96,7 +105,7 @@
         min-width: 140px; padding: 4px;
         background: var(--hb-bg, #fff); border: 1px solid var(--hb-border, #E4E4E4);
         border-radius: var(--hb-radius-md, 5px);
-        box-shadow: 0 -8px 28px rgba(0, 0, 0, .14);
+        box-shadow: 3px 4px 4px rgba(0, 0, 0, .1);
         display: flex; flex-direction: column; gap: 2px;
     }
     .hb-locale__menu[hidden] { display: none; }
@@ -167,6 +176,12 @@
 </script>
 @endonce
 
+@props([
+    // docs/email-system.md §7-E3 — the size chip only renders for an email document.
+    'documentType' => 'post',
+    'postId' => null,
+    'emailSizeUrlTemplate' => '',
+])
 @php
     // The locales we offer, in display order. Driven off `config('heisenberg.editor.locales')`
     // so a host can override the shipped `['en', 'fr']` by setting the config — adding a third
@@ -200,6 +215,22 @@
             </span>
             <span data-hb-save-status-text>{{ __('heisenberg::editor.common.saved') }}</span>
         </span>
+        {{-- Email size chip (docs/email-system.md §7-E3) — only for an email document; the
+             script below fetches emailSizeUrlTemplate after every hb:post-saved and, if a post
+             already exists at boot (an existing saved email reopened), immediately. Muted "—"
+             is the pre-first-save state — nothing has been rendered/measured yet. --}}
+        @if (($documentType ?? 'post') === 'email')
+        <span class="hb-footer__pill hb-footer__pill--email-size" data-hb-email-size
+            data-hb-post-id="{{ $postId ?? '' }}"
+            data-hb-email-size-url-template="{{ $emailSizeUrlTemplate }}"
+            data-hb-email-size-warning="{{ __('heisenberg::editor.footer.email_size_warning') }}"
+            role="status" aria-live="polite" aria-label="{{ __('heisenberg::editor.footer.aria_email_size') }}">
+            <span class="hb-footer__icon" aria-hidden="true">
+                @include('heisenberg::components.ui.icon', ['name' => 'envelope-simple', 'size' => 13])
+            </span>
+            <span data-hb-email-size-text>{{ __('heisenberg::editor.footer.email_size_unsaved') }}</span>
+        </span>
+        @endif
     </div>
     <div class="hb-footer__zone">
         {{-- Locale switcher + code editor — plain text buttons, no pill background, no border. --}}
@@ -323,6 +354,71 @@
             });
             window.addEventListener('online', () => { hbOnline = true; render(); });
             window.addEventListener('offline', () => { hbOnline = false; render(); });
+        }
+    })();
+</script>
+@endonce
+
+{{-- Email size chip (docs/email-system.md §7-E3) — fetches GET .../email-size (EmailPreviewController::size())
+     after every save (hb:post-saved, the same event inspector.blade.php's Summary rows already
+     listen for) and, for an existing saved email reopened in the editor, once at boot. Renders the
+     REAL sizeBytes EmailRenderer measured (html + every embedded attachment) — the same number a
+     host's mailer would actually send — never a client-side estimate. --}}
+@once
+<script>
+    (() => {
+        const KB = 1024;
+        const WARN_BYTES = 100 * KB;
+
+        const chip = () => document.querySelector('[data-hb-email-size]');
+
+        const render = (bytes) => {
+            const pill = chip();
+            if (!pill) return;
+            const text = pill.querySelector('[data-hb-email-size-text]');
+            if (bytes === null) {
+                if (text) text.textContent = pill.dataset.hbUnsavedLabel || '—';
+                delete pill.dataset.warn;
+                pill.title = '';
+                return;
+            }
+            const warn = bytes > WARN_BYTES;
+            if (text) text.textContent = '~' + Math.round(bytes / KB) + ' KB';
+            if (warn) { pill.dataset.warn = 'true'; pill.title = pill.dataset.hbEmailSizeWarning || ''; }
+            else { delete pill.dataset.warn; pill.title = ''; }
+        };
+
+        const fetchSize = (postId) => {
+            const pill = chip();
+            const template = pill ? pill.dataset.hbEmailSizeUrlTemplate : '';
+            if (!pill || !template || !postId) return;
+            window.fetch(template.replace('__ID__', postId), {
+                headers: { 'Accept': 'application/json', 'X-Requested-With': 'XMLHttpRequest' },
+                credentials: 'same-origin',
+            })
+                .then((r) => (r.ok ? r.json() : null))
+                .then((data) => { if (data && typeof data.sizeBytes === 'number') render(data.sizeBytes); })
+                .catch(() => { /* the chip just keeps its last known value */ });
+        };
+
+        const boot = () => {
+            const pill = chip();
+            if (!pill || pill.__hbEmailSize) return;
+            pill.__hbEmailSize = true;
+            pill.dataset.hbUnsavedLabel = pill.querySelector('[data-hb-email-size-text]')?.textContent || '—';
+            const postId = pill.dataset.hbPostId;
+            if (postId) fetchSize(postId);
+        };
+        if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', boot, { once: true });
+        else boot();
+        document.addEventListener('hb:refresh', boot);
+
+        if (!document.__hbEmailSizeWired) {
+            document.__hbEmailSizeWired = true;
+            document.addEventListener('hb:post-saved', (e) => {
+                const post = e.detail && e.detail.post;
+                if (post && post.id != null) fetchSize(post.id);
+            });
         }
     })();
 </script>

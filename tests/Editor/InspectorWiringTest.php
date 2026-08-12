@@ -152,6 +152,26 @@ class InspectorWiringTest extends TestCase
         );
     }
 
+    public function test_the_anchor_field_is_labelled_anchor_with_a_hint_and_a_duplicate_warning_slot(): void
+    {
+        // "Id" read as internal/technical and the field went undiscovered (it IS the HTML id,
+        // wired to render.template on every contract) — renamed to "Anchor" with a hint tying it
+        // to the behaviour authors actually look for: links and the table of contents.
+        $html = $this->editorHtml();
+
+        $anchorSection = substr($html, (int) strpos($html, 'hb-section__title">General<'));
+        $anchorSection = substr($anchorSection, 0, (int) strpos($anchorSection, 'hb-classchips'));
+
+        $this->assertStringNotContainsString('>Id<', $anchorSection, 'the field must no longer read "Id"');
+        $this->assertStringContainsString('>Anchor<', $anchorSection);
+        $this->assertStringContainsString('placeholder="section-anchor"', $anchorSection);
+        $this->assertStringContainsString('jump to this anchor', $anchorSection);
+
+        // Presentation-only duplicate-id slot: toggled by inspector.blade.php's anchor-specific
+        // input listener (anchorIsDuplicate), never a second model write path.
+        $this->assertStringContainsString('data-hb-anchor-warning', $anchorSection);
+    }
+
     public function test_the_three_general_attributes_exist_on_both_contracts(): void
     {
         foreach (['heisenberg/heading', 'heisenberg/paragraph'] as $name) {
@@ -277,5 +297,229 @@ class InspectorWiringTest extends TestCase
             'if (el.__hbEditsBlock !== undefined && el.__hbEditsBlock !== id) return;',
             $html,
         );
+    }
+
+    // ── Post → Summary status popup (2026-08-11 — plain text row + anchored popup) ──
+    // The Status row is a plain-text value that opens a popup of legal transitions — see
+    // EditorController::postMeta()/statusLabels() and topbar.blade.php's
+    // hb:post-status-change wiring. These pins cover the seam most at risk of silently
+    // regressing: the server-seeded payload the client needs to offer legal edges and
+    // rebuild them after every save, without ever hardcoding
+    // config('heisenberg.lifecycle.transitions') client-side.
+
+    public function test_summary_status_control_ships_the_seeded_transitions_payload(): void
+    {
+        $html = $this->editorHtml();
+
+        $this->assertStringContainsString('data-hb-post-popup-trigger="status"', $html);
+        // A blank /editor document is a draft that has never been saved.
+        $this->assertStringContainsString('data-hb-current-status="draft"', $html);
+
+        $transitions = (array) config('heisenberg.lifecycle.transitions', []);
+        $this->assertNotEmpty($transitions, 'nothing to pin against — config(heisenberg.lifecycle.transitions) is empty');
+        $this->assertStringContainsString(
+            'data-hb-transitions="' . e(json_encode($transitions)) . '"',
+            $html,
+            'the FULL transitions map must ship, never a hardcoded client-side copy',
+        );
+
+        // draft's own legal targets only — not the whole graph. Since 2026-08-12 that set
+        // includes published/scheduled (an editor publishes straight from a draft; the tier
+        // gate in lifecycle.role_permissions, not the graph, is what stops an author).
+        foreach (array_merge(['draft'], $transitions['draft'] ?? []) as $status) {
+            $this->assertStringContainsString('data-hb-post-status-option="' . $status . '"', $html);
+        }
+        $this->assertContains('published', $transitions['draft'] ?? [], 'an editor must be able to publish a draft directly');
+        // A target that is NOT reachable from draft still must not be offered — this is the
+        // assertion that keeps the options list tied to the graph rather than listing everything.
+        $this->assertStringNotContainsString(
+            'data-hb-post-status-option="unpublished"',
+            $html,
+            'only config\'s own draft targets may be offered',
+        );
+
+        // The schedule row + its own date-picker popup ship (hidden — draft isn't
+        // `scheduled`), ready for the client to reveal once `scheduled` is picked or
+        // confirmed by the server.
+        $this->assertStringContainsString('data-hb-post-schedule-row', $html);
+        $this->assertStringContainsString('data-hb-post-schedule-input', $html);
+    }
+
+    public function test_summary_status_control_is_disabled_with_a_save_first_hint_before_the_first_save(): void
+    {
+        $html = $this->editorHtml();
+
+        $statusTag = substr($html, (int) strpos($html, 'data-hb-post-status '));
+        $statusTag = substr($statusTag, 0, (int) strpos($statusTag, '>') + 1);
+        $this->assertNotSame('', $statusTag, 'the status trigger never rendered');
+
+        $this->assertStringContainsString('disabled', $statusTag);
+        $this->assertStringContainsString(
+            'title="' . e(__('heisenberg::editor.inspector.summary_status_save_first')) . '"',
+            $statusTag,
+        );
+
+        // hb:post-id (fired on the FIRST save — topbar.blade.php) is what lifts the disabled
+        // state; without this the control would stay locked forever on a saved post.
+        $this->assertStringContainsString("document.addEventListener('hb:post-id', () => {", $html);
+    }
+
+    // ── Post → Summary Blocks row removed / slug + publish-date rows added (2026-08-11) ────
+
+    public function test_the_blocks_row_no_longer_renders_in_the_summary(): void
+    {
+        $html = $this->editorHtml();
+
+        $this->assertStringNotContainsString('data-hb-post-meta-value="blocks"', $html);
+        $this->assertStringNotContainsString("value('blocks')", $html, 'the row\'s own live-count script must be gone too');
+    }
+
+    public function test_the_url_rows_slug_input_is_present_and_seeded(): void
+    {
+        $html = $this->editorHtml();
+
+        $this->assertStringContainsString('data-hb-post-slug-input', $html);
+        $this->assertStringContainsString('data-hb-current-slug=""', $html, 'a blank /editor document has no slug yet');
+        $this->assertStringContainsString('data-hb-post-popup-trigger="slug"', $html);
+
+        // 2026-08-11 (docs/seo-system.md §3) — the SEO/Social panel's own URL Slug field
+        // shares this SAME marker (a second mirrored instance, not a second write path — see
+        // panel-seo-social.blade.php's own docblock). This pins the SUMMARY popup's own
+        // wrapper shape specifically, then the real <input> nested inside it.
+        $marker = 'class="hb-pop hb-post-pop hb-post-slugpop" data-hb-post-slug-input';
+        $this->assertStringContainsString($marker, $html);
+        $slugPopup = substr($html, (int) strpos($html, $marker));
+        $slugInputTag = substr($slugPopup, (int) strpos($slugPopup, '<input'));
+        $slugInputTag = substr($slugInputTag, 0, (int) strpos($slugInputTag, '>'));
+        $this->assertStringContainsString('hb-post-slugpop__input', $slugInputTag);
+        $this->assertStringContainsString('disabled', $slugInputTag);
+    }
+
+    public function test_the_publish_rows_date_input_is_present_and_hidden_only_while_scheduled(): void
+    {
+        $html = $this->editorHtml();
+
+        $this->assertStringContainsString('data-hb-post-published-input', $html);
+        $this->assertStringContainsString('data-hb-post-publish-row', $html);
+        $this->assertStringContainsString('data-hb-post-popup-trigger="publish"', $html);
+
+        // A blank /editor document is a draft (never `scheduled`), so the publish-date row must
+        // render VISIBLE, not hidden — only the schedule row (draft's own default) is hidden.
+        $publishRow = substr($html, (int) strpos($html, 'data-hb-post-publish-row'));
+        $publishRow = substr($publishRow, 0, (int) strpos($publishRow, '>'));
+        $this->assertStringNotContainsString('hidden', $publishRow);
+    }
+
+    // ── Post → Summary rows are plain text + anchored popups (2026-08-11) ────────────
+
+    public function test_summary_rows_render_as_plain_text_with_popup_triggers(): void
+    {
+        $html = $this->editorHtml();
+
+        foreach (['status', 'slug', 'publish', 'schedule'] as $name) {
+            $this->assertStringContainsString('data-hb-post-popup-trigger="' . $name . '"', $html);
+            $this->assertStringContainsString('data-hb-post-popup="' . $name . '"', $html);
+        }
+
+        // A never-saved document has no publish date yet — the row falls back to the plain-
+        // text design's own "Immediately" empty state.
+        $this->assertStringContainsString(__('heisenberg::editor.inspector.summary_immediately'), $html);
+    }
+
+    public function test_the_date_picker_component_renders_its_grid_time_and_footer_hooks(): void
+    {
+        $html = $this->editorHtml();
+
+        foreach ([
+            'data-hb-datepicker', 'data-hb-dtp-value', 'data-hb-dtp-label', 'data-hb-dtp-grid',
+            'data-hb-dtp-hour', 'data-hb-dtp-minute', 'data-hb-dtp-today', 'data-hb-dtp-clear',
+            'data-hb-dtp-nav="prev-year"', 'data-hb-dtp-nav="prev-month"',
+            'data-hb-dtp-nav="next-month"', 'data-hb-dtp-nav="next-year"',
+        ] as $hook) {
+            $this->assertStringContainsString($hook, $html, "date-picker is missing its {$hook} hook");
+        }
+
+        // Two independent instances (Publish date + Schedule), each with its own hidden value.
+        $this->assertSame(
+            2,
+            substr_count($html, 'data-hb-dtp-value value="'),
+            'expected two date-picker instances (publish + schedule)',
+        );
+    }
+
+    // ── Post → Featured image placeholder/preview are mutually exclusive (2026-08-12) ──
+    // The empty-state trigger only ever hid itself client-side, on a pick/replace/remove — the
+    // initial server render never checked postFeaturedImage, so a post that already had one
+    // rendered BOTH the "Set featured image" placeholder and the real preview card stacked on
+    // top of each other. See post-title-summary.blade.php's data-hb-featured-trigger button.
+
+    public function test_a_post_with_a_featured_image_renders_the_preview_card_and_hides_the_placeholder(): void
+    {
+        $this->app['env'] = 'local';
+        $this->withoutMiddleware(\Illuminate\Foundation\Http\Middleware\ValidateCsrfToken::class);
+
+        $post = \Heisenberg\Models\Post::create(['title_en' => 'X', 'status' => 'draft']);
+        $file = \Heisenberg\Models\PublicFile::create([
+            'type' => 'jpg',
+            'disk' => 'uploads',
+            'stored_path' => 'media/2026/08/featured-' . uniqid('', true) . '.jpg',
+            'original_name' => 'featured.jpg',
+            'stored_name' => 'featured.jpg',
+            'mime_type' => 'image/jpeg',
+            'size_bytes' => 1024,
+        ]);
+        $post->featured_image_id = $file->id;
+        $post->save();
+
+        $html = $this->get("/editor/{$post->id}")->getContent();
+
+        $triggerTag = substr($html, (int) strpos($html, 'data-hb-featured-trigger'));
+        $triggerTag = substr($triggerTag, 0, (int) strpos($triggerTag, '>') + 1);
+        $this->assertNotSame('', $triggerTag, 'the featured-image trigger never rendered');
+        $this->assertStringContainsString('hidden', $triggerTag, 'a post with a featured image must not also render the empty-state placeholder');
+
+        $previewTag = substr($html, (int) strpos($html, 'data-hb-featured-preview'));
+        $previewTag = substr($previewTag, 0, (int) strpos($previewTag, '>') + 1);
+        $this->assertNotSame('', $previewTag, 'the featured-image preview never rendered');
+        $this->assertStringNotContainsString('hidden', $previewTag, 'a post with a featured image must show the preview card');
+
+        $this->assertStringContainsString('src="' . $file->url . '"', $html);
+    }
+
+    public function test_a_post_without_a_featured_image_renders_the_placeholder_and_hides_the_preview_card(): void
+    {
+        $this->app['env'] = 'local';
+        $this->withoutMiddleware(\Illuminate\Foundation\Http\Middleware\ValidateCsrfToken::class);
+
+        $post = \Heisenberg\Models\Post::create(['title_en' => 'X', 'status' => 'draft']);
+
+        $html = $this->get("/editor/{$post->id}")->getContent();
+
+        $triggerTag = substr($html, (int) strpos($html, 'data-hb-featured-trigger'));
+        $triggerTag = substr($triggerTag, 0, (int) strpos($triggerTag, '>') + 1);
+        $this->assertNotSame('', $triggerTag, 'the featured-image trigger never rendered');
+        $this->assertStringNotContainsString('hidden', $triggerTag, 'a post with no featured image must show the empty-state placeholder');
+
+        $previewTag = substr($html, (int) strpos($html, 'data-hb-featured-preview'));
+        $previewTag = substr($previewTag, 0, (int) strpos($previewTag, '>') + 1);
+        $this->assertNotSame('', $previewTag, 'the featured-image preview never rendered');
+        $this->assertStringContainsString('hidden', $previewTag, 'a post with no featured image must not also render the preview card');
+    }
+
+    // ── Post → Summary value styling (2026-08-12) ────────────────────────────────
+    // Smaller font (owner-reported: the Publish date truncated mid-string), no underline on
+    // hover, and hover recolors to the SAME --hb-editing token every other interactive/active
+    // surface in the editor already uses (block selection outline, toolbar chrome, empty-state
+    // hover borders) — never a new hardcoded hex.
+
+    public function test_summary_value_buttons_use_the_editing_token_on_hover_with_no_underline(): void
+    {
+        $html = $this->editorHtml();
+
+        $this->assertStringContainsString(
+            ".hb-post-meta__value--btn:not(:disabled):hover { color: var(--hb-editing, #3D68F5); }",
+            $html,
+        );
+        $this->assertStringNotContainsString('.hb-post-meta__value--btn:hover { text-decoration: underline; }', $html);
     }
 }
