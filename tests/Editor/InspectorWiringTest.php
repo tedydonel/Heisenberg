@@ -531,8 +531,8 @@ class InspectorWiringTest extends TestCase
         // `font` shorthand with `inherit`: it comes after the base class at equal specificity, so
         // it silently resets font-size back to the panel's inherited size and every edit to the
         // base rule becomes a no-op (the bug this pins).
-        $this->assertMatchesRegularExpression('/\.hb-post-meta__value \{[^}]*font-size: 9px;/', $html);
-        $this->assertMatchesRegularExpression('/\.hb-post-meta__value--btn \{[^}]*font-size: 9px;/s', $html);
+        $this->assertMatchesRegularExpression('/\.hb-post-meta__value \{[^}]*font-size: 11px;/', $html);
+        $this->assertMatchesRegularExpression('/\.hb-post-meta__value--btn \{[^}]*font-size: 11px;/s', $html);
         $this->assertDoesNotMatchRegularExpression('/\.hb-post-meta__value--btn \{[^}]*font: inherit;/s', $html);
     }
 }
