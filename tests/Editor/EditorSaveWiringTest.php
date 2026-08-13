@@ -138,4 +138,90 @@ class EditorSaveWiringTest extends TestCase
     {
         $this->get('/editor/999999')->assertNotFound();
     }
+
+    // ── Summary Status row shows a picked-but-unsaved status as PENDING, not as
+    //    already-applied (owner-reported "picked Published, stayed draft", 2026-08-12).
+    //    A status pick only rides the NEXT EXPLICIT Save (topbar.blade.php's
+    //    hbPendingStatus); autosave never carries it and echoes the post's unchanged
+    //    status on every successful tick. Before this fix, post-meta-live-script.blade.php's
+    //    hb:post-saved handler unconditionally re-synced the row from that echo, visibly
+    //    reverting a just-picked "Published" back to "Draft" the moment an unrelated
+    //    autosave completed — even though the pick was still queued internally and would
+    //    have applied on the next explicit Save. These pin the fix's wiring in place. ────
+
+    public function test_status_trigger_ships_the_pending_hint_and_pending_data_attribute_hook(): void
+    {
+        $post = $this->createPost();
+        $html = $this->get('/editor/' . $post['post']['id'])->assertOk()->getContent();
+
+        $this->assertStringContainsString(
+            'data-hb-status-pending-hint="' . __('heisenberg::editor.inspector.summary_status_pending_hint') . '"',
+            $html,
+        );
+        // The CSS hook the pill/label pending state paints through.
+        $this->assertStringContainsString('[data-hb-pending="true"]', $html);
+    }
+
+    public function test_status_saved_handler_does_not_clobber_a_still_pending_pick_on_an_unrelated_autosave(): void
+    {
+        $html = $this->get('/editor')->assertOk()->getContent();
+
+        // setStatusPending() is set true the moment a differing status is picked...
+        $this->assertStringContainsString("setStatusPending(trigger, true)", $html);
+        // ...and hb:post-saved's guard refuses to re-sync the row from a save that
+        // didn't actually carry the pending pick (autosave never does).
+        $this->assertStringContainsString("trigger.dataset.hbPending === 'true'", $html);
+        $this->assertStringContainsString("if (!stillPendingElsewhere) applyConfirmedStatus(", $html);
+    }
+
+    // ── Slug and Publish-date rows have the SAME latent bug Status just had fixed
+    //    (2026-08-12 follow-up): both are also "queued for the next explicit Save only"
+    //    (applySlug()/applyPublishedAt() are both autosave-skipped server-side), so the
+    //    same hb:post-saved echo could revert a typed-but-unsaved value mid-edit. These
+    //    pin the same generalised setRowPending() treatment for both rows. ────────────
+
+    public function test_slug_and_publish_triggers_ship_their_pending_hints_and_the_shared_pending_hook(): void
+    {
+        $post = $this->createPost();
+        $html = $this->get('/editor/' . $post['post']['id'])->assertOk()->getContent();
+
+        $this->assertStringContainsString(
+            'data-hb-slug-pending-hint="' . __('heisenberg::editor.inspector.summary_slug_pending_hint') . '"',
+            $html,
+        );
+        $this->assertStringContainsString(
+            'data-hb-publish-pending-hint="' . __('heisenberg::editor.inspector.summary_publish_pending_hint') . '"',
+            $html,
+        );
+    }
+
+    public function test_slug_saved_handler_does_not_clobber_a_still_pending_slug_on_an_unrelated_autosave(): void
+    {
+        $html = $this->get('/editor')->assertOk()->getContent();
+
+        // Queued the moment a typed slug differs from the committed one...
+        $this->assertStringContainsString(
+            "setRowPending(document.querySelector('[data-hb-post-popup-trigger=\"slug\"]'), typed !== committed, 'hbSlugPendingHint', typed)",
+            $html,
+        );
+        // ...and hb:post-saved's guard refuses to re-sync the row (and the mirrored
+        // SEO-panel field) from an autosave echo that never carried the slug edit.
+        $this->assertStringContainsString('slugStillPendingElsewhere', $html);
+        $this->assertStringContainsString('if (!slugStillPendingElsewhere) applyConfirmedSlug(post.slug);', $html);
+    }
+
+    public function test_published_at_saved_handler_does_not_clobber_a_still_pending_date_on_an_unrelated_autosave(): void
+    {
+        $html = $this->get('/editor')->assertOk()->getContent();
+
+        // Queued the moment a picked date differs from the committed one...
+        $this->assertStringContainsString(
+            "setRowPending(pubTrigger, value !== committed, 'hbPublishPendingHint', value)",
+            $html,
+        );
+        // ...and hb:post-saved's guard refuses to re-sync the row from an autosave echo
+        // that never carried the published_at edit.
+        $this->assertStringContainsString('pubStillPendingElsewhere', $html);
+        $this->assertStringContainsString('if (!pubStillPendingElsewhere) applyConfirmedPublishedAt(pubValue);', $html);
+    }
 }

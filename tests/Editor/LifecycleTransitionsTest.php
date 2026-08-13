@@ -128,6 +128,67 @@ class LifecycleTransitionsTest extends TestCase
         $this->assertSame('draft', Post::find($post['id'])->status);
     }
 
+    // ── H1 — what the client actually experiences when a status-bearing save
+    //    is rejected (owner-reported "picked Published, stayed draft" investigation,
+    //    2026-08-12). Proves the transition never silently half-applies: a stale
+    //    content_version or a stale registryHash both reject the WHOLE request,
+    //    including the queued status, with the post left exactly as it was. ──────
+
+    public function test_a_status_change_riding_a_stale_content_version_409s_and_does_not_publish(): void
+    {
+        $editor = new LifecycleFakeActor(9, 'editor');
+        $post = $this->createDraft($editor);
+
+        $response = $this->putJson("/editor/posts/{$post['id']}", $this->envelope(
+            [$this->block('heisenberg/paragraph', ['content' => 'x'])],
+            [
+                'title_en' => 'Lifecycle Test',
+                'content_version' => (int) $post['version'] + 41, // deliberately wrong
+                'status' => 'published',
+            ],
+        ));
+
+        $response->assertStatus(409);
+        $this->assertSame(
+            'This post was changed elsewhere — reload and try again.',
+            $response->json('message'),
+            'this is exactly the message hbEmitSaveState("conflict", …) surfaces via the footer pill',
+        );
+
+        $fresh = Post::find($post['id']);
+        $this->assertSame('draft', $fresh->status, 'a version conflict must reject the queued transition too, not just the content');
+        $this->assertNull($fresh->published_at);
+    }
+
+    public function test_a_status_change_riding_a_stale_registry_hash_422s_and_does_not_publish(): void
+    {
+        $editor = new LifecycleFakeActor(10, 'editor');
+        $post = $this->createDraft($editor);
+
+        $response = $this->putJson("/editor/posts/{$post['id']}", $this->envelope(
+            [$this->block('heisenberg/paragraph', ['content' => 'x'])],
+            [
+                'title_en' => 'Lifecycle Test',
+                'content_version' => $post['version'],
+                'status' => 'published',
+                'registryHash' => 'sha256:stale-does-not-match-the-live-registry',
+            ],
+        ));
+
+        $response->assertStatus(422);
+        $this->assertArrayHasKey('registryHash', $response->json('errors') ?? []);
+        // topbar.blade.php's error branch would join every errors[] message it finds —
+        // this is the exact string an owner would see on save-state 'error'.
+        $this->assertStringContainsString(
+            'registryHash does not match the live block registry',
+            implode(' ', $response->json('errors.registryHash') ?? []),
+        );
+
+        $fresh = Post::find($post['id']);
+        $this->assertSame('draft', $fresh->status, 'a registry-hash rejection must reject the queued transition too, not just the content');
+        $this->assertNull($fresh->published_at);
+    }
+
     // ── draft -> scheduled (the other half of the reported bug) ─────────
 
     public function test_draft_to_scheduled_with_a_future_datetime_succeeds(): void

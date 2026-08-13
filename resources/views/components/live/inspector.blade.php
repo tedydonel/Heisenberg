@@ -171,6 +171,15 @@
     }
     .hb-post-meta__value--btn:not(:disabled):hover { color: var(--hb-editing, #3D68F5); }
     .hb-post-meta__value--btn:disabled { opacity: .5; cursor: not-allowed; }
+    /* A picked-but-not-yet-saved value — the Status, Slug and Publish-date controls all
+       share this (see post-meta-live-script.blade.php's data-hb-pending / setStatusPending /
+       setRowPending). None of the three ride autosave (PostController skips all of them
+       outright for autosave:true), so this stays visible across autosave ticks; it only
+       clears once the server actually confirms the new value (an explicit Save) or the
+       pick is rejected/reverted. Without this, a row looked identical to an already-applied
+       change — the owner-reported "picked Published, post stayed draft" bug. */
+    .hb-post-meta__value--btn[data-hb-pending="true"] { color: var(--hb-warning, #B45309); }
+    .hb-post-meta__value--btn[data-hb-pending="true"]::before { content: '\2022'; margin-right: 4px; }
 
     .hb-post-popup { position: fixed; z-index: 1000; }
     .hb-post-popup[hidden] { display: none !important; }

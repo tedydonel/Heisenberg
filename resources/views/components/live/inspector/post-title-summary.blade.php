@@ -77,12 +77,14 @@
                                 data-hb-current-status="{{ $row['raw'] ?? 'draft' }}"
                                 data-hb-transitions="{{ json_encode($postStatusTransitions ?? []) }}"
                                 data-hb-status-labels="{{ json_encode($postStatusLabels ?? []) }}"
+                                data-hb-status-pending-hint="{{ __('heisenberg::editor.inspector.summary_status_pending_hint') }}"
                                 @if ($postId === null) disabled title="{{ __('heisenberg::editor.inspector.summary_status_save_first') }}" @endif>
                                 {{ $row['value'] }}
                             </button>
                         @elseif ($row['key'] === 'url')
                             <button type="button" class="hb-post-meta__value hb-post-meta__value--btn"
                                 data-hb-post-popup-trigger="slug" aria-haspopup="dialog" aria-expanded="false"
+                                data-hb-slug-pending-hint="{{ __('heisenberg::editor.inspector.summary_slug_pending_hint') }}"
                                 @if ($postId === null) disabled @endif>
                                 {{ $row['value'] }}
                             </button>
@@ -91,6 +93,7 @@
                                 data-hb-post-popup-trigger="publish" aria-haspopup="dialog" aria-expanded="false"
                                 data-hb-current-published-at="{{ $postPublishedAt ?? '' }}"
                                 data-hb-immediately-label="{{ __('heisenberg::editor.inspector.summary_immediately') }}"
+                                data-hb-publish-pending-hint="{{ __('heisenberg::editor.inspector.summary_publish_pending_hint') }}"
                                 @if ($postId === null) disabled @endif>
                                 {{ $hbPublishedDisplay ?? __('heisenberg::editor.inspector.summary_immediately') }}
                             </button>
