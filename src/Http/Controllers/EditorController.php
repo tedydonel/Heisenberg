@@ -37,8 +37,11 @@ final class EditorController
         // after a view-cache rebuild compiles/loads hundreds of Blade views and
         // can exceed a host's default 30s max_execution_time (observed on a
         // Windows host: cold ~35s, warm ~11s) — dying there is a white page.
-        // Same pattern as AiController::stream(); harmless where the limit is 0.
-        @set_time_limit(120);
+        // Never under CLI: there the default is UNLIMITED, so this would impose
+        // a 120s cap on someone's test suite or queue worker instead of raising one.
+        if (PHP_SAPI !== 'cli') {
+            @set_time_limit(120);
+        }
 
         // "New email" entry point (docs/email-system.md §7-E3): GET /editor?type=email seeds a
         // blank, unsaved EMAIL document — same blank-document shape as a plain /editor, just
@@ -93,7 +96,9 @@ final class EditorController
      */
     public function show(Request $request, BlockRegistryService $registry, ThemeRepository $themes, SavedThemeRepository $savedThemes, FontCatalogService $fonts, string $post): View
     {
-        @set_time_limit(120); // same cold-render headroom as index()
+        if (PHP_SAPI !== 'cli') {
+            @set_time_limit(120); // same cold-render headroom as index()
+        }
 
         /** @var class-string<Post> $class */
         $class = (string) config('heisenberg.models.post', Post::class);
