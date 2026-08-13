@@ -35,6 +35,7 @@ use Heisenberg\Services\BlockRenderer;
 use Heisenberg\Services\BlocksPayloadService;
 use Heisenberg\Services\HtmlSanitizationService;
 use Heisenberg\Services\MediaLibraryService;
+use Heisenberg\Support\ConfigMerge;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\ServiceProvider;
 
@@ -51,7 +52,7 @@ class HeisenbergServiceProvider extends ServiceProvider
 {
     public function register(): void
     {
-        $this->mergeConfigFrom(__DIR__ . '/../config/heisenberg.php', 'heisenberg');
+        $this->mergeHeisenbergConfig();
 
         $this->registerContracts();
         $this->registerEngine();
@@ -60,6 +61,34 @@ class HeisenbergServiceProvider extends ServiceProvider
         $this->registerAi();
 
         // Later: domain singletons (PostStateMachine, PostTransitionAction, …).
+    }
+
+    /**
+     * The path to the package's own shipped config/heisenberg.php — the single
+     * source of truth for "package defaults" used both here and by
+     * `heisenberg:config-diff`.
+     */
+    public static function configPath(): string
+    {
+        return __DIR__ . '/../config/heisenberg.php';
+    }
+
+    /**
+     * Replaces the framework's `mergeConfigFrom()` (a SHALLOW `array_merge`)
+     * with a recursive merge via {@see ConfigMerge}: any key the host's
+     * published config is missing gets the package's default, at any depth;
+     * any key the host DOES define — scalar, null, list, or associative — is
+     * never touched. See ConfigMerge's docblock for the full rule and its one
+     * honest limitation (a list's CONTENTS, not just its presence, can still go
+     * stale in a published host config).
+     */
+    protected function mergeHeisenbergConfig(): void
+    {
+        $config = $this->app['config'];
+        $defaults = require self::configPath();
+        $host = (array) $config->get('heisenberg', []);
+
+        $config->set('heisenberg', ConfigMerge::merge($defaults, $host));
     }
 
     /**
@@ -267,6 +296,7 @@ class HeisenbergServiceProvider extends ServiceProvider
                 $this->commands([
                     \Heisenberg\Console\Commands\TemplatesVerifyCommand::class,
                     \Heisenberg\Console\Commands\BlocksVerifyCommand::class,
+                    \Heisenberg\Console\Commands\ConfigDiffCommand::class,
                 ]);
             }
 
