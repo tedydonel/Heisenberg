@@ -100,6 +100,8 @@
     .hb-topbar__devsel-opt svg { width: 15px; height: 15px; flex: none; }
     .hb-topbar__devsel-opt:hover { background: var(--hb-surface-hover, #F7F7F7); color: var(--hb-text-primary, #0A0A0A); }
     .hb-topbar__devsel-opt.is-on { background: var(--hb-surface-hover, #F7F7F7); color: var(--hb-text-primary, #0A0A0A); font-weight: 500; }
+    /* Email export (docs/email-system.md §6) — devsel-menu shape, own wrapper class only. */
+    .hb-topbar__exportsel { position: relative; display: inline-flex; align-items: center; }
     /* Post-language dropdown — a visual sibling of the device dropdown above, same trigger/menu
        shape, placed just to its left. Unlike the device trigger (icon-only; the icon itself
        swaps per selection) this one has no per-locale icon, so the trigger grows to fit the
@@ -165,6 +167,7 @@
         // hbSeed(). A document never changes type, so this never needs to be re-read.
         let hbDocumentType = 'post';
         let hbEmailPreviewUrlTemplate = '';
+        let hbEmailExportUrlTemplate = '';
         // Localized save-failure messages — seeded from the component's data-hb-msg-*
         // attributes (the Blade side owns the __() calls; JS never hardcodes copy).
         let hbMsgConflict = '';
@@ -235,6 +238,7 @@
             hbEditorUrlTemplate = root.dataset.hbEditorUrlTemplate || '';
             hbDocumentType = root.dataset.hbDocumentType || 'post';
             hbEmailPreviewUrlTemplate = root.dataset.hbEmailPreviewUrlTemplate || '';
+            hbEmailExportUrlTemplate = root.dataset.hbEmailExportUrlTemplate || '';
             hbMsgConflict = root.dataset.hbMsgConflict || hbMsgConflict;
             hbMsgInvalid = root.dataset.hbMsgInvalid || hbMsgInvalid;
             hbMsgNetwork = root.dataset.hbMsgNetwork || hbMsgNetwork;
@@ -444,6 +448,14 @@
 
         const boot = () => {
             hbSeed();
+
+            // Email export trigger — "save first" posture, same as every other post-scoped control.
+            if (!document.__hbExportEnable) {
+                document.__hbExportEnable = true;
+                document.addEventListener('hb:post-id', () => {
+                    document.querySelectorAll('[data-hb-export-toggle]').forEach((btn) => { btn.disabled = false; });
+                });
+            }
 
             // Save button — always attempted (manual saves are never blocked by hbConflicted;
             // that guard only stops AUTOsave from re-hammering a version the server rejected).
@@ -680,6 +692,34 @@
                 document.addEventListener('click', (e) => { if (!e.target.closest('.hb-topbar__devsel')) setDeviceMenu(false); });
             }
 
+            // Email export — download menu beside Preview (docs/email-system.md §6).
+            const setExportMenu = (open) => {
+                document.querySelectorAll('.hb-topbar__exportsel-menu').forEach((m) => { m.hidden = !open; });
+                document.querySelectorAll('[data-hb-export-toggle]').forEach((t) => t.setAttribute('aria-expanded', open ? 'true' : 'false'));
+            };
+            document.querySelectorAll('[data-hb-export-toggle]').forEach((btn) => {
+                if (btn.__hbExpT) return; btn.__hbExpT = true;
+                btn.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    if (btn.disabled) return;
+                    const menu = document.querySelector('.hb-topbar__exportsel-menu');
+                    setExportMenu(!menu || menu.hidden);
+                });
+            });
+            document.querySelectorAll('[data-hb-export-item]').forEach((opt) => {
+                if (opt.__hbExpI) return; opt.__hbExpI = true;
+                opt.addEventListener('click', () => {
+                    hbSeed();
+                    setExportMenu(false);
+                    if (hbPostId === null || !hbEmailExportUrlTemplate) return;
+                    window.location.href = hbEmailExportUrlTemplate.replace('__ID__', hbPostId) + '?format=' + opt.dataset.format;
+                });
+            });
+            if (!document.__hbExportOutside) {
+                document.__hbExportOutside = true;
+                document.addEventListener('click', (e) => { if (!e.target.closest('.hb-topbar__exportsel')) setExportMenu(false); });
+            }
+
             // Post-language dropdown — view/switch/create translations (docs/content-translation.md
             // §5). Same open/close shape as the device dropdown above. Only rendered with a menu
             // when EditorController seeded real `postTranslations` rows (an existing, saved post);
@@ -788,6 +828,7 @@
     // docs/email-system.md §7-E3 — 'post' or 'email'; drives the preview button's target.
     'documentType' => 'post',
     'emailPreviewUrlTemplate' => '',
+    'emailExportUrlTemplate' => '',
 ])
 @php
     $leftButtons = [
@@ -811,6 +852,12 @@
         ['icon' => 'translate', 'label' => __('heisenberg::editor.topbar.aria_post_language'), 'lang' => true],
         ['icon' => 'device-mobile', 'label' => __('heisenberg::editor.topbar.aria_device'), 'device' => true],
     ];
+    // Email export (docs/email-system.md §6) — beside Preview, email documents only.
+    if ($documentType === 'email') {
+        array_splice($rightButtons, 2, 0, [[
+            'icon' => 'download-simple', 'label' => __('heisenberg::editor.topbar.aria_email_export'), 'export' => true,
+        ]]);
+    }
     // The dropdown's own current-locale row (TranslationStatusService::statuses() always marks
     // exactly one row 'source' — the post being edited right now). Falls back to localeDefault
     // when postTranslations is null (the blank /editor document — nothing seeded yet).
@@ -847,6 +894,7 @@
     data-hb-preview-post-url-template="{{ route('heisenberg.editor.index') }}/__ID__/preview"
     data-hb-document-type="{{ $documentType }}"
     data-hb-email-preview-url-template="{{ $emailPreviewUrlTemplate }}"
+    data-hb-email-export-url-template="{{ $emailExportUrlTemplate }}"
     {{-- Where this document lives once it has an id. A save from the blank /editor creates the
          post but leaves the browser on /editor, so refreshing re-opened an empty editor and the
          work looked lost (it was in the DB the whole time). After a create we rewrite the URL to
@@ -907,6 +955,21 @@
                                 @include('heisenberg::components.ui.icon', ['name' => $meta[0], 'size' => 15])<span>{{ $meta[1] }}</span>
                             </button>
                         @endforeach
+                    </div>
+                </div>
+            @elseif ($btn['export'] ?? false)
+                {{-- Email export (docs/email-system.md §6) — Download HTML / .eml, wired above. --}}
+                <div class="hb-topbar__exportsel">
+                    <button type="button" class="hb-topbar__btn hb-topbar__btn--sm" data-hb-export-toggle
+                        aria-haspopup="true" aria-expanded="false" aria-label="{{ $btn['label'] }}"
+                        @if (($postId ?? null) === null) disabled @endif>
+                        <span class="hb-topbar__icon hb-topbar__icon--sm" aria-hidden="true">
+                            @include('heisenberg::components.ui.icon', ['name' => $btn['icon'], 'size' => 13])
+                        </span>
+                    </button>
+                    <div class="hb-topbar__devsel-menu hb-topbar__exportsel-menu" role="menu" hidden>
+                        <button type="button" class="hb-topbar__devsel-opt" role="menuitem" data-hb-export-item data-format="html">{{ __('heisenberg::editor.topbar.export_html') }}</button>
+                        <button type="button" class="hb-topbar__devsel-opt" role="menuitem" data-hb-export-item data-format="eml">{{ __('heisenberg::editor.topbar.export_eml') }}</button>
                     </div>
                 </div>
             @elseif ($btn['lang'] ?? false)

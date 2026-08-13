@@ -19,7 +19,8 @@
         :post-editor-url-template="$postEditorUrlTemplate ?? ''"
         :locale-default="$localeDefault ?? 'en'"
         :document-type="$hbDocumentType"
-        :email-preview-url-template="$emailPreviewUrlTemplate ?? ''" />
+        :email-preview-url-template="$emailPreviewUrlTemplate ?? ''"
+        :email-export-url-template="$emailExportUrlTemplate ?? ''" />
     <x-live.sidebar class="hb-editor__sidebar" :document-type="$hbDocumentType" />
     {{-- All 4 panel pairs live in the DOM simultaneously; only one is visible at a time.
          Switching is driven by sidebar nav clicks — see live/sidebar's script, which toggles

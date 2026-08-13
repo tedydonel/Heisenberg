@@ -104,6 +104,11 @@ Route::middleware(config('heisenberg.middleware.editor', ['web']))->group(functi
     // feed for the topbar/footer. Both gated exactly like the post preview route above.
     Route::get('/editor/{post}/email-preview', [EmailPreviewController::class, 'show'])->whereNumber('post')->name('heisenberg.editor.email.preview');
     Route::get('/editor/{post}/email-size', [EmailPreviewController::class, 'size'])->whereNumber('post')->name('heisenberg.editor.email.size');
+    // "Get it out of the editor" (docs/email-system.md §6): ?format=html for an ESP paste/upload
+    // (real image URLs, the SAME preview:true render show() uses) or ?format=eml for a
+    // self-contained RFC-822 message (cid-embedded, built with Symfony Mime directly). Same
+    // gating as the two routes above, plus a 404 for a non-email post — see the controller.
+    Route::get('/editor/{post}/email-export', [EmailPreviewController::class, 'export'])->whereNumber('post')->name('heisenberg.editor.email.export');
     // Locale switcher — POST flips the active locale (session), then redirects
     // back to the referer (or a provided `return` query param). Whitelist lives
     // in Heisenberg\Support\LocaleConfig (config('heisenberg.locales'), docs/content-translation.md

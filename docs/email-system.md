@@ -86,6 +86,36 @@ every embed via the mailer — drop it into `Mail::to(...)->send(...)` and it wo
 mailers consume the result object directly. An MCP surface note: AI authors emails through the same
 canvas path; `create_post` gains the `type` arg (draft emails only, same posture).
 
+### Getting a built email OUT of the editor
+
+Heisenberg renders and the host sends — but before a host is ready to wire up its own mailer, or
+for the common case of pasting a built email straight into an ESP (Mailchimp, Klaviyo, …), the
+editor also exports. `EmailPreviewController` (routes/editor.php), gated exactly like
+`email-preview`/`email-size` above (PostPolicy `view`) plus a 404 for a non-email post:
+
+- **`GET /editor/{post}/email-export?format=html`** — the ESP paste/upload case. Renders through
+  the SAME `preview: true` path the browser preview uses: images are absolute, publicly-fetchable
+  URLs, never `cid:` references, because a platform ingesting raw HTML has no MIME parts to
+  resolve them against. Downloads as `<slug>-<locale>.html` (`Content-Disposition: attachment`).
+- **`GET /editor/{post}/email-export?format=eml`** — the self-contained case. Builds a real
+  RFC-822 message with Symfony Mime directly (`Symfony\Component\Mime\Email`) from the REAL,
+  cid-embedded render — subject, a `text/plain` part, a `text/html` part, and every embed
+  re-attached as an inline part keyed to the exact `cid` already in the HTML, the same pairing
+  `HeisenbergMailable` does for a live send. Downloads as `<slug>-<locale>.eml`. `From` is set
+  only when `mail.from.address` is actually configured — never fabricated.
+- An unrecognized or missing `format` defaults to `html`.
+
+The crucial difference: the HTML export references images by public URL, so it only displays
+correctly for as long as those files stay reachable on the host's uploads disk — it is NOT
+self-contained. The .eml embeds every image as a MIME part instead, so it is a real, standalone
+message file (openable in Outlook/Mail.app/Thunderbird, or re-imported by another tool) — at the
+cost of the same size the size chip already reports (§2's "Gmail clips very large mail" applies to
+the .eml file itself, not just a live send).
+
+The topbar exposes both formats as a download menu beside Preview, email documents only, disabled
+until the document has been saved once (`emailExportUrlTemplate`, seeded the same __ID__-template
+way as the preview/size URLs).
+
 ## 7. Waves
 
 - **E1+E2 (foundation, one agent)**: `type` column + scopes + list exclusions; contract `email`

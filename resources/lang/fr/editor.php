@@ -63,6 +63,10 @@ return [
         'aria_post_language' => "Langue de l'article",
         'lang_translate_to' => 'Traduire en :locale…',
         'lang_creating' => 'Création…',
+        // Export d'e-mail (docs/email-system.md §6) — le menu de téléchargement à côté d'Aperçu.
+        'aria_email_export' => "Télécharger l'e-mail",
+        'export_html' => 'Télécharger le HTML (pour les plateformes d’e-mailing)',
+        'export_eml' => 'Télécharger le .eml (autonome)',
     ],
 
     // ── Médias : dialogue / bibliothèque / zone de dépôt (live/media/*) ──
@@ -349,6 +353,13 @@ return [
         'summary_status_scheduled' => 'Programmé',
         'summary_status_archived' => 'Archivé',
         'summary_status_save_first' => 'Enregistrez l\'article pour définir son statut.',
+        // Affiché tant qu'un statut choisi n'est pas encore persisté (mis en attente pour
+        // le prochain Enregistrer explicite — voir data-hb-pending dans post-meta-live-script.blade.php).
+        'summary_status_pending_hint' => 'Pas encore enregistré — cliquez sur Enregistrer pour appliquer.',
+        // Même logique de mise en attente, pour les lignes Slug et Date de publication
+        // (2026-08-12) — voir setRowPending() dans post-meta-live-script.blade.php.
+        'summary_slug_pending_hint' => 'Pas encore enregistré — cliquez sur Enregistrer pour appliquer.',
+        'summary_publish_pending_hint' => 'Pas encore enregistré — cliquez sur Enregistrer pour appliquer.',
         'summary_schedule_label' => 'Publier le',
         'post_pending_review' => 'En attente de relecture',
         'post_stick_top' => 'Épingler en haut du blog',

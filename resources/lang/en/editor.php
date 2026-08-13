@@ -62,6 +62,10 @@ return [
         'aria_post_language' => 'Post language',
         'lang_translate_to' => 'Translate to :locale…',
         'lang_creating' => 'Creating…',
+        // Email export (docs/email-system.md §6) — the download menu beside Preview.
+        'aria_email_export' => 'Download email',
+        'export_html' => 'Download HTML (for email platforms)',
+        'export_eml' => 'Download .eml (self-contained)',
     ],
 
     // ── Media dialog / library / dropzone (live/media/*) ──────────
@@ -350,6 +354,13 @@ return [
         'summary_status_scheduled' => 'Scheduled',
         'summary_status_archived' => 'Archived',
         'summary_status_save_first' => 'Save the post to set its status.',
+        // Shown while a picked status hasn't actually been persisted yet (queued for the
+        // next explicit Save — see post-meta-live-script.blade.php's data-hb-pending).
+        'summary_status_pending_hint' => 'Not saved yet — click Save to apply.',
+        // Same "queued for the next explicit Save" posture, for the Slug and Publish-date
+        // rows (2026-08-12) — see setRowPending() in post-meta-live-script.blade.php.
+        'summary_slug_pending_hint' => 'Not saved yet — click Save to apply.',
+        'summary_publish_pending_hint' => 'Not saved yet — click Save to apply.',
         'summary_schedule_label' => 'Publish on',
         'post_pending_review' => 'Pending review',
         'post_stick_top' => 'Stick to the top of the blog',

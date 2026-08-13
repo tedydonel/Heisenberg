@@ -394,6 +394,7 @@ final class EditorController
             // scripts only ever call them when the CURRENT document is an email.
             'emailPreviewUrlTemplate' => route('heisenberg.editor.email.preview', ['post' => '__ID__']),
             'emailSizeUrlTemplate' => route('heisenberg.editor.email.size', ['post' => '__ID__']),
+            'emailExportUrlTemplate' => route('heisenberg.editor.email.export', ['post' => '__ID__']),
             // "Open" on a Translations row navigates to a DIFFERENT post's editor document — a real
             // page load, not a client-side patch (unlike every other __ID__ template above, which
             // PUTs/POSTs against the CURRENT post). heisenberg.editor.show is `/editor/{post}`; the
