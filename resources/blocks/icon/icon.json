@@ -39,6 +39,7 @@
             "type": "string",
             "default": "",
             "sanitize": "text",
+            "translatable": true,
             "control": {
                 "type": "text",
                 "section": "general",

@@ -217,6 +217,14 @@ class BlockContractValidator
                 $errors[] = "attribute '{$name}' of type '{$type}' requires 'properties'";
             }
 
+            // `translatable: true` marks a human-language attribute (docs/content-translation.md
+            // §0): its value lives in locale-suffixed variants (`content_en`, `content_fr`, …)
+            // resolved by BlockRenderer::localizedAttribute(). Optional, defaults to false —
+            // urls/variants/colours/sizes/anchors/ids are never translatable.
+            if (array_key_exists('translatable', $def) && ! is_bool($def['translatable'])) {
+                $errors[] = "attribute '{$name}' translatable must be a boolean";
+            }
+
             $this->validateControlOverride($name, $def, $attributes, $errors);
         }
     }

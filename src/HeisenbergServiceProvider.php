@@ -297,6 +297,7 @@ class HeisenbergServiceProvider extends ServiceProvider
                     \Heisenberg\Console\Commands\TemplatesVerifyCommand::class,
                     \Heisenberg\Console\Commands\BlocksVerifyCommand::class,
                     \Heisenberg\Console\Commands\ConfigDiffCommand::class,
+                    \Heisenberg\Console\Commands\MergeTranslationsCommand::class,
                 ]);
             }
 

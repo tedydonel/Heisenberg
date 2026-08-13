@@ -18,6 +18,7 @@
             "type": "string",
             "default": "",
             "sanitize": "text",
+            "translatable": true,
             "control": {
                 "type": "textarea",
                 "section": "settings"
@@ -78,6 +79,7 @@
             "type": "string",
             "default": "",
             "sanitize": "text",
+            "translatable": true,
             "control": {
                 "type": "text",
                 "section": "general",

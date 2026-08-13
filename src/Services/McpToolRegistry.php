@@ -14,10 +14,10 @@ use Heisenberg\Models\Tag;
 use Heisenberg\Policies\PostPolicy;
 use Heisenberg\Support\BlockViewData;
 use Heisenberg\Support\LocaleConfig;
+use Heisenberg\Support\LocalizedAttributes;
 use Illuminate\Contracts\Auth\Authenticatable;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Str;
 
 /**
  * The tools Heisenberg exposes over MCP — to external AIs via the inbound
@@ -160,10 +160,11 @@ class McpToolRegistry
         }
 
         try {
-            // $surface is passed as a second argument for the handful of handlers whose
-            // behavior differs by surface (create_translation's draft-only posture on the
-            // external server, see below) — every other handler simply ignores it, PHP
-            // does not error when a closure is called with more arguments than it declares.
+            // $surface is passed as a second argument for the (currently none) handlers whose
+            // behavior differs by surface once past the tier/surface gate above — every handler
+            // simply ignores it today, PHP does not error when a closure is called with more
+            // arguments than it declares. Kept so a future handler can opt into it without a
+            // signature change here.
             return $this->ok($tools[$name]['handler']($arguments, $surface));
         } catch (McpToolException $e) {
             return $this->error($e->getMessage());
@@ -352,7 +353,7 @@ class McpToolRegistry
             ],
 
             'get_post' => [
-                'description' => 'One post with its content as BOTH shortcode (`code` — edit this) and raw block JSON. To change the content, edit the shortcode and pass it back to update_post; pass content_version back too, to avoid clobbering a concurrent edit. `translations` maps every configured locale to that locale\'s row in this post\'s translation group (docs/content-translation.md) — the post\'s OWN locale reports status "source"; a locale with no sibling reports "missing" (post_id null); use create_translation to fill a gap.',
+                'description' => 'One post with its content as BOTH shortcode (`code` — edit this) and raw block JSON. To change the content, edit the shortcode and pass it back to update_post; pass content_version back too, to avoid clobbering a concurrent edit. `translations` maps every configured locale to its translation COMPLETENESS on this SAME row (docs/content-translation.md §0 — a translation is locale-suffixed attribute variants on the one post, not a separate row): `{is_default, title, excerpt, blocks_translated, blocks_total, complete}` — `title`/`excerpt` are booleans (that locale\'s column has content), `blocks_translated`/`blocks_total` count translatable blocks, `complete` is overall per-locale readiness. Use create_translation to fill in a gap.',
                 'tier' => self::TIER_READ,
                 'inputSchema' => $this->schema([
                     'id' => ['type' => 'integer', 'description' => 'Post id.'],
@@ -363,7 +364,14 @@ class McpToolRegistry
 
                     $translations = [];
                     foreach ($this->translationStatus->statuses($post) as $row) {
-                        $translations[$row['locale']] = ['post_id' => $row['post_id'], 'status' => $row['status']];
+                        $translations[$row['locale']] = [
+                            'is_default' => $row['is_default'],
+                            'title' => $row['title'],
+                            'excerpt' => $row['excerpt'],
+                            'blocks_translated' => $row['blocks_translated'],
+                            'blocks_total' => $row['blocks_total'],
+                            'complete' => $row['complete'],
+                        ];
                     }
 
                     return [
@@ -434,32 +442,38 @@ class McpToolRegistry
             ],
 
             // ── translations (both surfaces) ────────────────────────
-            // The split-row model (docs/content-translation.md §1): a post's translation is
-            // its OWN heisenberg_posts row, sharing `translation_group_id` with its siblings.
-            // This is the one tool that writes a sibling row: the caller reads the source
-            // with get_post, translates the shortcode itself (structure/ids/attribute names/
-            // media untouched — only human-readable text changes), and this tool writes the
-            // sibling in one validated call, going through the exact same shortcode->blocks
-            // validation create_post/update_post use (BlocksPayloadService, live contracts) —
-            // there is no separate, looser path for translated content.
+            // The single-row model (docs/content-translation.md §0): a post's translation is
+            // NOT a separate row — it is locale-suffixed attribute variants (`content_fr`, …) on
+            // the SAME row. This tool keeps its Wave-1 name (existing agents already call it) but
+            // its job changed: it translates THIS post's fields in place. `title`/`excerpt` write
+            // straight to `title_<locale>`/`excerpt_<locale>`; `code` is parsed and validated
+            // through the exact same pipeline create_post/update_post use (BlocksPayloadService,
+            // live contracts), then folded into the EXISTING stored blocks' translatable
+            // attributes as `_<locale>` variants, matched BY POSITION (top-level index, then
+            // recursively through innerBlocks) — the block TREE itself is never replaced,
+            // because structure is shared across every locale now. A translated document whose
+            // shape (block count, or a block name at any position/depth) doesn't match what's
+            // stored is refused outright, naming the mismatch, rather than silently corrupting
+            // the post's structure.
             'create_translation' => [
-                'description' => 'Create or update a translation of a post — a sibling row in its translation group (docs/content-translation.md). '
-                    . 'Reads the source with get_post, then pass the TRANSLATED shortcode as `code` (same block sequence and structure as the '
-                    . 'source; only human-readable text is translated — never block names, attribute names, ids, URLs or media references). '
-                    . 'If the target locale already has a sibling, its content is replaced (its lifecycle status is never touched); otherwise a '
-                    . 'new draft sibling is created. Validated exactly like create_post/update_post. Translations SHARE ONE SLUG with their '
-                    . 'source (locale comes from the host\'s URL prefix, not the slug) — a new sibling always gets the source post\'s exact '
-                    . 'slug; the response\'s `slug` field reports it.',
+                'description' => 'Translate an existing post\'s fields into another locale — writes locale-suffixed variants on the SAME row '
+                    . '(docs/content-translation.md §0), it does not create a new post. Read the source with get_post first (its `code` is the '
+                    . 'structure to translate). Supply at least one of `title`/`excerpt`/`code`. `title`/`excerpt` are translated text written to '
+                    . '`title_<locale>`/`excerpt_<locale>`. `code` must be the SAME block sequence and structure as the post\'s current content '
+                    . '(only human-readable text translated — never block names, attribute names, ids, URLs or media references); it is validated '
+                    . 'like update_post, then folded into the existing blocks by position — a structural mismatch (different block count, or a '
+                    . 'different block at some position) is refused with an error naming where, not silently applied. Available on both surfaces '
+                    . 'without a draft-only restriction: this edits fields of an existing post, it never changes or creates its publish status. '
+                    . 'Returns the target locale\'s translation completeness from get_post\'s own `translations` shape.',
                 'tier' => self::TIER_AUTHORS,
                 'inputSchema' => $this->schema([
-                    'post_id' => ['type' => 'integer', 'description' => 'Source post id to translate FROM.'],
-                    'target_locale' => ['type' => 'string', 'description' => 'Locale to translate into (must differ from the source post\'s own locale), e.g. "fr".'],
-                    'title' => ['type' => 'string', 'description' => 'Translated title.'],
-                    'code' => ['type' => 'string', 'description' => 'The translated content as Heisenberg shortcode — same block sequence as the source, text translated.'],
-                    'excerpt' => ['type' => 'string', 'description' => 'Translated excerpt, in the target locale.'],
-                    'slug' => ['type' => 'string', 'description' => 'IGNORED — accepted only for backward wire-compatibility. Translations always share the source post\'s exact slug (docs/content-translation.md §1); the response\'s `slug` field always reports the real, shared value.'],
-                ], ['post_id', 'target_locale', 'title', 'code']),
-                'handler' => fn (array $args, string $surface): array => $this->createTranslation($args, $surface),
+                    'post_id' => ['type' => 'integer', 'description' => 'Post id to translate.'],
+                    'target_locale' => ['type' => 'string', 'description' => 'Locale to translate into (must differ from the post\'s own home locale), e.g. "fr".'],
+                    'title' => ['type' => 'string', 'description' => 'Translated title, written to title_<target_locale>.'],
+                    'excerpt' => ['type' => 'string', 'description' => 'Translated excerpt, written to excerpt_<target_locale>.'],
+                    'code' => ['type' => 'string', 'description' => 'The translated document as Heisenberg shortcode — same block sequence and structure as the post\'s stored content, text translated. Folded into the existing blocks by position, never replaces the tree.'],
+                ], ['post_id', 'target_locale']),
+                'handler' => fn (array $args): array => $this->createTranslation($args),
             ],
 
             // ── lifecycle (editor surface only) ─────────────────────
@@ -842,7 +856,7 @@ class McpToolRegistry
             // above: a featured image is a lightweight post setting, not a content write that
             // needs the draft-only external-surface posture create_post/update_post hold.
             'set_featured_image' => [
-                'description' => 'Set (or clear) a post\'s featured image. Pass file_id to set it, or omit/null to clear it. Mirrors the editor\'s Featured image setting. Does not touch content or content_version. A featured image is language-neutral: this propagates the same file_id (or null, when clearing) to every sibling in the post\'s translation group, so a group never ends up with the image set on only one locale.',
+                'description' => 'Set (or clear) a post\'s featured image. Pass file_id to set it, or omit/null to clear it. Mirrors the editor\'s Featured image setting. Does not touch content or content_version.',
                 'tier' => self::TIER_AUTHORS,
                 'inputSchema' => $this->schema([
                     'post_id' => ['type' => 'integer'],
@@ -1110,25 +1124,34 @@ class McpToolRegistry
     }
 
     /**
-     * `create_translation` — writes a sibling row in `$args['post_id']`'s translation
-     * group (docs/content-translation.md §1, §6). Creates the sibling as a draft when
-     * the target locale has none yet; otherwise replaces its content tree in place
-     * WITHOUT ever touching its lifecycle status (publishing/unpublishing a translation
-     * stays a human decision via the normal Summary control / `set_post_status`).
+     * `create_translation` — translates `$args['post_id']`'s OWN fields into `target_locale`
+     * (docs/content-translation.md §0, §6, rewritten for the single-row model: this tool keeps
+     * its Wave-1 name but no longer creates a sibling row — there is nothing left to sibling).
+     * `title`/`excerpt` write straight to `title_<locale>`/`excerpt_<locale>` on the SAME row.
+     * `code`, if supplied, is validated through the exact same pipeline `update_post` uses (see
+     * {@see self::validatedContentBlocks()}), then folded into the post's EXISTING stored blocks'
+     * translatable attributes as `_<locale>` variants, matched BY POSITION
+     * ({@see self::foldTranslatedBlocks()}) — the stored block TREE itself is never replaced,
+     * because structure is shared across every locale now.
      *
-     * Surface posture: the EXTERNAL server refuses to update an already-published (or
-     * otherwise non-draft) sibling at all — the same draft-only posture `create_post`/
-     * `update_post` hold on that surface — because there is no human reviewing the
-     * result before it goes live. The EDITOR surface may update a published sibling: a
-     * human is driving and reviews the diff before saving, same reasoning
-     * `set_post_status` already rests on.
+     * Never touches lifecycle status, slug, or any other post setting — it edits translated TEXT
+     * fields only, on a post that already exists.
+     *
+     * Surface posture (owner decision, this wave): available on BOTH surfaces with no draft-only
+     * restriction, unlike `create_post`/`update_post`. Those hold a draft-only posture on the
+     * external surface because an unattended agent could otherwise ship unreviewed content live.
+     * This tool cannot do that — it never creates a post and never changes a post's `status`; the
+     * worst it can do is add/replace translated text on a post whose PUBLISH state a human (or
+     * `set_post_status`, editor-surface only) already decided independently. Restricting it to
+     * drafts on the external surface would only block the exact workflow it exists for — "loop
+     * list_posts -> create_translation over an already-published catalog" — for no safety gained.
      *
      * @param  array<string, mixed> $args
-     * @return array{post_id: int|string, locale: string, status: string, slug: string, outdated: bool}
+     * @return array{post_id: int|string, locale: string, complete: bool, blocks_translated: int, blocks_total: int}
      */
-    private function createTranslation(array $args, string $surface): array
+    private function createTranslation(array $args): array
     {
-        $source = $this->findPost($args['post_id'] ?? null);
+        $post = $this->findPost($args['post_id'] ?? null);
 
         $targetLocale = trim((string) ($args['target_locale'] ?? ''));
         if ($targetLocale === '' || ! LocaleConfig::isValid($targetLocale)) {
@@ -1136,118 +1159,212 @@ class McpToolRegistry
             throw new McpToolException("target_locale must be one of: {$allowed} (got '{$targetLocale}').");
         }
 
-        $sourceLocale = (string) ($source->locale ?: LocaleConfig::default());
-        if ($targetLocale === $sourceLocale) {
-            throw new McpToolException("target_locale ('{$targetLocale}') must differ from the source post's own locale ('{$sourceLocale}').");
+        $homeLocale = (string) ($post->locale ?: LocaleConfig::default());
+        if ($targetLocale === $homeLocale) {
+            throw new McpToolException(
+                "target_locale ('{$targetLocale}') must differ from the post's own home locale ('{$homeLocale}') — there is nothing to translate into its own language."
+            );
         }
 
-        $title = trim((string) ($args['title'] ?? ''));
-        if ($title === '') {
-            throw new McpToolException('title is required.');
-        }
-
-        // Same validation write_canvas/create_post/update_post use — see
-        // validatedContentBlocks()'s own docblock. allowEmpty is always false here:
-        // a translation with no content is never useful, whether creating or updating.
-        $blocks = $this->validatedContentBlocks(['code' => (string) ($args['code'] ?? '')]);
-
+        $hasTitle = array_key_exists('title', $args) && is_string($args['title']);
         $hasExcerpt = array_key_exists('excerpt', $args) && is_string($args['excerpt']);
-        $excerpt = $hasExcerpt ? $args['excerpt'] : null;
+        $hasCode = array_key_exists('code', $args) && is_string($args['code']) && trim($args['code']) !== '';
 
-        // `slug` (if supplied) is accepted for wire-compat only and otherwise IGNORED — see the
-        // shared-slug invariant, docs/content-translation.md §1: a translation group presents as
-        // ONE post, so a sibling always carries its source's EXACT slug, never a caller-supplied
-        // one that could diverge from it. The response's own `slug` key always reports the real,
-        // shared value, so a caller that passed a different one learns the truth instead of
-        // silently assuming its input won.
+        if (! $hasTitle && ! $hasExcerpt && ! $hasCode) {
+            throw new McpToolException('Supply at least one of: title, excerpt, code — there is nothing to translate.');
+        }
 
-        return DB::transaction(function () use ($source, $targetLocale, $title, $blocks, $hasExcerpt, $excerpt, $surface): array {
-            $sibling = $source->sibling($targetLocale);
+        // Parsed + validated through the SAME pipeline update_post uses
+        // (validatedContentBlocks()'s own docblock) BEFORE any write, so a bad translation never
+        // lands half-applied. The position-matched fold against the STORED tree happens inside
+        // the transaction below, once we know nothing else about the call will fail first.
+        $translatedBlocks = $hasCode ? $this->validatedContentBlocks(['code' => (string) $args['code']]) : null;
 
-            if ($sibling === null) {
-                // Checked BEFORE any write (no partial state): an unrelated post already holding
-                // the source's exact slug text in $targetLocale refuses the WHOLE translation
-                // rather than silently drifting the sibling onto a different slug than its source.
-                $slugTaken = $this->postClass()::query()->withTrashed()
-                    ->where('locale', $targetLocale)
-                    ->where('slug', $source->slug)
-                    ->exists();
-                if ($slugTaken) {
-                    throw new McpToolException(
-                        "Cannot create the {$targetLocale} translation: its shared slug \"{$source->slug}\" is already used by another post in that language."
-                    );
-                }
-
-                $sibling = new ($this->postClass())();
-                $sibling->translation_group_id = $source->translation_group_id ?: (string) Str::uuid();
-                if (empty($source->translation_group_id)) {
-                    $source->translation_group_id = $sibling->translation_group_id;
-                    $source->save();
-                }
-                $sibling->locale = $targetLocale;
-                // title_en is NOT NULL (migration 2026_01_01_000001) on every row regardless of
-                // its own locale — see the existing en/fr fixtures across tests/Translation/*.
-                // A new row therefore needs BOTH columns populated: the target locale's column
-                // gets the translated title, the OTHER carries the source's own title as a
-                // same-row fallback (Post::title() reads it when the primary column is empty).
-                $sibling->title_en = $targetLocale === 'en' ? $title : (string) ($source->title_en ?: $title);
-                $sibling->title_fr = $targetLocale === 'fr' ? $title : $source->title_fr;
-                if ($hasExcerpt) {
-                    $this->setLocaleField($sibling, $targetLocale, 'excerpt', $excerpt);
-                }
-                $sibling->slug = $source->slug;
-                $sibling->featured_image_id = $source->featured_image_id;
-                $sibling->page_padding_x = $source->page_padding_x;
-                $sibling->page_padding_y = $source->page_padding_y;
-                $sibling->allow_comments = $source->allow_comments;
-                $sibling->status = 'draft';
-                // A translation is the same DOCUMENT in another language — an email's sibling
-                // stays an email. `type` is guarded with DB default 'post', so it must be
-                // copied explicitly or it silently reverts.
-                $sibling->type = $source->type;
-                $sibling->save();
-
-                $this->replaceBlocks($sibling, $blocks);
-                $sibling->bumpContentVersion();
-            } else {
-                if ($surface === self::SURFACE_EXTERNAL && $sibling->status !== 'draft') {
-                    throw new McpToolException(
-                        "The {$targetLocale} translation is already \"{$sibling->status}\"; the external MCP surface only updates draft translations."
-                    );
-                }
-
-                $this->captureRevision($sibling, 'manual');
-
-                $this->setLocaleField($sibling, $targetLocale, 'title', $title);
-                if ($hasExcerpt) {
-                    $this->setLocaleField($sibling, $targetLocale, 'excerpt', $excerpt);
-                }
-                // slug is deliberately left untouched — the shared-slug invariant means it
-                // already matches the source; there is no per-translation slug left to update.
-                $sibling->save();
-
-                $this->replaceBlocks($sibling, $blocks);
-                $sibling->bumpContentVersion();
+        return DB::transaction(function () use ($post, $targetLocale, $args, $hasTitle, $hasExcerpt, $translatedBlocks): array {
+            if ($hasTitle) {
+                $this->setLocaleField($post, $targetLocale, 'title', trim((string) $args['title']));
+            }
+            if ($hasExcerpt) {
+                $this->setLocaleField($post, $targetLocale, 'excerpt', (string) $args['excerpt']);
+            }
+            if ($hasTitle || $hasExcerpt) {
+                $post->save();
             }
 
-            // translated_from_version is deliberately not fillable (see Post::$fillable's
-            // docblock) — direct property write is the only path, same as content_version.
-            $sibling->translated_from_version = (int) $source->content_version;
-            $sibling->save();
-            $sibling->refresh();
+            if ($translatedBlocks !== null) {
+                $blockModels = $post->blocks()->orderBy('order')->get();
+                $storedBlocks = $blockModels->map(static fn ($b) => $b->content)->values()->all();
 
-            return [
-                'post_id' => $sibling->getKey(),
-                'locale' => $targetLocale,
-                'status' => (string) $sibling->status,
-                // The real, shared slug — see the note above args['slug'] on why a caller-supplied
-                // value never lands here even when one was sent.
-                'slug' => (string) $sibling->slug,
-                // Always false: translated_from_version was just set to the source's
-                // CURRENT content_version, so isTranslationOutdated() cannot yet be true.
-                'outdated' => false,
-            ];
+                // Refuses (throws) on any shape mismatch BEFORE anything below writes — see the
+                // method's own docblock for the exact rule.
+                $folded = $this->foldTranslatedBlocks($storedBlocks, $translatedBlocks, $targetLocale);
+
+                if ($storedBlocks !== []) {
+                    $this->captureRevision($post, 'manual');
+                }
+
+                $blocksChanged = false;
+                foreach ($folded as $index => $content) {
+                    $block = $blockModels->get($index);
+                    if ($block !== null && $block->content !== $content) {
+                        $block->content = $content;
+                        $block->save();
+                        $blocksChanged = true;
+                    }
+                }
+                if ($blocksChanged) {
+                    $post->bumpContentVersion();
+                }
+            }
+
+            $post->refresh();
+
+            return $this->translationCompleteness($post, $targetLocale);
         });
+    }
+
+    /**
+     * Fold `$translated` (a freshly parsed+validated block tree, target `$locale`) into
+     * `$stored` (the post's CURRENT block tree) by POSITION — top-level index, then recursively
+     * through `innerBlocks` at the same index. Returns the (possibly modified) `$stored` tree
+     * with `_<locale>` attribute variants written in; throws {@see McpToolException} naming every
+     * shape mismatch found (a different block count, or a different block `name`, at any
+     * position/depth) rather than writing anything when the shapes disagree — see
+     * {@see \Heisenberg\Console\Commands\MergeTranslationsCommand::mergeNode()} for the sibling
+     * precedent this mirrors (position-matched fold, refuse on shape mismatch); this version has
+     * no "already different content" conflict to check, because overwriting a locale's existing
+     * translation IS what re-running create_translation for it means.
+     *
+     * @param  list<array<string, mixed>> $stored
+     * @param  list<array<string, mixed>> $translated
+     * @return list<array<string, mixed>>
+     */
+    private function foldTranslatedBlocks(array $stored, array $translated, string $locale): array
+    {
+        $mismatches = [];
+        $folded = $this->foldNodes($stored, $translated, $locale, $mismatches, 'blocks');
+
+        if ($mismatches !== []) {
+            throw new McpToolException(
+                "The translated code's structure does not match this post's stored blocks: " . implode('; ', $mismatches)
+                . '. Translate the SAME block sequence and structure as the source (get_post\'s `code`) — only human-readable text may change.'
+            );
+        }
+
+        return $folded;
+    }
+
+    /**
+     * @param  list<array<string, mixed>> $storedNodes
+     * @param  list<array<string, mixed>> $translatedNodes
+     * @param  string[]                   $mismatches
+     * @return list<array<string, mixed>>
+     */
+    private function foldNodes(array $storedNodes, array $translatedNodes, string $locale, array &$mismatches, string $path): array
+    {
+        if (count($storedNodes) !== count($translatedNodes)) {
+            $mismatches[] = "{$path}: block count differs (post has " . count($storedNodes) . ', translated code has ' . count($translatedNodes) . ')';
+
+            return $storedNodes;
+        }
+
+        foreach ($storedNodes as $index => $storedNode) {
+            $storedNodes[$index] = $this->foldNode(
+                is_array($storedNode) ? $storedNode : [],
+                is_array($translatedNodes[$index]) ? $translatedNodes[$index] : [],
+                $locale,
+                $mismatches,
+                "{$path}[{$index}]",
+            );
+        }
+
+        return $storedNodes;
+    }
+
+    /**
+     * @param  array<string, mixed> $storedNode
+     * @param  array<string, mixed> $translatedNode
+     * @param  string[]             $mismatches
+     * @return array<string, mixed>
+     */
+    private function foldNode(array $storedNode, array $translatedNode, string $locale, array &$mismatches, string $path): array
+    {
+        $storedName = $storedNode['name'] ?? null;
+        $translatedName = $translatedNode['name'] ?? null;
+
+        if (! is_string($storedName) || $storedName !== $translatedName) {
+            $mismatches[] = "{$path}: block name mismatch ('" . (is_string($storedName) ? $storedName : 'null')
+                . "' vs '" . (is_string($translatedName) ? $translatedName : 'null') . "')";
+
+            return $storedNode;
+        }
+
+        $keys = $this->registry->translatableAttributes($storedName);
+        $storedAttrs = is_array($storedNode['attributes'] ?? null) ? $storedNode['attributes'] : [];
+        $translatedAttrs = is_array($translatedNode['attributes'] ?? null) ? $translatedNode['attributes'] : [];
+
+        foreach ($keys as $key) {
+            // The translated node's BARE value is the translator's actual text for this call —
+            // an agent authors plain shortcode, never a suffixed variant, so read()'s
+            // fallback-to-bare is exactly right here (same posture MergeTranslationsCommand's
+            // mergeNode() takes reading a split-row sibling's own bare content).
+            $value = LocalizedAttributes::read($translatedAttrs, $key, $locale);
+            if (! LocalizedAttributes::hasContent($value)) {
+                continue;
+            }
+            $storedAttrs = LocalizedAttributes::write($storedAttrs, $key, $locale, $value);
+        }
+        $storedNode['attributes'] = $storedAttrs;
+
+        $storedInner = is_array($storedNode['innerBlocks'] ?? null) ? $storedNode['innerBlocks'] : [];
+        $translatedInner = is_array($translatedNode['innerBlocks'] ?? null) ? $translatedNode['innerBlocks'] : [];
+
+        if (count($storedInner) !== count($translatedInner)) {
+            $mismatches[] = "{$path}: innerBlocks count differs (post has " . count($storedInner) . ', translated code has ' . count($translatedInner) . ')';
+
+            return $storedNode;
+        }
+
+        foreach ($storedInner as $index => $child) {
+            $storedInner[$index] = $this->foldNode(
+                is_array($child) ? $child : [],
+                is_array($translatedInner[$index]) ? $translatedInner[$index] : [],
+                $locale,
+                $mismatches,
+                "{$path}>{$index}",
+            );
+        }
+        $storedNode['innerBlocks'] = $storedInner;
+
+        return $storedNode;
+    }
+
+    /**
+     * `$locale`'s row from {@see TranslationStatusService::statuses()}, reshaped to
+     * `create_translation`'s return contract — the same completeness signal `get_post`'s
+     * `translations` map reports for this locale, so a caller sees a consistent number either
+     * way it asks.
+     *
+     * @return array{post_id: int|string, locale: string, complete: bool, blocks_translated: int, blocks_total: int}
+     */
+    private function translationCompleteness(Post $post, string $locale): array
+    {
+        foreach ($this->translationStatus->statuses($post) as $row) {
+            if ($row['locale'] === $locale) {
+                return [
+                    'post_id' => $post->getKey(),
+                    'locale' => $locale,
+                    'complete' => $row['complete'],
+                    'blocks_translated' => $row['blocks_translated'],
+                    'blocks_total' => $row['blocks_total'],
+                ];
+            }
+        }
+
+        // Unreachable in practice ($locale was already validated against LocaleConfig, and
+        // statuses() returns one row per configured locale) — kept as a safe default rather than
+        // an assertion, so a future config change degrades gracefully instead of fataling here.
+        return ['post_id' => $post->getKey(), 'locale' => $locale, 'complete' => false, 'blocks_translated' => 0, 'blocks_total' => 0];
     }
 
     /** Writes `$value` into `{$field}_en` or `{$field}_fr` depending on `$locale` — the bilingual-column shape `title_en`/`title_fr` and `excerpt_en`/`excerpt_fr` share (docs/content-translation.md §3 caps real support at en/fr). */
@@ -1537,11 +1654,11 @@ class McpToolRegistry
      * skip: a featured image slot rendered as a PDF icon is a worse failure mode than refusing
      * the write here.
      *
-     * PROPAGATES group-wide, same posture and same reasoning as
-     * {@see \Heisenberg\Http\Controllers\PostSettingsController::updateFeaturedImage()}'s own
-     * docblock: an agent must not create the "set it twice" inconsistency the UI now prevents.
-     * The response shape is unchanged (still just this post's own id/featured_image_id) —
-     * propagation is a side effect, not a new return value.
+     * No propagation: the single-row translation model (docs/content-translation.md §0) means
+     * one post row owns one featured image — there is no sibling row left to keep in sync. This
+     * previously propagated the same file_id to every row in the post's translation group
+     * (`Post::siblings()`), which no longer exists; that call unconditionally fataled every
+     * invocation until this fix.
      *
      * @param array<string, mixed> $args
      */
@@ -1554,7 +1671,6 @@ class McpToolRegistry
             return DB::transaction(function () use ($post): array {
                 $post->featured_image_id = null;
                 $post->save();
-                $this->propagateFeaturedImageToSiblings($post, null);
 
                 return ['post_id' => $post->getKey(), 'featured_image_id' => null];
             });
@@ -1572,28 +1688,9 @@ class McpToolRegistry
         return DB::transaction(function () use ($post, $file): array {
             $post->featured_image_id = $file->getKey();
             $post->save();
-            $this->propagateFeaturedImageToSiblings($post, $post->featured_image_id);
 
             return ['post_id' => $post->getKey(), 'featured_image_id' => $post->featured_image_id];
         });
-    }
-
-    /**
-     * Plain query UPDATE onto every sibling in `$post`'s translation group — shared by
-     * `setFeaturedImage()` above. Same "no per-row ->save()" reasoning as
-     * `PostSettingsController::updateFeaturedImage()`'s own docblock: a sibling's content/title
-     * is untouched, only its featured_image_id column changes.
-     */
-    private function propagateFeaturedImageToSiblings(Post $post, ?int $featuredImageId): void
-    {
-        $siblings = $post->siblings();
-        if ($siblings->isEmpty()) {
-            return;
-        }
-
-        $post::query()
-            ->whereKey($siblings->pluck($post->getKeyName())->all())
-            ->update(['featured_image_id' => $featuredImageId]);
     }
 
     /** The acting Authenticatable, or a {@see GuestActor} stand-in — same convention every /editor controller uses. */

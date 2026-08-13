@@ -20,7 +20,7 @@ all, while the external server keeps them and never sees `write_canvas` (see
 | Read a block's full contract | `describe_block` | Accepts `name` **or** `names[]` to batch several in one round. |
 | **Write the live page** (build/edit the canvas in front of the user) | `write_canvas` | **Editor surface only.** Shortcode `code` + `mode` (`append`/`replace`); validated server-side against the live contracts, applied client-side by the AI panel when the tool frame arrives on the stream. Unsaved until the user saves. |
 | List posts | `list_posts` | Newest first. |
-| Read a post (shortcode + block JSON + `content_version`) | `get_post` | The `content_version` guards concurrent edits. Also returns `translations`: `{<locale>: {post_id, status}}` for the post's whole translation group (docs/content-translation.md §2) — status is `source` for the post's own locale, else `missing`/`draft`/`published`/`outdated`. |
+| Read a post (shortcode + block JSON + `content_version`) | `get_post` | The `content_version` guards concurrent edits. Also returns `translations`: `{<locale>: {is_default, title, excerpt, blocks_translated, blocks_total, complete}}` — per-locale translation COMPLETENESS on this same row (docs/content-translation.md §0), not a sibling map. |
 | Create a post | `create_post` | Content as shortcode `code` or raw `blocks`; validated + sanitized as the editor does. |
 | Update a post's title/content | `update_post` | Now also accepts `slug`, `excerpt_en`/`excerpt_fr`, `locale`; honors `content_version`. |
 | Set/change post **slug** | `update_post` | Previously auto-derived only. |
@@ -32,7 +32,7 @@ all, while the external server keeps them and never sees `write_canvas` (see
 | **Detach** category / tag | `detach_category` / `detach_tag` | New — mirrors attach. |
 | **Create** a category / tag | `create_category` / `create_tag` | Name → slug; returns the new id. |
 | **Update** a category / tag's bilingual name/description | `update_category` / `update_tag` | Supply at least one field (`name_en`/`name_fr`/`description_en`/`description_fr`, tags have no description); names capped at 255 chars, the columns' own limit. Both surfaces. |
-| **Translate a post** (create or update its sibling in another locale) | `create_translation` | **Both surfaces.** `{post_id, target_locale, title, code, excerpt?, slug?}`; `code` is validated exactly like `create_post`/`update_post`. Missing sibling → new draft; existing sibling → content replaced, status never touched. External surface refuses to update an already-non-draft sibling (same draft-only posture as `create_post`/`update_post`); editor surface may, since a human reviews the result. See docs/content-translation.md §6. |
+| **Translate a post's fields into another locale** | `create_translation` | **Both surfaces, no draft-only restriction** (it edits fields of an existing post; it never creates a post or changes `status`). `{post_id, target_locale, title?, excerpt?, code?}`; at least one of the three. `title`/`excerpt` write straight to `title_<locale>`/`excerpt_<locale>` on the SAME row. `code` is validated exactly like `update_post`, then folded into the post's EXISTING blocks' translatable attributes as `_<locale>` variants, matched BY POSITION — the block tree itself is never replaced. A structural mismatch (block count, or a block name at any position/depth) is refused, naming where. Returns `{post_id, locale, complete, blocks_translated, blocks_total}` (same completeness shape as `get_post`'s `translations` map). See docs/content-translation.md §0/§6. |
 | Set page layout (padding) | `set_page_layout` | Mirrors `PostSettingsController::updateLayout`. |
 | Set discussion (allow comments) | `set_discussion` | Mirrors `updateDiscussion`. |
 | List revisions | `list_revisions` | Ids + timestamps + type. |
@@ -66,7 +66,7 @@ the editor's undo stack and stay unsaved until the user saves.
 
 Every destructive or mutating tool (`create_post`, `update_post`,
 `set_post_status`, taxonomy attach/detach/create/update, `set_page_layout`,
-`set_discussion`, `create_translation` when it updates an existing sibling)
+`set_discussion`, `create_translation` when it changes block content)
 writes through the normal save path, which snapshots a revision.
 `restore_revision` reverses any of them. Nothing bypasses that path.
 `write_canvas` is reversible through the editor's own undo stack instead — it
@@ -89,13 +89,13 @@ inbound MCP server passes its own. The split (2026-08-09):
   bearer-token API for other AIs — keeps them and stays **draft-only**,
   keeping its original refusal ("posts are created as drafts") intact. Both
   restrictions are enforced at list AND call time.
-- **Both surfaces, but posture differs per-call**: `create_translation` is the
-  one write tool offered everywhere — it writes a sibling *post*, not the live
-  canvas, so it makes sense on the external server too. Creating a sibling is
-  always draft-only on either surface; UPDATING an existing sibling that is no
-  longer a draft is refused on the external surface (mirroring `create_post`/
-  `update_post`'s draft-only posture) but allowed on the editor surface, where
-  a human reviews the result before anything ships.
+- **Both surfaces, no draft-only restriction**: `create_translation` writes
+  translated TEXT FIELDS on an existing post's own row — not the live canvas,
+  and not a new post — so it makes sense on the external server too, and
+  unlike `create_post`/`update_post` it holds no draft-only posture on either
+  surface: it never creates a post and never changes `status`, so there is no
+  "unreviewed content goes live" risk to guard against (docs/content-
+  translation.md §0/§6).
 
 ## Error safety
 

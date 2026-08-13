@@ -57,12 +57,9 @@ return [
         'save_conflict' => 'Cet article a été modifié ailleurs — rechargez et réessayez.',
         'save_invalid' => 'Enregistrement impossible — vérifiez le formulaire.',
         'save_network' => 'Erreur réseau — vérifiez votre connexion.',
-        // Menu déroulant de langue de l'article (docs/content-translation.md §5) — voir / changer
-        // de traduction / en créer une, à partir du même seed postTranslations et des mêmes
-        // libellés de statut que la section Traductions de l'inspecteur ('inspector.post_translations_*').
-        'aria_post_language' => "Langue de l'article",
-        'lang_translate_to' => 'Traduire en :locale…',
-        'lang_creating' => 'Création…',
+        // Menu déroulant de langue d'édition (docs/content-translation.md §0/Wave 2) — change la
+        // langue dans laquelle tout le document est édité ; aucune navigation, aucune requête.
+        'aria_post_language' => "Langue d'édition",
         // Export d'e-mail (docs/email-system.md §6) — le menu de téléchargement à côté d'Aperçu.
         'aria_email_export' => "Télécharger l'e-mail",
         'export_html' => 'Télécharger le HTML (pour les plateformes d’e-mailing)',
@@ -373,21 +370,16 @@ return [
         'post_taxonomy_needs_save' => 'Enregistrez d\'abord l\'article pour ajouter des catégories ou des étiquettes.',
         'post_discussion' => 'Discussion',
         'post_allow_comments' => 'Autoriser les commentaires',
-        // Traductions (docs/content-translation.md §5, Wave T2a) — une ligne par langue
-        // configurée. Les noms de langue réutilisent le groupe 'locales' ci-dessous.
+        // Traductions (docs/content-translation.md §0/Wave 2) — une ligne par langue configurée,
+        // montrant à quel point le texte de cette langue est COMPLET sur cet unique article ;
+        // cliquer sur une ligne change la langue d'édition. Les noms de langue réutilisent le
+        // groupe 'locales' ci-dessous.
         'post_translations' => 'Traductions',
-        'post_translations_needs_save' => "Enregistrez d'abord l'article pour le traduire.",
-        'post_translations_this_post' => 'Cet article',
-        'post_translations_status_source' => 'Source',
-        'post_translations_status_missing' => 'Non traduit',
-        'post_translations_status_draft' => 'Brouillon',
-        'post_translations_status_published' => 'Publié',
-        'post_translations_status_outdated' => 'Obsolète',
-        'post_translations_create' => 'Créer la traduction',
-        'post_translations_open' => 'Ouvrir',
-        'post_translations_update' => 'Mettre à jour depuis la source',
-        'post_translations_update_confirm' => 'Écraser le contenu ?',
-        'post_translations_update_success' => 'Mis à jour depuis la source.',
+        'post_translations_needs_save' => "D'abord enregistrer",
+        'post_translations_complete' => 'Complet',
+        'post_translations_in_progress' => 'En cours',
+        'post_translations_title_missing' => 'Titre manquant',
+        'post_translations_blocks_progress' => ':done/:total blocs',
         'post_page_layout' => 'Mise en page',
         'layer_opacity' => 'Opacité du calque',
         'pick_colour' => 'Choisir une couleur',

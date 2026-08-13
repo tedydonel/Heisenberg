@@ -178,33 +178,10 @@ class SeoUrlResolverTest extends TestCase
         $this->assertSame('https://stub.example/p?id=' . $post->getKey() . '&locale=en', (string) $locs[0]);
     }
 
-    public function test_a_custom_bound_resolver_wins_on_the_preview_pages_hreflang_alternates(): void
-    {
-        $this->app['config']->set('heisenberg.seo.url_resolver', StubPostUrlResolver::class);
-        $this->app['config']->set('heisenberg.seo.url_template', 'https://example.com/{locale}/blog/{slug}');
-
-        $en = $this->makePost(['title_en' => 'English title', 'locale' => 'en']);
-        $fr = Post::create([
-            'translation_group_id' => $en->translation_group_id,
-            'locale' => 'fr',
-            'title_en' => '',
-            'title_fr' => 'Titre français',
-            'status' => 'published',
-        ]);
-
-        $html = (string) $this->get("/editor/{$en->id}/preview")->assertOk()->getContent();
-
-        $this->assertStringContainsString(
-            'href="https://stub.example/p?id=' . $en->getKey() . '&amp;locale=en"',
-            $html
-        );
-        $this->assertStringContainsString(
-            'href="https://stub.example/p?id=' . $fr->getKey() . '&amp;locale=fr"',
-            $html
-        );
-        // Never the string url_template's shape -- proves the resolver binding, not the
-        // template, produced these URLs.
-        $this->assertStringNotContainsString('example.com/en/blog', $html);
-        $this->assertStringNotContainsString('example.com/fr/blog', $html);
-    }
+    // `test_a_custom_bound_resolver_wins_on_the_preview_pages_hreflang_alternates` was removed
+    // here (docs/content-translation.md §0.1): it asserted hreflang links built from published
+    // SIBLING ROWS, which `PreviewController::alternatesPayload()` no longer produces at all
+    // under the single-row model (`Post::siblings()` is gone) — see that method's own docblock.
+    // The resolver-override behavior itself is still pinned by
+    // `test_a_custom_bound_resolver_wins_on_the_sitemap` above.
 }

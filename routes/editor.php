@@ -12,7 +12,6 @@ use Heisenberg\Http\Controllers\PostController;
 use Heisenberg\Http\Controllers\PostRevisionsController;
 use Heisenberg\Http\Controllers\PostSettingsController;
 use Heisenberg\Http\Controllers\PostTagController;
-use Heisenberg\Http\Controllers\PostTranslationController;
 use Heisenberg\Http\Controllers\PreviewController;
 use Heisenberg\Http\Controllers\SavedThemeController;
 use Heisenberg\Http\Controllers\SeoAnalysisController;
@@ -78,11 +77,6 @@ Route::middleware(config('heisenberg.middleware.editor', ['web']))->group(functi
     Route::put('/editor/posts/{post}/discussion', [PostSettingsController::class, 'updateDiscussion'])->whereNumber('post')->name('heisenberg.editor.posts.discussion.update');
     Route::put('/editor/posts/{post}/featured-image', [PostSettingsController::class, 'updateFeaturedImage'])->whereNumber('post')->name('heisenberg.editor.posts.featured-image.update');
     Route::put('/editor/posts/{post}/toc', [PostSettingsController::class, 'updateToc'])->whereNumber('post')->name('heisenberg.editor.posts.toc.update');
-    // Create/re-translate a post's sibling row (docs/content-translation.md §4, Wave T2a) — body
-    // {locale, update?: bool}: creates the sibling (409 if it exists and `update` isn't true), or
-    // overwrites its blocks/TOC from the source when `update: true`. See
-    // PostTranslationController's own docblock for the full create-vs-update contract.
-    Route::post('/editor/posts/{post}/translations', [PostTranslationController::class, 'store'])->whereNumber('post')->name('heisenberg.editor.posts.translations.store');
     // "Preview in another page" (topbar's eye button) — reaches the SAME
     // PreviewController the deprecated builder route group already wires at
     // POST/GET /builder/preview (routes/web.php), but under the editor's own

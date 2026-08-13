@@ -56,6 +56,12 @@ final class EditorController
             // taxonomy/layout controls render disabled until hb:post-id fires.
             'postId' => null,
             'postTitle' => '',
+            // The editing-locale seed (docs/content-translation.md §0/Wave 2): a brand-new
+            // document has no `locale` column yet, so the client's default editing locale — and
+            // the "home locale" the bare/suffixed write rule keys off — falls back to the
+            // config default, same source PostController's own create path would use.
+            'postLocale' => LocaleConfig::default(),
+            'postTitleByLocale' => array_fill_keys(LocaleConfig::locales(), ''),
             'contentVersion' => 0,
             'initialBlocks' => [],
             'postCategoryIds' => [],
@@ -74,9 +80,9 @@ final class EditorController
             // No post yet — the Summary's schedule/publish-date inputs have nothing to seed.
             'postScheduledAt' => null,
             'postPublishedAt' => null,
-            // The Translations disclosure's "unsaved" marker (docs/content-translation.md §5) —
-            // null renders the muted "save the post first" line instead of a locale row list;
-            // there is no source post id yet to translate FROM.
+            // The Translations disclosure's "unsaved" marker (docs/content-translation.md §0/Wave
+            // 2) — null renders a plain locale-switch row list (no completeness counts, nothing
+            // saved yet to count) instead of TranslationStatusService's real per-locale rows.
             'postTranslations' => null,
             'documentType' => $documentType,
             // The Components/quick-insert palette (docs/email-system.md §7-E3): every enabled
@@ -122,9 +128,22 @@ final class EditorController
         $documentType = $this->documentType((string) $model->type);
         $shared = $this->sharedViewData($registry, $themes, $savedThemes, $fonts);
 
+        // The editing-locale seed (docs/content-translation.md §0/Wave 2): the client defaults to
+        // EDITING the post's own locale — the "home locale" the bare/suffixed write rule keys off
+        // too — falling back to the config default only for a row saved before `locale` existed.
+        $postLocale = (string) ($model->locale ?: LocaleConfig::default());
+
         return view('heisenberg::editor.index', array_merge($shared, [
             'postId' => $model->getKey(),
-            'postTitle' => (string) ($model->title_en ?? ''),
+            'postTitle' => $model->title($postLocale),
+            'postLocale' => $postLocale,
+            // title_en/title_fr have no bare/unsuffixed column (unlike a block's translatable
+            // attributes) — every configured locale's own raw value, so the client can swap the
+            // visible title on a locale switch and remember an unsaved edit to EITHER locale
+            // without losing the other (see topbar.blade.php's hbTitleByLocale).
+            'postTitleByLocale' => collect(LocaleConfig::locales())
+                ->mapWithKeys(fn (string $l) => [$l => (string) ($model->getAttribute("title_{$l}") ?? '')])
+                ->all(),
             'contentVersion' => (int) $model->content_version,
             // Each block ships exactly as stored — the shape newBlockModel() produces client-side.
             'initialBlocks' => $model->blocks->map(fn ($block) => $block->content)->values()->all(),
@@ -152,10 +171,10 @@ final class EditorController
                 'label' => $entry->label,
                 'anchor' => $entry->anchor,
             ])->values()->all(),
-            // The Translations disclosure's live rows (docs/content-translation.md §5) — one per
-            // configured locale, {locale, status, post_id}. See TranslationStatusService's own
-            // docblock for the status bucketing rules.
-            'postTranslations' => (new TranslationStatusService())->statuses($model),
+            // The Post tab's Translations section + topbar language dropdown (docs/
+            // content-translation.md §0/Wave 2): per-locale COMPLETENESS on this one row —
+            // {locale, is_default, title, excerpt, blocks_translated, blocks_total, complete}.
+            'postTranslations' => app(TranslationStatusService::class)->statuses($model),
             'documentType' => $documentType,
             // See index()'s own note — filtered server-side to the email surface once this
             // document is one.
@@ -389,9 +408,6 @@ final class EditorController
             // SEO score & checklist (docs/seo-system.md §4) — see postSeoAnalyzeUrlTemplate()'s
             // own docblock for the Route::has() guard.
             'postSeoAnalyzeUrlTemplate' => $this->postSeoAnalyzeUrlTemplate(),
-            // Create/re-translate a sibling row (PostTranslationController, docs/content-translation.md
-            // §4/§5) — same __ID__ template convention as the routes above.
-            'postTranslationsUrlTemplate' => route('heisenberg.editor.posts.store') . '/__ID__/translations',
             // Email authoring's two read-only endpoints (docs/email-system.md §7-E3,
             // EmailPreviewController) — same __ID__ template convention as every other
             // post-scoped URL above. Both are gated exactly like the post preview route
@@ -400,18 +416,14 @@ final class EditorController
             'emailPreviewUrlTemplate' => route('heisenberg.editor.email.preview', ['post' => '__ID__']),
             'emailSizeUrlTemplate' => route('heisenberg.editor.email.size', ['post' => '__ID__']),
             'emailExportUrlTemplate' => route('heisenberg.editor.email.export', ['post' => '__ID__']),
-            // "Open" on a Translations row navigates to a DIFFERENT post's editor document — a real
-            // page load, not a client-side patch (unlike every other __ID__ template above, which
-            // PUTs/POSTs against the CURRENT post). heisenberg.editor.show is `/editor/{post}`; the
-            // route() helper never validates its whereNumber() constraint when GENERATING a URL
-            // (that only gates incoming requests), so the __ID__ placeholder survives untouched.
-            'postEditorUrlTemplate' => route('heisenberg.editor.show', ['post' => '__ID__']),
-            // The topbar's language dropdown (docs/content-translation.md §5) falls back to this
-            // when there is no post yet to read a `source` row's locale from (index()'s blank
-            // document — postTranslations is null there). LocaleConfig::default() is the same
-            // "which locale does a brand-new post get" source of truth PostController's own
-            // create path already reads from.
-            'localeDefault' => LocaleConfig::default(),
+            // The topbar language dropdown + Post-tab Translations section (docs/
+            // content-translation.md §0/Wave 2): which locales this install supports, and their
+            // display labels — the client needs the labels to relabel the dropdown trigger after
+            // an in-place switch, without a second lang-key lookup mechanism client-side.
+            'contentLocales' => LocaleConfig::locales(),
+            'contentLocaleLabels' => collect(LocaleConfig::locales())
+                ->mapWithKeys(fn (string $l) => [$l => (string) __('heisenberg::editor.locales.' . $l)])
+                ->all(),
             // Initial-render seed only — the real, policy-gated read/write happens in the
             // taxonomy controllers once the user acts.
             'categoryOptions' => $this->categoryOptions(),

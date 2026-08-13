@@ -32,7 +32,7 @@
     $jsonLd = is_array($seo['jsonLd'] ?? null) ? $seo['jsonLd'] : [];
     // hreflang alternates (PreviewController::alternatesPayload(), docs/seo-system.md §5) —
     // list<{locale, url}>, already including an 'x-default' entry when one applies; empty for the
-    // session-flow show() page (no post) or a post with no published sibling.
+    // session-flow show() page (no post) or a post with content in only its own home locale.
     $alternates = $alternates ?? [];
 @endphp
 <!DOCTYPE html>

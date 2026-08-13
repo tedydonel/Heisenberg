@@ -112,8 +112,14 @@ the "SEO score rating" UI the design lacked.
   both resolve the `PostUrlResolver` CONTRACT from the container, never `SeoUrlResolver` by
   concrete class — so a host's binding controls every public URL Heisenberg emits, and the sitemap
   and a page's own `<link rel="alternate">` tags never disagree.
-- **hreflang on pages**: `preview.blade.php` (and template guidance) emits alternate links for
-  published siblings.
+- **hreflang on pages**: `preview.blade.php` emits alternate links built by
+  `PreviewController::alternatesPayload()` — under the single-row translation model
+  (docs/content-translation.md §0) a "translation" is `_<locale>` attribute variants on the SAME
+  row, not a sibling row, so every alternate points at the SAME post through the
+  `PostUrlResolver` seam above with only its `locale` swapped on an in-memory clone. One alternate
+  per locale the post actually has content for (that locale's title is non-empty), plus
+  `x-default` at `heisenberg.default_locale`; a post translated into only its own home locale
+  emits nothing.
 - **JSON-LD**: `<script type="application/ld+json">` from `SeoMeta::getJsonLd()` on the preview page
   and offered to templates via the provider payload.
 - **robots meta** already handled per-page; a robots.txt is the HOST'S file (documented, not shipped).

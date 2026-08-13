@@ -130,6 +130,38 @@ class BlockRegistryService
         return $this->scan()['contracts'][$name] ?? null;
     }
 
+    /**
+     * Attribute names this contract marks `"translatable": true` (docs/content-translation.md
+     * §0) — the human-language attributes whose value lives in locale-suffixed variants
+     * (`content_en`, `content_fr`, …). Empty for an unknown block or one with none declared
+     * (most container/design blocks). Used server-side by {@see \Heisenberg\Services\TranslationStatusService}
+     * and any other caller that needs the list without the full localized registry envelope.
+     *
+     * @return string[]
+     */
+    public function translatableAttributes(string $name): array
+    {
+        return $this->translatableAttributesOf($this->getBlock($name) ?? []);
+    }
+
+    /** @return string[] */
+    private function translatableAttributesOf(array $contract): array
+    {
+        $attributes = $contract['attributes'] ?? null;
+        if (! is_array($attributes)) {
+            return [];
+        }
+
+        $out = [];
+        foreach ($attributes as $attribute => $def) {
+            if (is_array($def) && ($def['translatable'] ?? false) === true) {
+                $out[] = (string) $attribute;
+            }
+        }
+
+        return $out;
+    }
+
     public function isBlockKnown(string $name): bool
     {
         return isset($this->scan()['contracts'][$name]);
@@ -362,6 +394,10 @@ class BlockRegistryService
             $this->deriveSupportControls($contract, $locale),
         );
         $contract['panels'] = $this->derivePanels($contract);
+        // The editor wave's per-attribute locale-scoping needs this list without re-deriving it
+        // from `attributes` client-side — same "derive once, serve alongside controls/panels"
+        // posture as those two (docs/content-translation.md §0).
+        $contract['translatableAttributes'] = $this->translatableAttributesOf($contract);
 
         return $contract;
     }

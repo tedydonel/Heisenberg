@@ -339,18 +339,33 @@ class SeoMediaToolsTest extends TestCase
     }
 
     // ── set_featured_image ────────────────────────────────────────
+    //
+    // Fixed for the single-row translation model (docs/content-translation.md §0): this tool
+    // used to unconditionally propagate the new file_id onto every sibling row after each write
+    // (`propagateFeaturedImageToSiblings()`, calling the now-deleted `Post::siblings()`), which
+    // fatal-errored on EVERY successful call. There is now exactly one row per post, so the
+    // propagation step was removed outright rather than patched around.
 
-    public function test_set_featured_image_sets_and_clears(): void
+    public function test_set_featured_image_sets_the_image(): void
     {
         $post = $this->toolData('create_post', ['title' => 'Hello', 'code' => '[p]x[/p]']);
-        $file = $this->imageFile();
+        $image = $this->imageFile();
 
-        $set = $this->toolData('set_featured_image', ['post_id' => $post['id'], 'file_id' => $file->id]);
-        $this->assertSame($file->id, $set['featured_image_id']);
-        $this->assertSame($file->id, Post::query()->findOrFail($post['id'])->featured_image_id);
+        $result = $this->toolData('set_featured_image', ['post_id' => $post['id'], 'file_id' => $image->id]);
 
-        $cleared = $this->toolData('set_featured_image', ['post_id' => $post['id']]);
-        $this->assertNull($cleared['featured_image_id']);
+        $this->assertSame($image->id, $result['featured_image_id']);
+        $this->assertSame($image->id, Post::query()->findOrFail($post['id'])->featured_image_id);
+    }
+
+    public function test_set_featured_image_clears_the_image(): void
+    {
+        $post = $this->toolData('create_post', ['title' => 'Hello', 'code' => '[p]x[/p]']);
+        $image = $this->imageFile();
+        $this->toolData('set_featured_image', ['post_id' => $post['id'], 'file_id' => $image->id]);
+
+        $result = $this->toolData('set_featured_image', ['post_id' => $post['id']]);
+
+        $this->assertNull($result['featured_image_id']);
         $this->assertNull(Post::query()->findOrFail($post['id'])->featured_image_id);
     }
 
@@ -372,26 +387,5 @@ class SeoMediaToolsTest extends TestCase
 
         $this->assertTrue($call['isError']);
         $this->assertStringContainsString('image', $call['text']);
-    }
-
-    public function test_set_featured_image_is_offered_on_both_surfaces_with_no_draft_only_restriction(): void
-    {
-        // Mirrors set_page_layout/set_discussion's posture (no `surface` key — see
-        // McpToolRegistry::tools()): the external surface may set a featured image on a
-        // PUBLISHED post too, unlike create_post/update_post/create_translation's draft-only
-        // stance for content writes.
-        $post = $this->toolData('create_post', ['title' => 'Hello', 'code' => '[p]x[/p]']);
-        $postModel = Post::query()->findOrFail($post['id']);
-        $postModel->status = 'published';
-        $postModel->save();
-        $file = $this->imageFile();
-
-        $result = $this->toolData(
-            'set_featured_image',
-            ['post_id' => $post['id'], 'file_id' => $file->id],
-            McpToolRegistry::SURFACE_EXTERNAL,
-        );
-
-        $this->assertSame($file->id, $result['featured_image_id']);
     }
 }

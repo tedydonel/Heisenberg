@@ -44,7 +44,7 @@
      wrappers — selectable, editable, movable via moveById, inserted via the in-container
      appender or by inserting while a container is selected. Undo/redo history lives here too
      (snapshot-based; see the history block). --}}
-@props(['registry' => [], 'blocksCss' => '', 'registryHash' => ''])
+@props(['registry' => [], 'blocksCss' => '', 'registryHash' => '', 'postId' => null, 'postLocale' => 'en', 'contentLocales' => ['en', 'fr']])
 
 {{-- Each block is styled by its own contract stylesheet (resources/blocks/<slug>/<slug>.css),
      concatenated server-side and embedded here so a block stays self-contained. --}}
@@ -60,6 +60,14 @@
         // Where the canvas fetches a block-library icon's sanitized SVG from (the same asset
         // the published page inlines server-side) — see the runtime's `icon` node branch.
         iconUrlTemplate: @json(\Illuminate\Support\Facades\Route::has('heisenberg.editor.asset.icon') ? route('heisenberg.editor.asset.icon', ['set' => '__SET__', 'slug' => '__SLUG__']) : ''),
+        // The single-row translation model (docs/content-translation.md §0/Wave 2): which locale
+        // this document's bare/unsuffixed block attributes belong to (never changes for this
+        // document's lifetime), the locales this install supports, and the saved post's own id
+        // (null for a never-saved document) — the key a persisted editing-locale choice is
+        // remembered under. See the editingLocale block below.
+        postId: @json($postId),
+        postLocale: @json($postLocale),
+        contentLocales: @json($contentLocales),
     });
 </script>
 
@@ -68,6 +76,59 @@
 (() => {
     const DATA = window.__hbEditor || {};
     const REGISTRY = DATA.registry || {};
+
+    // ── editing locale (docs/content-translation.md §0/Wave 2) ──
+    // The locale a save without an explicit switch reads/writes BARE keys for — the post's own
+    // `locale` column, fixed for this document's lifetime (switching editingLocale never moves
+    // this). `editingLocale` is the locale every translatable read/write currently targets;
+    // it starts at homeLocale and is corrected from a persisted per-post choice below, all
+    // BEFORE the initial hydrate/render further down this file, so the first paint is already
+    // correct — no locale-flash to fix up afterwards.
+    const homeLocale = DATA.postLocale || 'en';
+    const CONTENT_LOCALES = Array.isArray(DATA.contentLocales) && DATA.contentLocales.length ? DATA.contentLocales : [homeLocale];
+    let editingLocale = homeLocale;
+    let currentPostId = DATA.postId != null ? DATA.postId : null;
+    const localeStorageKey = () => 'hb-editor:editing-locale:' + (currentPostId != null ? currentPostId : 'new');
+    const persistEditingLocale = (locale) => { try { localStorage.setItem(localeStorageKey(), locale); } catch (e) { /* private mode */ } };
+    (function initEditingLocale() {
+        try {
+            const stored = localStorage.getItem(localeStorageKey());
+            if (stored && CONTENT_LOCALES.indexOf(stored) !== -1) editingLocale = stored;
+        } catch (e) { /* private mode */ }
+    })();
+    // A never-saved document adopts a real id on its first save (topbar.blade.php's hb:post-id) —
+    // re-key so a later reload of THIS post restores the choice just made.
+    document.addEventListener('hb:post-id', function (event) {
+        currentPostId = event && event.detail ? event.detail.id : currentPostId;
+        persistEditingLocale(editingLocale);
+    });
+
+    // Which of a block's own attributes carry human-language text — BlockRegistryService::
+    // translatableAttributes(), riding along on each contract (BlockViewData::clientBlocks()).
+    function translatableKeys(name) {
+        const c = REGISTRY[name];
+        return c && Array.isArray(c.translatableAttributes) ? c.translatableAttributes : [];
+    }
+    function isTranslatableAttr(name, key) { return translatableKeys(name).indexOf(key) !== -1; }
+    // The key a WRITE to `key` on a block named `name` lands on, for the CURRENT editingLocale.
+    // Mirrors Heisenberg\Support\LocalizedAttributes::write() with one addition: editing the
+    // post's own HOME locale keeps writing the bare key — that is what a read() falls back to
+    // and what every existing (pre-translation) post already stores, so authoring in a post's
+    // native language never forks its content into a `_<homeLocale>` variant nothing else reads.
+    function resolveAttrKey(name, key) {
+        return (isTranslatableAttr(name, key) && editingLocale !== homeLocale) ? key + '_' + editingLocale : key;
+    }
+    // The key a READ of `key` on `model` resolves to, for the CURRENT editingLocale — mirrors
+    // LocalizedAttributes::read() exactly: `key_<editingLocale>` when the block actually carries
+    // that variant, else the bare key (which IS the home locale's own content).
+    function readAttrKey(model, key) {
+        if (isTranslatableAttr(model.name, key)) {
+            const suffixed = key + '_' + editingLocale;
+            if (Object.prototype.hasOwnProperty.call(model.attributes || {}, suffixed)) return suffixed;
+        }
+        return key;
+    }
+    function readAttr(model, key) { return (model.attributes || {})[readAttrKey(model, key)]; }
 
     // ── document model ─────────────────────────────────────────
     const doc = { blocks: [] };
@@ -145,7 +206,7 @@
         return String(str == null ? '' : str).replace(/\{\{\s*([a-zA-Z0-9_.]+)\s*\}\}/g, function (_, tok) {
             if (tok === 'id') return model.id;
             if (tok === 'name') return model.name;
-            if (tok.indexOf('attributes.') === 0) { const v = model.attributes[tok.slice(11)]; return v == null ? '' : String(v); }
+            if (tok.indexOf('attributes.') === 0) { const v = readAttr(model, tok.slice(11)); return v == null ? '' : String(v); }
             if (tok.indexOf('supports.') === 0) { const s = dataGet(model.supports || {}, tok.slice(9)); return s == null ? '' : String(s); }
             return '';
         });
@@ -501,7 +562,7 @@
         if (type === 'rich-text') {
             const span = document.createElement('span');
             if (node.class) span.className = subst(node.class, model);
-            const val = model.attributes[node.attribute];
+            const val = readAttr(model, node.attribute);
             // Editable at EVERY depth: a nested child renders inside its own .hb-blk--nested
             // wrapper, so closest('.hb-blk[data-block]') resolves to the CHILD's model.
             span.classList.add('hb-ce');
@@ -532,7 +593,7 @@
         // per non-empty line of a plain attribute, escaped (textContent), static tag only.
         if (type === 'text-lines') {
             const frag = document.createDocumentFragment();
-            const raw = model.attributes[node.attribute];
+            const raw = readAttr(model, node.attribute);
             let lineTag = String(node.tag || 'li').toLowerCase();
             if (!/^[a-z][a-z0-9-]*$/.test(lineTag)) lineTag = 'li';
             const lineCls = node.class ? subst(node.class, model) : '';
@@ -991,7 +1052,7 @@
     function setAttribute(id, key, value) {
         const model = findModel(id);
         if (!model) return false;
-        model.attributes[key] = value;
+        model.attributes[resolveAttrKey(model.name, key)] = value;
         if (key === 'columns') reconcileColumnsCount(model);
         reRenderBlock(id);
         document.dispatchEvent(new CustomEvent('hb:block-updated', { detail: { id: id, key: key, value: value, model: model } }));
@@ -1573,7 +1634,7 @@
             if (!blk) return;
             const model = findModel(blk.getAttribute('data-block'));
             if (!model) return;
-            model.attributes[ce.getAttribute('data-hb-rt')] = ce.innerHTML;
+            model.attributes[resolveAttrKey(model.name, ce.getAttribute('data-hb-rt'))] = ce.innerHTML;
             document.dispatchEvent(new CustomEvent('hb:blocks-changed'));
         });
 
@@ -1762,6 +1823,27 @@
         });
     }
 
+    // Switches which locale every translatable attribute read/write targets (docs/
+    // content-translation.md §0/Wave 2): re-renders every top-level block in place (each walks
+    // its own innerBlocks, so nested content follows) so the canvas shows that locale's text —
+    // readAttr's own bare-key fallback covers a block never translated into it — persists the
+    // choice, and re-seeds whichever block panel the inspector currently has open (the panel
+    // reads model.attributes directly today, so a stale-locale value would otherwise linger
+    // until the next selection change). hb:editing-locale-change is the one signal every other
+    // "which locale am I looking at" surface (topbar trigger, title field, Translations rows)
+    // reacts to — no consumer re-derives the locale itself.
+    function setEditingLocale(locale) {
+        if (typeof locale !== 'string' || CONTENT_LOCALES.indexOf(locale) === -1) return false;
+        editingLocale = locale;
+        persistEditingLocale(editingLocale);
+        doc.blocks.forEach(function (m) { reRenderBlock(m.id); });
+        const id = selected ? selected.getAttribute('data-block') : null;
+        const model = id ? findModel(id) : null;
+        if (model) document.dispatchEvent(new CustomEvent('hb:block-selected', { detail: { name: model.name, model: model } }));
+        document.dispatchEvent(new CustomEvent('hb:editing-locale-change', { detail: { locale: editingLocale, homeLocale: homeLocale } }));
+        return true;
+    }
+
     // The documented public runtime API other editor components (inspector, navigator, media
     // dialog, …) build against. See the file header for the event contract that goes with it.
     window.hbEditor = {
@@ -1774,6 +1856,15 @@
         insertInto: insertInto,
         setAttribute: setAttribute,
         setSupport: setSupport,
+        // docs/content-translation.md §0/Wave 2 — the editing-locale seam every other editor
+        // component (topbar, inspector, code view) reads/writes translatable attributes through,
+        // so the suffix rule lives in exactly one place.
+        getEditingLocale: function () { return editingLocale; },
+        getHomeLocale: function () { return homeLocale; },
+        getContentLocales: function () { return CONTENT_LOCALES.slice(); },
+        setEditingLocale: setEditingLocale,
+        resolveAttrKey: resolveAttrKey,
+        readAttr: readAttr,
         moveById: moveById,
         duplicateBlock: duplicateBlock,
         previewState: previewState,

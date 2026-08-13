@@ -13,6 +13,7 @@ use Heisenberg\Services\BlockRenderer;
 use Heisenberg\Services\BlockRegistryService;
 use Heisenberg\Services\FontCatalogService;
 use Heisenberg\Services\ThemeRepository;
+use Heisenberg\Services\TranslationStatusService;
 use Heisenberg\Support\BlockViewData;
 use Heisenberg\Support\LocaleConfig;
 use Illuminate\Contracts\Auth\Authenticatable;
@@ -59,6 +60,7 @@ class PreviewController
         private PostCommentProvider $comments,
         private PostSeoMetaProvider $seoMeta,
         private PostUrlResolver $urls,
+        private TranslationStatusService $translationStatus,
     ) {
     }
 
@@ -130,9 +132,9 @@ class PreviewController
             seo: $this->seoPayload($model),
             hasDoc: true,
             featured: $this->featuredPayload($model->featuredImage),
-            // hreflang alternates (docs/seo-system.md §5, docs/content-translation.md §7) — empty
-            // when the post has no PUBLISHED sibling (a solo post emits no <link rel="alternate">
-            // at all; see alternatesPayload()'s own docblock).
+            // hreflang alternates (docs/seo-system.md §5, docs/content-translation.md §0/§7) —
+            // empty when the post has content in only its own home locale (a solo post emits no
+            // <link rel="alternate"> at all; see alternatesPayload()'s own docblock).
             alternates: $this->alternatesPayload($model),
             // The AUTHORED table of contents (Post::tocEntries()) — renders ONLY when the post
             // has rows here; see preview.blade.php and Post::tocEntries()'s own docblock for why
@@ -267,39 +269,59 @@ class PreviewController
     }
 
     /**
-     * hreflang alternates (docs/seo-system.md §5, docs/content-translation.md §7) — `list<{locale,
-     * url}>`, one entry per PUBLISHED row in the post's translation group (including `$model`
-     * itself when it is published), plus a trailing `{locale: 'x-default', url}` entry pointing at
-     * the group's `heisenberg.default_locale` row, IF that row is among the published ones.
+     * hreflang alternates (docs/seo-system.md §5, docs/content-translation.md §0/§7), rewritten
+     * for the single-row model. There are no sibling ROWS to relate anymore (`Post::siblings()`
+     * is gone) — a post's other locales live as `_<locale>` attribute variants on THIS SAME row —
+     * so every alternate points at the SAME post, through the existing {@see PostUrlResolver}
+     * seam (`heisenberg.seo.url_template`/`url_resolver`), with only the `locale` attribute
+     * swapped on an in-memory CLONE of the post (never persisted, see {@see self::urlFor()}). A
+     * host's own resolver binding (or the bundled `SeoUrlResolver`) reads `$post->locale` to
+     * build the address either way, so this needs no knowledge of what a locale-prefixed URL
+     * actually looks like — same seam the sitemap already resolves this contract through.
      *
-     * Returns `[]` (no `<link rel="alternate">` at all) unless there are at least 2 published rows
-     * to relate — a solo post (no sibling, or a sibling that's still a draft) has nothing to
-     * cross-link, and emitting a single self-referencing hreflang would be noise, not signal. URLs
-     * come from the {@see PostUrlResolver} contract — the SAME resolver `SitemapController` uses, so the sitemap
-     * and this page's own <head> never disagree about a post's public address.
+     * Emits one alternate per locale the post actually HAS CONTENT for — that locale's `title`
+     * flag from {@see TranslationStatusService} is the cheapest real "this locale exists" signal
+     * — plus one `x-default` entry at `heisenberg.default_locale`. A post translated into only
+     * its own home locale (untranslated — the common case) emits NOTHING: a single-locale
+     * hreflang set is a self-referencing link with no informational value, so the whole block is
+     * withheld rather than emitted with one lonely entry.
      *
      * @return list<array{locale:string,url:string}>
      */
     private function alternatesPayload(Post $model): array
     {
-        $rows = $model->status === 'published' ? collect([$model]) : collect();
-        $rows = $rows->concat($model->siblings()->filter(fn (Post $sibling) => $sibling->status === 'published'));
+        $withContent = array_values(array_filter(
+            $this->translationStatus->statuses($model),
+            static fn (array $row): bool => $row['title'],
+        ));
 
-        if ($rows->count() < 2) {
+        if (count($withContent) < 2) {
             return [];
         }
 
-        $alternates = $rows->map(fn (Post $row) => [
-            'locale' => (string) $row->locale,
-            'url' => $this->urls->url($row),
-        ])->values()->all();
-
-        $default = $rows->firstWhere('locale', LocaleConfig::default());
-        if ($default !== null) {
-            $alternates[] = ['locale' => 'x-default', 'url' => $this->urls->url($default)];
+        $alternates = [];
+        foreach ($withContent as $row) {
+            $alternates[] = ['locale' => $row['locale'], 'url' => $this->urlFor($model, $row['locale'])];
         }
 
+        $alternates[] = ['locale' => 'x-default', 'url' => $this->urlFor($model, LocaleConfig::default())];
+
         return $alternates;
+    }
+
+    /**
+     * `$model`'s public URL for a locale OTHER than (or the same as) its own — via the SAME
+     * {@see PostUrlResolver} seam every other public URL in this package goes through, given an
+     * in-memory clone with only `locale` swapped (attributes never persisted; `getKey()`/`slug`
+     * stay the model's own). Works with the bundled `SeoUrlResolver` (reads `$post->locale`) and
+     * any host-bound resolver that does the same, without this method knowing the URL shape.
+     */
+    private function urlFor(Post $model, string $locale): string
+    {
+        $clone = clone $model;
+        $clone->locale = $locale;
+
+        return $this->urls->url($clone);
     }
 
     /**

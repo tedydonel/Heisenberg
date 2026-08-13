@@ -184,53 +184,52 @@
         </div>
         <x-live.revisions-dialog />
 
-        {{-- Translations (docs/content-translation.md §5, Wave T2a) — one row per configured
-             locale (postTranslations, TranslationStatusService::statuses()): locale display name,
-             a status chip, and a status-dependent action (Create translation / Open / Update from
-             source). Below Summary per the design doc, its own disclosure — Summary itself is
-             untouched. `postTranslations === null` is the /editor blank-document + never-saved
-             state: nothing to translate yet, so the body renders a muted hint instead of rows,
-             same "needs save" posture as Discussion/Categories/Tags. Wiring in
-             wirePostTranslations below. --}}
+        {{-- Translations (docs/content-translation.md §0/Wave 2) — one row per configured
+             locale: its label, a completeness readout (TranslationStatusService::statuses()),
+             and the currently-EDITING locale marked. Clicking a row switches the editing locale
+             (window.hbEditor.setEditingLocale) — there is nothing to "create" or "open" on a
+             single-row document, so this is the section's only affordance now. Below Summary per
+             the design doc, its own disclosure. `postTranslations === null` is the /editor
+             blank-document + never-saved state: nothing saved to count yet, so rows render
+             without a completeness readout — still clickable, since switching which locale you're
+             ABOUT to author in needs no saved post. Wiring in wirePostTranslations below. --}}
         <x-ui.disclosure-row icon="translate" :label="__('heisenberg::editor.inspector.post_translations')" chevron="down" />
-        <div class="hb-post-translations-body" data-hb-disclosure-body data-hb-post-translations-field
-            data-hb-post-id="{{ $postId ?? '' }}"
-            data-hb-translations-url-template="{{ $postTranslationsUrlTemplate }}"
-            data-hb-editor-url-template="{{ $postEditorUrlTemplate }}"
-            data-hb-translations-confirm-label="{{ __('heisenberg::editor.inspector.post_translations_update_confirm') }}"
-            data-hb-translations-updated-label="{{ __('heisenberg::editor.inspector.post_translations_update_success') }}">
-            @if ($postTranslations === null)
-                <span class="hb-post-taxonomy-hint" data-hb-post-translations-hint>{{ __('heisenberg::editor.inspector.post_translations_needs_save') }}</span>
-            @else
-                <div class="hb-post-translations-list" data-hb-post-translations-list>
-                    @foreach ($postTranslations as $row)
-                        <div class="hb-post-translation-row" data-hb-translation-row
-                            data-hb-translation-locale="{{ $row['locale'] }}"
-                            data-hb-translation-status="{{ $row['status'] }}"
-                            data-hb-translation-post-id="{{ $row['post_id'] ?? '' }}">
-                            <span class="hb-post-translation-row__locale">{{ __('heisenberg::editor.locales.' . $row['locale']) }}</span>
-                            <span class="hb-post-translation-row__chip hb-post-translation-row__chip--{{ $row['status'] }}">
-                                {{ __('heisenberg::editor.inspector.post_translations_status_' . $row['status']) }}
-                            </span>
-                            <span class="hb-post-translation-row__actions">
-                                @if ($row['status'] === 'source')
-                                    <span class="hb-post-translation-row__marker">{{ __('heisenberg::editor.inspector.post_translations_this_post') }}</span>
-                                @else
-                                    @if ($row['status'] === 'missing')
-                                        <button type="button" class="hb-post-translation-btn" data-hb-translation-create>{{ __('heisenberg::editor.inspector.post_translations_create') }}</button>
-                                    @else
-                                        <button type="button" class="hb-post-translation-btn" data-hb-translation-open>{{ __('heisenberg::editor.inspector.post_translations_open') }}</button>
-                                    @endif
-                                    @if ($row['status'] === 'outdated')
-                                        <button type="button" class="hb-post-translation-btn hb-post-translation-btn--danger" data-hb-translation-update>{{ __('heisenberg::editor.inspector.post_translations_update') }}</button>
-                                    @endif
-                                @endif
-                            </span>
-                        </div>
-                        <span class="hb-post-translation-note" data-hb-translation-note hidden></span>
+        <div class="hb-post-translations-body" data-hb-disclosure-body data-hb-post-translations-field>
+            <div class="hb-post-translations-list" data-hb-post-translations-list>
+                @if ($postTranslations === null)
+                    @foreach ($contentLocales as $hbLocale)
+                        <button type="button" class="hb-post-translation-row" data-hb-translation-row data-hb-translation-locale="{{ $hbLocale }}">
+                            <span class="hb-post-translation-row__locale">{{ __('heisenberg::editor.locales.' . $hbLocale) }}</span>
+                            <span class="hb-post-translation-row__chip">{{ __('heisenberg::editor.inspector.post_translations_needs_save') }}</span>
+                        </button>
                     @endforeach
-                </div>
-            @endif
+                @else
+                    @foreach ($postTranslations as $row)
+                        @php
+                            if ($row['complete']) {
+                                $hbSummary = __('heisenberg::editor.inspector.post_translations_complete');
+                            } else {
+                                $hbParts = [];
+                                if (! $row['title']) {
+                                    $hbParts[] = __('heisenberg::editor.inspector.post_translations_title_missing');
+                                }
+                                if ($row['blocks_total'] > 0) {
+                                    $hbParts[] = str_replace(
+                                        [':done', ':total'],
+                                        [$row['blocks_translated'], $row['blocks_total']],
+                                        __('heisenberg::editor.inspector.post_translations_blocks_progress')
+                                    );
+                                }
+                                $hbSummary = $hbParts === [] ? __('heisenberg::editor.inspector.post_translations_in_progress') : implode(' · ', $hbParts);
+                            }
+                        @endphp
+                        <button type="button" class="hb-post-translation-row" data-hb-translation-row data-hb-translation-locale="{{ $row['locale'] }}">
+                            <span class="hb-post-translation-row__locale">{{ __('heisenberg::editor.locales.' . $row['locale']) }}</span>
+                            <span class="hb-post-translation-row__chip @if ($row['complete']) hb-post-translation-row__chip--complete @endif">{{ $hbSummary }}</span>
+                        </button>
+                    @endforeach
+                @endif
+            </div>
         </div>
 
         {{-- Discussion (2026-08-03; moved up beside Summary 2026-08-08 — it is post-level

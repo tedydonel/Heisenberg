@@ -102,13 +102,14 @@
     .hb-topbar__devsel-opt.is-on { background: var(--hb-surface-hover, #F7F7F7); color: var(--hb-text-primary, #0A0A0A); font-weight: 500; }
     /* Email export (docs/email-system.md §6) — devsel-menu shape, own wrapper class only. */
     .hb-topbar__exportsel { position: relative; display: inline-flex; align-items: center; }
-    /* Post-language dropdown — a visual sibling of the device dropdown above, same trigger/menu
-       shape, placed just to its left. Unlike the device trigger (icon-only; the icon itself
-       swaps per selection) this one has no per-locale icon, so the trigger grows to fit the
-       CURRENT post's locale name next to a static translate glyph — the one deliberate
-       width exception in this otherwise fixed-size icon-button row. Data comes straight from
-       EditorController's `postTranslations` (TranslationStatusService::statuses(), the same
-       seed live/inspector.blade.php's Translations section reads) — no second payload. */
+    /* Editing-locale dropdown (docs/content-translation.md §0/Wave 2) — a visual sibling of the
+       device dropdown above, same trigger/menu shape, placed just to its left. Unlike the device
+       trigger (icon-only; the icon itself swaps per selection) this one has no per-locale icon,
+       so the trigger grows to fit the CURRENT editing locale's name next to a static translate
+       glyph — the one deliberate width exception in this otherwise fixed-size icon-button row.
+       Picking a locale here does not navigate anywhere — it switches which locale's text every
+       translatable attribute reads/writes (window.hbEditor.setEditingLocale), in the SAME
+       document. */
     .hb-topbar__langsel { position: relative; display: inline-flex; align-items: center; }
     .hb-topbar__lang { width: auto; padding: 0 6px; gap: 5px; }
     .hb-topbar__lang-label {
@@ -125,18 +126,15 @@
     .hb-topbar__langsel-menu[hidden] { display: none; }
     .hb-topbar__langsel-opt {
         display: flex; align-items: center; justify-content: space-between; gap: 10px;
-        min-height: 28px; padding: 4px 8px;
+        min-height: 28px; padding: 4px 8px; width: 100%; cursor: pointer;
         border: 0; background: none; border-radius: var(--hb-radius-sm, 3px);
         font-family: var(--hb-font-sans, Rubik, sans-serif); font-size: var(--hb-fs-sm, 12px); font-weight: 400;
         color: var(--hb-text-secondary, #5A5A5A); text-align: left; white-space: nowrap;
     }
-    button.hb-topbar__langsel-opt { width: 100%; cursor: pointer; }
-    button.hb-topbar__langsel-opt:hover { background: var(--hb-surface-hover, #F7F7F7); color: var(--hb-text-primary, #0A0A0A); }
-    button.hb-topbar__langsel-opt:disabled { opacity: .6; cursor: default; }
+    .hb-topbar__langsel-opt:hover { background: var(--hb-surface-hover, #F7F7F7); color: var(--hb-text-primary, #0A0A0A); }
     .hb-topbar__langsel-opt.is-on { color: var(--hb-text-primary, #0A0A0A); font-weight: 500; }
-    .hb-topbar__langsel-opt__check { width: 12px; height: 12px; flex: none; color: var(--hb-accent, #000); display: inline-flex; }
-    .hb-topbar__langsel-opt__status { font-size: 11px; color: var(--hb-text-muted, #9A9A9A); flex: none; }
-    .hb-topbar__langsel-opt--create { color: var(--hb-accent, #000); }
+    .hb-topbar__langsel-opt__check { width: 12px; height: 12px; flex: none; color: var(--hb-accent, #000); display: inline-flex; visibility: hidden; }
+    .hb-topbar__langsel-opt.is-on .hb-topbar__langsel-opt__check { visibility: visible; }
 </style>
 <script>
     (() => {
@@ -201,6 +199,14 @@
         // only-the-keys-the-user-actually-touched (never the full 10-field shape) rather than a
         // single scalar; `null` means nothing queued, same convention.
         let hbPendingSeo = null;
+        // docs/content-translation.md §0/Wave 2 — title has no bare/unsuffixed column (only
+        // title_en/title_fr), so switching the editing locale swaps the visible text rather than
+        // reading/writing a suffix variant of one shared field. This cache remembers whatever the
+        // user typed for EACH locale during the session (seeded from the server's two columns) so
+        // switching away and back never drops an unsaved edit, and every configured locale's
+        // current value rides the next save — not only the one on screen when Save was clicked.
+        let hbTitleByLocale = {};
+        let hbLocaleLabels = {};
 
         const hbCsrfToken = () => {
             const meta = document.querySelector('meta[name="csrf-token"]');
@@ -213,6 +219,28 @@
             const el = document.querySelector('[data-hb-title]');
             if (!el) return '';
             return (el.tagName === 'INPUT' ? el.value : el.textContent).trim();
+        };
+        // The title_<locale> keys a save carries (docs/content-translation.md §0/Wave 2) — see
+        // hbTitleByLocale's own docblock. On a brand-new document title_en rides EVERY create
+        // regardless of the editing locale: the column is NOT NULL with no DB default (a
+        // pre-existing schema quirk, title_fr is nullable), so it always needs a value — real
+        // text when editing in en, otherwise an empty string the server substitutes "Untitled
+        // post" for (PostController::contentAttributes()). An update sends the active locale's
+        // latest text plus any OTHER locale this session actually touched (leaving an
+        // never-touched column alone rather than churning a null into an empty string).
+        const hbTitleSaveExtra = () => {
+            const locale = (window.hbEditor && window.hbEditor.getEditingLocale) ? window.hbEditor.getEditingLocale() : 'en';
+            hbTitleByLocale[locale] = hbReadTitle();
+            const extra = {};
+            if (hbPostId === null) {
+                extra.title_en = locale === 'en' ? (hbTitleByLocale.en || '') : '';
+                if (locale !== 'en') extra['title_' + locale] = hbTitleByLocale[locale] || '';
+                return extra;
+            }
+            Object.keys(hbTitleByLocale).forEach((loc) => {
+                if (loc === locale || (hbTitleByLocale[loc] || '') !== '') extra['title_' + loc] = hbTitleByLocale[loc] || '';
+            });
+            return extra;
         };
         const hbEmitSaveState = (state, detail) => {
             document.dispatchEvent(new CustomEvent('hb:save-state', { detail: Object.assign({ state: state }, detail || {}) }));
@@ -242,7 +270,41 @@
             hbMsgConflict = root.dataset.hbMsgConflict || hbMsgConflict;
             hbMsgInvalid = root.dataset.hbMsgInvalid || hbMsgInvalid;
             hbMsgNetwork = root.dataset.hbMsgNetwork || hbMsgNetwork;
+            try { hbTitleByLocale = JSON.parse(root.dataset.hbTitleByLocale || '{}') || {}; } catch (e) { hbTitleByLocale = {}; }
+            try { hbLocaleLabels = JSON.parse(root.dataset.hbLocaleLabels || '{}') || {}; } catch (e) { hbLocaleLabels = {}; }
         };
+
+        // Swaps the visible title to `locale`'s own cached text (falling back to the home
+        // locale's, matching LocalizedAttributes::read()'s posture for block attributes), relabels
+        // the dropdown trigger, and marks the active option — the one place every "which locale am
+        // I editing" surface in the topbar updates from. Dispatching a synthetic `input` on the
+        // title element reuses live/canvas.blade.php's own sync/doc-title/empty-state logic rather
+        // than duplicating it here.
+        const hbApplyEditingLocale = (locale, homeLocale) => {
+            hbSeed();
+            const val = hbTitleByLocale[locale] || hbTitleByLocale[homeLocale] || '';
+            const el = document.querySelector('[data-hb-title]');
+            if (el) {
+                if (el.tagName === 'INPUT') el.value = val; else el.textContent = val;
+                el.dispatchEvent(new Event('input', { bubbles: true }));
+            }
+            document.querySelectorAll('[data-hb-lang-current-label]').forEach((l) => { l.textContent = hbLocaleLabels[locale] || locale; });
+            document.querySelectorAll('[data-hb-lang-option]').forEach((opt) => {
+                const on = opt.dataset.locale === locale;
+                opt.classList.toggle('is-on', on);
+                opt.setAttribute('aria-selected', on ? 'true' : 'false');
+            });
+        };
+        // Keeps the cache current with every keystroke, whichever locale is active right now —
+        // canvas.blade.php fires this on every title input (both data-hb-title mirrors sync to
+        // each other first, so one event per real edit).
+        document.addEventListener('hb:doc-title', (event) => {
+            const locale = (window.hbEditor && window.hbEditor.getEditingLocale) ? window.hbEditor.getEditingLocale() : 'en';
+            hbTitleByLocale[locale] = (event.detail && event.detail.title) || '';
+        });
+        document.addEventListener('hb:editing-locale-change', (event) => {
+            hbApplyEditingLocale(event.detail.locale, event.detail.homeLocale);
+        });
 
         // A brand-new post was just created: point the browser at it. Without this the URL stays
         // /editor, so a refresh loads a fresh blank document and the save looks like it vanished.
@@ -326,7 +388,7 @@
             const includeSlug = explicit && hbPendingSlug !== null;
             const includePublishedAt = explicit && hbPendingPublishedAt !== null;
             const includeSeo = explicit && hbPendingSeo !== null;
-            const extra = { title_en: hbReadTitle(), autosave: !explicit };
+            const extra = Object.assign({ autosave: !explicit }, hbTitleSaveExtra());
             if (hbPostId !== null) extra.content_version = hbContentVersion;
             // docs/email-system.md §7-E3: the FIRST save of a type=email document carries `type`
             // so PostController's create-only handling stamps it — see that method's own note.
@@ -448,6 +510,14 @@
 
         const boot = () => {
             hbSeed();
+
+            // Corrects the SSR-rendered title/label for a persisted non-home editing-locale
+            // choice (block-runtime.blade.php resolves it from localStorage before this runs —
+            // see its own docblock) — once only, so a later hb:refresh can't stomp mid-edit text.
+            if (!document.__hbLocaleApplied && window.hbEditor && window.hbEditor.getEditingLocale) {
+                document.__hbLocaleApplied = true;
+                hbApplyEditingLocale(window.hbEditor.getEditingLocale(), window.hbEditor.getHomeLocale ? window.hbEditor.getHomeLocale() : window.hbEditor.getEditingLocale());
+            }
 
             // Email export trigger — "save first" posture, same as every other post-scoped control.
             if (!document.__hbExportEnable) {
@@ -720,11 +790,11 @@
                 document.addEventListener('click', (e) => { if (!e.target.closest('.hb-topbar__exportsel')) setExportMenu(false); });
             }
 
-            // Post-language dropdown — view/switch/create translations (docs/content-translation.md
-            // §5). Same open/close shape as the device dropdown above. Only rendered with a menu
-            // when EditorController seeded real `postTranslations` rows (an existing, saved post);
-            // a blank /editor document renders just the disabled trigger, so there is nothing here
-            // to wire beyond the (inert) toggle.
+            // Editing-locale dropdown (docs/content-translation.md §0/Wave 2) — same open/close
+            // shape as the device dropdown above. Picking an option switches which locale the
+            // WHOLE document is being edited in (window.hbEditor.setEditingLocale) — no
+            // navigation, no request; hb:editing-locale-change (fired from there) is what
+            // actually relabels the trigger and swaps the title (see hbApplyEditingLocale above).
             const setLangMenu = (open) => {
                 document.querySelectorAll('.hb-topbar__langsel-menu').forEach((m) => { m.hidden = !open; });
                 document.querySelectorAll('[data-hb-lang-toggle]').forEach((t) => t.setAttribute('aria-expanded', open ? 'true' : 'false'));
@@ -733,72 +803,15 @@
                 if (btn.__hbLangT) return; btn.__hbLangT = true;
                 btn.addEventListener('click', (e) => {
                     e.stopPropagation();
-                    if (btn.disabled) return;
                     const menu = document.querySelector('.hb-topbar__langsel-menu');
                     setLangMenu(!menu || menu.hidden);
                 });
             });
-            // Existing sibling (draft/published/outdated) — a real page load, the same
-            // "different document" navigation the inspector's Translations section already uses
-            // for its own Open button.
-            document.querySelectorAll('[data-hb-lang-open]').forEach((opt) => {
-                if (opt.__hbLangO) return; opt.__hbLangO = true;
+            document.querySelectorAll('[data-hb-lang-option]').forEach((opt) => {
+                if (opt.__hbLangOpt) return; opt.__hbLangOpt = true;
                 opt.addEventListener('click', () => {
-                    hbSeed();
-                    const menu = opt.closest('.hb-topbar__langsel-menu');
-                    const editorUrlTemplate = (menu && menu.dataset.hbEditorUrlTemplate) || hbEditorUrlTemplate;
-                    const targetId = opt.dataset.postId;
-                    if (!targetId || !editorUrlTemplate) return;
-                    window.location.href = editorUrlTemplate.replace('__ID__', targetId);
-                });
-            });
-            // Missing locale — POST the create-translation endpoint (same URL template + CSRF
-            // pattern as inspector.blade.php's wirePostTranslations Create button), then navigate
-            // to the new sibling. A brief busy state on the row itself covers the round trip;
-            // a failure is surfaced through hb:save-state, the exact same channel/footer pill the
-            // Save button's own errors use — no second error surface for this panel.
-            document.querySelectorAll('[data-hb-lang-create]').forEach((opt) => {
-                if (opt.__hbLangC) return; opt.__hbLangC = true;
-                opt.addEventListener('click', () => {
-                    hbSeed();
-                    if (opt.disabled || hbPostId === null) return;
-                    const menu = opt.closest('.hb-topbar__langsel-menu');
-                    const urlTemplate = (menu && menu.dataset.hbTranslationsUrlTemplate) || '';
-                    const editorUrlTemplate = (menu && menu.dataset.hbEditorUrlTemplate) || hbEditorUrlTemplate;
-                    const locale = opt.dataset.locale || '';
-                    if (!urlTemplate) return;
-                    const idleLabel = opt.textContent;
-                    opt.disabled = true;
-                    opt.setAttribute('aria-busy', 'true');
-                    opt.textContent = opt.dataset.busyLabel || idleLabel;
-                    window.fetch(urlTemplate.replace('__ID__', hbPostId), {
-                        method: 'POST',
-                        headers: {
-                            'Content-Type': 'application/json',
-                            'Accept': 'application/json',
-                            'X-CSRF-TOKEN': hbCsrfToken(),
-                            'X-Requested-With': 'XMLHttpRequest',
-                        },
-                        credentials: 'same-origin',
-                        body: JSON.stringify({ locale: locale }),
-                    })
-                        .then((r) => r.json().catch(() => ({})).then((data) => ({ ok: r.ok, data: data })))
-                        .then((res) => {
-                            if (res.ok && res.data && res.data.post_id) {
-                                if (editorUrlTemplate) window.location.href = editorUrlTemplate.replace('__ID__', res.data.post_id);
-                                return;
-                            }
-                            opt.disabled = false;
-                            opt.removeAttribute('aria-busy');
-                            opt.textContent = idleLabel;
-                            hbEmitSaveState('error', { message: (res.data && res.data.message) || hbMsgInvalid });
-                        })
-                        .catch(() => {
-                            opt.disabled = false;
-                            opt.removeAttribute('aria-busy');
-                            opt.textContent = idleLabel;
-                            hbEmitSaveState('error', { message: hbMsgNetwork });
-                        });
+                    if (window.hbEditor && window.hbEditor.setEditingLocale) window.hbEditor.setEditingLocale(opt.dataset.locale || '');
+                    setLangMenu(false);
                 });
             });
             if (!document.__hbLangOutside) {
@@ -816,15 +829,14 @@
 @props([
     'postId' => null,
     'contentVersion' => 0,
-    // The language dropdown's data (docs/content-translation.md §5) — the SAME seed
-    // live/inspector.blade.php's Translations section reads (EditorController's
-    // `postTranslations`/`postTranslationsUrlTemplate`/`postEditorUrlTemplate`), never a second
-    // payload. Null postTranslations is the /editor blank-document state — the dropdown renders
-    // disabled, showing localeDefault, same "needs save" posture as every other Post-tab control.
-    'postTranslations' => null,
-    'postTranslationsUrlTemplate' => '',
-    'postEditorUrlTemplate' => '',
-    'localeDefault' => 'en',
+    // The editing-locale dropdown's data (docs/content-translation.md §0/Wave 2). `homeLocale` is
+    // this document's own `locale` column (the bare-key rule's home locale — see
+    // block-runtime.blade.php); the dropdown's INITIAL editing locale is corrected client-side
+    // from a persisted per-post choice (hbApplyEditingLocale, called once at boot).
+    'homeLocale' => 'en',
+    'contentLocales' => ['en', 'fr'],
+    'contentLocaleLabels' => [],
+    'postTitleByLocale' => [],
     // docs/email-system.md §7-E3 — 'post' or 'email'; drives the preview button's target.
     'documentType' => 'post',
     'emailPreviewUrlTemplate' => '',
@@ -858,18 +870,12 @@
             'icon' => 'download-simple', 'label' => __('heisenberg::editor.topbar.aria_email_export'), 'export' => true,
         ]]);
     }
-    // The dropdown's own current-locale row (TranslationStatusService::statuses() always marks
-    // exactly one row 'source' — the post being edited right now). Falls back to localeDefault
-    // when postTranslations is null (the blank /editor document — nothing seeded yet).
-    $hbCurrentLocaleRow = null;
-    if (is_array($postTranslations)) {
-        foreach ($postTranslations as $hbRow) {
-            if (($hbRow['status'] ?? null) === 'source') { $hbCurrentLocaleRow = $hbRow; break; }
-        }
-    }
-    $hbCurrentLocale = $hbCurrentLocaleRow['locale'] ?? $localeDefault;
-    $hbCurrentLocaleLabel = __('heisenberg::editor.locales.' . $hbCurrentLocale);
-    $hbLangDisabled = $postTranslations === null;
+    // SSR best-effort: the editing locale defaults to the document's own home locale (JS
+    // corrects this once at boot for a returning session that had switched away — see
+    // hbApplyEditingLocale). Never disabled — switching locale is a pure client-side edit target,
+    // it needs no saved post to be meaningful.
+    $hbCurrentLocale = $homeLocale;
+    $hbCurrentLocaleLabel = $contentLocaleLabels[$hbCurrentLocale] ?? __('heisenberg::editor.locales.' . $hbCurrentLocale);
     $deviceLabels = [
         'desktop' => __('heisenberg::editor.topbar.device_desktop'),
         'tablet'  => __('heisenberg::editor.topbar.device_tablet'),
@@ -895,6 +901,10 @@
     data-hb-document-type="{{ $documentType }}"
     data-hb-email-preview-url-template="{{ $emailPreviewUrlTemplate }}"
     data-hb-email-export-url-template="{{ $emailExportUrlTemplate }}"
+    {{-- docs/content-translation.md §0/Wave 2 — the editing-locale dropdown's label lookup and
+         the title-per-locale cache the save payload is built from (see hbTitleSaveExtra above). --}}
+    data-hb-locale-labels="{{ json_encode($contentLocaleLabels) }}"
+    data-hb-title-by-locale="{{ json_encode($postTitleByLocale) }}"
     {{-- Where this document lives once it has an id. A save from the blank /editor creates the
          post but leaves the browser on /editor, so refreshing re-opened an empty editor and the
          work looked lost (it was in the DB the whole time). After a create we rewrite the URL to
@@ -973,52 +983,32 @@
                     </div>
                 </div>
             @elseif ($btn['lang'] ?? false)
-                {{-- Post-language dropdown (docs/content-translation.md §5) — view/switch/create
-                     translations, wired in the script above. Trigger shows the CURRENT post's
-                     locale name (not just an icon, unlike the device trigger — there is no
-                     per-locale glyph to swap). Disabled with no menu at all when postTranslations
-                     is null: the /editor blank document has no source post to translate FROM yet,
-                     same "save first" posture as the inspector's own Translations section. --}}
+                {{-- Editing-locale dropdown (docs/content-translation.md §0/Wave 2) — switches
+                     which locale the WHOLE document is being edited in, wired in the script
+                     above. Trigger shows the CURRENT editing locale's name (not just an icon,
+                     unlike the device trigger — there is no per-locale glyph to swap). Never
+                     disabled: this is a pure client-side edit target, meaningful even on a
+                     never-saved document. --}}
                 <div class="hb-topbar__langsel">
                     <button type="button" class="hb-topbar__btn hb-topbar__btn--sm hb-topbar__lang" data-hb-lang-toggle
-                        aria-haspopup="listbox" aria-expanded="false" aria-label="{{ $btn['label'] }}"
-                        @if ($hbLangDisabled) disabled @endif>
+                        aria-haspopup="listbox" aria-expanded="false" aria-label="{{ $btn['label'] }}">
                         <span class="hb-topbar__icon hb-topbar__icon--sm" aria-hidden="true">
                             @include('heisenberg::components.ui.icon', ['name' => $btn['icon'], 'size' => 13])
                         </span>
                         <span class="hb-topbar__lang-label" data-hb-lang-current-label>{{ $hbCurrentLocaleLabel }}</span>
                     </button>
-                    @if (! $hbLangDisabled)
-                        <div class="hb-topbar__langsel-menu" role="listbox" hidden
-                            data-hb-translations-url-template="{{ $postTranslationsUrlTemplate }}"
-                            data-hb-editor-url-template="{{ $postEditorUrlTemplate }}">
-                            @foreach ($postTranslations as $hbRow)
-                                @php
-                                    $hbRowLabel = __('heisenberg::editor.locales.' . $hbRow['locale']);
-                                @endphp
-                                @if ($hbRow['status'] === 'source')
-                                    <div class="hb-topbar__langsel-opt is-on" role="option" aria-selected="true">
-                                        <span>{{ $hbRowLabel }}</span>
-                                        <span class="hb-topbar__langsel-opt__check" aria-hidden="true">
-                                            @include('heisenberg::components.ui.icon', ['name' => 'check', 'size' => 12])
-                                        </span>
-                                    </div>
-                                @elseif ($hbRow['status'] === 'missing')
-                                    <button type="button" class="hb-topbar__langsel-opt hb-topbar__langsel-opt--create" role="option" aria-selected="false"
-                                        data-hb-lang-create data-locale="{{ $hbRow['locale'] }}"
-                                        data-hb-lang-busy-label="{{ __('heisenberg::editor.topbar.lang_creating') }}">
-                                        <span>{{ __('heisenberg::editor.topbar.lang_translate_to', ['locale' => $hbRowLabel]) }}</span>
-                                    </button>
-                                @else
-                                    <button type="button" class="hb-topbar__langsel-opt" role="option" aria-selected="false"
-                                        data-hb-lang-open data-post-id="{{ $hbRow['post_id'] }}">
-                                        <span>{{ $hbRowLabel }}</span>
-                                        <span class="hb-topbar__langsel-opt__status">{{ __('heisenberg::editor.inspector.post_translations_status_' . $hbRow['status']) }}</span>
-                                    </button>
-                                @endif
-                            @endforeach
-                        </div>
-                    @endif
+                    <div class="hb-topbar__langsel-menu" role="listbox" hidden>
+                        @foreach ($contentLocales as $hbLocale)
+                            <button type="button" class="hb-topbar__langsel-opt @if ($hbLocale === $hbCurrentLocale) is-on @endif" role="option"
+                                aria-selected="{{ $hbLocale === $hbCurrentLocale ? 'true' : 'false' }}"
+                                data-hb-lang-option data-locale="{{ $hbLocale }}">
+                                <span>{{ $contentLocaleLabels[$hbLocale] ?? __('heisenberg::editor.locales.' . $hbLocale) }}</span>
+                                <span class="hb-topbar__langsel-opt__check" aria-hidden="true">
+                                    @include('heisenberg::components.ui.icon', ['name' => 'check', 'size' => 12])
+                                </span>
+                            </button>
+                        @endforeach
+                    </div>
                 </div>
             @else
                 <button

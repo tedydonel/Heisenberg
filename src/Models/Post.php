@@ -69,64 +69,6 @@ class Post extends Model
     }
 
     /**
-     * The group row for `$locale` (docs/content-translation.md §2, blueprint §2.3.1 `sibling()`).
-     * Deliberately a plain query method, not an Eloquent relation with `withDefault()` (the
-     * blueprint's ported shape): a `BelongsTo`/`HasOne`-with-default needs a fixed FK column to
-     * join on, but "the other locale" isn't a column — it's "any other row sharing
-     * `translation_group_id`, optionally filtered to one locale" — which a relation can't express
-     * without hardcoding a two-locale assumption into the relation definition itself. A query
-     * method also composes better once locales generalize past en/fr (§3): `sibling('de')` just
-     * works, no new relation method needed per locale.
-     *
-     * `$locale = null` → "the other" row: the first sibling found, any locale (today that IS the
-     * single other locale; with 3+ locales a caller wanting a specific one should pass it).
-     * `$locale` given → that locale's row, or null if untranslated into it. Never returns `$this`.
-     */
-    public function sibling(?string $locale = null): ?self
-    {
-        if (empty($this->translation_group_id)) {
-            return null;
-        }
-
-        return static::query()
-            ->inGroup($this->translation_group_id)
-            ->when($locale !== null, fn (Builder $q) => $q->forLocale($locale))
-            ->whereKeyNot($this->getKey())
-            ->first();
-    }
-
-    /**
-     * Every other row in this post's translation group (any locale), excluding this row itself.
-     * A query method for the same reason `sibling()` above is — with 2 locales this returns at
-     * most one row (today's `sibling(null)`), but it stays correct once a group can hold 3+ rows.
-     *
-     * @return \Illuminate\Database\Eloquent\Collection<int, self>
-     */
-    public function siblings(): \Illuminate\Database\Eloquent\Collection
-    {
-        if (empty($this->translation_group_id)) {
-            return static::query()->whereRaw('1 = 0')->get();
-        }
-
-        return static::query()
-            ->inGroup($this->translation_group_id)
-            ->whereKeyNot($this->getKey())
-            ->get();
-    }
-
-    /** Rows whose `locale` matches `$locale` (blueprint §2.3.1). */
-    public function scopeForLocale(Builder $q, string $locale): Builder
-    {
-        return $q->where('locale', $locale);
-    }
-
-    /** Rows sharing a `translation_group_id` (blueprint §2.3.1). */
-    public function scopeInGroup(Builder $q, string $uuid): Builder
-    {
-        return $q->where('translation_group_id', $uuid);
-    }
-
-    /**
      * Rows authored as a blog/page document — `type = 'post'` (docs/email-system.md §3, migration
      * 2026_08_11_000004). Every listing surface Heisenberg itself lists content through (sitemap,
      * MCP `list_posts` default) uses this scope so an email document never leaks into a blog/page
@@ -183,30 +125,6 @@ class Post extends Model
         return $primary ?: ($fallback ?: null);
     }
 
-    /**
-     * True when this row's translated content has fallen behind its source. `translated_from_version`
-     * (migration 2026_08_11_000002) records the source sibling's `content_version` at the moment
-     * this row was last translated FROM it; null means "never machine/workflow-translated" (hand
-     * authored, or pre-existing before this feature) — never outdated, there is nothing to compare.
-     *
-     * We do not store WHICH sibling was the source (only its version number), so the exact rule
-     * is an approximation: outdated when translated_from_version is non-null AND at least one
-     * sibling's current content_version exceeds it. With today's two-locale cap this is exact —
-     * `sibling(null)` can only resolve to the one row that could possibly be the source. It stops
-     * being exact if/when a group ever holds 3+ rows (§3, out of scope for now) and would need to
-     * start tracking the source locale explicitly.
-     */
-    public function isTranslationOutdated(): bool
-    {
-        if ($this->translated_from_version === null) {
-            return false;
-        }
-
-        $source = $this->sibling();
-
-        return $source !== null && (int) $source->content_version > (int) $this->translated_from_version;
-    }
-
     protected static function booted(): void
     {
         static::creating(function (Post $post): void {
@@ -230,72 +148,38 @@ class Post extends Model
         // sets it (PostController::applySlug — `slug: ''` is the caller's own way of asking for a
         // fresh, title-derived one, which lands here with an emptied `slug` right before save()).
         //
-        // SHARED-SLUG INVARIANT (docs/content-translation.md §1): a translation group presents as
-        // ONE post, so every sibling must carry the IDENTICAL slug — locale comes from the host's
-        // URL prefix, never from the slug text. A regeneration here is, like an explicit rename via
-        // PostController::applySlug(), a group-wide event, not a single-row one. Simplest correct
-        // rule (documented here rather than reached for something fancier): the base string is
-        // still derived from THIS row's own title — there is no separate notion of "the group's
-        // canonical source title" to prefer, any sibling can trigger a regen and its own title is
-        // as good a starting point as another's — but the candidate is unique-checked against the
-        // UNION of this row's locale and every sibling's locale (not just this row's own), so the
-        // winning string is guaranteed free everywhere it's about to land. The result is then
-        // written onto every sibling directly via a plain query UPDATE, not another ->save() (that
-        // would re-enter this very hook for no reason — a sibling's title is untouched, only its
-        // slug column changes).
+        // Single-row model (docs/content-translation.md §0): a logical post is now ONE row, so
+        // the shared-slug invariant that used to require propagating a regenerated slug across
+        // sibling ROWS is simply a fact — there is nothing else to write it onto. The candidate is
+        // unique-checked against this row's own locale only, same as `uniqueSlug()` above.
         static::updating(function (Post $post): void {
             if ((string) $post->slug !== '') {
                 return;
             }
 
-            $siblings = $post->siblings();
             $source = $post->title_en ?: ($post->title_fr ?: 'untitled');
             $base = Str::slug($source) ?: 'untitled';
-            $locales = $siblings->pluck('locale')->push($post->locale ?: 'en')->unique()->all();
-            $ignoreIds = $siblings->pluck($post->getKeyName())->push($post->getKey())->all();
 
-            $post->slug = static::uniqueSlugAmongLocales($base, $locales, $ignoreIds);
-
-            if ($siblings->isNotEmpty()) {
-                static::query()
-                    ->whereKey($siblings->pluck($post->getKeyName())->all())
-                    ->update(['slug' => $post->slug]);
-            }
+            $post->slug = static::uniqueSlug($base, $post->locale ?: 'en', $post->getKey());
         });
     }
 
     /**
      * Numeric-suffix collision handling for the `['locale', 'slug']` unique index
-     * (migration 2026_07_28_000001): appends `-2`, `-3`, … until a free slug is
-     * found in `$locale`. Thin wrapper over {@see self::uniqueSlugAmongLocales()}
-     * for the (still common) single-locale case — creating a brand-new post has
-     * no siblings yet, so there is only ever one locale to check.
+     * (migration 2026_07_28_000001): appends `-2`, `-3`, … until a free slug is found in
+     * `$locale`. Checked with `withTrashed()` because the unique index itself spans trashed rows
+     * too (see the migration's own docblock for why) — a slug held by a soft-deleted post is not
+     * up for grabs.
      */
     private static function uniqueSlug(string $slug, string $locale, int|string|null $ignoreId = null): string
-    {
-        return static::uniqueSlugAmongLocales($slug, [$locale], $ignoreId === null ? [] : [$ignoreId]);
-    }
-
-    /**
-     * Same numeric-suffix collision handling as {@see self::uniqueSlug()}, generalized to check
-     * a slug across MULTIPLE locales at once (the `updating` hook's group-wide regeneration
-     * above, where a candidate must be free in this row's locale AND every sibling's). Checked
-     * with `withTrashed()` because the unique index itself spans trashed rows too (see the
-     * migration's docblock for why) — a slug held by a soft-deleted post is not up for grabs.
-     *
-     * @param list<string> $locales
-     * @param list<int|string> $ignoreIds rows that never collide with the candidate (the row(s)
-     *   the slug is being written onto — they currently hold the OLD value, which must not count).
-     */
-    private static function uniqueSlugAmongLocales(string $slug, array $locales, array $ignoreIds = []): string
     {
         $base = $slug;
         $suffix = 1;
 
         while (static::withTrashed()
-            ->whereIn('locale', $locales)
+            ->where('locale', $locale)
             ->where('slug', $slug)
-            ->when($ignoreIds !== [], fn (Builder $q) => $q->whereKeyNot($ignoreIds))
+            ->when($ignoreId !== null, fn (Builder $q) => $q->whereKeyNot($ignoreId))
             ->exists()) {
             $suffix++;
             $slug = $base . '-' . $suffix;

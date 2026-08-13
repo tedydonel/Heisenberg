@@ -11,12 +11,11 @@ use Heisenberg\Tests\TestCase;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 
 /**
- * GET /heisenberg/posts/{post}/translations (routes/translations.php, `heisenberg.translations.index`,
- * PostTranslationsApiController) — the public, read-only translations API (docs/content-translation.md
- * §7, owner decision 2026-08-11) hosts use to build their own language-switcher UI. Runs against the
- * REAL ConfigRoleGate + PostPolicy, same posture CommentControllerTest takes for the public comments
- * endpoints — this class also depends on PostPolicy::view()'s "a published post is publicly visible"
- * behavior. {@see TranslationRoutesToggleTest} covers the `heisenberg.translations.routes` opt-out.
+ * `GET /heisenberg/posts/{post}/translations` (routes/translations.php, `PostTranslationsApiController`)
+ * — rebuilt for the single-row translation model (docs/content-translation.md §0/§7): a
+ * "translation" is `_<locale>` attribute variants on the SAME row now, so this endpoint reports
+ * per-locale COMPLETENESS ({@see \Heisenberg\Services\TranslationStatusService}), not a set of
+ * sibling post rows. Shape: `{default_locale, slug, translations: [{locale, complete, current}]}`.
  */
 class PostTranslationsApiTest extends TestCase
 {
@@ -30,95 +29,79 @@ class PostTranslationsApiTest extends TestCase
         $this->skipIfMysqlUnreachable();
     }
 
-    /** @return array{0: Post, 1: Post} [en (published), fr (draft)], same group, same shared slug. */
-    private function groupWithADraftTranslation(): array
+    public function test_reports_per_locale_completeness_and_the_shared_slug(): void
     {
-        $en = Post::create(['title_en' => 'Hello World', 'locale' => 'en', 'status' => 'published', 'slug' => 'hello-world']);
-        $fr = Post::create([
-            'title_en' => 'Hello World', 'title_fr' => 'Bonjour le monde', 'locale' => 'fr', 'status' => 'draft',
-            'translation_group_id' => $en->translation_group_id, 'slug' => 'hello-world',
+        $post = Post::create([
+            'title_en' => 'Hello', 'title_fr' => 'Bonjour', 'slug' => 'hello-world',
+            'status' => 'published', 'locale' => 'en',
         ]);
 
-        return [$en, $fr];
+        $response = $this->getJson("/heisenberg/posts/{$post->id}/translations")->assertOk();
+
+        $response->assertJson([
+            'default_locale' => 'en',
+            'slug' => 'hello-world',
+        ]);
+        $translations = $response->json('translations');
+        $byLocale = collect($translations)->keyBy('locale');
+
+        $this->assertTrue($byLocale['en']['complete']);
+        $this->assertTrue($byLocale['en']['current']);
+        $this->assertTrue($byLocale['fr']['complete']);
+        $this->assertFalse($byLocale['fr']['current']);
     }
 
-    // ── shape + guest visibility ────────────────────────────────────────
-
-    public function test_guest_sees_only_the_published_row_with_the_shared_slug_and_current_flag(): void
+    public function test_current_reflects_the_requested_locale_query_param(): void
     {
-        [$en, $fr] = $this->groupWithADraftTranslation();
+        $post = Post::create([
+            'title_en' => 'Hello', 'title_fr' => 'Bonjour', 'slug' => 'hello-world',
+            'status' => 'published', 'locale' => 'en',
+        ]);
 
-        $response = $this->getJson("/heisenberg/posts/{$en->id}/translations");
+        $response = $this->getJson("/heisenberg/posts/{$post->id}/translations?locale=fr")->assertOk();
 
-        $response->assertOk();
-        $this->assertSame('hello-world', $response->json('slug'));
-        $this->assertSame('en', $response->json('default_locale'));
-
-        $rows = $response->json('translations');
-        $this->assertCount(1, $rows, 'the draft fr sibling must be invisible to a guest');
-        $this->assertSame('en', $rows[0]['locale']);
-        $this->assertSame($en->id, $rows[0]['post_id']);
-        $this->assertSame('published', $rows[0]['status']);
-        $this->assertTrue($rows[0]['current']);
-
-        $this->assertFalse(
-            collect($rows)->contains('locale', 'fr'),
-            'the fr row must not appear at all for a guest'
-        );
+        $byLocale = collect($response->json('translations'))->keyBy('locale');
+        $this->assertFalse($byLocale['en']['current']);
+        $this->assertTrue($byLocale['fr']['current']);
     }
 
-    public function test_staff_sees_every_row_including_the_draft(): void
+    public function test_an_invalid_locale_query_param_falls_back_to_the_posts_own_locale(): void
     {
-        [$en, $fr] = $this->groupWithADraftTranslation();
+        $post = Post::create(['title_en' => 'Hello', 'slug' => 'hello', 'status' => 'published', 'locale' => 'en']);
+
+        $response = $this->getJson("/heisenberg/posts/{$post->id}/translations?locale=xx")->assertOk();
+
+        $byLocale = collect($response->json('translations'))->keyBy('locale');
+        $this->assertTrue($byLocale['en']['current']);
+    }
+
+    public function test_response_carries_no_urls(): void
+    {
+        $post = Post::create(['title_en' => 'Hello', 'slug' => 'hello', 'status' => 'published', 'locale' => 'en']);
+
+        $body = $this->getJson("/heisenberg/posts/{$post->id}/translations")->assertOk()->getContent();
+
+        $this->assertStringNotContainsString('http://', (string) $body);
+        $this->assertStringNotContainsString('https://', (string) $body);
+    }
+
+    public function test_a_guest_is_forbidden_from_a_draft_post(): void
+    {
+        $post = Post::create(['title_en' => 'Draft', 'slug' => 'draft', 'status' => 'draft', 'locale' => 'en']);
+
+        $this->getJson("/heisenberg/posts/{$post->id}/translations")->assertStatus(403);
+    }
+
+    public function test_an_author_tier_actor_can_view_a_draft_post(): void
+    {
+        $post = Post::create(['title_en' => 'Draft', 'slug' => 'draft', 'status' => 'draft', 'locale' => 'en']);
         $this->actingAs(new FakeActor(1, 'author'));
 
-        $response = $this->getJson("/heisenberg/posts/{$en->id}/translations");
-
-        $response->assertOk();
-        $rows = collect($response->json('translations'))->keyBy('locale');
-        $this->assertCount(2, $rows);
-        $this->assertSame('published', $rows['en']['status']);
-        $this->assertSame('draft', $rows['fr']['status']);
-        $this->assertTrue($rows['en']['current']);
-        $this->assertFalse($rows['fr']['current']);
+        $this->getJson("/heisenberg/posts/{$post->id}/translations")->assertOk();
     }
 
-    public function test_current_flag_follows_whichever_post_id_was_requested(): void
-    {
-        [$en, $fr] = $this->groupWithADraftTranslation();
-        $this->actingAs(new FakeActor(1, 'author'));
-
-        $response = $this->getJson("/heisenberg/posts/{$fr->id}/translations");
-
-        $response->assertOk();
-        $rows = collect($response->json('translations'))->keyBy('locale');
-        $this->assertTrue($rows['fr']['current']);
-        $this->assertFalse($rows['en']['current']);
-    }
-
-    public function test_an_untranslated_post_returns_only_itself(): void
-    {
-        $solo = Post::create(['title_en' => 'Solo Post', 'locale' => 'en', 'status' => 'published', 'slug' => 'solo-post']);
-
-        $response = $this->getJson("/heisenberg/posts/{$solo->id}/translations");
-
-        $response->assertOk();
-        $rows = $response->json('translations');
-        $this->assertCount(1, $rows);
-        $this->assertTrue($rows[0]['current']);
-    }
-
-    // ── denial / not-found ────────────────────────────────────────────────
-
-    public function test_an_unknown_post_is_404(): void
+    public function test_an_unknown_post_404s(): void
     {
         $this->getJson('/heisenberg/posts/999999/translations')->assertStatus(404);
-    }
-
-    public function test_a_draft_post_is_entirely_invisible_to_a_guest(): void
-    {
-        $draft = Post::create(['title_en' => 'A Draft Post', 'locale' => 'en', 'status' => 'draft', 'slug' => 'a-draft-post']);
-
-        $this->getJson("/heisenberg/posts/{$draft->id}/translations")->assertStatus(403);
     }
 }

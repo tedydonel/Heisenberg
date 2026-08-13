@@ -57,41 +57,26 @@
             .hb-post-layout-row__label { flex: 1 1 auto; min-width: 0; font-family: var(--hb-font-sans, Rubik, sans-serif); font-size: var(--hb-fs-sm, 12px); color: var(--hb-text-secondary, #5A5A5A); }
             .hb-post-layout-row__readout { flex: none; width: 34px; text-align: right; font-family: var(--hb-font-sans, Rubik, sans-serif); font-size: var(--hb-fs-xs, 11px); color: var(--hb-text-muted, #9A9A9A); }
 
-            {{-- Translations (docs/content-translation.md §5) — one row per configured locale. --}}
+            {{-- Translations (docs/content-translation.md §0/Wave 2) — one row per configured
+                 locale; clicking a row switches the editing locale (no navigation, no request). --}}
             .hb-post-translations-body { display: flex; flex-direction: column; gap: 6px; padding: 0 var(--hb-space-3, 12px) var(--hb-space-3, 12px); }
             .hb-post-translations-body[hidden] { display: none; }
             .hb-post-translations-list { display: flex; flex-direction: column; gap: 4px; }
-            .hb-post-translation-row { display: flex; align-items: center; gap: 8px; padding: 6px 0; }
+            .hb-post-translation-row {
+                display: flex; align-items: center; justify-content: space-between; gap: 8px;
+                width: 100%; padding: 6px 4px; border: 0; border-radius: var(--hb-radius-sm, 3px);
+                background: none; cursor: pointer; text-align: left;
+            }
+            .hb-post-translation-row:hover { background: var(--hb-surface-hover, #F7F7F7); }
+            .hb-post-translation-row.is-current { background: var(--hb-bg-muted, #F4F4F4); }
             .hb-post-translation-row__locale { flex: 1 1 auto; min-width: 0; font-family: var(--hb-font-sans, Rubik, sans-serif); font-size: var(--hb-fs-sm, 12px); color: var(--hb-text-primary, #0A0A0A); }
+            .hb-post-translation-row.is-current .hb-post-translation-row__locale { font-weight: 600; }
             .hb-post-translation-row__chip {
                 flex: none; padding: 2px 8px; border-radius: var(--hb-radius-full, 999px);
                 font-family: var(--hb-font-sans, Rubik, sans-serif); font-size: var(--hb-fs-xs, 11px); font-weight: 600;
                 background: var(--hb-bg-muted, #F4F4F4); color: var(--hb-text-secondary, #5A5A5A);
             }
-            {{-- Distinct muted colours per status — text-on-tint, no saturated fills (matches the
-                 rest of the chrome's restrained palette; see status select options above for the
-                 same "muted, not loud" posture). --}}
-            .hb-post-translation-row__chip--source { background: var(--hb-bg-muted, #F4F4F4); color: var(--hb-text-muted, #9A9A9A); }
-            .hb-post-translation-row__chip--missing { background: var(--hb-bg-muted, #F4F4F4); color: var(--hb-text-muted, #9A9A9A); }
-            .hb-post-translation-row__chip--draft { background: #FFF4E0; color: #8A5A00; }
-            .hb-post-translation-row__chip--published { background: #E3F5E8; color: #1B7A3D; }
-            .hb-post-translation-row__chip--outdated { background: #FDE7E7; color: var(--hb-danger, #D4191A); }
-            .hb-post-translation-row__actions { flex: none; display: flex; align-items: center; gap: 6px; }
-            .hb-post-translation-row__marker { font-family: var(--hb-font-sans, Rubik, sans-serif); font-size: var(--hb-fs-xs, 11px); color: var(--hb-text-muted, #9A9A9A); }
-            .hb-post-translation-btn {
-                flex: none; border: 1px solid var(--hb-border, #E4E4E4); cursor: pointer;
-                padding: 4px 9px; border-radius: var(--hb-radius-control, 6px);
-                background: var(--hb-bg, #fff); color: var(--hb-text-secondary, #5A5A5A);
-                font-family: var(--hb-font-sans, Rubik, sans-serif); font-size: var(--hb-fs-xs, 11px); font-weight: 600;
-                white-space: nowrap;
-            }
-            .hb-post-translation-btn:hover { background: var(--hb-surface-hover, #F7F7F7); }
-            .hb-post-translation-btn:disabled { opacity: .5; cursor: not-allowed; }
-            .hb-post-translation-btn--danger { border-color: var(--hb-danger, #D4191A); color: var(--hb-danger, #D4191A); }
-            .hb-post-translation-btn--danger.is-armed { background: var(--hb-danger, #D4191A); color: #fff; }
-            .hb-post-translation-note { font-family: var(--hb-font-sans, Rubik, sans-serif); font-size: var(--hb-fs-xs, 11px); color: var(--hb-text-muted, #9A9A9A); }
-            .hb-post-translation-note[hidden] { display: none; }
-            .hb-post-translation-note--error { color: var(--hb-danger, #D4191A); }
+            .hb-post-translation-row__chip--complete { background: #E3F5E8; color: #1B7A3D; }
         </style>
         <script>
             (() => {
@@ -316,84 +301,28 @@
                     if (postId !== null) setEnabled(true);
                 };
 
-                // ── Translations: per-locale Create / Open / Update from source ──
-                // Only ever wired against a field whose rows Blade already rendered
-                // ($postTranslations !== null — EditorController::show()'s seeded array); a blank
-                // /editor document has no post id to translate FROM yet, so it renders only the
-                // "save first" hint and this function has nothing to attach to. Unlike
-                // wirePostTaxonomy/wirePostDiscussion/wirePostLayout above, there is no
-                // hb:post-id-driven enable step — the section simply doesn't exist in its "live"
-                // form until the next full page load after a first save (same posture the source
-                // post's own id has here: a saved post navigated FROM already carries one).
+                // ── Translations: click a row to switch the editing locale ──
+                // docs/content-translation.md §0/Wave 2 — a pure client-side switch
+                // (window.hbEditor.setEditingLocale), so this wires against EVERY render of the
+                // field, saved post or not (unlike wirePostTaxonomy/wirePostDiscussion/
+                // wirePostLayout above, there is no hb:post-id-gated enable step to wait for).
                 const wirePostTranslations = (field) => {
                     if (field.__hbPostTranslations) return;
                     field.__hbPostTranslations = true;
 
-                    const postId = field.dataset.hbPostId || '';
-                    const urlTemplate = field.dataset.hbTranslationsUrlTemplate || '';
-                    const editorUrlTemplate = field.dataset.hbEditorUrlTemplate || '';
-                    if (!postId || !urlTemplate) return;
-
-                    const openPost = (targetId) => {
-                        if (!targetId || !editorUrlTemplate) return;
-                        window.location.href = editorUrlTemplate.replace('__ID__', targetId);
-                    };
-
-                    field.querySelectorAll('[data-hb-translation-row]').forEach((row) => {
-                        const locale = row.dataset.hbTranslationLocale;
-                        const note = row.nextElementSibling && row.nextElementSibling.matches('[data-hb-translation-note]')
-                            ? row.nextElementSibling : null;
-                        const showNote = (text, isError) => {
-                            if (!note) return;
-                            note.textContent = text;
-                            note.hidden = !text;
-                            note.classList.toggle('hb-post-translation-note--error', !!isError);
-                        };
-
-                        const openBtn = row.querySelector('[data-hb-translation-open]');
-                        openBtn?.addEventListener('click', () => openPost(row.dataset.hbTranslationPostId));
-
-                        const createBtn = row.querySelector('[data-hb-translation-create]');
-                        createBtn?.addEventListener('click', () => {
-                            createBtn.disabled = true;
-                            showNote('', false);
-                            const url = urlTemplate.replace('__ID__', postId);
-                            jsonFetch(url, { method: 'POST', body: JSON.stringify({ locale }) })
-                                .then(({ ok, body }) => {
-                                    if (ok && body && body.post_id) { openPost(body.post_id); return; }
-                                    createBtn.disabled = false;
-                                    showNote((body && body.message) || '[heisenberg] translation create failed', true);
-                                });
+                    const markCurrent = () => {
+                        const current = window.hbEditor && window.hbEditor.getEditingLocale ? window.hbEditor.getEditingLocale() : null;
+                        field.querySelectorAll('[data-hb-translation-row]').forEach((row) => {
+                            row.classList.toggle('is-current', row.dataset.hbTranslationLocale === current);
                         });
-
-                        // Two-step confirm — the same "arm, then fire" pattern
-                        // live/ai/ai-history-dialog.blade.php uses for its own destructive delete:
-                        // first click swaps the label to the confirm text, second click actually
-                        // POSTs update:true (it overwrites the sibling's blocks/TOC).
-                        const updateBtn = row.querySelector('[data-hb-translation-update]');
-                        if (updateBtn) {
-                            const idleLabel = updateBtn.textContent;
-                            const confirmLabel = field.dataset.hbTranslationsConfirmLabel || idleLabel;
-                            const disarm = () => { updateBtn.classList.remove('is-armed'); updateBtn.textContent = idleLabel; };
-                            updateBtn.addEventListener('click', () => {
-                                if (!updateBtn.classList.contains('is-armed')) {
-                                    updateBtn.classList.add('is-armed');
-                                    updateBtn.textContent = confirmLabel;
-                                    return;
-                                }
-                                updateBtn.disabled = true;
-                                showNote('', false);
-                                const url = urlTemplate.replace('__ID__', postId);
-                                jsonFetch(url, { method: 'POST', body: JSON.stringify({ locale, update: true }) })
-                                    .then(({ ok, body }) => {
-                                        updateBtn.disabled = false;
-                                        disarm();
-                                        if (ok) { showNote(field.dataset.hbTranslationsUpdatedLabel || '', false); return; }
-                                        showNote((body && body.message) || '[heisenberg] translation update failed', true);
-                                    });
-                            });
-                        }
+                    };
+                    field.querySelectorAll('[data-hb-translation-row]').forEach((row) => {
+                        row.addEventListener('click', () => {
+                            if (window.hbEditor && window.hbEditor.setEditingLocale) window.hbEditor.setEditingLocale(row.dataset.hbTranslationLocale);
+                        });
                     });
+                    markCurrent();
+                    document.addEventListener('hb:editing-locale-change', markCurrent);
                 };
 
                 const boot = () => {

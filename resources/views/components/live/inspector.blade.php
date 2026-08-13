@@ -315,13 +315,14 @@
     // surface (add/reorder/remove/load-from-headings/save).
     'postTocEntries' => [],
     'postTocUrlTemplate' => '',
-    // The Post tab's Translations section (docs/content-translation.md §5, Wave T2a) — one row
-    // per configured locale, {locale, status, post_id} (TranslationStatusService::statuses()).
-    // Null for /editor's blank document (nothing to translate yet — the section renders a muted
-    // "save first" line instead of the row list); EditorController::show() seeds the real array.
+    // The Post tab's Translations section (docs/content-translation.md §0/Wave 2) — one row per
+    // configured locale, {locale, is_default, title, excerpt, blocks_translated, blocks_total,
+    // complete} (TranslationStatusService::statuses()). Null for /editor's blank document —
+    // nothing saved yet to count, so the section renders plain locale-switch rows instead.
     'postTranslations' => null,
-    'postTranslationsUrlTemplate' => '',
-    'postEditorUrlTemplate' => '',
+    // Every locale this install supports (LocaleConfig::locales()) — used for the blank-document
+    // row list above, and to render each row's label via 'heisenberg::editor.locales.<code>'.
+    'contentLocales' => ['en', 'fr'],
     'blockIcon' => '',
     'blockName' => __('heisenberg::editor.common.no_block_selected_title'),
     'blockDescription' => __('heisenberg::editor.common.no_block_selected_desc'),

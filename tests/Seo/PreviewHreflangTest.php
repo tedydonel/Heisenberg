@@ -9,11 +9,14 @@ use Heisenberg\Tests\TestCase;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 
 /**
- * Coverage for the two `PreviewController::showPost()` fixes docs/seo-system.md §5 /
- * docs/content-translation.md §7 call for: the `title_en`-only read is replaced by
- * {@see \Heisenberg\Models\Post::title()} (own-locale first, cross-locale fallback), and the page
- * now emits `<link rel="alternate" hreflang>` for its published translation siblings (+
- * `x-default`), via the SAME {@see \Heisenberg\Contracts\PostUrlResolver} the sitemap uses.
+ * Coverage for `PreviewController::showPost()`'s `title_en`-only read fix — replaced by
+ * {@see \Heisenberg\Models\Post::title()} (own-locale first, cross-locale fallback) — and for
+ * `alternatesPayload()`'s hreflang emission, rewritten for the single-row translation model
+ * (docs/content-translation.md §0): a translation is `_<locale>` attribute variants on the SAME
+ * row now, not a published sibling row, so alternates are built from
+ * {@see \Heisenberg\Services\TranslationStatusService}'s per-locale completeness signal instead
+ * of a `Post::siblings()` query, with every alternate URL resolved for the SAME post (an
+ * in-memory clone with only `locale` swapped) through {@see \Heisenberg\Contracts\PostUrlResolver}.
  */
 class PreviewHreflangTest extends TestCase
 {
@@ -36,9 +39,9 @@ class PreviewHreflangTest extends TestCase
         $this->assertStringNotContainsString('Untitled post', $html);
     }
 
-    // ── hreflang alternates ──────────────────────────────────────────────
+    // ── hreflang alternates ───────────────────────────────────────────────
 
-    public function test_a_solo_post_emits_no_hreflang_links(): void
+    public function test_a_post_with_content_in_only_its_home_locale_emits_no_hreflang_links(): void
     {
         $post = Post::create(['title_en' => 'Solo post', 'status' => 'published', 'locale' => 'en']);
 
@@ -47,57 +50,46 @@ class PreviewHreflangTest extends TestCase
         $this->assertStringNotContainsString('rel="alternate"', $html);
     }
 
-    public function test_published_siblings_emit_hreflang_links_and_x_default(): void
-    {
-        $en = Post::create(['title_en' => 'English title', 'status' => 'published', 'locale' => 'en']);
-        Post::create([
-            'translation_group_id' => $en->translation_group_id,
-            'locale' => 'fr',
-            'title_en' => '',
-            'title_fr' => 'Titre français',
-            'status' => 'published',
-        ]);
-
-        $html = (string) $this->get("/editor/{$en->id}/preview")->assertOk()->getContent();
-
-        $this->assertStringContainsString('hreflang="en"', $html);
-        $this->assertStringContainsString('hreflang="fr"', $html);
-        $this->assertStringContainsString('hreflang="x-default"', $html);
-    }
-
-    public function test_hreflang_urls_use_the_configured_template_when_set(): void
+    public function test_a_translated_post_emits_one_alternate_per_locale_with_content_plus_x_default(): void
     {
         $this->app['config']->set('heisenberg.seo.url_template', 'https://example.com/{locale}/blog/{slug}');
+        $this->app['config']->set('heisenberg.default_locale', 'en');
 
-        $en = Post::create(['title_en' => 'English title', 'status' => 'published', 'locale' => 'en', 'slug' => 'english-title']);
-        Post::create([
-            'translation_group_id' => $en->translation_group_id,
-            'locale' => 'fr',
-            'title_en' => '',
-            'title_fr' => 'Titre français',
-            'status' => 'published',
-            'slug' => 'titre-francais',
+        $post = Post::create([
+            'title_en' => 'Hello', 'title_fr' => 'Bonjour', 'slug' => 'hello', 'status' => 'published', 'locale' => 'en',
         ]);
 
-        $html = (string) $this->get("/editor/{$en->id}/preview")->assertOk()->getContent();
+        $html = (string) $this->get("/editor/{$post->id}/preview")->assertOk()->getContent();
 
-        $this->assertStringContainsString('href="https://example.com/en/blog/english-title"', $html);
-        $this->assertStringContainsString('href="https://example.com/fr/blog/titre-francais"', $html);
+        $this->assertStringContainsString(
+            '<link rel="alternate" hreflang="en" href="https://example.com/en/blog/hello" />',
+            $html
+        );
+        $this->assertStringContainsString(
+            '<link rel="alternate" hreflang="fr" href="https://example.com/fr/blog/hello" />',
+            $html
+        );
+        $this->assertStringContainsString(
+            '<link rel="alternate" hreflang="x-default" href="https://example.com/en/blog/hello" />',
+            $html
+        );
     }
 
-    public function test_a_draft_sibling_does_not_produce_a_hreflang_link(): void
+    public function test_a_translated_posts_own_locale_title_only_still_counts_as_having_content(): void
     {
-        $en = Post::create(['title_en' => 'English title', 'status' => 'published', 'locale' => 'en']);
-        Post::create([
-            'translation_group_id' => $en->translation_group_id,
-            'locale' => 'fr',
-            'title_en' => '',
-            'title_fr' => 'Brouillon',
-            'status' => 'draft',
+        // The post's OWN locale is fr (no explicit title_en) — Post::title() falls back for
+        // DISPLAY, but TranslationStatusService's per-locale `title` flag (which alternates are
+        // gated on) reads each locale's OWN column directly, so an fr-authored, en-translated
+        // post still emits both alternates.
+        $this->app['config']->set('heisenberg.seo.url_template', 'https://example.com/{locale}/blog/{slug}');
+
+        $post = Post::create([
+            'title_fr' => 'Bonjour', 'title_en' => 'Hello', 'slug' => 'bonjour', 'status' => 'published', 'locale' => 'fr',
         ]);
 
-        $html = (string) $this->get("/editor/{$en->id}/preview")->assertOk()->getContent();
+        $html = (string) $this->get("/editor/{$post->id}/preview")->assertOk()->getContent();
 
-        $this->assertStringNotContainsString('rel="alternate"', $html);
+        $this->assertStringContainsString('hreflang="fr"', $html);
+        $this->assertStringContainsString('hreflang="en"', $html);
     }
 }

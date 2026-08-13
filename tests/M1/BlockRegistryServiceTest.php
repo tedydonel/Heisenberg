@@ -201,6 +201,45 @@ class BlockRegistryServiceTest extends TestCase
         $this->assertNull($registry->getBlock('heisenberg/nope'));
     }
 
+    // ── translatableAttributes (docs/content-translation.md §0) ─────────
+
+    public function test_translatable_attributes_lists_only_attributes_marked_true(): void
+    {
+        $this->writeContract('paragraph', [
+            'attributes' => [
+                'content' => ['type' => 'rich-text', 'default' => '', 'sanitize' => 'rich-text-block', 'translatable' => true],
+                'anchor' => ['type' => 'string', 'default' => '', 'sanitize' => 'text', 'translatable' => false],
+                'url' => ['type' => 'url', 'default' => '', 'sanitize' => 'url'],
+            ],
+        ]);
+
+        $this->assertSame(['content'], $this->registry()->translatableAttributes('heisenberg/paragraph'));
+    }
+
+    public function test_translatable_attributes_is_empty_for_a_contract_with_none_declared(): void
+    {
+        $this->writeContract('separator');
+
+        $this->assertSame([], $this->registry()->translatableAttributes('heisenberg/separator'));
+    }
+
+    public function test_translatable_attributes_is_empty_for_an_unknown_block(): void
+    {
+        $this->assertSame([], $this->registry()->translatableAttributes('heisenberg/nope'));
+    }
+
+    public function test_registry_envelope_carries_translatable_attributes_per_block(): void
+    {
+        $this->writeContract('paragraph', [
+            'attributes' => [
+                'content' => ['type' => 'rich-text', 'default' => '', 'sanitize' => 'rich-text-block', 'translatable' => true],
+            ],
+        ]);
+
+        $blocks = $this->registry()->registry()['blocks'];
+        $this->assertSame(['content'], $blocks[0]['translatableAttributes']);
+    }
+
     public function test_scan_cache_invalidates_when_contract_files_change(): void
     {
         $this->writeContract('alpha');

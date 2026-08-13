@@ -56,12 +56,9 @@ return [
         'save_conflict' => 'This post was changed elsewhere — reload and try again.',
         'save_invalid' => 'Could not save — check the form.',
         'save_network' => 'Network error — check your connection.',
-        // Post-language dropdown (docs/content-translation.md §5) — view/switch/create
-        // translations for the post currently open, reusing the same postTranslations seed and
-        // status labels as the inspector's own Translations section ('inspector.post_translations_*').
-        'aria_post_language' => 'Post language',
-        'lang_translate_to' => 'Translate to :locale…',
-        'lang_creating' => 'Creating…',
+        // Editing-locale dropdown (docs/content-translation.md §0/Wave 2) — switches which
+        // locale the whole document is being edited in; no navigation, no request.
+        'aria_post_language' => 'Editing language',
         // Email export (docs/email-system.md §6) — the download menu beside Preview.
         'aria_email_export' => 'Download email',
         'export_html' => 'Download HTML (for email platforms)',
@@ -374,22 +371,16 @@ return [
         'post_taxonomy_needs_save' => 'Save the post first to add categories or tags.',
         'post_discussion' => 'Discussion',
         'post_allow_comments' => 'Allow comments',
-        // Translations (docs/content-translation.md §5, Wave T2a) — one row per configured
-        // locale (postTranslations, TranslationStatusService::statuses()). Locale display names
-        // reuse the 'locales' group below rather than duplicating en/fr labels a third time.
+        // Translations (docs/content-translation.md §0/Wave 2) — one row per configured locale,
+        // showing how COMPLETE that locale's text is on this one row (TranslationStatusService::
+        // statuses()); clicking a row switches the editing locale. Locale display names reuse the
+        // 'locales' group below rather than duplicating en/fr labels a third time.
         'post_translations' => 'Translations',
-        'post_translations_needs_save' => 'Save the post first to translate it.',
-        'post_translations_this_post' => 'This post',
-        'post_translations_status_source' => 'Source',
-        'post_translations_status_missing' => 'Not translated',
-        'post_translations_status_draft' => 'Draft',
-        'post_translations_status_published' => 'Published',
-        'post_translations_status_outdated' => 'Outdated',
-        'post_translations_create' => 'Create translation',
-        'post_translations_open' => 'Open',
-        'post_translations_update' => 'Update from source',
-        'post_translations_update_confirm' => 'Overwrite content?',
-        'post_translations_update_success' => 'Updated from source.',
+        'post_translations_needs_save' => 'Save first',
+        'post_translations_complete' => 'Complete',
+        'post_translations_in_progress' => 'In progress',
+        'post_translations_title_missing' => 'Title missing',
+        'post_translations_blocks_progress' => ':done/:total blocks',
         'post_page_layout' => 'Page layout',
         'layer_opacity' => 'Layer opacity',
         'pick_colour' => 'Pick a colour',

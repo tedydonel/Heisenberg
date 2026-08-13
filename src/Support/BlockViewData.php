@@ -52,6 +52,11 @@ final class BlockViewData
                 'category' => (string) ($block['category'] ?? ''),
                 'attributes' => $defaults,
                 'attributeDefinitions' => $block['attributes'] ?? [],
+                // docs/content-translation.md §0/Wave 2 — which of the block's own attributes
+                // carry human-language text (BlockRegistryService::localizeContract() already
+                // derived this once); the client runtime reads it to decide whether a write lands
+                // on the bare key or a `key_<locale>` variant, without re-deriving the list itself.
+                'translatableAttributes' => $block['translatableAttributes'] ?? [],
                 'controls' => $block['controls'] ?? [],
                 'panels' => $block['panels'] ?? [],
                 'supports' => $block['supports'] ?? [],

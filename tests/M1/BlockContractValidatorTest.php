@@ -168,6 +168,38 @@ class BlockContractValidatorTest extends TestCase
         $this->assertInvalid($contract, 'enum');
     }
 
+    // ── translatable (docs/content-translation.md §0) ───────────────────
+
+    public function test_translatable_true_is_valid(): void
+    {
+        $contract = $this->validContract();
+        $contract['attributes']['content']['translatable'] = true;
+        $this->assertValid($contract);
+    }
+
+    public function test_translatable_false_is_valid(): void
+    {
+        $contract = $this->validContract();
+        $contract['attributes']['content']['translatable'] = false;
+        $this->assertValid($contract);
+    }
+
+    public function test_translatable_is_optional_and_defaults_to_absent(): void
+    {
+        $contract = $this->validContract();
+        $this->assertArrayNotHasKey('translatable', $contract['attributes']['content']);
+        $this->assertValid($contract);
+    }
+
+    public function test_translatable_must_be_a_boolean(): void
+    {
+        foreach (['yes', 1, 0, null, []] as $bad) {
+            $contract = $this->validContract();
+            $contract['attributes']['content']['translatable'] = $bad;
+            $this->assertInvalid($contract, 'translatable');
+        }
+    }
+
     public function test_unknown_support_group_is_rejected(): void
     {
         $contract = $this->validContract();

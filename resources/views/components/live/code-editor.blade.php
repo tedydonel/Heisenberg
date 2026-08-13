@@ -288,7 +288,10 @@
             for (const key in defs) {
                 if (!Object.prototype.hasOwnProperty.call(defs, key) || key === rich || t.skip.indexOf(key) !== -1) continue;
                 const def = defs[key] || {};
-                const value = model.attributes ? model.attributes[key] : undefined;
+                // docs/content-translation.md §0/Wave 2 — Code view shows/edits whichever locale
+                // the canvas is currently editing, through the same read/write rule as every
+                // other surface (window.hbEditor.readAttr/resolveAttrKey).
+                const value = model.attributes ? (window.hbEditor && window.hbEditor.readAttr ? window.hbEditor.readAttr(model, key) : model.attributes[key]) : undefined;
                 if (value === undefined || value === null) continue;
                 const dflt = def.default === undefined || def.default === null ? '' : def.default;
                 if (String(value) === String(dflt)) continue; // only non-default values appear in code
@@ -350,7 +353,8 @@
                 const kids = inner.map((child) => serializeModel(child, depth + 1)).filter(Boolean).join('\n');
                 return open + ']\n' + kids + '\n' + indent + '[/' + slug + ']';
             }
-            const body = rich ? String(model.attributes && model.attributes[rich] != null ? model.attributes[rich] : '') : '';
+            const richVal = rich && model.attributes ? (window.hbEditor && window.hbEditor.readAttr ? window.hbEditor.readAttr(model, rich) : model.attributes[rich]) : null;
+            const body = rich ? String(richVal != null ? richVal : '') : '';
             if (!body.trim()) return open + (rich ? '][/' + slug + ']' : (wide ? '/]' : ' /]'));
             const bodyLines = formatBody(body).map((line) => indent + '  ' + line).join('\n');
             return open + ']\n' + bodyLines + '\n' + indent + '[/' + slug + ']';
@@ -416,7 +420,10 @@
                         err(line, msg('msgErrInvalidValue', { name: rawName, slug: slug }));
                         return;
                     }
-                    model.attributes[name] = value;
+                    // docs/content-translation.md §0/Wave 2 — a translatable attribute written
+                    // from Code view lands on the same key setAttribute()/rich-text editing would.
+                    const attrKey = window.hbEditor && window.hbEditor.resolveAttrKey ? window.hbEditor.resolveAttrKey(model.name, name) : name;
+                    model.attributes[attrKey] = value;
                     return;
                 }
                 const box = BOX_SHORTHANDS[name] || null;
@@ -453,7 +460,12 @@
                 if (frame.dummy) return;
                 const rich = richAttrOf(frame.contract);
                 const body = dedent(frame.body.join(''));
-                if (rich) { if (body !== '') frame.model.attributes[rich] = body; }
+                if (rich) {
+                    if (body !== '') {
+                        const richKey = window.hbEditor && window.hbEditor.resolveAttrKey ? window.hbEditor.resolveAttrKey(frame.model.name, rich) : rich;
+                        frame.model.attributes[richKey] = body;
+                    }
+                }
                 else if (body.trim() !== '' && !frame.model.innerBlocks.length) {
                     err(frame.line, msg('msgErrNoBody', { slug: frame.slug }));
                 }

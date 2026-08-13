@@ -127,10 +127,12 @@
             const source = kind === 'supports' ? (model.supports || {}) : (model.attributes || {});
             // On a non-default state tab a supports control reads its own override, not the base
             // value — otherwise every state would open showing the default and overwrite it on
-            // the first edit.
+            // the first edit. An `attributes`-kind control reads through window.hbEditor.readAttr
+            // (docs/content-translation.md §0/Wave 2) rather than the model directly — a
+            // translatable attribute must show whichever locale the canvas is currently editing.
             let value = kind === 'supports'
                 ? hbGet(source, hbStatePath(mountedStyleRoot(el) || el.closest('.hb-blockstyle'), key))
-                : hbGet(source, key);
+                : (window.hbEditor && window.hbEditor.readAttr ? window.hbEditor.readAttr(model, key) : hbGet(source, key));
 
             // Style panels: snapshot the pristine presentation on first contact (even when a
             // model value is about to overwrite it), and substitute it for an absent path so a

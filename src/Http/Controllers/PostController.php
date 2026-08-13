@@ -254,22 +254,16 @@ class PostController
      * caller). `slug === ''` (trimmed) asks for a fresh, title-derived one: setting the
      * in-memory attribute to '' and leaving it there for Post::booted()'s `updating` hook,
      * which now regenerates from the title precisely when the slug is empty — the same
-     * generator creation already uses, not a second copy of it (that hook ALSO propagates the
-     * regenerated slug to every sibling — see its own docblock — so an emptied slug needs no
-     * extra propagation logic here). A non-empty slug must match the shape Str::slug() actually
-     * emits (lowercase, digits, single hyphens, no leading/trailing/doubled ones).
+     * generator creation already uses, not a second copy of it. A non-empty slug must match the
+     * shape Str::slug() actually emits (lowercase, digits, single hyphens, no leading/trailing/
+     * doubled ones).
      *
-     * SHARED-SLUG INVARIANT (docs/content-translation.md §1): a translation group presents as
-     * ONE post with one slug — locale comes from the host's URL prefix, not the slug text — so
-     * a rename here is validated and applied to the WHOLE group, not just this row. The slug
-     * must be free among this post's OWN locale (excluding itself) AND, independently, among
-     * EVERY SIBLING's own locale (excluding that sibling) — checked BEFORE any write, because
+     * Single-row model (docs/content-translation.md §0): a logical post is one row, so the
+     * shared-slug invariant that used to require validating and propagating a rename across
+     * sibling ROWS is simply a fact now — there is nothing else to check or write. The slug must
+     * be free among this post's OWN locale (excluding itself) — checked BEFORE any write, because
      * Post::uniqueSlug() would otherwise silently suffix a collision (`-2`, `-3`, …) rather than
-     * reject it: fine for an auto-derived slug, wrong for a value the user typed on purpose. Any
-     * single collision fails the WHOLE request (naming which language blocked it) with no
-     * partial write — this method only ever mutates in-memory attributes and explicitly saves
-     * the siblings itself; $post's own save is left to save()'s existing catch-all so the
-     * post's other dirty attributes land in the same UPDATE.
+     * reject it: fine for an auto-derived slug, wrong for a value the user typed on purpose.
      *
      * @return array{status:int, message:string}|null
      */
@@ -297,24 +291,7 @@ class PostController
             return ['status' => 422, 'message' => 'That slug is already in use.'];
         }
 
-        $siblings = $post->siblings();
-        foreach ($siblings as $sibling) {
-            $siblingConflict = $sibling->newQuery()->withTrashed()
-                ->where('locale', $sibling->locale)
-                ->where('slug', $slug)
-                ->whereKeyNot($sibling->getKey())
-                ->exists();
-
-            if ($siblingConflict) {
-                return ['status' => 422, 'message' => "That slug is already in use in the \"{$sibling->locale}\" translation."];
-            }
-        }
-
         $post->slug = $slug;
-        foreach ($siblings as $sibling) {
-            $sibling->slug = $slug;
-            $sibling->save();
-        }
 
         return null;
     }
@@ -345,9 +322,9 @@ class PostController
     /**
      * Validate + apply the SEO/Social panel's fields (docs/seo-system.md §3) — the localized
      * keys (`meta_title`, `meta_description`, `og_title`, `og_description`, `focus_keyphrase`)
-     * map to the POST ROW'S OWN locale columns: the split-row model means the FR sibling's own
-     * panel edits its OWN `_fr` columns, never the other locale's (same posture `title_en`/
-     * `title_fr` already have — a locale row only ever writes its own half). `robots_index`/
+     * map to the post's OWN locale columns: the panel's FR fields edit the `_fr` columns, never
+     * the other locale's (same posture `title_en`/`title_fr` already have — one row, two
+     * independent per-locale halves). `robots_index`/
      * `robots_follow` compose into the single `robots` column ('index'|'noindex', ', ',
      * 'follow'|'nofollow') — the shape {@see \Heisenberg\Services\SeoAnalyzer} and the preview's
      * own head logic already parse. Only keys actually PRESENT in `$seo` are touched (mirrors

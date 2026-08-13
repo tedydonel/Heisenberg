@@ -14,10 +14,10 @@
         $hbDocumentType = $documentType ?? 'post';
     @endphp
     <x-live.topbar class="hb-editor__topbar" :post-id="$postId ?? null" :content-version="$contentVersion ?? 0"
-        :post-translations="$postTranslations ?? null"
-        :post-translations-url-template="$postTranslationsUrlTemplate ?? ''"
-        :post-editor-url-template="$postEditorUrlTemplate ?? ''"
-        :locale-default="$localeDefault ?? 'en'"
+        :home-locale="$postLocale ?? 'en'"
+        :content-locales="$contentLocales ?? ['en', 'fr']"
+        :content-locale-labels="$contentLocaleLabels ?? []"
+        :post-title-by-locale="$postTitleByLocale ?? []"
         :document-type="$hbDocumentType"
         :email-preview-url-template="$emailPreviewUrlTemplate ?? ''"
         :email-export-url-template="$emailExportUrlTemplate ?? ''" />
@@ -54,7 +54,8 @@
     </div>
     <div class="hb-editor__canvas">
         <x-live.canvas :title="$postTitle ?? ''" :page-padding-x="$postPagePaddingX ?? 56" :page-padding-y="$postPagePaddingY ?? 56"
-            :document-type="$hbDocumentType" />
+            :document-type="$hbDocumentType"
+            :post-locale="$postLocale ?? 'en'" :content-locale-labels="$contentLocaleLabels ?? []" />
         {{-- Code view (shortcode dialect of the block contracts) — hidden until the footer's
              Code Editor chip toggles it; occupies the same slot as the canvas. --}}
         <x-live.code-editor hidden />
@@ -147,8 +148,7 @@
         :post-toc-entries="$postTocEntries ?? []"
         :post-toc-url-template="$postTocUrlTemplate ?? ''"
         :post-translations="$postTranslations ?? null"
-        :post-translations-url-template="$postTranslationsUrlTemplate ?? ''"
-        :post-editor-url-template="$postEditorUrlTemplate ?? ''"
+        :content-locales="$contentLocales ?? ['en', 'fr']"
         :fonts-search-url="route('heisenberg.editor.fonts.search')"
         :theme="$theme ?? []"
         :document-type="$hbDocumentType" />
@@ -172,7 +172,8 @@
 
     {{-- The block model: registry + render/insert/select runtime. Kept last so the canvas,
          panels, inspector and toolbar it wires all exist in the DOM before it boots. --}}
-    <x-live.block-runtime :registry="$registry" :blocks-css="$blocksCss" :registry-hash="$registryHash ?? ''" />
+    <x-live.block-runtime :registry="$registry" :blocks-css="$blocksCss" :registry-hash="$registryHash ?? ''"
+        :post-id="$postId ?? null" :post-locale="$postLocale ?? 'en'" :content-locales="$contentLocales ?? ['en', 'fr']" />
 
     @if (! empty($initialBlocks))
         {{-- Hydrates an existing post's block tree through window.hbEditor.replaceDoc(): models

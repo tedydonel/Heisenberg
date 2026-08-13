@@ -161,7 +161,8 @@ class EditorPrompt
         Beyond that you can:
         - Set the page's title with set_page_title (it fills the editor's title field live).
         - Manage the post's taxonomy (categories, tags) through tools.
-        - Read saved posts and media, and translate a saved post (create_translation, see LOCALES).
+        - Read saved posts and media, and translate a saved post's fields into another locale
+          (create_translation, see LOCALES).
         The exact tool argument shapes arrive via the tool-calling channel, not here.
         TXT;
     }
@@ -533,19 +534,20 @@ class EditorPrompt
         TXT;
     }
 
-    /** §6 — the split-row translation model and create_translation (docs/content-translation.md). */
+    /** §6 — the single-row translation model and create_translation (docs/content-translation.md §0). */
     private function locales(): string
     {
         return <<<TXT
-        LOCALES — a translation is its own post, not a variant inside this one
-        Each locale is a SEPARATE post row (own id/slug/status) sharing a translation group
-        ("siblings"); no per-locale text lives inside a block. get_post's `translations` map:
-        locale -> {post_id, status} (source/missing/draft/published/outdated).
-        create_translation(source post_id, target_locale, title, code) writes the sibling.
-        Translate ONLY human-readable text (headings, body copy, labels, alt text) — never
-        block/attribute names, ids, URLs or media refs — same block sequence as the source.
-        Title/excerpt translate too; slug localizes or defaults. First call/locale creates a
-        draft sibling; later calls update it without touching its status.
+        LOCALES — one post, several languages on the SAME row
+        Structure exists once; only words differ. Each locale's text is a suffixed attribute
+        variant (heading `content` -> `content_fr`), never a separate post. get_post's
+        `translations` map: locale -> {is_default, title, excerpt, blocks_translated,
+        blocks_total, complete}.
+        create_translation(post_id, target_locale, title?, excerpt?, code?) edits THAT post:
+        title/excerpt -> title_<locale>/excerpt_<locale>; code must match the post's SAME block
+        sequence (get_post's `code`) with ONLY text translated — never names/ids/URLs/media
+        refs — folded in BY POSITION. Restructuring (add/remove/reorder blocks) is refused, not
+        applied. No new post, no slug, no status change.
         TXT;
     }
 

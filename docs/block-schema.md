@@ -59,6 +59,7 @@ order). Each definition:
   "default": "",                // value used on insert and as a fallback
   "enum": ["a", "b"],           // optional; constrains the value (and makes the control a select)
   "sanitize": "rich-text-block",// required for rich-text/url/token
+  "translatable": true,         // optional, default false; see below
   "items": { ... },             // required when type = array
   "properties": { ... },        // required when type = object | media
   "control": { ... } | false    // optional inspector-control override (see "Controls")
@@ -71,6 +72,12 @@ order). Each definition:
   `color-token-or-transparent`, `size-token`, `integer`, `boolean`, `html-safe`,
   `border-style`, `font-token`, `size-value`, `color-value`, `color-value-or-gradient`,
   `font-family`, `font-weight`, plus the full-kit overhaul (2026-07-19, Phase 1) additions below.
+- **`translatable`** (boolean, optional, default `false`, docs/content-translation.md §0): marks a
+  human-language attribute whose value lives in locale-suffixed variants (`content_en`,
+  `content_fr`, …) resolved by `BlockRenderer::localizedAttribute()`. Never set on urls, variants,
+  colours, sizes, anchors, or ids. `BlockRegistryService::translatableAttributes()` exposes the
+  list per contract; the registry envelope also carries it as `translatableAttributes` alongside
+  `controls`/`panels`.
 
 ### Full-kit overhaul (Phase 1) sanitizer kinds
 

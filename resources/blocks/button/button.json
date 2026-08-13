@@ -17,7 +17,8 @@
         "text": {
             "type": "rich-text",
             "default": "Click here",
-            "sanitize": "rich-text-inline"
+            "sanitize": "rich-text-inline",
+            "translatable": true
         },
         "url": {
             "type": "url",
@@ -79,6 +80,7 @@
             "type": "string",
             "default": "",
             "sanitize": "text",
+            "translatable": true,
             "control": {
                 "type": "text",
                 "section": "general",
