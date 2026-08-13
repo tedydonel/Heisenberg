@@ -38,6 +38,19 @@ use Illuminate\Support\Facades\Gate;
  * SEO: a separate `SeoMeta` row (docs/seo-system.md §3), never part of $post's own
  * $fillable — applySeo() `updateOrCreate`s it from the request's `seo` map, non-autosave
  * only, same "next explicit save only" posture as slug/published_at. See its own docblock.
+ *
+ * TIMEZONE: the editor works entirely in `config('app.timezone')` wall-clock time — a
+ * `datetime-local` value (e.g. "2026-08-12T11:13") is neither UTC nor the visiting
+ * browser's zone, it is that literal wall clock IN THE APP'S CONFIGURED ZONE. Every hop
+ * must honor this: applyTransition()/applyPublishedAt() parse the incoming naive string
+ * with Carbon::parse()/Request::date() (no explicit $tz — PHP's default zone is already
+ * app.timezone, set by LoadConfiguration's date_default_timezone_set()), and payload()
+ * below echoes published_at/scheduled_at back with the SAME naive "Y-m-d\TH:i" format
+ * EditorController::show() seeds the page with — never toIso8601String()/toISOString(),
+ * whose embedded offset gets silently reinterpreted through the BROWSER's own zone by
+ * `new Date(iso)` client-side (see post-meta-live-script.blade.php's own docblock). If
+ * the host's app.timezone differs from the viewer's browser zone, the editor still shows
+ * app-timezone wall clock consistently — that is the documented, predictable behavior.
  */
 class PostController
 {
@@ -540,8 +553,10 @@ class PostController
                 'excerpt_en' => $post->excerpt_en,
                 'excerpt_fr' => $post->excerpt_fr,
                 'status' => $post->status,
-                'published_at' => $post->published_at?->toIso8601String(),
-                'scheduled_at' => $post->scheduled_at?->toIso8601String(),
+                // Naive app-timezone wall clock — SAME format + zone rule as
+                // EditorController::show()'s seed; see this class's own TIMEZONE docblock.
+                'published_at' => $post->published_at?->format('Y-m-d\TH:i'),
+                'scheduled_at' => $post->scheduled_at?->format('Y-m-d\TH:i'),
                 'content_version' => $post->content_version,
                 'seo' => $this->seoPayload($post),
             ],
