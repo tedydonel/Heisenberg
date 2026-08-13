@@ -183,8 +183,13 @@ class EmailExportControllerTest extends TestCase
 
         $raw = $this->get("/editor/{$post->id}/email-export?format=eml")->getContent();
 
-        $this->assertMatchesRegularExpression('/cid:([^"\']+)/', $raw, 'expected an embedded cid: reference in the html part');
-        preg_match('/cid:([^"\']+)/', $raw, $m);
+        // The html part is quoted-printable encoded (RFC 2045 §6.7): a `cid:` reference can land
+        // across a soft line-wrap (`=\r\n`), which is not part of the data and must be undone
+        // before matching — the html body's ACTUAL content never contains it.
+        $dequoted = str_replace(["=\r\n", "=\n"], '', $raw);
+
+        $this->assertMatchesRegularExpression('/cid:([^"\']+)/', $dequoted, 'expected an embedded cid: reference in the html part');
+        preg_match('/cid:([^"\']+)/', $dequoted, $m);
         $cid = $m[1];
 
         $leaves = $this->mimeLeaves($raw);

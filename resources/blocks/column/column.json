@@ -464,8 +464,10 @@
             "class": "hb-email-col",
             "attributes": {
                 "valign": "top",
-                "data-block-name": "{{name}}",
-                "data-block-id": "{{id}}"
+                "width": {
+                    "value": "{{attributes._emailColWidthPercent}}",
+                    "omitWhenEmpty": true
+                }
             },
             "children": [
                 {

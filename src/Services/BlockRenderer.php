@@ -286,6 +286,24 @@ class BlockRenderer
                 . ' data-hb-icon="' . $this->escape($reference) . '">' . $svg . '</span>';
         }
 
+        // Conditionally-unwrapped element: `{ "omitTagWhenAttributeEmpty": "href", "tag": "a", ... }`
+        // renders children with NO wrapping element at all when that attribute resolves empty —
+        // e.g. the email image template's `<a>` around an `<img>`: an anchor with no `href` is
+        // dead markup (`<a><img></a>`), so an unlinked image gets no anchor rather than an empty one.
+        $unwrapAttribute = $node['omitTagWhenAttributeEmpty'] ?? null;
+        if (is_string($unwrapAttribute)
+            && $unwrapAttribute !== ''
+            && trim($this->scalarToString($this->localizedAttribute($block, $unwrapAttribute, $locale))) === '') {
+            $children = '';
+            foreach (($node['children'] ?? []) as $child) {
+                if (is_array($child)) {
+                    $children .= $this->renderNode($child, $block, $contract, $locale, false, $depth, $surface);
+                }
+            }
+
+            return $children;
+        }
+
         // element
         $tag = $this->resolveTag($node, $block, $contract, $locale);
         $attributes = $this->resolveAttributes($node, $block, $locale);
@@ -314,7 +332,7 @@ class BlockRenderer
             $attributes['rel'] = 'noopener noreferrer';
         }
 
-        $class = $this->resolveClass($node, $block, $contract, $locale, $isRoot);
+        $class = $this->resolveClass($node, $block, $contract, $locale, $isRoot, $surface);
         if ($class !== '') {
             $attributes = ['class' => $class] + $attributes;
         }
@@ -407,11 +425,19 @@ class BlockRenderer
         return $tag;
     }
 
-    private function resolveClass(array $node, array $block, array $contract, string $locale, bool $isRoot): string
+    /**
+     * `$surface === 'email'` skips the contract-level className/classNames/align injection
+     * entirely (docs/email-system.md §4 defect 5) — `hb-supports`, `hb-ease-*`, `hb-flex-layout`,
+     * `hb-align-*` all name web-only CSS (interaction states, animation, flexbox) that has no
+     * counterpart in an inbox. Email root classes are exactly what the `email.template` node
+     * itself authors (e.g. `hb-email-col`, which the shell's own media query targets) — nothing
+     * auto-appended. Web (`render`) keeps every existing rule unchanged.
+     */
+    private function resolveClass(array $node, array $block, array $contract, string $locale, bool $isRoot, string $surface = 'render'): string
     {
         $class = isset($node['class']) ? $this->substitute((string) $node['class'], $block, $locale) : '';
 
-        if ($isRoot) {
+        if ($isRoot && $surface !== 'email') {
             $className = $contract['style']['className'] ?? '';
             if (is_string($className) && $className !== '') {
                 $class = trim($class . ' ' . $className);
@@ -510,6 +536,30 @@ class BlockRenderer
                 if ($file !== '') {
                     $out[$name] = $file;
                 }
+                continue;
+            }
+
+            // Enum-mapped attribute: { "enumMap": "{{attributes.level}}", "cases": {"1": "...", …},
+            // "default": "..." } — the WHOLE value is chosen by matching another token's resolved
+            // value against a static case table. Exists because the template DSL has no per-value
+            // branching otherwise: email heading sizing needs a literal px figure per h1…h6 (email
+            // clients can't be trusted with the canvas's `clamp()`/tag-selector cascade), and no
+            // combination of `style.variables` + `var()` fallback can express "pick figure N by
+            // this attribute's value" — only "pick THIS default vs. an instance override".
+            if (is_array($raw) && array_key_exists('enumMap', $raw)) {
+                $key = $this->substitute((string) $raw['enumMap'], $block, $locale);
+                $cases = is_array($raw['cases'] ?? null) ? $raw['cases'] : [];
+                $chosen = is_string($cases[$key] ?? null) ? $cases[$key] : (string) ($raw['default'] ?? '');
+                $value = $this->substitute($chosen, $block, $locale);
+
+                if (in_array($name, ['src', 'href', 'srcset', 'poster'], true)) {
+                    $value = $this->safeUrl($value);
+                    if ($value === '' && in_array($name, ['src', 'srcset'], true)) {
+                        continue;
+                    }
+                }
+
+                $out[$name] = $value;
                 continue;
             }
 

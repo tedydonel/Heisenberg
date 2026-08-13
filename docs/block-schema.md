@@ -382,6 +382,15 @@ A recursive node tree compiled to safe HTML by one generic walk. Node shapes:
 - **Conditional attributes** — an attribute value may be an object: `{ "boolean": "{{attributes.open}}" }`
   renders a bare presence attribute (`<details open>`) only when truthy; `{ "value": "{{attributes.start}}",
   "omitWhenEmpty": true }` renders only when its resolved value is non-empty.
+- **Enum-mapped attributes** — `{ "enumMap": "{{attributes.level}}", "cases": {"1": "…", "2": "…"},
+  "default": "…" }` resolves the WHOLE attribute value by matching another token's resolved value
+  against a static case table, falling back to `default` on no match. The only branching an
+  attribute value can do; used where a design token's single default/fallback pair can't express
+  "pick figure N by this attribute's value" (e.g. the email surface's per-heading-level font size,
+  since email clients can't be trusted with the canvas's `clamp()`/tag-selector cascade).
+- **Conditionally-unwrapped elements** — a node with `"omitTagWhenAttributeEmpty": "href"` renders
+  its children with NO wrapping element at all when that attribute resolves empty, instead of an
+  empty shell (`<a><img></a>`). Used by the email image template's anchor.
 - **Dynamic tags** — a `tag` interpolated from `{{attributes.X}}` accepts X only when its raw
   value is strictly present in X's contract `enum`; otherwise X resolves to the enum's first
   value. The resolved tag must still match `[a-z][a-z0-9-]*` and the safe dynamic-tag allow-list

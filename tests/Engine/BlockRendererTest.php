@@ -340,7 +340,7 @@ class BlockRendererTest extends TestCase
             'en'
         );
         $this->assertStringNotContainsString('url(', $junkHtml);
-        $this->assertStringContainsString('--hb-paragraph-color: var(--accent-1)', $junkHtml);
+        $this->assertStringContainsString('--hb-paragraph-color: var(--ink)', $junkHtml);
     }
 
     /**

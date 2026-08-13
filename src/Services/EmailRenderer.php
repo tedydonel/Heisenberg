@@ -71,7 +71,11 @@ use TijsVerkoyen\CssToInlineStyles\CssToInlineStyles;
  * (max-width: 600px)` block for the columns-block mobile stack, which the library's own
  * `doCleanup()` strips from what it INLINES but leaves untouched in the retained `<style>` tag
  * — precisely "the minimal head `<style>` for what inlining can't express" §2 calls for, since
- * a media query has no inline-style equivalent at all) and normalize the DOM round-trip.
+ * a media query has no inline-style equivalent at all) and normalize the DOM round-trip. The
+ * Outlook/iOS client-hack resets ({@see self::CLIENT_HACK_CSS}) are appended to that SAME
+ * `<style>` tag only AFTER conversion returns — they are meaningless as inline declarations, and
+ * the library would otherwise copy them onto every `<table>`/`<td>`/`<img>` in the document (they
+ * were never candidates for inlining before this class existed to keep them out of its way).
  *
  * PLAIN TEXT (§5.6): {@see self::textFor()} walks the RAW block tree directly (not the rendered
  * HTML) — attribute text, stripped of rich-text tags via `strip_tags()` + `html_entity_decode()`
@@ -191,8 +195,11 @@ class EmailRenderer
                 $inner = $block['innerBlocks'] ?? null;
                 if (is_array($inner)) {
                     $inner = $walk($inner);
-                    if (($block['name'] ?? null) === $columnsName && count($inner) > self::MAX_EMAIL_COLUMNS) {
-                        $inner = array_slice($inner, 0, self::MAX_EMAIL_COLUMNS);
+                    if (($block['name'] ?? null) === $columnsName) {
+                        if (count($inner) > self::MAX_EMAIL_COLUMNS) {
+                            $inner = array_slice($inner, 0, self::MAX_EMAIL_COLUMNS);
+                        }
+                        $inner = $this->assignColumnWidths($inner);
                     }
                     $block['innerBlocks'] = $inner;
                 }
@@ -204,6 +211,40 @@ class EmailRenderer
         };
 
         return $walk($blocks);
+    }
+
+    /**
+     * Outlook needs an explicit per-cell width or the layout collapses unpredictably (§4/§9) —
+     * the web surface leans on flexbox, which has no email equivalent. Whole-percent widths
+     * summing to exactly 100 (the last column absorbs the rounding remainder), stashed as a
+     * synthetic `_emailColWidthPercent` attribute {@see \Heisenberg\Services\BlockRenderer}
+     * substitutes into `column.json`'s `email.template` — this attribute exists ONLY for this
+     * one render pass, never persisted, never part of the block's real schema.
+     *
+     * @param list<array<string, mixed>> $columns
+     * @return list<array<string, mixed>>
+     */
+    private function assignColumnWidths(array $columns): array
+    {
+        $count = count($columns);
+        if ($count === 0) {
+            return $columns;
+        }
+
+        $base = intdiv(100, $count);
+        $last = 100 - $base * ($count - 1);
+
+        foreach ($columns as $i => $column) {
+            if (! is_array($column)) {
+                continue;
+            }
+            $attributes = is_array($column['attributes'] ?? null) ? $column['attributes'] : [];
+            $attributes['_emailColWidthPercent'] = ($i === $count - 1 ? $last : $base) . '%';
+            $column['attributes'] = $attributes;
+            $columns[$i] = $column;
+        }
+
+        return $columns;
     }
 
     /**
@@ -411,8 +452,50 @@ class EmailRenderer
             $html = $resolveOnce($html);
         }
 
-        return (string) preg_replace('/var\([^)]*\)/i', '', $html);
+        $html = (string) preg_replace('/var\([^)]*\)/i', '', $html);
+
+        return $this->stripCustomPropertyDeclarations($html);
     }
+
+    /**
+     * Remove every `--name: value;` CUSTOM-PROPERTY DECLARATION left sitting in a `style="…"`
+     * attribute once the loop above has used it as a lookup source (§2 "no `var(` survives" —
+     * the declarations themselves are the other half of that invariant: a `--hb-heading-color:
+     * #0a0a0a;` decoration does nothing in mail, it is dead weight only `var()` USAGES elsewhere
+     * ever read). Scoped to `style="…"` attribute VALUES specifically (not a blind whole-document
+     * regex) so authored rich-text content that happens to contain literal `--` text is never
+     * touched. A `style=""` left empty by this is dropped entirely.
+     */
+    private function stripCustomPropertyDeclarations(string $html): string
+    {
+        return (string) preg_replace_callback(
+            '/\sstyle="([^"]*)"/i',
+            static function (array $m): string {
+                $declarations = array_filter(
+                    array_map('trim', explode(';', $m[1])),
+                    static fn (string $d): bool => $d !== '' && ! str_starts_with($d, '--')
+                );
+
+                return $declarations === [] ? '' : ' style="' . implode('; ', $declarations) . '"';
+            },
+            $html
+        );
+    }
+
+    /**
+     * The Outlook/iOS "client hack" resets (§2, §5.5, defect 8): meaningless as inline
+     * declarations (`-webkit-text-size-adjust` on a `<td>` does nothing), they exist ONLY for
+     * clients that read `<style>` at all. {@see self::inlineStyles()} injects this into the head
+     * `<style>` AFTER `CssToInlineStyles::convert()` has already run, specifically so these rules
+     * are never themselves candidates for inlining — `wrapShell()`'s own `<style>` carries only
+     * the mobile `@media` block, the one thing inlining genuinely cannot express, so the library
+     * has no non-media rule left to copy onto every `<table>`/`<td>`/`<img>` in the document.
+     */
+    private const CLIENT_HACK_CSS = <<<'CSS'
+  body,table,td { -webkit-text-size-adjust:100%; -ms-text-size-adjust:100%; }
+  table,td { mso-table-lspace:0pt; mso-table-rspace:0pt; }
+  img { border:0; line-height:100%; outline:none; text-decoration:none; }
+CSS;
 
     /**
      * The canonical shell (§5.3): a 100%-width background table (theme background literal)
@@ -442,9 +525,6 @@ class EmailRenderer
 <meta name="x-apple-disable-message-reformatting">
 <title>{$title}</title>
 <style>
-  body,table,td { -webkit-text-size-adjust:100%; -ms-text-size-adjust:100%; }
-  table,td { mso-table-lspace:0pt; mso-table-rspace:0pt; }
-  img { border:0; line-height:100%; outline:none; text-decoration:none; }
   @media only screen and (max-width: {$width}px) {
     .hb-email-col { display:block !important; width:100% !important; }
   }
@@ -470,11 +550,19 @@ HTML;
      * by design, every block's OWN style is already literal inline text by this point).
      * `CssToInlineStyles::convert()` round-trips through a real DOMDocument, which both
      * normalizes the markup and is why $html must already be a full document (it always is —
-     * this is only ever called on {@see self::wrapShell()}'s output).
+     * this is only ever called on {@see self::wrapShell()}'s output). The client-hack rules are
+     * added to the retained `<style>` tag AFTER conversion — see {@see self::CLIENT_HACK_CSS}.
      */
     private function inlineStyles(string $html): string
     {
-        return (new CssToInlineStyles())->convert($html);
+        $inlined = (new CssToInlineStyles())->convert($html);
+
+        return (string) preg_replace(
+            '/<\/style>/i',
+            self::CLIENT_HACK_CSS . "\n</style>",
+            $inlined,
+            1
+        );
     }
 
     /**

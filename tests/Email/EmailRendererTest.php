@@ -93,15 +93,17 @@ class EmailRendererTest extends TestCase
         $post = $this->makeEmail();
         $this->makeImageFile();
 
-        $this->addBlock($post, 1, 'heisenberg/heading', ['content' => 'Hello Subscribers', 'level' => 2]);
+        $this->addBlock($post, 1, 'heisenberg/heading', ['content' => 'Hello Subscribers', 'level' => 1]);
         $this->addBlock($post, 2, 'heisenberg/paragraph', ['content' => 'Thanks for reading this month.']);
         $this->addBlock($post, 3, 'heisenberg/image', ['url' => '/uploads/media/2026/07/photo.jpg', 'alt' => 'A photo']);
         $this->addBlock($post, 4, 'heisenberg/button', ['text' => 'Read more', 'url' => 'https://example.com/landing']);
-        $this->addBlock($post, 5, 'heisenberg/columns', ['columns' => 2], [
+        $this->addBlock($post, 5, 'heisenberg/separator', []);
+        $this->addBlock($post, 6, 'heisenberg/columns', ['columns' => 2], [
             [
                 'id' => 'col1', 'name' => 'heisenberg/column', 'schemaVersion' => '1.0.0',
                 'attributes' => [], 'supports' => [],
                 'innerBlocks' => [
+                    ['id' => 'col1h', 'name' => 'heisenberg/heading', 'schemaVersion' => '1.0.0', 'attributes' => ['content' => 'Column heading', 'level' => 3], 'supports' => [], 'innerBlocks' => []],
                     ['id' => 'col1p', 'name' => 'heisenberg/paragraph', 'schemaVersion' => '1.0.0', 'attributes' => ['content' => 'Left column text.'], 'supports' => [], 'innerBlocks' => []],
                 ],
             ],
@@ -114,7 +116,7 @@ class EmailRendererTest extends TestCase
             ],
         ]);
         // Excluded from the email palette (§4) -- must render nothing and never crash the pipeline.
-        $this->addBlock($post, 6, 'heisenberg/embed', ['url' => 'https://www.youtube.com/watch?v=dQw4w9WgXcQ']);
+        $this->addBlock($post, 7, 'heisenberg/embed', ['url' => 'https://www.youtube.com/watch?v=dQw4w9WgXcQ']);
 
         return $post;
     }
@@ -197,5 +199,93 @@ class EmailRendererTest extends TestCase
         $this->assertSame([], $result->embeds);
         $this->assertSame('', $result->text);
         $this->assertStringNotContainsString('var(', $result->html);
+    }
+
+    /** Regression: `blockStyleDeclarations()`'s root custom properties used to survive into
+     *  every `style="…"` attribute (`--hb-heading-color`, `--hb-anim-dur`, …) — they resolve
+     *  values, they are never the actual output. */
+    public function test_no_css_custom_property_declarations_survive_anywhere_in_the_output(): void
+    {
+        $result = $this->renderer()->render($this->fullFixture(), 'en');
+
+        $this->assertDoesNotMatchRegularExpression('/--[a-z0-9-]+\s*:/i', $result->html);
+    }
+
+    /** Regression: every block used to carry `hb-supports`/`hb-ease-*`/`hb-flex-layout` (web-only
+     *  interaction/animation hooks) and `data-block-name`/`data-block-id` in the email markup. */
+    public function test_no_editor_only_classes_or_data_block_attributes_survive(): void
+    {
+        $result = $this->renderer()->render($this->fullFixture(), 'en');
+
+        foreach (['hb-supports', 'hb-ease-', 'hb-anim-', 'hb-flex-layout', 'data-block-name', 'data-block-id'] as $needle) {
+            $this->assertStringNotContainsString($needle, $result->html, "'{$needle}' must not survive into email output");
+        }
+    }
+
+    /** Regression: the paragraph contract's text-color default pointed at `var(--accent-1)`
+     *  (the theme's brand accent) instead of `var(--ink)`, unlike every other text block — so a
+     *  plain, unstyled paragraph and a plain heading must resolve to the SAME literal colour
+     *  (whatever the active theme's `ink` token is; asserted structurally, not by a hardcoded hex,
+     *  since the token's literal value is theme-configurable). */
+    public function test_paragraph_text_resolves_to_the_same_ink_colour_as_heading_not_the_accent(): void
+    {
+        $result = $this->renderer()->render($this->fullFixture(), 'en');
+
+        $this->assertMatchesRegularExpression('/<h1[^>]*color: (#[0-9a-fA-F]+)">/', $result->html);
+        preg_match('/<h1[^>]*color: (#[0-9a-fA-F]+)">/', $result->html, $headingMatch);
+        preg_match('/color: (#[0-9a-fA-F]+)">Thanks for reading this month\./', $result->html, $paragraphMatch);
+
+        $this->assertNotEmpty($paragraphMatch, 'expected to find the paragraph text with a resolved literal color');
+        $this->assertSame($headingMatch[1], $paragraphMatch[1], 'paragraph body text must resolve to the same ink colour as a heading, not the accent');
+    }
+
+    /** Regression: an `<h3>` rendered at the same 24px fallback as an `<h1>` — level was
+     *  ignored entirely for email sizing, unlike the canvas's per-tag CSS scale. */
+    public function test_heading_font_size_scales_by_level(): void
+    {
+        $result = $this->renderer()->render($this->fullFixture(), 'en');
+
+        $this->assertMatchesRegularExpression('/<h1[^>]*font-size: 32px[^>]*>Hello Subscribers/', $result->html);
+        $this->assertMatchesRegularExpression('/<h3[^>]*font-size: 20px[^>]*>Column heading/', $result->html);
+    }
+
+    /** Regression: `<a><img …></a>` was emitted even when the image had no `href` — dead,
+     *  non-functional markup around every unlinked image. */
+    public function test_an_image_with_no_href_gets_no_wrapping_anchor(): void
+    {
+        $result = $this->renderer()->render($this->fullFixture(), 'en');
+
+        $this->assertDoesNotMatchRegularExpression('/<a[^>]*>\s*<img/', $result->html);
+    }
+
+    /** Regression: the separator's filler cell carried a literal U+00A0 character — fragile
+     *  through non-UTF-8-safe tooling and pointless once `font-size:0` already zeroes it. */
+    public function test_the_separator_cell_carries_no_filler_character(): void
+    {
+        $result = $this->renderer()->render($this->fullFixture(), 'en');
+
+        $this->assertStringNotContainsString("\u{00A0}", $result->html);
+        $this->assertMatchesRegularExpression('/border-top:1px solid #e4e4e4[^"]*"><\/td>/', $result->html);
+    }
+
+    /** Regression: `<td class="hb-email-col">` cells carried no `width` — Outlook needs an
+     *  explicit per-cell width or the layout collapses unpredictably. */
+    public function test_columns_get_explicit_percentage_widths_summing_to_100(): void
+    {
+        $result = $this->renderer()->render($this->fullFixture(), 'en');
+
+        $this->assertSame(2, preg_match_all('/class="hb-email-col" valign="top" width="50%"/', $result->html));
+    }
+
+    /** Regression: the Outlook/iOS client-hack resets (`-webkit-text-size-adjust`,
+     *  `mso-table-lspace`, the `img` reset) were inlined onto every `<table>`/`<td>`/`<img>`
+     *  instead of staying only in the head `<style>`. */
+    public function test_client_hack_css_stays_in_the_head_and_is_never_inlined(): void
+    {
+        $result = $this->renderer()->render($this->fullFixture(), 'en');
+
+        $this->assertStringContainsString('-webkit-text-size-adjust:100%', $result->html);
+        $this->assertStringNotContainsString('style="-webkit-text-size-adjust', $result->html);
+        $this->assertStringNotContainsString('mso-table-lspace: 0pt;', $result->html);
     }
 }
