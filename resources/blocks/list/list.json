@@ -336,7 +336,7 @@
             "--hb-list-bg": {
                 "source": "supports.color.background",
                 "default": "transparent",
-                "sanitize": "color-value"
+                "sanitize": "color-value-or-gradient"
             },
             "--hb-list-ff": {
                 "source": "supports.typography.fontFamily",

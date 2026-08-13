@@ -36,6 +36,9 @@ class BlockContractValidator
         'border-style', 'font-token',
         // Raw-value kinds — each a strict allowlist (grammars in BlockRenderer::cssValueValid()).
         'size-value', 'color-value', 'font-family', 'font-weight',
+        // `color-value` plus linear-/radial-gradient() — BACKGROUND/fill style variables only,
+        // never a text-colour one (see BlockRenderer::isSafeGradientValue()'s docblock).
+        'color-value-or-gradient',
         // Supports-capability kinds. LOCKSTEP with BlockRenderer::cssValueValid() and the JS
         // cssValueValid() in block-runtime.blade.php; never let these hit a permissive fallback.
         'opacity', 'angle', 'length-signed', 'shadow',

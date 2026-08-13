@@ -344,6 +344,106 @@ class BlockRendererTest extends TestCase
     }
 
     /**
+     * The colour picker emits alpha with three decimals. A pattern that only accepted `1`
+     * or `0.5` therefore rejected the editor's own output — solid fills silently fell back
+     * to the default, and gradients built from those stops were dropped whole, which is
+     * what "gradients don't render" actually was.
+     */
+    public function test_picker_emitted_alpha_is_accepted_for_solid_and_gradient_fills(): void
+    {
+        $renderer = $this->renderer();
+
+        $solid = $renderer->renderBlock(
+            $this->block('heisenberg/group', [], ['color' => ['background' => 'rgba(208,64,64,1.000)']]),
+            'en'
+        );
+        $this->assertStringContainsString('--hb-group-bg: rgba(208,64,64,1.000)', $solid);
+
+        $gradient = 'linear-gradient(90deg, rgba(208,64,64,1.000) 0%, rgba(0,200,255,0.500) 100%)';
+        $html = $renderer->renderBlock(
+            $this->block('heisenberg/group', [], ['color' => ['background' => $gradient]]),
+            'en'
+        );
+        $this->assertStringContainsString('--hb-group-bg: ' . $gradient, $html);
+
+        // A stop that is not a safe colour still invalidates the whole gradient.
+        $bad = $renderer->renderBlock(
+            $this->block('heisenberg/group', [], ['color' => ['background' => 'linear-gradient(90deg, red 0%, #fff 100%)']]),
+            'en'
+        );
+        $this->assertStringNotContainsString('linear-gradient', $bad);
+    }
+
+    /**
+     * `color-value-or-gradient` (2026-08-13 gradient fix): every accepted form of
+     * `linear-gradient()`/`radial-gradient()` — angle, `to <side-or-corner>`, a shape/position
+     * radial preamble, 2 and 3 stops, stops with and without a `%` position, and every colour-stop
+     * shape `isSafeColorValue()` itself accepts (token/hex/rgb/hsl). Wired to `supports.color.
+     * background` only (group's `--hb-group-bg`) — `supports.color.text` keeps the plain
+     * `color-value` sanitizer, so the SAME gradient string on text colour still falls back to
+     * the variable's own default rather than rendering.
+     */
+    public function test_gradient_backgrounds_are_accepted_but_text_colour_still_rejects_gradients(): void
+    {
+        $renderer = $this->renderer();
+
+        $forms = [
+            'angle, 2 hex stops' => 'linear-gradient(45deg, #ffffff 0%, #000000 100%)',
+            'to <side>, token stops' => 'linear-gradient(to right, var(--accent-1), var(--accent-2))',
+            'to <corner>, rgba/hsl stops' => 'linear-gradient(to top left, rgba(255, 0, 0, 0.5), hsl(200, 50%, 50%))',
+            '3 stops, no positions' => 'linear-gradient(#ffffff, #888888, #000000)',
+            '3 stops, mixed positions' => 'linear-gradient(45deg, #ffffff 0%, #888888, var(--accent-1) 100%)',
+            'radial shape + at-position' => 'radial-gradient(circle at center, #ffffff 0%, #000000 100%)',
+            'radial, no preamble' => 'radial-gradient(#ffffff, #000000)',
+        ];
+
+        foreach ($forms as $label => $gradient) {
+            $html = $renderer->renderBlock(
+                $this->block('heisenberg/group', [], ['color' => ['background' => $gradient]]),
+                'en'
+            );
+            $this->assertStringContainsString('--hb-group-bg: ' . $gradient, $html, "background should accept: {$label}");
+        }
+
+        // The SAME gradient, on TEXT colour, must be dropped — the variable falls back to its
+        // default rather than emitting a value that would make text invisible.
+        $textHtml = $renderer->renderBlock(
+            $this->block('heisenberg/group', [], ['color' => ['text' => 'linear-gradient(45deg, #ffffff 0%, #000000 100%)']]),
+            'en'
+        );
+        $this->assertStringNotContainsString('linear-gradient', $textHtml);
+    }
+
+    /**
+     * `color-value-or-gradient` fails CLOSED on anything it cannot fully parse as the grammar
+     * above — a gradient is a CSS-injection boundary, so an unrecognised shape drops the whole
+     * value rather than passing a partial match through.
+     */
+    public function test_gradient_backgrounds_reject_unsafe_or_malformed_values(): void
+    {
+        $renderer = $this->renderer();
+
+        $rejected = [
+            'url() as a stop' => 'linear-gradient(45deg, url(https://evil.example/x.png), #000000)',
+            'expression() as a stop' => 'linear-gradient(45deg, #ffffff 0%, expression(alert(1)) 100%)',
+            'unbalanced parens' => 'linear-gradient(45deg, rgba(0, 0, 0, 0.5), #ffffff))',
+            'bare string' => 'not-a-gradient',
+            'keyword colour stop (not a safe colour)' => 'linear-gradient(45deg, red, blue)',
+            'javascript: scheme as a stop' => 'linear-gradient(45deg, javascript:alert(1), #ffffff)',
+            'repeating- form' => 'repeating-linear-gradient(45deg, #ffffff 0%, #000000 10%)',
+        ];
+
+        foreach ($rejected as $label => $gradient) {
+            $html = $renderer->renderBlock(
+                $this->block('heisenberg/group', [], ['color' => ['background' => $gradient]]),
+                'en'
+            );
+            $this->assertStringNotContainsString($gradient, $html, "background should reject: {$label}");
+            $this->assertStringNotContainsString('url(', $html, "no partial match should leak through for: {$label}");
+        }
+    }
+
+    /**
      * Overhaul 2026-07-18: `size-value` accepts number+unit (px/rem/em/%/
      * vw/vh) and var() tokens. calc()/expressions/free text stay rejected.
      */

@@ -303,7 +303,7 @@
             "--hb-paragraph-bg": {
                 "source": "supports.color.background",
                 "default": "transparent",
-                "sanitize": "color-value"
+                "sanitize": "color-value-or-gradient"
             },
             "--hb-paragraph-ff": {
                 "source": "supports.typography.fontFamily",

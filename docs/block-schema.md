@@ -69,8 +69,8 @@ order). Each definition:
   `media`, `url`, `token`.
 - **Sanitizers:** `text`, `rich-text-inline`, `rich-text-block`, `url`, `color-token`,
   `color-token-or-transparent`, `size-token`, `integer`, `boolean`, `html-safe`,
-  `border-style`, `font-token`, `size-value`, `color-value`, `font-family`, `font-weight`,
-  plus the full-kit overhaul (2026-07-19, Phase 1) additions below.
+  `border-style`, `font-token`, `size-value`, `color-value`, `color-value-or-gradient`,
+  `font-family`, `font-weight`, plus the full-kit overhaul (2026-07-19, Phase 1) additions below.
 
 ### Full-kit overhaul (Phase 1) sanitizer kinds
 
@@ -92,8 +92,15 @@ input is dropped, falling back to the style variable's own `default`.
 | `flex-align` (enum) | `start\|center\|end\|stretch` | |
 | `overflow` (enum) | `visible\|hidden\|clip` | Clip Content |
 
-Unsigned lengths (gap, width/height, layout padding) keep reusing the existing `size-value`;
-fills keep reusing `color-value`.
+Unsigned lengths (gap, width/height, layout padding) keep reusing the existing `size-value`.
+Text-colour variables keep `color-value` (a flat colour only). A **background/fill** variable
+may instead use `color-value-or-gradient` — every `color-value` form, plus
+`linear-gradient(...)`/`radial-gradient(...)`: an optional direction (`<angle>deg`, or
+`to top|bottom|left|right`/corner) for linear, a shape/`at <position>` preamble for radial,
+then 2+ comma-separated stops (`isSafeColorValue()` colour + optional `%`/length position).
+`repeating-` forms are not accepted (unbounded repeat density is an unpriced rendering-cost
+risk). Never wired to a text-colour variable — `color: linear-gradient(...)` is invalid CSS.
+The `email` surface degrades any gradient to its first colour stop (Outlook cannot render one).
 
 ## `supports`
 

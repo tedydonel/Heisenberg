@@ -170,8 +170,11 @@ class ColorPickerTest extends TestCase
         $this->assertStringContainsString("document.addEventListener('colorchange'", $html);
         $this->assertStringContainsString("document.addEventListener('gradientchange'", $html);
 
-        // The public API the inspector calls, plus the setters added for the save path.
-        $this->assertStringContainsString('root.__hbCp = { setHex, setGradient, getValue, setMode }', $html);
+        // The public API the inspector calls. Asserted member by member rather than as one
+        // literal, so adding a method doesn't fail a test about the existing ones.
+        foreach (['setHex', 'setGradient', 'setGradientCss', 'getValue', 'setMode'] as $method) {
+            $this->assertMatchesRegularExpression('/root\.__hbCp = \{[^}]*\b' . $method . '\b/', $html);
+        }
     }
 
     public function test_picker_chrome_is_localised(): void
@@ -189,6 +192,95 @@ class ColorPickerTest extends TestCase
         $this->assertStringNotContainsString('Distribute stops evenly', $french);
         // Colour models are notation and stay identical in both locales.
         $this->assertStringContainsString('>RGBA<', $french);
+    }
+
+    /**
+     * Bug B (2026-08-13): the gradient UI used to keep its shared flat-colour editor mounted
+     * underneath the gradient section itself — a colour picker nested inside the picker that
+     * opened it. A gradient stop's swatch now opens a SEPARATE `standalone` instance of this
+     * same component (no Fill/Gradient tabs, no gradient section) anchored to that stop, rather
+     * than reusing the editor sitting inside the gradient popup.
+     */
+    /**
+     * Reopening a saved gradient used to land on the Fill tab showing black/white: the opener
+     * seeded from the row's hex field (which holds the Gradient tab's label, not a colour), and
+     * setGradient() ran rgba() stops through parseHex(), which does not read them.
+     */
+    public function test_the_colour_popup_reseeds_a_saved_gradient_instead_of_falling_back_to_flat(): void
+    {
+        $html = $this->editorHtml();
+
+        $this->assertStringContainsString('setGradientCss', $html);
+        $this->assertStringContainsString("layer?.dataset.hbStyleGradient || ''", $html);
+        // rgba() stops must be understood, not silently replaced by the #000000 fallback.
+        $this->assertStringContainsString('rgba?\\(([^)]*)\\)', $html);
+    }
+
+    /**
+     * The stop editor stacks on top of the gradient popup that owns it, so clicking back onto
+     * that popup — or anywhere on the canvas, which never reaches a Style panel — must dismiss
+     * it. Both paths previously left it open indefinitely.
+     */
+    public function test_the_gradient_stop_popup_closes_on_an_outside_click(): void
+    {
+        $html = $this->editorHtml();
+
+        $this->assertStringContainsString("root.querySelector('[data-hb-style-popup=\"gradient-stop\"]')", $html);
+        $this->assertStringContainsString('stopPopup.hidden = true;', $html);
+        // Its own trigger is exempt, or the picker's click handler would open and this would
+        // close it within the same event.
+        $this->assertStringContainsString("[data-cp-gradient-stop-select]", $html);
+        // A canvas click closes every panel's popups despite never reaching a Style root.
+        $this->assertStringContainsString("document.querySelectorAll('.hb-blockstyle').forEach((panel) => closeStylePopups(panel));", $html);
+    }
+
+    public function test_a_gradient_stop_opens_a_standalone_picker_with_no_nested_gradient_section(): void
+    {
+        $html = $this->editorHtml();
+
+        // The wiring: a stop's swatch dispatches the event, a document listener opens the
+        // standalone popup and hands the write-back callback the stop provided.
+        $this->assertStringContainsString("new CustomEvent('gradientstopedit'", $html);
+        $this->assertStringContainsString("document.addEventListener('gradientstopedit'", $html);
+        $this->assertStringContainsString('showNestedStylePopup(root,', $html);
+
+        // Gradient mode hides the shared editor rather than repurposing it for a stop — a CSS
+        // rule, so it lives in the compiled stylesheet, not the page HTML.
+        $css = $this->get('/heisenberg-assets/editor.css')->getContent();
+        $this->assertStringContainsString('.hb-cp[data-cp-mode="gradient"] .hb-cp__editor', $css);
+
+        // One standalone stop-editor popup per main Fill/Stroke colour popup (style-panel.blade.php
+        // mounts the pair together, once per registered block's Style panel) — and its count of
+        // gradient-section markup stays pinned to the MAIN pickers only: a standalone instance
+        // never renders a copy of the tabs, the ramp, or the stop-row template.
+        // Counted WITH the class prefix so the inline script's own querySelector/closest
+        // strings for these same popups aren't mistaken for mounted elements. Both popups
+        // mount under one @if in style-panel.blade.php, so the pairing is exact; the picker
+        // COUNT is deliberately not asserted — pickers are mounted by several other panels
+        // too, so any fixed number here just pins an unrelated implementation detail.
+        $mainPopups = substr_count($html, 'class="hb-style-popup" data-hb-style-popup="color"');
+        $standalonePopups = substr_count($html, 'class="hb-style-popup" data-hb-style-popup="gradient-stop"');
+        $this->assertGreaterThan(0, $mainPopups);
+        $this->assertSame($mainPopups, $standalonePopups);
+        $this->assertSame($standalonePopups, substr_count($html, 'hb-cp--standalone'));
+
+        // The actual invariant: a standalone picker carries no gradient UI of its own, so
+        // editing a stop can never re-open the gradient section that owns it.
+        $previous = libxml_use_internal_errors(true);
+        $dom = new \DOMDocument();
+        $dom->loadHTML('<?xml encoding="utf-8" ?>' . $html);
+        libxml_clear_errors();
+        libxml_use_internal_errors($previous);
+
+        $xpath = new \DOMXPath($dom);
+        $standalone = $xpath->query('//*[contains(concat(" ", normalize-space(@class), " "), " hb-cp--standalone ")]');
+        $this->assertGreaterThan(0, $standalone->length, 'no standalone picker was mounted at all');
+
+        foreach ($standalone as $picker) {
+            $this->assertSame(0, $xpath->query('.//*[@data-cp-gradient-bar]', $picker)->length);
+            $this->assertSame(0, $xpath->query('.//*[@data-cp-gradient-stop-template]', $picker)->length);
+            $this->assertSame(0, $xpath->query('.//*[contains(concat(" ", normalize-space(@class), " "), " hb-cp__tabs ")]', $picker)->length);
+        }
     }
 
     public function test_select_labels_land_on_the_combobox_not_the_wrapper(): void

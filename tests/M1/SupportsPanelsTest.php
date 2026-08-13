@@ -66,7 +66,9 @@ class SupportsPanelsTest extends TestCase
             ],
             [
                 'type' => 'color',
-                'sanitize' => 'color-value',
+                // Background accepts a gradient; text deliberately does not — `color:
+                // linear-gradient(...)` is not valid CSS, so the two rows differ by design.
+                'sanitize' => 'color-value-or-gradient',
                 'source' => 'supports.color.background',
                 'label' => 'Background',
             ],

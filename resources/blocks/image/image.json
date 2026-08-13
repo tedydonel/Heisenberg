@@ -377,7 +377,7 @@
             "--hb-image-bg": {
                 "source": "supports.color.background",
                 "default": "",
-                "sanitize": "color-value"
+                "sanitize": "color-value-or-gradient"
             },
             "--hb-image-w": {
                 "source": "supports.size.width",

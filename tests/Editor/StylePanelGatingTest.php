@@ -443,10 +443,17 @@ class StylePanelGatingTest extends TestCase
         // are on `document`, so stopPropagation cannot keep them apart — a trigger missing from
         // this list has its popup closed the instant it opens, which reads as the button doing
         // nothing at all. That is exactly what happened to data-hb-style-var-trigger.
+        // The allow-list is the HB_STYLE_CHROME constant now, shared by the panel-scoped close
+        // and the canvas-click close, so the trigger is pinned in the constant rather than in
+        // one inlined copy of it.
         $this->assertMatchesRegularExpression(
-            "/if \(!event\.target\.closest\('\[data-hb-style-popup\][^']*\[data-hb-style-var-trigger\][^']*'\)\) \{\s*closeStylePopups\(root\);/",
+            "/const HB_STYLE_CHROME = '\[data-hb-style-popup\][^']*\[data-hb-style-var-trigger\][^']*';/",
             $html,
             'the var trigger must be in the outside-click allow-list, or its popup closes on open',
+        );
+        $this->assertMatchesRegularExpression(
+            "/if \(!event\.target\.closest\(HB_STYLE_CHROME\)\) \{\s*closeStylePopups\(root\);/",
+            $html,
         );
 
         // Its aria-expanded must be reset alongside the other triggers too.

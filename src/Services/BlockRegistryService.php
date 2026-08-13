@@ -669,12 +669,16 @@ class BlockRegistryService
         }
 
         $controls = [];
+        // Background is a fill: it may carry a gradient. Text stays flat-colour-only — a
+        // gradient `color` declaration is invalid CSS — so each feature gets its own sanitize
+        // kind rather than sharing one, in lockstep with the contracts' own style.variables.
+        $sanitizers = ['text' => 'color-value', 'background' => 'color-value-or-gradient'];
         foreach (['text' => 'Text', 'background' => 'Background'] as $feature => $label) {
             if (($color[$feature] ?? false) !== true) {
                 continue;
             }
             $controls[] = [
-                'type' => 'color', 'sanitize' => 'color-value', 'tokenKind' => 'color',
+                'type' => 'color', 'sanitize' => $sanitizers[$feature], 'tokenKind' => 'color',
                 'source' => "supports.color.{$feature}",
                 'label' => $label,
                 'options' => $this->tokenOptions('color'),

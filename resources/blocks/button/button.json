@@ -384,7 +384,7 @@
             "--hb-button-bg": {
                 "source": "supports.color.background",
                 "default": "",
-                "sanitize": "color-value"
+                "sanitize": "color-value-or-gradient"
             },
             "--hb-button-ff": {
                 "source": "supports.typography.fontFamily",

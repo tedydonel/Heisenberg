@@ -211,6 +211,46 @@ class EmailRendererTest extends TestCase
         $this->assertDoesNotMatchRegularExpression('/--[a-z0-9-]+\s*:/i', $result->html);
     }
 
+    /**
+     * Bug A email degrade (2026-08-13): Outlook cannot render `linear-gradient()`/
+     * `radial-gradient()`. `heisenberg/group`'s email template consumes its background through
+     * `background-color: var(--hb-group-bg, transparent)` — the ONE case in the fixture where a
+     * `color-value-or-gradient` variable is actually read via `var()` in the email surface (most
+     * blocks' email templates only ever reference their `-color`, not their `-bg`, variable).
+     * A gradient background must degrade to its first colour stop: no `linear-gradient(` and no
+     * surviving `var(` (the same invariant every other email test in this class pins).
+     */
+    public function test_a_gradient_background_degrades_to_its_first_stop_colour_in_email(): void
+    {
+        $post = $this->makeEmail();
+        Block::create([
+            'post_id' => $post->id,
+            'type' => 'group',
+            'content' => [
+                'id' => 'b1',
+                'name' => 'heisenberg/group',
+                'schemaVersion' => '1.0.0',
+                'attributes' => [],
+                'supports' => ['color' => ['background' => 'linear-gradient(45deg, #ffffff 0%, #000000 100%)']],
+                'innerBlocks' => [
+                    [
+                        'id' => 'b1p', 'name' => 'heisenberg/paragraph', 'schemaVersion' => '1.0.0',
+                        'attributes' => ['content' => 'Inside the gradient group.'], 'supports' => [], 'innerBlocks' => [],
+                    ],
+                ],
+            ],
+            'order' => 1,
+        ]);
+
+        $result = $this->renderer()->render($post, 'en');
+
+        // Not an exact-substring match: CssToInlineStyles re-serializes the style attribute, so
+        // the surviving whitespace around the colon is not this test's to pin.
+        $this->assertMatchesRegularExpression('/background-color:\s*#ffffff/i', $result->html);
+        $this->assertStringNotContainsString('linear-gradient', $result->html);
+        $this->assertStringNotContainsString('var(', $result->html);
+    }
+
     /** Regression: every block used to carry `hb-supports`/`hb-ease-*`/`hb-flex-layout` (web-only
      *  interaction/animation hooks) and `data-block-name`/`data-block-id` in the email markup. */
     public function test_no_editor_only_classes_or_data_block_attributes_survive(): void

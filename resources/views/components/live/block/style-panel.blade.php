@@ -188,6 +188,12 @@
         <div class="hb-style-popup" data-hb-style-popup="color" hidden>
             <x-live.pickers.color-picker value="#000000" />
         </div>
+        {{-- A gradient stop's own colour editor (script-fonts-and-style-events.blade.php's
+             `gradientstopedit` listener) — Fill only, no Fill/Gradient tabs and no gradient
+             section, so editing a stop never re-opens the gradient UI it belongs to. --}}
+        <div class="hb-style-popup" data-hb-style-popup="gradient-stop" hidden>
+            <x-live.pickers.color-picker value="#000000" :standalone="true" />
+        </div>
     @endif
     {{-- Padding/Margin's own mode-switcher popups are inlined inside live/block/style/spacing.blade.php
          itself now (2026-08-04) — nothing padding/margin-specific is registered from here anymore. --}}

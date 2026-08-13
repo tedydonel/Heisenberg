@@ -26,12 +26,24 @@
         return [parseInt(full.slice(0, 2), 16), parseInt(full.slice(2, 4), 16), parseInt(full.slice(4, 6), 16)];
     }
 
+    // A gradient layer's value (BlockRenderer::isSafeGradientValue() validates it server-side;
+    // this only needs to RECOGNISE the shape, not re-validate it).
+    function hbIsGradientColour(value) {
+        return /^(linear|radial)-gradient\(/i.test(String(value || '').trim());
+    }
+
     function hbCompositeLayers(layers) {
         // One fully-opaque token binding passes through verbatim — preserving the var()
         // reference keeps the colour live with the theme instead of a flattened snapshot.
         if (layers.length === 1 && /^var\(--[a-z0-9-]+\)$/i.test(layers[0].color)
             && (!layers[0].opacity || Number(layers[0].opacity) >= 100)) {
             return layers[0].color;
+        }
+        // A gradient paints its own whole box — there is no CSS syntax to alpha-blend it against
+        // the layers beneath in this flattened-scalar model, so the TOPMOST (last) gradient layer
+        // wins outright, the same way an opaque solid on top already hides what's under it.
+        for (let i = layers.length - 1; i >= 0; i--) {
+            if (hbIsGradientColour(layers[i].color)) return layers[i].color;
         }
         let out = null;
         layers.forEach((layer) => {
@@ -59,8 +71,10 @@
 
     function hbReadLayers(list) {
         return Array.from(list?.querySelectorAll('.hb-colorlayer') || []).map((row) => ({
-            // A row bound to a theme token displays the token's NAME; its value is the reference.
-            color: row.dataset.hbVarBound || row.querySelector('.hb-colorlayer__hex')?.value || '',
+            // A gradient row carries its CSS on its own dataset (the hex field is for a flat
+            // colour only); a row bound to a theme token displays the token's NAME, its value
+            // the reference.
+            color: row.dataset.hbStyleGradient || row.dataset.hbVarBound || row.querySelector('.hb-colorlayer__hex')?.value || '',
             // Opacity is a display span fed by the colour picker's alpha, not a typed field.
             opacity: (row.querySelector('[data-hb-style-layer-opacity]')?.textContent || '100').trim(),
         })).filter((layer) => layer.color !== '');
@@ -100,10 +114,14 @@
                 const row = frag.querySelector('.hb-colorlayer');
                 if (!row) return;
                 const value = String(layer.color || '');
+                const isGradient = hbIsGradientColour(value);
                 const label = hbVarLabelOf(sroot, value);
                 if (label) row.dataset.hbVarBound = value; else delete row.dataset.hbVarBound;
+                if (isGradient) row.dataset.hbStyleGradient = value; else delete row.dataset.hbStyleGradient;
                 const hex = row.querySelector('.hb-colorlayer__hex');
-                if (hex) hex.value = label || value;
+                // The hex field is for a flat colour only — a gradient shows its translated
+                // tab label there instead of dumping the raw `linear-gradient(...)` text into it.
+                if (hex) hex.value = label || (isGradient ? @json(__('heisenberg::editor.color_picker.tab_gradient')) : value);
                 const swatch = row.querySelector('.hb-colorlayer__swatch');
                 if (swatch) swatch.style.background = value || 'transparent';
                 const opacity = row.querySelector('[data-hb-style-layer-opacity]');

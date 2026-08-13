@@ -247,6 +247,44 @@ class EditorPreviewTest extends TestCase
         $this->assertStringContainsString('>Deep Dive<', $with);
     }
 
+    /**
+     * Bug A persistence proof (2026-08-13): a gradient background set on a block survives the
+     * FULL round trip — real HTTP save (POST /editor/posts) -> the database -> a fresh reload
+     * (showPost() reads straight off the saved Block rows, no session) -> the sanitizing
+     * BlockRenderer. Before the fix, `color-value` silently dropped any `linear-gradient(...)`
+     * at render time no matter what was saved, so this would have rendered the variable's
+     * empty default instead.
+     */
+    public function test_saved_post_preview_renders_a_gradient_background_set_on_a_block(): void
+    {
+        $gradient = 'linear-gradient(45deg, #ffffff 0%, #000000 100%)';
+        $envelope = [
+            'schemaVersion' => 1,
+            'registryHash' => $this->registry()->computeHash(),
+            'autosave' => false,
+            'blocks' => [
+                [
+                    'id' => 'b1',
+                    'name' => 'heisenberg/group',
+                    'schemaVersion' => '1.0.0',
+                    'attributes' => [],
+                    'supports' => ['color' => ['background' => $gradient]],
+                    'innerBlocks' => [],
+                ],
+            ],
+            'title_en' => 'A Gradient Post',
+            'locale' => 'en',
+        ];
+
+        $store = $this->postJson('/editor/posts', $envelope);
+        $store->assertCreated();
+        $postId = $store->json('post.id');
+
+        $html = (string) $this->get("/editor/{$postId}/preview")->assertOk()->getContent();
+
+        $this->assertStringContainsString('--hb-group-bg: ' . $gradient, $html);
+    }
+
     public function test_post_scoped_preview_route_url_matches_the_editor_path(): void
     {
         $this->assertSame(

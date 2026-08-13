@@ -300,7 +300,7 @@
             "--hb-icon-bg": {
                 "source": "supports.color.background",
                 "default": "",
-                "sanitize": "color-value"
+                "sanitize": "color-value-or-gradient"
             },
             "--hb-icon-w": {
                 "source": "supports.size.width",

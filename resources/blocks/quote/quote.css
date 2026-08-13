@@ -6,15 +6,22 @@
    look's accent bar therefore uses `background-image` (a property SupportsStyle never touches)
    instead of `border-left`/`box-shadow`. (NB: never write a literal star-slash sequence inside
    this comment — it terminates it early and the CSS parser then swallows the entire base rule
-   below.) */
+   below.)
+
+   `--hb-quote-bg` can be a flat colour OR a gradient (`color-value-or-gradient`), so it can't sit
+   in `background-color` — a gradient is never a valid value for that property. It rides as the
+   LAST layer of the `background` shorthand instead: CSS only allows `background-color` on a
+   shorthand's final layer, and that same slot accepts a gradient as another image layer, so one
+   declaration serves both value shapes. The accent bar is the layer ABOVE it (first-listed paints
+   on top), so it keeps showing over either a solid or a gradient fill. */
 .hb-block-quote {
     display: block;
     position: relative;
     transition: color 140ms ease, background-color 140ms ease, transform 140ms ease;
     color: var(--hb-quote-color);
-    background-color: var(--hb-quote-bg);
-    background-image: linear-gradient(to right, var(--accent-1, currentColor) 0 4px, transparent 4px);
-    background-repeat: no-repeat;
+    background:
+        linear-gradient(to right, var(--accent-1, currentColor) 0 4px, transparent 4px) no-repeat,
+        var(--hb-quote-bg, transparent);
     font-family: var(--hb-quote-ff, inherit);
     font-weight: var(--hb-quote-fw, 400);
     font-size: var(--hb-quote-fs, 19px);
@@ -32,8 +39,7 @@
 
 /* Plain variant — same text treatment, no accent bar and no surface. */
 .hb-block-quote.hb-quote--plain {
-    background-color: transparent;
-    background-image: none;
+    background: none;
     padding-left: 0;
     padding-right: 0;
 }

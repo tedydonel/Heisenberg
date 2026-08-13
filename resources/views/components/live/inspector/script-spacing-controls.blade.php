@@ -135,20 +135,17 @@
         root?.querySelectorAll('[data-hb-style-popup]').forEach((popup) => {
             if (popup !== except) popup.hidden = true;
         });
-        root?.querySelectorAll('[data-hb-style-color-trigger], [data-hb-style-popup-trigger], [data-hb-style-effect-trigger], [data-hb-style-var-trigger]').forEach((trigger) => {
+        root?.querySelectorAll('[data-hb-style-color-trigger], [data-hb-style-popup-trigger], [data-hb-style-effect-trigger], [data-hb-style-var-trigger], [data-cp-gradient-stop-select]').forEach((trigger) => {
             if (!except || !except.contains(trigger)) trigger.setAttribute('aria-expanded', 'false');
         });
     }
 
-    function showStylePopup(root, name, trigger) {
-        const popup = root.querySelector(`[data-hb-style-popup="${name}"]`);
-        if (!popup) return;
-        const wasOpen = !popup.hidden;
-        closeStylePopups(root, popup);
-        popup.hidden = wasOpen;
-        trigger.setAttribute('aria-expanded', wasOpen ? 'false' : 'true');
-        if (wasOpen) return;
-
+    // Shared "anchor a floating .hb-pop popup to its trigger, clamped inside the viewport"
+    // math — used by both showStylePopup() (which also closes every OTHER popup, since those
+    // are mutually exclusive menus) and showNestedStylePopup() below (which deliberately does
+    // NOT, because a gradient stop's colour editor is meant to stay open alongside the gradient
+    // popup it belongs to, not replace it).
+    function positionStylePopup(popup, trigger) {
         const rect = trigger.getBoundingClientRect();
         const width = popup.offsetWidth;
         const height = popup.offsetHeight;
@@ -159,6 +156,27 @@
             : Math.max(8, rect.top - height - 8);
         popup.style.left = `${left}px`;
         popup.style.top = `${top}px`;
+    }
+
+    function showStylePopup(root, name, trigger) {
+        const popup = root.querySelector(`[data-hb-style-popup="${name}"]`);
+        if (!popup) return;
+        const wasOpen = !popup.hidden;
+        closeStylePopups(root, popup);
+        popup.hidden = wasOpen;
+        trigger.setAttribute('aria-expanded', wasOpen ? 'false' : 'true');
+        if (wasOpen) return;
+        positionStylePopup(popup, trigger);
+    }
+
+    // Opens (or repositions) a popup WITHOUT closing its sibling popups — the gradient-stop
+    // editor's own trigger lives INSIDE the "color" popup it must stay stacked alongside.
+    function showNestedStylePopup(root, name, trigger) {
+        const popup = root.querySelector(`[data-hb-style-popup="${name}"]`);
+        if (!popup) return;
+        popup.hidden = false;
+        trigger.setAttribute('aria-expanded', 'true');
+        positionStylePopup(popup, trigger);
     }
 
     function setStyleFieldPresentation(field, values, label) {

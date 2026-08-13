@@ -302,7 +302,7 @@
             "--hb-group-bg": {
                 "source": "supports.color.background",
                 "default": "",
-                "sanitize": "color-value"
+                "sanitize": "color-value-or-gradient"
             },
             "--hb-group-w": {
                 "source": "supports.size.width",

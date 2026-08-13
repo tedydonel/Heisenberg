@@ -212,6 +212,8 @@
         const swatch = layer.querySelector('.hb-colorlayer__swatch');
         if (input) input.value = normalised;
         if (swatch) swatch.style.background = normalised;
+        // A flat colour replaces whatever gradient the layer used to hold.
+        delete layer.dataset.hbStyleGradient;
     }
 
     function activateStyleRadio(radio) {
@@ -226,16 +228,35 @@
         });
     }
 
+    const HB_STYLE_CHROME = '[data-hb-style-popup], [data-hb-style-color-trigger], [data-hb-style-popup-trigger], [data-hb-style-effect-trigger], [data-hb-style-var-trigger]';
+
     document.addEventListener('click', (event) => {
+        // Popups are position:fixed over the whole editor, so a click on the canvas is
+        // "outside" them even though it never reaches a Style panel — which the root lookup
+        // below returns early on.
+        if (!event.target.closest(HB_STYLE_CHROME)) {
+            document.querySelectorAll('.hb-blockstyle').forEach((panel) => closeStylePopups(panel));
+        }
+
         const root = mountedStyleRoot(event.target);
         if (!root) return;
 
-        // Any trigger omitted from this list gets its popup closed the instant it opens: this
-        // listener and each trigger's own are BOTH on document, so stopPropagation cannot keep
-        // them apart (that needs stopImmediatePropagation, and listener order is not guaranteed).
-        // data-hb-style-var-trigger was missing here, which is why the theme-variable popup
-        // appeared not to respond to clicks at all.
-        if (!event.target.closest('[data-hb-style-popup], [data-hb-style-color-trigger], [data-hb-style-popup-trigger], [data-hb-style-effect-trigger], [data-hb-style-var-trigger]')) {
+        // The stop editor is stacked ON TOP of the gradient popup that owns it, so clicking
+        // back onto that popup is "outside" for it — but matches the chrome selector above and
+        // would otherwise leave it open forever. Its own trigger is exempt, since the picker's
+        // click handler opens it during this very event.
+        const stopPopup = root.querySelector('[data-hb-style-popup="gradient-stop"]');
+        if (stopPopup && !stopPopup.hidden
+            && !event.target.closest('[data-hb-style-popup="gradient-stop"]')
+            && !event.target.closest('[data-cp-gradient-stop-select]')) {
+            stopPopup.hidden = true;
+        }
+
+        // Any trigger omitted from HB_STYLE_CHROME gets its popup closed the instant it opens:
+        // this listener and each trigger's own are BOTH on document, so stopPropagation cannot
+        // keep them apart (that needs stopImmediatePropagation, and listener order is not
+        // guaranteed).
+        if (!event.target.closest(HB_STYLE_CHROME)) {
             closeStylePopups(root);
         }
 
@@ -273,10 +294,17 @@
 
         const colorTrigger = event.target.closest('[data-hb-style-color-trigger]');
         if (colorTrigger) {
-            root.__hbStyleActiveColorLayer = colorTrigger.closest('.hb-colorlayer');
+            const layer = colorTrigger.closest('.hb-colorlayer');
+            root.__hbStyleActiveColorLayer = layer;
             const picker = root.querySelector('[data-hb-style-popup="color"] [data-hb-colorpicker]');
-            const value = root.__hbStyleActiveColorLayer?.querySelector('.hb-colorlayer__hex')?.value || '#000000';
-            picker?.__hbCp?.setHex(value);
+            // A gradient layer keeps its CSS on the row's dataset; the hex field holds the
+            // Gradient tab's LABEL for it, so seeding from that field reopened a saved
+            // gradient as a flat colour on the Fill tab.
+            const stored = layer?.dataset.hbStyleGradient || '';
+            if (!stored || !picker?.__hbCp?.setGradientCss?.(stored)) {
+                picker?.__hbCp?.setMode('fill');
+                picker?.__hbCp?.setHex(layer?.querySelector('.hb-colorlayer__hex')?.value || '#000000');
+            }
             showStylePopup(root, 'color', colorTrigger);
             return;
         }
@@ -505,14 +533,55 @@
         if (group) { hbCommitLayers(root, group); hbSyncVarTrigger(layer); }
     });
 
+    // The gradient the picker's Gradient tab is currently editing — like a flat colour edit,
+    // this commits into the layer stack immediately (hbCompositeLayers gives it right-of-way
+    // over whatever solid layers sit beneath it) rather than waiting for a separate "done".
     document.addEventListener('gradientchange', (event) => {
         const popup = event.target.closest('[data-hb-style-popup="color"]');
         const root = popup ? mountedStyleRoot(popup) : null;
         const css = event.detail?.css;
-        if (!root || !root.__hbStyleActiveColorLayer || typeof css !== 'string') return;
-        const swatch = root.__hbStyleActiveColorLayer.querySelector('.hb-colorlayer__swatch');
+        const layer = root?.__hbStyleActiveColorLayer;
+        if (!root || !layer || typeof css !== 'string') return;
+        const swatch = layer.querySelector('.hb-colorlayer__swatch');
         if (swatch) swatch.style.background = css;
-        root.__hbStyleActiveColorLayer.dataset.hbStyleGradient = css;
+        const hex = layer.querySelector('.hb-colorlayer__hex');
+        if (hex) hex.value = @json(__('heisenberg::editor.color_picker.tab_gradient'));
+        layer.dataset.hbStyleGradient = css;
+        delete layer.dataset.hbVarBound;
+        const group = hbLayerGroupOf(layer);
+        if (group) { hbCommitLayers(root, group); hbSyncVarTrigger(layer); }
+    });
+
+    // A gradient stop's swatch was clicked: open the STANDALONE picker (Fill only, no gradient
+    // section of its own — color-picker.blade.php's `standalone` prop) anchored to that swatch,
+    // seeded with the stop's current colour+opacity. This is the popup Bug B asked for: editing
+    // a stop's colour never shows a nested gradient UI underneath it.
+    document.addEventListener('gradientstopedit', (event) => {
+        const root = mountedStyleRoot(event.target);
+        const { button, color, opacity, setColor } = event.detail || {};
+        if (!root || !button || typeof setColor !== 'function') return;
+        const picker = root.querySelector('[data-hb-style-popup="gradient-stop"] [data-hb-colorpicker]');
+        if (!picker) return;
+        root.__hbGradientStopEdit = setColor;
+        const alpha = Number.isFinite(opacity) ? Math.max(0, Math.min(100, opacity)) : 100;
+        const alphaHex = Math.round(alpha / 100 * 255).toString(16).padStart(2, '0');
+        picker.__hbCp?.setHex(`${color}${alphaHex}`);
+        // NOT showStylePopup(): that closes every other popup, and the gradient popup this
+        // stop belongs to must stay open underneath its own colour editor.
+        showNestedStylePopup(root, 'gradient-stop', button);
+    });
+
+    // The standalone picker's own colour edit writes back through the callback the triggering
+    // stop handed over — never through the layer-stack path the main "color" popup uses, since
+    // a gradient stop is not a Fill/Stroke layer.
+    document.addEventListener('colorchange', (event) => {
+        const popup = event.target.closest('[data-hb-style-popup="gradient-stop"]');
+        const root = popup ? mountedStyleRoot(popup) : null;
+        if (!root || typeof root.__hbGradientStopEdit !== 'function') return;
+        const { r, g, b, a } = event.detail || {};
+        if ([r, g, b].some((value) => !Number.isFinite(value))) return;
+        const toHex = (value) => Number(value).toString(16).padStart(2, '0');
+        root.__hbGradientStopEdit(`#${toHex(r)}${toHex(g)}${toHex(b)}`, Math.round(Math.max(0, Math.min(1, a)) * 100));
     });
 
     document.addEventListener('keydown', (event) => {

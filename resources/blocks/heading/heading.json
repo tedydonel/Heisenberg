@@ -335,7 +335,7 @@
             "--hb-heading-bg": {
                 "source": "supports.color.background",
                 "default": "transparent",
-                "sanitize": "color-value"
+                "sanitize": "color-value-or-gradient"
             },
             "--hb-heading-ff": {
                 "source": "supports.typography.fontFamily",

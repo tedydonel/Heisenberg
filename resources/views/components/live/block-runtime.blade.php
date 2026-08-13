@@ -167,13 +167,51 @@
         if (dynamic && !DYN_TAGS[tag]) return 'div';
         return tag;
     }
+    // Lockstep with BlockRenderer::ALPHA_VALUE — the picker emits three-decimal alpha
+    // (rgba(208,64,64,1.000)), so anything narrower rejects this editor's own output.
+    const HB_ALPHA = '(?:0|1|0?\\.\\d+|1\\.0+|(?:100|\\d{1,2})(?:\\.\\d+)?%)';
     function isSafeColorToken(value) {
         return /^var\(--(?:accent-[a-z0-9-]+|ink|faint|paper)\)$/.test(value)
             || /^#[0-9a-f]{3,8}$/i.test(value)
-            || /^rgba?\(\s*(25[0-5]|2[0-4]\d|1?\d?\d)\s*,\s*(25[0-5]|2[0-4]\d|1?\d?\d)\s*,\s*(25[0-5]|2[0-4]\d|1?\d?\d)(\s*,\s*(0|1|0?\.\d+))?\s*\)$/i.test(value)
-            || /^hsla?\(\s*(360|3[0-5]\d|[12]?\d?\d)\s*,\s*(100|\d?\d)%\s*,\s*(100|\d?\d)%(\s*,\s*(0|1|0?\.\d+))?\s*\)$/i.test(value);
+            || new RegExp('^rgba?\\(\\s*(25[0-5]|2[0-4]\\d|1?\\d?\\d)\\s*,\\s*(25[0-5]|2[0-4]\\d|1?\\d?\\d)\\s*,\\s*(25[0-5]|2[0-4]\\d|1?\\d?\\d)(\\s*,\\s*' + HB_ALPHA + ')?\\s*\\)$', 'i').test(value)
+            || new RegExp('^hsla?\\(\\s*(360|3[0-5]\\d|[12]?\\d?\\d)\\s*,\\s*(100|\\d?\\d)%\\s*,\\s*(100|\\d?\\d)%(\\s*,\\s*' + HB_ALPHA + ')?\\s*\\)$', 'i').test(value);
     }
     function isSafeLengthSignedValue(value) { return /^(0|-?\d+(\.\d+)?(px|rem|em|%|vw|vh))$/i.test(value); }
+    // Lockstep with BlockRenderer::isSafeGradientValue() — same grammar, same rejections
+    // (no repeating- forms, every stop colour re-validated through isSafeColorToken()).
+    const GRADIENT_POSITION = '-?\\d+(?:\\.\\d+)?(?:%|px|rem|em|vw|vh)';
+    function isSafeLinearPreamble(part) {
+        part = part.trim();
+        return /^-?\d{1,3}(\.\d+)?deg$/i.test(part)
+            || /^to\s+(?:(?:top|bottom)(?:\s+(?:left|right))?|(?:left|right)(?:\s+(?:top|bottom))?)$/i.test(part);
+    }
+    function isSafeRadialPreamble(part) {
+        part = part.trim();
+        if (!part) return false;
+        const pos = '(?:center|top|bottom|left|right|' + GRADIENT_POSITION + ')';
+        return /^(?:circle|ellipse)$/i.test(part)
+            || new RegExp('^(?:(?:circle|ellipse)\\s+)?at\\s+' + pos + '(?:\\s+' + pos + ')?$', 'i').test(part);
+    }
+    function isSafeGradientStop(stop) {
+        const tokens = splitTopLevel(stop.trim(), ' ').filter((t) => t !== '');
+        if (tokens.length < 1 || tokens.length > 2) return false;
+        if (!isSafeColorToken(tokens[0])) return false;
+        return tokens.length === 1 || new RegExp('^' + GRADIENT_POSITION + '$', 'i').test(tokens[1]);
+    }
+    function isSafeGradientValue(value) {
+        value = value.trim();
+        const prefix = /^(linear|radial)-gradient\(/i.exec(value);
+        if (!prefix || !value.endsWith(')')) return false;
+        const kind = prefix[1].toLowerCase();
+        const inner = value.slice(prefix[0].length, -1);
+        if ((inner.match(/\(/g) || []).length !== (inner.match(/\)/g) || []).length) return false;
+        const parts = splitTopLevel(inner, ',');
+        if (!parts.length || parts[0] === '') return false;
+        const isPreamble = kind === 'linear' ? isSafeLinearPreamble : isSafeRadialPreamble;
+        if (isPreamble(parts[0])) parts.shift();
+        if (parts.length < 2) return false;
+        return parts.every(isSafeGradientStop);
+    }
     // Split on a delimiter only at paren-depth 0, keeping rgba(0, 0, 0, .2) etc. intact.
     function splitTopLevel(value, delimiter) {
         const parts = []; let current = ''; let depth = 0;
@@ -231,6 +269,10 @@
         if (sanitizer === 'color-value') {
             if (value === 'transparent') return true;
             return /^var\(--[a-z0-9-]+\)$/i.test(value) || isSafeColorToken(value);
+        }
+        if (sanitizer === 'color-value-or-gradient') {
+            if (value === 'transparent') return true;
+            return /^var\(--[a-z0-9-]+\)$/i.test(value) || isSafeColorToken(value) || isSafeGradientValue(value);
         }
         if (sanitizer === 'font-family') return /^(var\(--[a-z0-9-]+\)|[a-z0-9][a-z0-9 \-]{0,80})$/i.test(value);
         if (sanitizer === 'font-weight') return /^(var\(--[a-z0-9-]+\)|[1-9]00)$/i.test(value);

@@ -1,12 +1,14 @@
 {{-- live/pickers/color-picker — Fill and Gradient picker.
 
-     Structure note (changed from the first pass): the colour editor (SV square, hue/alpha
-     sliders, model inputs) is NOT inside the Fill tab any more — it sits below both tabs and
-     is always mounted. In Fill mode it edits the flat colour; in Gradient mode it edits the
-     *selected stop*. The old build put the editor inside the Fill body, so editing a stop's
-     colour had to switch you to the Fill tab — you lost sight of the ramp you were editing.
-     Every industry picker (Figma, Framer, Webflow) keeps the ramp and the stop editor on
-     screen together; this now does too.
+     Structure note: the colour editor (SV square, hue/alpha sliders, model inputs) is NOT
+     inside the Fill tab — it sits below both tabs, and edits the flat colour in Fill mode. It
+     is HIDDEN in Gradient mode (32-pickers.css, `.hb-cp[data-cp-mode="gradient"] .hb-cp__editor`)
+     rather than repurposed to edit the selected stop: a picker with its own gradient section
+     showing a full second colour editor underneath it reads as one picker nested inside
+     another. Clicking a stop's swatch instead opens a SEPARATE `standalone` instance of this
+     same component (Fill only, no tabs, no gradient section) anchored to that stop — see the
+     `standalone` prop below and script-fonts-and-style-events.blade.php's `gradientstopedit`
+     listener, which owns the open/seed/write-back around it.
 
      Dropdowns are ui/select throughout (gradient type, radial shape, colour model) rather than
      the click-to-cycle buttons the first pass used — a 2-state toggle can't express 3 gradient
@@ -15,12 +17,21 @@
      Public API on the root element (window-facing, used by the inspector):
        __hbCp.setHex(hex)          set the flat colour
        __hbCp.setGradient(spec)    { type, angle, shape, stops:[{position,color,opacity}] }
+       __hbCp.setGradientCss(css)  seed from a stored `linear-gradient(...)` string; switches
+                                   to Gradient mode. Returns false if the string is unparseable.
        __hbCp.getValue()           { mode, hex, rgba, gradient }
        __hbCp.setMode('fill'|'gradient')
      Events (bubbling): `colorchange` { r,g,b,a,hex,gradientStop }, `gradientchange`
      { css,type,angle,shape,stops }. Both signatures are unchanged from the first pass — the
-     inspector's two listeners (inspector.blade.php:1082,1093) keep working as-is. --}}
-@props(['mode' => 'fill', 'value' => '#E3E3E3'])
+     inspector's two listeners (inspector.blade.php:1082,1093) keep working as-is.
+
+     `standalone`: a Fill-only instance with no Fill/Gradient tabs and no gradient section at
+     all — the popup a gradient STOP opens (script-fonts-and-style-events.blade.php's
+     `gradientstopedit` listener). Editing a stop's colour must never re-offer the gradient UI
+     underneath it (that is the self-nesting this prop exists to avoid); the JS below already
+     null-guards every gradient element lookup, so omitting that markup needs no script changes,
+     only this one to skip rendering it. --}}
+@props(['mode' => 'fill', 'value' => '#E3E3E3', 'standalone' => false])
 @php
     $gradientTypes = [
         ['value' => 'linear', 'label' => __('heisenberg::editor.color_picker.type_linear')],
@@ -42,7 +53,8 @@
         ['value' => 'hsb', 'label' => 'HSB'],
     ];
 @endphp
-<div class="hb-pop hb-cp" data-hb-colorpicker data-cp-value="{{ $value }}" data-cp-mode="{{ $mode }}" style="--hb-cp-hue: #f00;">
+<div class="hb-pop hb-cp @if ($standalone) hb-cp--standalone @endif" data-hb-colorpicker data-cp-value="{{ $value }}" data-cp-mode="{{ $standalone ? 'fill' : $mode }}" style="--hb-cp-hue: #f00;">
+    @unless ($standalone)
     <div class="hb-cp__tabs">
         <x-ui.tabs :active-index="$mode === 'gradient' ? 1 : 0" :items="[
             ['value' => 'fill', 'label' => __('heisenberg::editor.color_picker.tab_fill')],
@@ -114,6 +126,7 @@
             </div>
         </template>
     </div>
+    @endunless
 
     <div class="hb-cp__editor" data-cp-editor>
         <div class="hb-cp__editing" data-cp-editing hidden>
@@ -622,7 +635,60 @@
                     st.h = h; st.s = s; st.v = v; st.a = parsed[3];
                     render();
                 }
-                function setGradient(spec) {
+                // Inverse of gradientCss(). Stops are emitted as rgba(), which parseHex() does not
+                // read — seeding through it turned every restored stop black, which is what
+                // reopening a saved gradient looked like.
+                function splitTopLevel(text) {
+                    const parts = [];
+                    let depth = 0;
+                    let current = '';
+                    for (const char of text) {
+                        if (char === '(') depth++;
+                        if (char === ')') depth--;
+                        if (char === ',' && depth === 0) { parts.push(current); current = ''; continue; }
+                        current += char;
+                    }
+                    if (current.trim() !== '') parts.push(current);
+                    return parts.map((part) => part.trim()).filter((part) => part !== '');
+                }
+                function parseGradientStop(text) {
+                    const position = text.match(/\s(-?\d+(?:\.\d+)?)%$/);
+                    const colorText = (position ? text.slice(0, -position[0].length) : text).trim();
+                    const at = position ? clamp(parseFloat(position[1]), 0, 100) : 0;
+                    const rgba = colorText.match(/^rgba?\(([^)]*)\)$/i);
+                    if (rgba) {
+                        const nums = rgba[1].split(',').map((part) => parseFloat(part.trim()));
+                        if (nums.length < 3 || nums.slice(0, 3).some((n) => !Number.isFinite(n))) return null;
+                        const hex = '#' + nums.slice(0, 3).map((n) => clamp(Math.round(n), 0, 255).toString(16).padStart(2, '0')).join('');
+                        const alpha = Number.isFinite(nums[3]) ? nums[3] : 1;
+                        return { position: at, color: hex, opacity: clamp(Math.round(alpha * 100), 0, 100) };
+                    }
+                    const parsed = parseHex(colorText);
+                    if (!parsed) return null;
+                    const hex = '#' + parsed.slice(0, 3).map((n) => clamp(Math.round(n), 0, 255).toString(16).padStart(2, '0')).join('');
+                    return { position: at, color: hex, opacity: clamp(Math.round((parsed[3] == null ? 1 : parsed[3]) * 100), 0, 100) };
+                }
+                function parseGradientCss(css) {
+                    const match = String(css || '').trim().match(/^(linear|radial|conic)-gradient\((.*)\)$/is);
+                    if (!match) return null;
+                    const spec = { type: match[1].toLowerCase() };
+                    const parts = splitTopLevel(match[2]);
+                    if (!parts.length) return null;
+                    const head = parts[0];
+                    if (spec.type === 'linear' && /^-?\d+(?:\.\d+)?deg$/i.test(head)) { spec.angle = parseFloat(head); parts.shift(); }
+                    else if (spec.type === 'conic' && /^from\s+-?\d+(?:\.\d+)?deg$/i.test(head)) { spec.angle = parseFloat(head.replace(/^from\s+/i, '')); parts.shift(); }
+                    else if (spec.type === 'radial' && /^(circle|ellipse)\b/i.test(head)) { spec.shape = head.split(/\s+/)[0].toLowerCase(); parts.shift(); }
+                    spec.stops = parts.map(parseGradientStop).filter(Boolean);
+                    return spec.stops.length >= 2 ? spec : null;
+                }
+                function setGradientCss(css) {
+                    const spec = parseGradientCss(css);
+                    if (!spec) return false;
+                    setMode('gradient');
+                    setGradient(spec, false);
+                    return true;
+                }
+                function setGradient(spec, emit = true) {
                     if (!spec) return;
                     if (spec.type) gradient.type = spec.type;
                     if (Number.isFinite(spec.angle)) gradient.angle = clamp(spec.angle, 0, 360);
@@ -640,7 +706,7 @@
                     syncSelectDisplay(typeSelect, gradient.type);
                     syncSelectDisplay(shapeSelect, gradient.shape);
                     if (mode === 'gradient') loadSelectedStopIntoEditor();
-                    renderGradient({ emit: true });
+                    renderGradient({ emit });
                     render();
                 }
                 function getValue() {
@@ -670,7 +736,7 @@
                     if (valueEl) valueEl.textContent = label;
                 }
 
-                root.__hbCp = { setHex, setGradient, getValue, setMode };
+                root.__hbCp = { setHex, setGradient, setGradientCss, getValue, setMode };
 
                 /* ── events ─────────────────────────────────────────────── */
 
@@ -763,7 +829,32 @@
                         render();
                         return;
                     }
-                    if (event.target.closest('[data-cp-gradient-stop-select]')) selectStop(index);
+                    const selectButton = event.target.closest('[data-cp-gradient-stop-select]');
+                    if (selectButton) {
+                        selectStop(index);
+                        // Fine colour adjustment for a stop happens in its OWN standalone picker
+                        // popup (no nested gradient section), never in this picker's own editor —
+                        // that editor is hidden in gradient mode (32-pickers.css). The listener
+                        // lives in script-fonts-and-style-events.blade.php, which has no reach
+                        // into this closure, so the write-back travels as a callback on the event.
+                        const stop = gradient.stops[index];
+                        root.dispatchEvent(new CustomEvent('gradientstopedit', {
+                            bubbles: true,
+                            detail: {
+                                button: selectButton,
+                                color: stop.color,
+                                opacity: stop.opacity,
+                                setColor: (hex, opacityPercent) => {
+                                    const target = gradient.stops.find((item) => item.id === stop.id);
+                                    if (!target) return;
+                                    target.color = hex;
+                                    target.opacity = clamp(round(opacityPercent), 0, 100);
+                                    sortStops(target.id);
+                                    renderGradient({ emit: true });
+                                },
+                            },
+                        }));
+                    }
                 });
 
                 // ui/select and ui/tabs both dispatch a bubbling `change` carrying detail — they

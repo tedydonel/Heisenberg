@@ -337,7 +337,7 @@ class BlockRenderer
             $attributes = ['class' => $class] + $attributes;
         }
         if ($isRoot) {
-            $style = $this->blockStyleDeclarations($block, $contract);
+            $style = $this->blockStyleDeclarations($block, $contract, $surface);
             if ($style !== '') {
                 $attributes['style'] = $style;
             }
@@ -851,7 +851,7 @@ class BlockRenderer
     }
 
     /** Materialize the contract's style.variables into a CSS declaration string (§4.5). */
-    private function blockStyleDeclarations(array $block, array $contract): string
+    private function blockStyleDeclarations(array $block, array $contract, string $surface = 'render'): string
     {
         $variables = $contract['style']['variables'] ?? [];
         if (! is_array($variables)) {
@@ -870,7 +870,7 @@ class BlockRenderer
                 $value = $default;
             }
 
-            $safe = $this->sanitizeCssValue((string) $value, (string) ($definition['sanitize'] ?? 'text'), $default);
+            $safe = $this->sanitizeCssValue((string) $value, (string) ($definition['sanitize'] ?? 'text'), $default, $surface);
             if ($safe !== '') {
                 $declarations[] = $name . ': ' . $safe;
             }
@@ -891,17 +891,27 @@ class BlockRenderer
         return null;
     }
 
-    private function sanitizeCssValue(string $value, string $sanitizer, string $fallback): string
+    /**
+     * `$surface === 'email'` degrades a validated gradient to its first colour stop (§Bug A
+     * step 5) — Outlook cannot render `linear-gradient()`/`radial-gradient()`, and shipping one
+     * anyway would just render as no background at all. The check runs on whatever value ended
+     * up safe (value or fallback), so a gradient default degrades exactly like an authored one.
+     */
+    private function sanitizeCssValue(string $value, string $sanitizer, string $fallback, string $surface = 'render'): string
     {
         $value = $this->normalizeCssNumber(trim($value), $sanitizer);
+        $safe = $this->cssValueValid($value, $sanitizer) ? $value : '';
 
-        if ($this->cssValueValid($value, $sanitizer)) {
-            return $value;
+        if ($safe === '' && $fallback !== '') {
+            $fallback = $this->normalizeCssNumber(trim($fallback), $sanitizer);
+            $safe = $this->cssValueValid($fallback, $sanitizer) ? $fallback : '';
         }
 
-        $fallback = $this->normalizeCssNumber(trim($fallback), $sanitizer);
+        if ($safe !== '' && $surface === 'email' && $this->isSafeGradientValue($safe)) {
+            $safe = $this->firstGradientStopColor($safe);
+        }
 
-        return $this->cssValueValid($fallback, $sanitizer) ? $fallback : '';
+        return $safe;
     }
 
     /**
@@ -936,6 +946,9 @@ class BlockRenderer
             'font-token' => preg_match('/^var\(--[a-z0-9-]+\)$/i', $value) === 1,
             'size-value' => preg_match('/^(var\(--[a-z0-9-]+\)|-?\d+(\.\d+)?(px|rem|em|%|vw|vh))$/i', $value) === 1,
             'color-value' => $value === 'transparent' || preg_match('/^var\(--[a-z0-9-]+\)$/i', $value) === 1 || $this->isSafeColorValue($value),
+            // `color-value` plus `linear-gradient()`/`radial-gradient()` — BACKGROUND/fill kinds
+            // only (see isSafeGradientValue()'s docblock for why text colour never gets this).
+            'color-value-or-gradient' => $value === 'transparent' || preg_match('/^var\(--[a-z0-9-]+\)$/i', $value) === 1 || $this->isSafeColorValue($value) || $this->isSafeGradientValue($value),
             'font-family' => preg_match('/^(var\(--[a-z0-9-]+\)|[a-z0-9][a-z0-9 \-]{0,80})$/i', $value) === 1,
             'font-weight' => preg_match('/^(var\(--[a-z0-9-]+\)|[1-9]00)$/i', $value) === 1,
             'size-token' => preg_match('/^(0|auto|100%|var\(--[a-z0-9-]+(,\s*var\(--[a-z0-9-]+\))?\)|calc\([a-z0-9\s().,%*\/+-]+\)|-?\d+(\.\d+)?(px|rem|em|vw|%)?)$/i', $value) === 1,
@@ -1070,8 +1083,137 @@ class BlockRenderer
     {
         return preg_match('/^var\(--(?:accent-[a-z0-9-]+|ink|faint|paper)\)$/', $value) === 1
             || preg_match('/^#[0-9a-fA-F]{3,8}$/', $value) === 1
-            || preg_match('/^rgba?\(\s*(25[0-5]|2[0-4]\d|1?\d?\d)\s*,\s*(25[0-5]|2[0-4]\d|1?\d?\d)\s*,\s*(25[0-5]|2[0-4]\d|1?\d?\d)(\s*,\s*(0|1|0?\.\d+))?\s*\)$/i', $value) === 1
-            || preg_match('/^hsla?\(\s*(360|3[0-5]\d|[12]?\d?\d)\s*,\s*(100|\d?\d)%\s*,\s*(100|\d?\d)%(\s*,\s*(0|1|0?\.\d+))?\s*\)$/i', $value) === 1;
+            || preg_match('/^rgba?\(\s*(25[0-5]|2[0-4]\d|1?\d?\d)\s*,\s*(25[0-5]|2[0-4]\d|1?\d?\d)\s*,\s*(25[0-5]|2[0-4]\d|1?\d?\d)(\s*,\s*' . self::ALPHA_VALUE . ')?\s*\)$/i', $value) === 1
+            || preg_match('/^hsla?\(\s*(360|3[0-5]\d|[12]?\d?\d)\s*,\s*(100|\d?\d)%\s*,\s*(100|\d?\d)%(\s*,\s*' . self::ALPHA_VALUE . ')?\s*\)$/i', $value) === 1;
+    }
+
+    /**
+     * CSS `<alpha-value>`: a 0–1 number (any number of decimals, leading zero optional) or a
+     * percentage. The colour picker emits three decimals — `rgba(208,64,64,1.000)` — so a
+     * pattern that only accepted `1` or `0.5` rejected the picker's own output, and with it
+     * every gradient built from it, since a gradient is only as valid as its stop colours.
+     */
+    private const ALPHA_VALUE = '(?:0|1|0?\.\d+|1\.0+|(?:100|\d{1,2})(?:\.\d+)?%)';
+
+    /** A `<length-percentage>` token for a gradient's optional stop position — `%` or a length unit. */
+    private const GRADIENT_POSITION = '-?\d+(?:\.\d+)?(?:%|px|rem|em|vw|vh)';
+
+    /**
+     * `color-value-or-gradient`: `linear-gradient(...)` or `radial-gradient(...)`, BACKGROUND/fill
+     * only — never wired to text colour (a `color: linear-gradient(...)` declaration is invalid
+     * CSS and would just make the text disappear). Deliberately fail-closed and NOT one mega
+     * regex: an optional direction/shape preamble, then 2+ comma-separated stops, each stop's
+     * colour re-validated through the EXISTING {@see isSafeColorValue()} (so a gradient can never
+     * smuggle a colour the flat sanitizer would reject) and each stop's optional position a bare
+     * `%`/length. `splitTopLevel()` (already used by the shadow sanitizer) keeps commas/spaces
+     * inside `rgba()`/`hsla()` stop colours intact while splitting the gradient's own structure.
+     *
+     * `repeating-linear-gradient()`/`repeating-radial-gradient()` are DELIBERATELY NOT accepted:
+     * they take the same grammar, but nothing here bounds the repeat density, and an attacker-sized
+     * stop list (or a pathologically small repeat interval) is a rendering-cost DoS this validator
+     * has no way to price — narrower allow-list beats a guessed cap.
+     */
+    private function isSafeGradientValue(string $value): bool
+    {
+        $value = trim($value);
+        if (preg_match('/^(linear|radial)-gradient\(/i', $value, $prefix) !== 1 || ! str_ends_with($value, ')')) {
+            return false;
+        }
+
+        $kind = strtolower($prefix[1]);
+        $inner = substr($value, strlen($prefix[0]), -1);
+        if (substr_count($inner, '(') !== substr_count($inner, ')')) {
+            return false; // unbalanced parens — never hand an unbalanced string to splitTopLevel
+        }
+
+        $parts = $this->splitTopLevel($inner, ',');
+        if ($parts === [] || $parts[0] === '') {
+            return false;
+        }
+
+        $isPreamble = $kind === 'linear' ? $this->isSafeLinearPreamble(...) : $this->isSafeRadialPreamble(...);
+        if ($isPreamble($parts[0])) {
+            array_shift($parts);
+        }
+
+        if (count($parts) < 2) {
+            return false; // 2+ colour stops required
+        }
+
+        foreach ($parts as $stop) {
+            if (! $this->isSafeGradientStop($stop)) {
+                return false;
+            }
+        }
+
+        return true;
+    }
+
+    /** `linear-gradient()`'s optional first argument: an angle, or `to <side-or-corner>`. */
+    private function isSafeLinearPreamble(string $part): bool
+    {
+        $part = trim($part);
+
+        return preg_match('/^-?\d{1,3}(\.\d+)?deg$/i', $part) === 1
+            || preg_match('/^to\s+(?:(?:top|bottom)(?:\s+(?:left|right))?|(?:left|right)(?:\s+(?:top|bottom))?)$/i', $part) === 1;
+    }
+
+    /** `radial-gradient()`'s optional first argument: a shape and/or an `at <position>` clause. */
+    private function isSafeRadialPreamble(string $part): bool
+    {
+        $part = trim($part);
+        if ($part === '') {
+            return false;
+        }
+
+        $pos = '(?:center|top|bottom|left|right|' . self::GRADIENT_POSITION . ')';
+
+        return preg_match('/^(?:circle|ellipse)$/i', $part) === 1
+            || preg_match('/^(?:(?:circle|ellipse)\s+)?at\s+' . $pos . '(?:\s+' . $pos . ')?$/i', $part) === 1;
+    }
+
+    /** One gradient colour stop: a safe colour, plus an optional `%`/length position. */
+    private function isSafeGradientStop(string $stop): bool
+    {
+        $tokens = array_values(array_filter(
+            $this->splitTopLevel(trim($stop), ' '),
+            static fn (string $t): bool => $t !== ''
+        ));
+
+        if (count($tokens) < 1 || count($tokens) > 2) {
+            return false;
+        }
+        if (! $this->isSafeColorValue($tokens[0])) {
+            return false;
+        }
+
+        return count($tokens) === 1 || preg_match('/^' . self::GRADIENT_POSITION . '$/i', $tokens[1]) === 1;
+    }
+
+    /**
+     * The email degrade for a validated gradient (§Bug A step 5): Outlook cannot render a CSS
+     * gradient, so the email surface substitutes the gradient's FIRST colour stop as a flat
+     * fallback rather than shipping a value the client will just ignore. Scans comma-parts for
+     * the first one whose leading token is a safe colour — that skips the optional
+     * direction/shape preamble without re-deriving which gradient kind produced it.
+     */
+    private function firstGradientStopColor(string $gradient): string
+    {
+        if (preg_match('/^(?:linear|radial)-gradient\((.*)\)$/is', $gradient, $inner) !== 1) {
+            return '';
+        }
+
+        foreach ($this->splitTopLevel($inner[1], ',') as $part) {
+            $tokens = array_values(array_filter(
+                $this->splitTopLevel(trim($part), ' '),
+                static fn (string $t): bool => $t !== ''
+            ));
+            if ($tokens !== [] && $this->isSafeColorValue($tokens[0])) {
+                return $tokens[0];
+            }
+        }
+
+        return '';
     }
 
     /**

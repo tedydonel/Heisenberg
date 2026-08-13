@@ -296,7 +296,7 @@
             "--hb-columns-bg": {
                 "source": "supports.color.background",
                 "default": "",
-                "sanitize": "color-value"
+                "sanitize": "color-value-or-gradient"
             },
             "--hb-columns-w": {
                 "source": "supports.size.width",
