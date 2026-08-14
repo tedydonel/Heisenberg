@@ -99,6 +99,13 @@ Everything that renders one lives under its own route group (`routes/email.php`,
   to what a mailer would send.
 - **`GET /{prefix}/{slug}/export?format=html|eml`** — the two downloads below, from that same
   address.
+- Both take **`?locale=`** (validated against `heisenberg.locales`; anything else is ignored) —
+  which translation to render, subject included. Without it they fall back to the app locale, which
+  is the UI language: the editor's locale dropdown is client state and never touches it, so an
+  author working on the French version used to preview and export the English one. The topbar
+  sends `locale` on Preview, on both export formats, and on the footer's size chip (which
+  re-measures on a locale switch, since translations differ in length). A host building a "view in
+  browser" link should pass the recipient's language the same way.
 
 And nothing else renders one:
 

@@ -335,6 +335,28 @@ never structure, ids, attribute names, or media URLs."
 
 ## 7. Public side & hosts
 
+**Which locale a render uses (2026-08-14).** Two different things were being conflated. The **app
+locale** is the UI language — `EditorLocaleMiddleware` reads it from the session, and it is what the
+editor's own chrome is written in. The **editing locale** is which translation the author is working
+on: client state in the editor (`hbEditor.getEditingLocale()`, the topbar dropdown), which never
+touches the session. Anything that renders CONTENT and reads only the app locale therefore renders
+whatever language the chrome happens to be in — which is why previewing or exporting while editing
+the French version handed back the English one.
+
+So every render entry point takes the locale explicitly, as a validated `?locale=` (unknown values
+are ignored, falling back to the app locale): `GET /editor/{post}/preview`, `GET /editor/preview`
+(the session flow), `GET /emails/{slug}`, `GET /emails/{slug}/export`, and
+`GET /editor/{post}/email-size`. The controllers call `App::setLocale()` with it rather than
+threading a parameter, because the render path resolves the locale independently in several places
+(`renderBlocks()`, the SEO payload, `Post::title()`) and all of them have to agree. The editor sends
+it on Preview, on both export formats, and on the size chip.
+
+One trap worth naming: **`Post::title()` with no argument resolves against the ROW's own `locale`
+column**, not the request's — the language the post was created in. `PreviewController` passed no
+argument, so a page could render French blocks under an English heading even once the locale was
+threaded correctly. Render paths pass the locale explicitly; the accessor's cross-locale fallback
+still covers a row translated only one way.
+
 `PreviewController::showPost()` stops hardcoding `title_en` (uses `title()`), and emits
 `<link rel="alternate" hreflang>` pairs for published siblings (SEO doc §6 owns the tag shape).
 Host guidance (a locale-prefixed blog is the reference install shape): route a locale prefix

@@ -176,6 +176,52 @@ class EditorPreviewTest extends TestCase
         $this->assertStringContainsString('hb-block-paragraph', $html);
     }
 
+    /**
+     * Which LANGUAGE a preview renders (docs/content-translation.md §0). The locale being edited
+     * is client state in the editor (`hbEditor.getEditingLocale()`); the app locale is the UI
+     * language EditorLocaleMiddleware pulls from the session. Without an explicit `?locale=` the
+     * server only ever saw the second one, so previewing while editing the French version showed
+     * the English one — the same defect reported against the email export.
+     */
+    public function test_saved_post_preview_renders_the_requested_locale(): void
+    {
+        $post = \Heisenberg\Models\Post::create([
+            'title_en' => 'English title',
+            'title_fr' => 'Titre français',
+            'locale' => 'en',
+            'status' => 'published',
+        ]);
+        \Heisenberg\Models\Block::create([
+            'post_id' => $post->id,
+            'type' => 'paragraph',
+            'content' => [
+                'id' => 'b1',
+                'name' => 'heisenberg/paragraph',
+                'schemaVersion' => '1.0.0',
+                'attributes' => ['content' => 'English body', 'content_fr' => 'Corps français'],
+                'supports' => [],
+                'innerBlocks' => [],
+            ],
+            'order' => 1,
+        ]);
+
+        $html = (string) $this->get("/editor/{$post->id}/preview?locale=fr")->assertOk()->getContent();
+
+        $this->assertStringContainsString('Corps français', $html);
+        $this->assertStringContainsString('Titre français', $html);
+        $this->assertStringNotContainsString('English body', $html);
+    }
+
+    /** The topbar has to actually send it — every preview/export target carries the query. */
+    public function test_the_preview_and_export_controls_send_the_editing_locale(): void
+    {
+        $html = (string) $this->get('/editor')->assertOk()->getContent();
+
+        $this->assertStringContainsString('const hbLocaleQuery = (separator) =>', $html);
+        $this->assertStringContainsString("hbPreviewPostUrlTemplate.replace('__ID__', hbPostId) + localeQuery", $html);
+        $this->assertStringContainsString('hbPreviewShowUrl + localeQuery', $html);
+    }
+
     public function test_saved_post_preview_404s_for_a_nonexistent_post(): void
     {
         $this->get('/editor/999999/preview')->assertNotFound();

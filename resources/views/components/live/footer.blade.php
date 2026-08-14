@@ -392,7 +392,11 @@
             const pill = chip();
             const template = pill ? pill.dataset.hbEmailSizeUrlTemplate : '';
             if (!pill || !template || !postId) return;
-            window.fetch(template.replace('__ID__', postId), {
+            // Measured per LANGUAGE: translations differ in length, and this chip is the warning
+            // that an email is getting close to Gmail's clip threshold — so it has to measure the
+            // version being edited, not whichever one the app locale happens to name.
+            const locale = (window.hbEditor && window.hbEditor.getEditingLocale) ? window.hbEditor.getEditingLocale() : '';
+            window.fetch(template.replace('__ID__', postId) + (locale ? '?locale=' + encodeURIComponent(locale) : ''), {
                 headers: { 'Accept': 'application/json', 'X-Requested-With': 'XMLHttpRequest' },
                 credentials: 'same-origin',
             })
@@ -418,6 +422,12 @@
             document.addEventListener('hb:post-saved', (e) => {
                 const post = e.detail && e.detail.post;
                 if (post && post.id != null) fetchSize(post.id);
+            });
+            // Switching the editing locale switches which version this chip is describing.
+            document.addEventListener('hb:editing-locale-change', () => {
+                const pill = chip();
+                const postId = pill ? pill.dataset.hbPostId : '';
+                if (postId) fetchSize(postId);
             });
         }
     })();

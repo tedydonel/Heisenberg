@@ -7,6 +7,7 @@ namespace Heisenberg\Http\Controllers;
 use Heisenberg\Adapters\GuestActor;
 use Heisenberg\Models\Post;
 use Heisenberg\Services\EmailRenderer;
+use Heisenberg\Support\LocaleConfig;
 use Illuminate\Contracts\Auth\Authenticatable;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -55,10 +56,11 @@ class EmailPreviewController
      */
     public function showBySlug(Request $request, string $slug): Response
     {
+        $locale = $this->contentLocale($request);
         $model = $this->findBySlugOrFail($slug);
         Gate::forUser($this->actor($request))->authorize('view', $model);
 
-        $result = $this->renderer->render($model, app()->getLocale(), preview: true);
+        $result = $this->renderer->render($model, $locale, preview: true);
 
         return response($result->html, 200, [
             'Content-Type' => 'text/html; charset=UTF-8',
@@ -77,10 +79,11 @@ class EmailPreviewController
      */
     public function exportBySlug(Request $request, string $slug): BaseResponse
     {
+        $locale = $this->contentLocale($request);
         $model = $this->findBySlugOrFail($slug);
         Gate::forUser($this->actor($request))->authorize('view', $model);
 
-        return $this->exportModel($request, $model);
+        return $this->exportModel($request, $model, $locale);
     }
 
     /**
@@ -96,7 +99,7 @@ class EmailPreviewController
         abort_unless($model->type === 'email', 404);
         Gate::forUser($this->actor($request))->authorize('view', $model);
 
-        return redirect()->to($this->slugUrl($model));
+        return redirect()->to($this->slugUrl($model) . $this->localeQuery($request));
     }
 
     /**
@@ -107,11 +110,12 @@ class EmailPreviewController
      */
     public function size(Request $request, string $post): JsonResponse
     {
+        $locale = $this->contentLocale($request);
         $model = $this->findOrFail($post);
         abort_unless($model->type === 'email', 404);
         Gate::forUser($this->actor($request))->authorize('view', $model);
 
-        $result = $this->renderer->render($model, app()->getLocale());
+        $result = $this->renderer->render($model, $locale);
 
         return response()->json(['sizeBytes' => $result->sizeBytes]);
     }
@@ -129,7 +133,7 @@ class EmailPreviewController
 
         $format = $request->query('format') === 'eml' ? 'eml' : 'html';
 
-        return redirect()->to($this->slugUrl($model, 'export') . '?format=' . $format);
+        return redirect()->to($this->slugUrl($model, 'export') . '?format=' . $format . $this->localeQuery($request, '&'));
     }
 
     /**
@@ -143,9 +147,8 @@ class EmailPreviewController
      * {@see \Heisenberg\Mail\HeisenbergMailable} does for a live send. Any `format` other than
      * the literal `eml` defaults to `html`.
      */
-    private function exportModel(Request $request, Post $model): BaseResponse
+    private function exportModel(Request $request, Post $model, string $locale): BaseResponse
     {
-        $locale = app()->getLocale();
         $format = $request->query('format') === 'eml' ? 'eml' : 'html';
 
         return $format === 'eml'
@@ -239,6 +242,47 @@ class EmailPreviewController
         $safeLocale = (string) preg_replace('/[^a-z0-9]/i', '', $locale) ?: 'en';
 
         return "{$slug}-{$safeLocale}.{$extension}";
+    }
+
+    /**
+     * Which language of this email to render — `?locale=`, validated against the configured set,
+     * falling back to the app locale.
+     *
+     * The app locale is the wrong default on its own: it is the UI language (EditorLocaleMiddleware
+     * reads it from the session), while a translation is a property of the CONTENT — the editor's
+     * own locale dropdown, `hbEditor.getEditingLocale()`, which is client state and never touched
+     * that session value. An author working on the French version of an email therefore exported
+     * the English one, because the only locale reaching this controller was the language the
+     * editor's chrome happened to be in. Every render entry point takes it explicitly now, and the
+     * editor passes what it is actually showing.
+     *
+     * `App::setLocale()` as well as returning it: the render path reaches `__()` and the post's own
+     * title accessor through call sites this controller does not thread a parameter into, and all
+     * of them must agree with the locale the blocks were rendered in.
+     */
+    /**
+     * `?locale=fr` (or `&locale=fr`) to carry an explicit request through a redirect, `''` when
+     * none was asked for — the id-scoped editor routes must not silently drop the author's choice
+     * on the way to the slug URL that actually renders.
+     */
+    private function localeQuery(Request $request, string $separator = '?'): string
+    {
+        $requested = trim((string) $request->query('locale', ''));
+
+        return ($requested !== '' && LocaleConfig::isValid($requested))
+            ? $separator . 'locale=' . $requested
+            : '';
+    }
+
+    private function contentLocale(Request $request): string
+    {
+        $requested = trim((string) $request->query('locale', ''));
+
+        if ($requested !== '' && LocaleConfig::isValid($requested)) {
+            app()->setLocale($requested);
+        }
+
+        return app()->getLocale();
     }
 
     private function findOrFail(string $post): Post

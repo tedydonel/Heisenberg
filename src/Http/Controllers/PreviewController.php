@@ -83,6 +83,8 @@ class PreviewController
 
     public function show(Request $request): View
     {
+        $this->applyContentLocale($request);
+
         $doc = $request->session()->get(self::SESSION_KEY);
         $hasDoc = is_array($doc);
         $doc = $hasDoc ? $doc : ['title' => null, 'blocks' => []];
@@ -120,6 +122,8 @@ class PreviewController
      */
     public function showPost(Request $request, string $post): View
     {
+        $this->applyContentLocale($request);
+
         /** @var class-string<Post> $class */
         $class = (string) config('heisenberg.models.post', Post::class);
         $model = $class::query()->with(['featuredImage', 'tocEntries'])->findOrFail($post);
@@ -134,7 +138,12 @@ class PreviewController
 
         return $this->renderDoc(
             blocks: $model->blocks->map(fn ($block) => $block->content)->values()->all(),
-            title: $model->title() ?: 'Untitled post',
+            // Explicitly the REQUEST's locale: Post::title() with no argument resolves against the
+            // ROW's own `locale` column, which is the language the post was created in, not the one
+            // being viewed. Left implicit, the page rendered French blocks under an English
+            // heading. The accessor's cross-locale fallback still applies, so a row with only one
+            // translation reads the same as before.
+            title: $model->title(app()->getLocale()) ?: 'Untitled post',
             seo: $this->seoPayload($model),
             hasDoc: true,
             featured: $this->featuredPayload($model->featuredImage),
@@ -367,6 +376,26 @@ class PreviewController
         }
 
         return $payload;
+    }
+
+    /**
+     * Honour an explicit `?locale=` on a preview (validated against the configured set; anything
+     * else leaves the app locale alone).
+     *
+     * The app locale alone was the wrong answer: it is the UI language, set from the session by
+     * EditorLocaleMiddleware, while the locale being EDITED is client state in the editor
+     * (`hbEditor.getEditingLocale()`) that never touched that session value. Previewing a post
+     * while editing its French version therefore rendered the English one. Set on the request
+     * rather than threaded as a parameter because everything downstream — renderBlocks(), the SEO
+     * payload, Post::title() — resolves the locale for itself, and they all have to agree.
+     */
+    private function applyContentLocale(Request $request): void
+    {
+        $requested = trim((string) $request->query('locale', ''));
+
+        if ($requested !== '' && LocaleConfig::isValid($requested)) {
+            app()->setLocale($requested);
+        }
     }
 
     private function actor(Request $request): Authenticatable

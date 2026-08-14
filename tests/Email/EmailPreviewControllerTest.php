@@ -155,6 +155,104 @@ class EmailPreviewControllerTest extends TestCase
         $this->assertStringContainsString('Corps français', (string) $this->get('/emails/shared')->assertOk()->getContent());
     }
 
+    // ── which LANGUAGE gets rendered (docs/content-translation.md §0) ────────
+
+    private function makeBilingualEmail(): Post
+    {
+        $post = Post::create([
+            'title_en' => 'August Letter',
+            'title_fr' => 'Lettre d\'août',
+            'locale' => 'en',
+            'status' => 'published',
+            'slug' => 'august-letter',
+        ]);
+        $post->type = 'email';
+        $post->save();
+
+        $this->addBlock($post, 1, 'heisenberg/paragraph', [
+            'content' => 'English body',
+            'content_fr' => 'Corps français',
+        ]);
+
+        return $post;
+    }
+
+    /**
+     * The reported bug: an author editing the French version exported the English one. The editing
+     * locale is CLIENT state in the editor and the app locale is the UI language, so the only way
+     * the server can know which translation to render is to be told — `?locale=`.
+     */
+    public function test_an_explicit_locale_renders_that_translation(): void
+    {
+        $post = $this->makeBilingualEmail();
+
+        $french = $this->get("/emails/{$post->slug}?locale=fr")->assertOk()->getContent();
+
+        $this->assertStringContainsString('Corps français', $french);
+        // The subject too, not just the blocks — it comes from Post::title($locale). Matched on
+        // the leading word alone: the full string's apostrophe is HTML-escaped in the <title>.
+        $this->assertStringContainsString('<title>Lettre', $french);
+        $this->assertStringNotContainsString('English body', $french);
+    }
+
+    /**
+     * The no-locale case gets its own test on purpose: the controller calls `App::setLocale()`,
+     * which lives for the rest of the PROCESS, and Laravel reuses one application across several
+     * `$this->get()` calls inside a single test — so asserting both languages in one method would
+     * be testing that leak rather than the behaviour. Each real HTTP request builds its own
+     * container, so this only ever bites here.
+     */
+    public function test_no_locale_renders_the_app_locale(): void
+    {
+        $post = $this->makeBilingualEmail();
+
+        $english = $this->get("/emails/{$post->slug}")->assertOk()->getContent();
+
+        $this->assertStringContainsString('English body', $english);
+        $this->assertStringNotContainsString('Corps français', $english);
+    }
+
+    public function test_the_export_renders_and_names_the_requested_locale(): void
+    {
+        $post = $this->makeBilingualEmail();
+
+        $response = $this->get("/emails/{$post->slug}/export?format=html&locale=fr")->assertOk();
+
+        $this->assertStringContainsString('Corps français', (string) $response->getContent());
+        $this->assertStringContainsString('filename="august-letter-fr.html"', (string) $response->headers->get('Content-Disposition'));
+    }
+
+    public function test_the_size_chip_measures_the_requested_locale(): void
+    {
+        $post = $this->makeBilingualEmail();
+
+        $en = $this->getJson("/editor/{$post->id}/email-size?locale=en")->json('sizeBytes');
+        $fr = $this->getJson("/editor/{$post->id}/email-size?locale=fr")->json('sizeBytes');
+
+        $this->assertNotSame($en, $fr, 'the two translations differ in length, so their measured sizes must too');
+    }
+
+    /** An unconfigured locale is ignored rather than rendering an empty document. */
+    public function test_an_unknown_locale_falls_back_to_the_app_locale(): void
+    {
+        $post = $this->makeBilingualEmail();
+
+        $html = $this->get("/emails/{$post->slug}?locale=zz")->assertOk()->getContent();
+
+        $this->assertStringContainsString('English body', $html);
+    }
+
+    /** The editor addresses posts by id, so its redirect has to carry the choice through. */
+    public function test_the_id_scoped_routes_carry_the_locale_into_the_redirect(): void
+    {
+        $post = $this->makeBilingualEmail();
+
+        $this->get("/editor/{$post->id}/email-preview?locale=fr")
+            ->assertRedirect("/emails/{$post->slug}?locale=fr");
+        $this->get("/editor/{$post->id}/email-export?format=eml&locale=fr")
+            ->assertRedirect("/emails/{$post->slug}/export?format=eml&locale=fr");
+    }
+
     // ── the editor's id-scoped routes ────────────────────────────────────────
 
     public function test_the_editor_preview_route_redirects_to_the_slug(): void
