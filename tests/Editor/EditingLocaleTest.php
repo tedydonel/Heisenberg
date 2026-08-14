@@ -278,4 +278,51 @@ class EditingLocaleTest extends TestCase
         $inspectorHtml = $this->get('/editor')->assertOk()->getContent();
         $this->assertStringContainsString('window.hbEditor.readAttr(model, key)', $inspectorHtml);
     }
+
+    // ── the AI panel's write_canvas apply path folds instead of replacing ─────────────────────
+    // The data-loss bug: switching to French and asking the assistant to translate wiped the
+    // English text, because applyCanvasTool's only move was window.hbEditor.replaceDoc() — a
+    // whole-document swap that writes BARE keys, oblivious to the editing locale. The fix adds a
+    // client-side mirror of McpToolRegistry::foldTranslatedBlocks()/foldNode() (the PHP rule
+    // create_translation already enforces for a SAVED post): same position-matched fold, same
+    // path-naming scheme, same refusal wording, exposed as window.hbEditor.foldTranslation and
+    // wired into a new window.hbEditor.applyCanvasWrite that applyCanvasTool now calls instead of
+    // deciding replace/append/fold itself.
+
+    public function test_fold_translation_is_exposed_on_the_runtime_and_reuses_the_shared_resolver(): void
+    {
+        $html = $this->get('/editor')->assertOk()->getContent();
+
+        $this->assertStringContainsString('function foldTranslation(blocks)', $html);
+        $this->assertStringContainsString('foldTranslation: foldTranslation,', $html);
+        $this->assertStringContainsString('applyCanvasWrite: applyCanvasWrite,', $html);
+        // Reuses the ONE place the suffix rule lives, rather than re-deriving it.
+        $this->assertStringContainsString('storedNode.attributes[resolveAttrKey(storedName, key)] = value;', $html);
+        $this->assertStringContainsString('translatableKeys(storedName).forEach', $html);
+    }
+
+    public function test_fold_translation_mirrors_the_server_side_mismatch_wording_exactly(): void
+    {
+        $html = $this->get('/editor')->assertOk()->getContent();
+
+        // Same path-naming scheme as McpToolRegistry::foldNodes()/foldNode() ("blocks[N]" top
+        // level, ">N" per innerBlocks depth) and the SAME two mismatch messages
+        // TranslationToolsTest pins server-side ("block count differs", "block name mismatch").
+        $this->assertStringContainsString("mismatches.push(path + ': block count differs (post has ' + storedNodes.length + ', translated code has ' + translatedNodes.length + ')');", $html);
+        $this->assertStringContainsString("mismatches.push(path + \": block name mismatch ('\"", $html);
+        $this->assertStringContainsString("mismatches.push(path + ': innerBlocks count differs (post has ' + storedInner.length + ', translated code has ' + translatedInner.length + ')');", $html);
+        $this->assertStringContainsString("path + '[' + index + ']'", $html);
+        $this->assertStringContainsString("path + '>' + index", $html);
+    }
+
+    public function test_fold_translation_never_partially_applies_on_a_mismatch(): void
+    {
+        $html = $this->get('/editor')->assertOk()->getContent();
+
+        // A mismatch is collected into `mismatches` and returned as {ok:false, error} BEFORE
+        // `doc.blocks` is ever reassigned — the mutation line only runs once the whole tree
+        // matched.
+        $this->assertStringContainsString('if (mismatches.length) {', $html);
+        $this->assertStringContainsString('doc.blocks = folded;', $html);
+    }
 }

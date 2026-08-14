@@ -234,4 +234,52 @@ class EditorPromptTest extends TestCase
         $this->assertStringContainsString('Hello', $withSelection);
         $this->assertStringContainsString('My Post', $withSelection);
     }
+
+    /** §6 (LOCALES) states the single-row translation model, once, in the system prompt. */
+    public function test_system_prompt_states_the_editing_locale_translating_rule(): void
+    {
+        $system = $this->prompt()->system();
+
+        $this->assertStringContainsString('LOCALES', $system);
+        $this->assertStringContainsString('EDITING LOCALE', $system);
+        $this->assertStringContainsString('TRANSLATING', $system);
+        $this->assertStringContainsString('mode="replace" only', $system);
+    }
+
+    /**
+     * docs/content-translation.md §0/Wave 2 — the root cause of the data-loss bug this test
+     * guards: the panel sends `editingLocale`/`homeLocale` (block-runtime.blade.php's
+     * getEditingLocale()/getHomeLocale(), wired in panel-ai.blade.php's documentContext()) on
+     * every turn, and a mismatch must restate the TRANSLATING rule against the CONCRETE
+     * locales — a named pair is much harder for the model to miss than the generic system-prompt
+     * rule alone.
+     */
+    public function test_user_prompt_states_the_translating_rule_when_editing_a_non_home_locale(): void
+    {
+        $translating = $this->prompt()->user('Translate this', [
+            'document' => '[p]Hello[/p]',
+            'editingLocale' => 'fr',
+            'homeLocale' => 'en',
+        ]);
+
+        $this->assertStringContainsString("editing the 'fr' locale", $translating);
+        $this->assertStringContainsString("home locale is 'en'", $translating);
+        $this->assertStringContainsString('TRANSLATION', $translating);
+        $this->assertStringContainsString('mode="replace" only', $translating);
+        $this->assertStringContainsString('mode="append" is refused', $translating);
+    }
+
+    public function test_user_prompt_omits_the_translating_rule_when_editing_the_home_locale(): void
+    {
+        $home = $this->prompt()->user('Add a heading', [
+            'document' => '[p]Hello[/p]',
+            'editingLocale' => 'en',
+            'homeLocale' => 'en',
+        ]);
+
+        $this->assertStringNotContainsString('TRANSLATION', $home);
+
+        $noContext = $this->prompt()->user('Add a heading', ['document' => '[p]Hello[/p]']);
+        $this->assertStringNotContainsString('TRANSLATION', $noContext);
+    }
 }

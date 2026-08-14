@@ -1,22 +1,13 @@
-{{-- live/panel-ai — the AI tab, rebuilt to the Pencil reference
+{{-- live/panel-ai — the AI tab, built to the Pencil reference
      (docs/design/ai-tab-reference.html). Same 240px middle-panel rail as
      live/panel-components-blocks; the Tools tab is carried over unchanged.
 
-     What the reference adds over the old panel-ai-tools layout, and where each
-     piece gets its data:
-       · Thinking block  — the reasoning the stream filter used to throw away,
-         collapsible, timed ("Thought for 4s").
-       · Applied card    — "APPLIED TO YOUR POST": the tools that ran and the
-         blocks built this turn, fed by the same tool_use/live-build events that
-         already narrate the stream.
-       · Quick inserts   — canned follow-up chips under a finished reply.
-       · Composer        — textarea over a bottom row: new-chat (+), model
-         select (reads /editor/ai/settings, sends `model` per request), send.
-       · History         — every finished turn is POSTed to /editor/ai/conversations
-         so the thread survives reload; the header's notepad opens
-         live/ai/ai-history-dialog, which fires hb:ai-open-conversation back at
-         this panel to restore a thread AND its model context (the `history`
-         array resent with each stream request). --}}
+     Thinking block (collapsible, timed), Applied card ("APPLIED TO YOUR POST",
+     fed by tool_use/live-build events), Quick inserts (canned follow-up chips),
+     Composer (textarea + new-chat/model-select/send row), History (every
+     finished turn POSTed to /editor/ai/conversations; the header's notepad
+     opens live/ai/ai-history-dialog, which fires hb:ai-open-conversation back
+     here to restore a thread and its model/`history` context). --}}
 @once
 <style>
     .hb-panel-ai { display: flex; flex-direction: column; width: 100%; height: 100%; background: var(--hb-bg, #fff); border-right: 1px solid var(--hb-border, #E4E4E4); flex: none; }
@@ -49,8 +40,7 @@
     .hb-ai-msg--user .hb-ai-msg__text { color: var(--hb-text-muted, #9A9A9A); }
     .hb-ai-msg--error .hb-ai-msg__text, .hb-ai-msg--note.hb-ai-msg--error .hb-ai-msg__text { color: var(--hb-danger, #D4191A); }
 
-    {{-- Assistant prose is rendered markdown (bold, lists, code, links) — the
-         renderer owns line breaking, so pre-wrap would double every gap. --}}
+    {{-- Assistant prose is rendered markdown — the renderer owns line breaking. --}}
     .hb-ai-msg--assistant .hb-ai-msg__text { white-space: normal; }
     .hb-ai-msg__text p { margin: 0 0 6px; }
     .hb-ai-msg__text > :last-child { margin-bottom: 0; }
@@ -65,7 +55,7 @@
     .hb-ai-msg__text strong { font-weight: 600; }
     .hb-ai-msg__text .hb-ai-md-h { font-weight: 600; margin: 8px 0 4px; }
 
-    {{-- Reference puts a tiny Edit under the user bubble, trailing edge. --}}
+    {{-- Tiny Edit under the user bubble, trailing edge. --}}
     .hb-ai-msg__edit {
         align-self: flex-end;
         display: inline-flex; align-items: center; gap: 2px;
@@ -76,8 +66,7 @@
     .hb-ai-msg__edit .hb-icon { width: 10px; height: 10px; }
     .hb-ai-msg__edit:hover { color: var(--hb-text-muted, #9A9A9A); }
 
-    {{-- Thinking block: header pill on bg-subtle, italic muted content indented
-         beneath. Hidden until the stream actually produces reasoning. --}}
+    {{-- Thinking block: hidden until the stream actually produces reasoning. --}}
     .hb-ai-think { display: flex; flex-direction: column; gap: 2px; width: 100%; }
     .hb-ai-think[hidden] { display: none; }
     .hb-ai-think__head {
@@ -100,8 +89,7 @@
         white-space: pre-wrap; overflow-wrap: anywhere;
     }
 
-    {{-- Applied card — "APPLIED TO YOUR POST". Check-circle rows in the
-         success color, one per tool run / build milestone. --}}
+    {{-- Applied card — check-circle rows, one per tool run / build milestone. --}}
     .hb-ai-applied { display: flex; flex-direction: column; gap: var(--hb-space-1, 4px); width: 100%; padding: var(--hb-space-2, 8px); border-radius: var(--hb-radius-md, 5px); background: var(--hb-bg-subtle, #FAFAFA); }
     .hb-ai-applied[hidden] { display: none; }
     .hb-ai-applied__label, .hb-ai-suggest__label {
@@ -111,7 +99,7 @@
     .hb-ai-applied__item { display: flex; align-items: flex-start; gap: var(--hb-space-1, 4px); font-size: var(--hb-fs-xs, 11px); line-height: 15px; color: var(--hb-text-secondary, #5A5A5A); }
     .hb-ai-applied__item .hb-icon { width: 12px; height: 12px; color: var(--hb-success, #3BD186); flex: none; margin-top: 1px; }
 
-    {{-- Quick inserts — success-soft pills, exactly the reference's chips. --}}
+    {{-- Quick inserts — success-soft chip pills. --}}
     .hb-ai-suggest { display: flex; flex-direction: column; gap: var(--hb-space-1, 4px); width: 100%; }
     .hb-ai-suggest[hidden] { display: none; }
     .hb-ai-suggest__row { display: flex; flex-wrap: wrap; gap: var(--hb-space-1, 4px); }
@@ -135,8 +123,7 @@
     }
     .hb-ai-empty[hidden] { display: none; }
 
-    {{-- Composer — the reference's Frame 4: a muted well holding a transparent
-         textarea, then a 32px control row: new chat (+) · model select · send. --}}
+    {{-- Composer — muted well + textarea, 32px control row: new chat / model / send. --}}
     .hb-ai-composer { flex: none; display: flex; flex-direction: column; background: var(--hb-surface-active, #F0F0F0); border-top: 1px solid var(--hb-border, #E4E4E4); }
     .hb-ai-composer__input {
         flex: 1 1 auto; min-width: 0; width: 100%;
@@ -162,18 +149,14 @@
     .hb-ai-composer__btn--stop { background: var(--hb-danger, #D4191A); }
     .hb-ai-composer__btn[hidden] { display: none; }
     .hb-ai-composer__spacer { flex: 1 1 auto; }
-    {{-- The model picker is the real ui/select; the composer only sizes its
-         slot so it sits like the reference's model pill instead of filling the
-         row. The 30px trigger the component ships with matches the control row. --}}
+    {{-- The real ui/select; only its slot is sized here to sit like a model pill. --}}
     .hb-ai-model { flex: none; width: 150px; }
     .hb-ai-model[hidden] { display: none; }
-    {{-- The picker sits on the bottom row, so its menu must open UPWARD or it
-         is clipped below the panel. Positioning-only override of the shared
-         ui/select — its own classes, no behaviour touched. --}}
+    {{-- On the bottom row, so its menu must open UPWARD or it's clipped below the panel. --}}
     .hb-ai-model .hb-select__menu { top: auto; bottom: calc(100% + var(--hb-space-1, 4px)); }
 
-    {{-- The block most recently landed by the live build pulses while the run
-         is still going — the canvas-side half of "watchable building". --}}
+    {{-- The block most recently landed pulses while the run is still going —
+         the canvas-side half of "watchable building". --}}
     .hb-canvas [data-block].hb-ai-writing { outline: 2px solid var(--hb-editing-soft, #607EE0); outline-offset: 2px; animation: hb-ai-writing-pulse 1.2s ease-in-out infinite; }
     @keyframes hb-ai-writing-pulse { 50% { outline-color: transparent; } }
 
@@ -201,16 +184,13 @@
     })();
 </script>
 <script>
-    {{-- The assistant. Same SSE contract as before (text_delta / tool_use /
-         done / error frames). The content path is the write_canvas tool: its
-         tool_use frame carries the shortcode as arguments (validated
-         server-side), and applyCanvasTool lands it in the editor — append or
-         replace. Bare shortcode streamed in the reply text still builds live
-         as a fallback, but stands down the moment a tool build happens.
-         Reasoning is captured into the thinking block instead of being
-         discarded, other tool_use frames feed the applied card, finished turns
-         are persisted to the conversations API, and prior turns ride along as
-         `history` so a reopened conversation is actually remembered. --}}
+    {{-- The assistant. SSE contract: text_delta / tool_use / done / error frames. The content
+         path is the write_canvas tool: its tool_use frame carries the shortcode as arguments
+         (validated server-side), applyCanvasTool lands it in the editor. Bare shortcode in the
+         reply text still builds live as a fallback, standing down once a tool build happens.
+         Reasoning feeds the thinking block, other tool_use frames feed the applied card,
+         finished turns persist to the conversations API, and prior turns ride along as
+         `history` so a reopened conversation is remembered. --}}
     (() => {
         const csrf = () => document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '';
 
@@ -286,12 +266,8 @@
                     if (id) root.dataset.postId = id;
                 });
 
-                // ── model select ─────────────────────────────────────────────
-                // The picker is the real ui/select, rendered server-side with the
-                // operator's configured models; it reports its choice on the
-                // `change` event it dispatches (detail.value / data-value). Sent
-                // as `model` per request — only configured models exist there, so
-                // this widens nothing.
+                // The real ui/select, rendered with the operator's configured models; sent as
+                // `model` per request — only configured models exist there, so this widens nothing.
                 const selectedModel = () => (modelSel ? modelSel.dataset.value || '' : '');
 
                 // ── reasoning split ──────────────────────────────────────────
@@ -570,6 +546,10 @@
                     }
                     const title = document.querySelector('[data-hb-title]');
                     if (title) base.title = (title.value || title.textContent || '').trim();
+                    // docs/content-translation.md §0/Wave 2 — lets EditorPrompt::user() state the
+                    // TRANSLATING rule against the concrete locale pair.
+                    if (window.hbEditor && window.hbEditor.getEditingLocale) base.editingLocale = window.hbEditor.getEditingLocale();
+                    if (window.hbEditor && window.hbEditor.getHomeLocale) base.homeLocale = window.hbEditor.getHomeLocale();
                     return base;
                 };
 
@@ -620,21 +600,31 @@
                     // editor: the tool_use frame arrives with the shortcode as
                     // `arguments.code`, already validated server-side (`ok`).
                     // Parsing through the same hbCodeView parser the code view
-                    // uses keeps this the one dialect, one grammar.
+                    // uses keeps this the one dialect, one grammar. The locale
+                    // decision (replace/append vs. fold-a-translation) lives in
+                    // hbEditor.applyCanvasWrite (docs/content-translation.md §0).
                     const applyCanvasTool = (data) => {
                         if (data.ok === false || !window.hbCodeView || !window.hbEditor) return;
                         const args = data.arguments || {};
                         const parsed = window.hbCodeView.parse(String(args.code || ''));
                         if (!parsed || !parsed.blocks.length) return;
                         toolBuilt = true;
+                        const result = window.hbEditor.applyCanvasWrite(parsed.blocks, args.mode);
+                        if (result.refusedAppend) {
+                            lastRun.applied = false;
+                            addNote(msg('msgTranslateAppendRefused'), true);
+                            return;
+                        }
+                        if (!result.ok) {
+                            lastRun.applied = false;
+                            addNote(result.error || msg('msgTranslateMismatch'), true);
+                            return;
+                        }
                         lastRun.applied = true;
-                        const replace = args.mode === 'replace';
-                        const current = replace ? [] : (window.hbEditor.getDoc().blocks || []);
-                        builtCount = replace ? parsed.blocks.length : builtCount + parsed.blocks.length;
-                        window.hbEditor.replaceDoc(current.concat(parsed.blocks));
+                        builtCount = result.translating ? result.blocks : builtCount + result.appliedCount;
                         canvasFollow(false);
                         if (!builtEl) builtEl = appliedItem(reply, '');
-                        builtEl.textContent = msg('msgBuilt').replace(':count', String(builtCount));
+                        builtEl.textContent = (result.translating ? msg('msgTranslated') : msg('msgBuilt')).replace(':count', String(builtCount));
                         if (stick) scrollToEnd();
                     };
 
@@ -661,10 +651,13 @@
 
                     // Legacy fallback: a model that ignores the tool and streams
                     // bare shortcode in its reply still lands on the canvas —
-                    // but never on top of a tool build (double-application).
+                    // but never on top of a tool build (double-application), and
+                    // never while translating: this path has no fold, so it would
+                    // replaceDoc away the home locale's text same as the tool bug above.
                     const liveApply = (final) => {
                         if (toolBuilt) return;
                         if (!window.hbCodeView || !window.hbEditor) return;
+                        if (window.hbEditor.getEditingLocale() !== window.hbEditor.getHomeLocale()) return;
                         const now = Date.now();
                         if (!final && now - lastApplyAt < 250) return; // replaceDoc rerenders the whole doc — pace it
                         const markup = extractMarkup(splitReasoning(acc).visible);
@@ -944,6 +937,9 @@
     data-msg-thought-for="{{ __('heisenberg::editor.panel_ai_tools.ai_thought_for') }}"
     data-msg-building="{{ __('heisenberg::editor.panel_ai_tools.ai_building') }}"
     data-msg-built="{{ __('heisenberg::editor.panel_ai_tools.ai_built') }}"
+    data-msg-translated="{{ __('heisenberg::editor.panel_ai_tools.ai_translated') }}"
+    data-msg-translate-append-refused="{{ __('heisenberg::editor.panel_ai_tools.ai_translate_append_refused') }}"
+    data-msg-translate-mismatch="{{ __('heisenberg::editor.panel_ai_tools.ai_translate_mismatch') }}"
     data-msg-set-title="{{ __('heisenberg::editor.panel_ai_tools.ai_set_title') }}"
     data-msg-working="{{ __('heisenberg::editor.panel_ai_tools.ai_working_tool') }}"
     data-msg-network="{{ __('heisenberg::editor.ai.network_error', ['provider' => __('heisenberg::editor.ai.settings_title')]) }}"

@@ -1740,6 +1740,101 @@
         return true;
     }
 
+    // ── translation fold (docs/content-translation.md §0/Wave 2) ───────────────
+    // The write_canvas apply path while editing a NON-home locale must not replaceDoc — that
+    // would overwrite the bare (home-locale) values a translation turn must leave untouched
+    // (this is the exact bug the fold replaces: French replied, English vanished). Instead the
+    // model's freshly parsed blocks are folded into the EXISTING doc.blocks' `_<locale>`
+    // variants, matched BY POSITION — mirrors McpToolRegistry::foldTranslatedBlocks()/
+    // foldNode() (PHP, server-side create_translation) exactly: same path-naming scheme
+    // ("blocks[N]" top level, ">N" per innerBlocks depth), same refusal rule (a block-count or
+    // block-name mismatch at ANY position/depth aborts the WHOLE fold — nothing partially
+    // applies), same bare-value-is-the-translator's-actual-text read. Reuses isTranslatableAttr/
+    // resolveAttrKey — the one place the suffix rule lives — rather than re-deriving it.
+    function foldReadIncoming(attributes, key) {
+        const suffixed = key + '_' + editingLocale;
+        if (Object.prototype.hasOwnProperty.call(attributes, suffixed)) return attributes[suffixed];
+        return Object.prototype.hasOwnProperty.call(attributes, key) ? attributes[key] : null;
+    }
+    function foldHasContent(value) {
+        if (typeof value === 'string') return value.trim() !== '';
+        if (Array.isArray(value)) return value.length > 0;
+        return value !== null && value !== undefined;
+    }
+    function foldNode(storedNode, translatedNode, mismatches, path) {
+        const storedName = storedNode && storedNode.name;
+        const translatedName = translatedNode && translatedNode.name;
+        if (typeof storedName !== 'string' || storedName !== translatedName) {
+            mismatches.push(path + ": block name mismatch ('" + (typeof storedName === 'string' ? storedName : 'null')
+                + "' vs '" + (typeof translatedName === 'string' ? translatedName : 'null') + "')");
+            return storedNode;
+        }
+        const translatedAttrs = (translatedNode.attributes && typeof translatedNode.attributes === 'object') ? translatedNode.attributes : {};
+        translatableKeys(storedName).forEach(function (key) {
+            const value = foldReadIncoming(translatedAttrs, key);
+            if (!foldHasContent(value)) return;
+            storedNode.attributes[resolveAttrKey(storedName, key)] = value;
+        });
+
+        const storedInner = Array.isArray(storedNode.innerBlocks) ? storedNode.innerBlocks : [];
+        const translatedInner = Array.isArray(translatedNode.innerBlocks) ? translatedNode.innerBlocks : [];
+        if (storedInner.length !== translatedInner.length) {
+            mismatches.push(path + ': innerBlocks count differs (post has ' + storedInner.length + ', translated code has ' + translatedInner.length + ')');
+            return storedNode;
+        }
+        storedNode.innerBlocks = storedInner.map(function (child, index) {
+            return foldNode(child, translatedInner[index] || {}, mismatches, path + '>' + index);
+        });
+        return storedNode;
+    }
+    function foldNodes(storedNodes, translatedNodes, mismatches, path) {
+        if (storedNodes.length !== translatedNodes.length) {
+            mismatches.push(path + ': block count differs (post has ' + storedNodes.length + ', translated code has ' + translatedNodes.length + ')');
+            return storedNodes;
+        }
+        return storedNodes.map(function (storedNode, index) {
+            return foldNode(storedNode, translatedNodes[index] || {}, mismatches, path + '[' + index + ']');
+        });
+    }
+    // Returns {ok:true, blocks:N} on success (doc.blocks mutated in place, re-rendered, and
+    // hb:blocks-changed fired — the same dirty/history signal every other edit path uses) or
+    // {ok:false, error} naming every mismatch WITHOUT touching doc.blocks at all.
+    function foldTranslation(blocks) {
+        if (editingLocale === homeLocale) {
+            return { ok: false, error: 'foldTranslation is only valid while editing a non-home locale.' };
+        }
+        const incoming = Array.isArray(blocks) ? blocks : [];
+        const mismatches = [];
+        const folded = foldNodes(doc.blocks, incoming, mismatches, 'blocks');
+        if (mismatches.length) {
+            return {
+                ok: false,
+                error: "The translated content's structure does not match this post's blocks: " + mismatches.join('; ')
+                    + '. Translate the SAME block sequence and structure — only human-readable text may change.',
+            };
+        }
+        doc.blocks = folded;
+        doc.blocks.forEach(function (m) { reRenderBlock(m.id); });
+        document.dispatchEvent(new CustomEvent('hb:blocks-changed'));
+        return { ok: true, blocks: doc.blocks.length };
+    }
+
+    // panel-ai.blade.php's applyCanvasTool — the ONE decision write_canvas's landed shortcode
+    // needs: home locale keeps append/replace exactly as before; a non-home locale folds
+    // (mode="replace" only — "append" is refused, there being no home-locale row for a brand
+    // new block to join).
+    function applyCanvasWrite(blocks, mode) {
+        const incoming = Array.isArray(blocks) ? blocks : [];
+        if (!incoming.length) return { ok: false, error: 'no blocks' };
+        const append = mode !== 'replace';
+        if (editingLocale !== homeLocale) {
+            if (append) return { ok: false, translating: true, refusedAppend: true };
+            return Object.assign({ translating: true }, foldTranslation(incoming));
+        }
+        replaceDoc((append ? doc.blocks : []).concat(incoming));
+        return { ok: true, translating: false, appliedCount: incoming.length };
+    }
+
     // ── history (undo/redo) ────────────────────────────────────
     // Snapshot-based: every mutation event schedules a debounced commit (rapid typing
     // coalesces into one step); undo/redo swap serialized states through renderDoc with
@@ -1874,6 +1969,10 @@
         selectById: selectById,
         reRenderBlock: reRenderBlock,
         replaceDoc: replaceDoc,
+        // docs/content-translation.md §0/Wave 2 — the write_canvas apply path's non-home-locale
+        // branch (panel-ai.blade.php's applyCanvasTool) folds through here instead of replaceDoc.
+        foldTranslation: foldTranslation,
+        applyCanvasWrite: applyCanvasWrite,
         undo: undo,
         redo: redo,
         canUndo: function () { return history.past.length > 0; },

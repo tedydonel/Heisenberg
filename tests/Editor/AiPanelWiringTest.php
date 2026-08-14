@@ -347,6 +347,50 @@ class AiPanelWiringTest extends TestCase
         $this->assertStringContainsString('data-hb-ai-suggest="Translate"', $html);
     }
 
+    /**
+     * The data-loss bug this wave fixes: switch to French, ask the assistant to translate, and
+     * the English text was overwritten because the panel's write_canvas apply path
+     * (applyCanvasTool) knew nothing about the editing locale. It now carries editingLocale/
+     * homeLocale on every turn's context (so EditorPrompt::user() can state the TRANSLATING rule
+     * against the concrete pair) and branches its apply through hbEditor.applyCanvasWrite, which
+     * folds rather than replaces on a non-home locale.
+     */
+    public function test_the_turn_envelope_carries_the_editing_and_home_locale(): void
+    {
+        $html = $this->editorHtml();
+
+        $this->assertStringContainsString('base.editingLocale = window.hbEditor.getEditingLocale()', $html);
+        $this->assertStringContainsString('base.homeLocale = window.hbEditor.getHomeLocale()', $html);
+    }
+
+    /**
+     * applyCanvasTool no longer decides replace/append itself — it hands the parsed blocks and
+     * mode to hbEditor.applyCanvasWrite (block-runtime.blade.php), which returns the fold-or-
+     * replace/append decision. A refused append or a structural mismatch surfaces as a note in
+     * the panel through the same addNote() a network error uses, and neither ever partially
+     * applies anything (applyCanvasWrite/foldTranslation only mutate doc.blocks on a full match).
+     */
+    public function test_the_write_canvas_apply_path_routes_through_apply_canvas_write(): void
+    {
+        $html = $this->editorHtml();
+
+        $this->assertStringContainsString('window.hbEditor.applyCanvasWrite(parsed.blocks, args.mode)', $html);
+        $this->assertStringContainsString('result.refusedAppend', $html);
+        $this->assertStringContainsString("addNote(msg('msgTranslateAppendRefused'), true)", $html);
+        $this->assertStringContainsString("addNote(result.error || msg('msgTranslateMismatch'), true)", $html);
+        $this->assertStringContainsString(
+            "(result.translating ? msg('msgTranslated') : msg('msgBuilt'))",
+            $html,
+        );
+
+        // The legacy bare-shortcode fallback has no fold — it must stand down entirely while
+        // translating rather than replaceDoc away the home locale's text.
+        $this->assertStringContainsString(
+            "if (window.hbEditor.getEditingLocale() !== window.hbEditor.getHomeLocale()) return;",
+            $html,
+        );
+    }
+
     public function test_the_rendered_page_never_contains_key_material(): void
     {
         putenv('HEISENBERG_AI_ANTHROPIC_KEY=sk-ant-page-secret');

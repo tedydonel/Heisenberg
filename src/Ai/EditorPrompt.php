@@ -113,6 +113,22 @@ class EditorPrompt
                 . 'becomes the page content, live in front of the user.';
         }
 
+        // The editor's editing locale (docs/content-translation.md §0/Wave 2), sent by the
+        // panel every turn (block-runtime.blade.php's getEditingLocale()/getHomeLocale()).
+        // When it differs from the post's own home locale, write_canvas is TRANSLATING —
+        // restate the LOCALES-section rule against the CONCRETE locales this turn, since a
+        // named pair ("fr" vs "en") is much harder to miss than the generic rule alone.
+        $editingLocale = trim((string) ($context['editingLocale'] ?? ''));
+        $homeLocale = trim((string) ($context['homeLocale'] ?? ''));
+        if ($editingLocale !== '' && $homeLocale !== '' && $editingLocale !== $homeLocale) {
+            $parts[] = "You are editing the '{$editingLocale}' locale; the post's home locale is "
+                . "'{$homeLocale}'. This turn is a TRANSLATION: any write_canvas call must reproduce the "
+                . 'SAME block sequence as the document above with only human-readable text changed — '
+                . 'never add, remove, or reorder blocks, and never change ids/urls/media refs. Use '
+                . 'mode="replace" only; mode="append" is refused while editing a non-home locale (tell '
+                . 'the user to switch back to the home locale to add new blocks).';
+        }
+
         $selection = trim((string) ($context['selection'] ?? ''));
         if ($selection !== '') {
             $blockName = trim((string) ($context['blockName'] ?? ''));
@@ -531,18 +547,20 @@ class EditorPrompt
         TXT;
     }
 
-    /** §6 — the single-row translation model and create_translation (docs/content-translation.md §0). */
+    /** §6 — the single-row translation model, create_translation, and the live editing locale
+     *  (docs/content-translation.md §0). */
     private function locales(): string
     {
         return <<<TXT
         LOCALES — one post, several languages on the SAME row
-        Structure exists once; only words differ. A locale's text is a suffixed attribute
-        variant (`content` -> `content_fr`), never a separate post. get_post's `translations`:
-        locale -> {is_default, title, excerpt, blocks_translated, blocks_total, complete}.
-        create_translation(post_id, target_locale, title?, excerpt?, code?) edits THAT post:
-        title/excerpt -> title_<locale>/excerpt_<locale>; `code` repeats the post's OWN block
-        sequence with only text translated — never names/ids/URLs/media refs — folded in by
-        position. Restructuring is refused; no new post, slug or status change.
+        Structure exists once; only words differ: a locale's text is a suffixed attribute variant
+        (`content` -> `content_fr`), never a separate post. get_post's `translations`: locale ->
+        {is_default, title, excerpt, blocks_translated, blocks_total, complete}.
+        create_translation(post_id, target_locale, title?, excerpt?, code?) folds `code` (same
+        block sequence, text only) into the post by position; no new post/slug/status change.
+        EDITING LOCALE (context): differs from home_locale => write_canvas is TRANSLATING too —
+        same sequence, text only, no add/remove/reorder/id/url/media change, mode="replace" only,
+        positions must match exactly.
         TXT;
     }
 

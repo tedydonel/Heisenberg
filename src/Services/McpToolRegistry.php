@@ -268,18 +268,35 @@ class McpToolRegistry
             // Nothing is persisted — the document stays unsaved client state
             // until the user saves, same as hand-drawn blocks.
             'write_canvas' => [
+                // docs/content-translation.md §0/Wave 2: the editor turn's `editing_locale`/
+                // `home_locale` (see EditorPrompt::user()) tell the model when it is translating,
+                // not this tool — write_canvas has no view of the editor's current document (it
+                // lives in the browser, possibly never saved), so it cannot itself compare the
+                // supplied code's structure against what is already on the canvas. That
+                // position-matched comparison, and the actual non-replacing fold, happen
+                // CLIENT-side (block-runtime.blade.php's foldTranslation, applied by panel-ai's
+                // applyCanvasTool) the moment this call's arguments land on the stream — mirroring
+                // McpToolRegistry::foldTranslatedBlocks(), the same rule create_translation
+                // enforces server-side for a SAVED post. This description restates the rule so a
+                // model that skims tool descriptions instead of the system prompt still gets it.
                 'description' => 'Write Heisenberg shortcode directly into the editor the user is looking at. '
                     . 'The blocks land on the canvas immediately — this is THE way to build or edit the current '
                     . 'page. mode "append" (default) adds the blocks after what is already on the page; mode '
                     . '"replace" swaps the whole document for the supplied code (pass the full updated document '
-                    . 'to rework or restructure existing content). Nothing is saved to the database — the user '
-                    . 'reviews and saves. The code is validated against the live block contracts; on a parse '
-                    . 'error nothing is applied and the error names the line to fix.',
+                    . 'to rework or restructure existing content). If the editor is showing a locale other than '
+                    . "the post's home locale (see the user turn's editing/home locale), you are TRANSLATING: "
+                    . 'reproduce the SAME block sequence with only human-readable text changed — never add, '
+                    . 'remove, or reorder blocks, and never change ids/urls/media refs; the editor applies this '
+                    . 'as a position-matched fold and rejects (with no partial change) a mismatched structure. '
+                    . 'mode="append" is refused while translating — tell the user to switch to the home locale '
+                    . 'to add new blocks. Nothing is saved to the database — the user reviews and saves. The '
+                    . 'code is validated against the live block contracts; on a parse error nothing is applied '
+                    . 'and the error names the line to fix.',
                 'tier' => self::TIER_AUTHORS,
                 'surface' => self::SURFACE_EDITOR,
                 'inputSchema' => $this->schema([
                     'code' => ['type' => 'string', 'description' => 'The content, as Heisenberg shortcode.'],
-                    'mode' => ['type' => 'string', 'description' => '"append" (default) adds after the current page content; "replace" swaps the whole document.'],
+                    'mode' => ['type' => 'string', 'description' => '"append" (default) adds after the current page content; "replace" swaps the whole document. "append" is refused while translating a non-home locale.'],
                 ], ['code']),
                 'handler' => function (array $args): array {
                     $mode = (string) ($args['mode'] ?? 'append');

@@ -350,6 +350,26 @@ class EditorAssistantTest extends TestCase
         $this->assertStringContainsString('append', $badMode['content']);
     }
 
+    /**
+     * write_canvas cannot see the editor's current document (it lives in the browser, possibly
+     * unsaved), so it cannot itself compare a translated call's structure against what's already
+     * on the canvas — that fold/refuse rule is enforced client-side (block-runtime.blade.php's
+     * foldTranslation, mirroring McpToolRegistry::foldTranslatedBlocks()). The tool's DESCRIPTION
+     * still states the rule, since a model that skims tool descriptions rather than the system
+     * prompt (EditorPrompt::locales()) needs to hit it there too.
+     */
+    public function test_write_canvas_description_teaches_the_translating_rule(): void
+    {
+        $registry = app(McpToolRegistry::class);
+        $tool = collect($registry->listFor(McpToolRegistry::TIER_AUTHORS, McpToolRegistry::SURFACE_EDITOR))
+            ->firstWhere('name', 'write_canvas');
+
+        $this->assertNotNull($tool);
+        $this->assertStringContainsString('TRANSLATING', $tool['description']);
+        $this->assertStringContainsString('SAME block sequence', $tool['description']);
+        $this->assertStringContainsString('mode="append" is refused while translating', $tool['description']);
+    }
+
     public function test_a_local_tool_runs_in_process_without_any_mcp_server(): void
     {
         $source = new HeisenbergToolSource(app(McpToolRegistry::class));
