@@ -78,8 +78,10 @@ the "SEO score rating" UI the design lacked.
 ## 5. Site-wide artifacts (Wave S2b)
 
 - **Sitemap**: `GET /sitemap.xml` (config `heisenberg.seo.sitemap`, default on; `heisenberg.middleware.seo`)
-  — published posts where `in_sitemap` and not noindexed, one `<url>` per locale row with
-  `xhtml:link rel="alternate" hreflang` entries across its translation group + `x-default`; lastmod from
+  — published posts where `in_sitemap` and not noindexed. Under the single-row translation model
+  (docs/content-translation.md §0) one post is emitted once per locale it is readable in — the same
+  row resolved at each locale, not one row per language — and every one of those URLs carries
+  `xhtml:link rel="alternate" hreflang` entries for the other locales plus `x-default`; lastmod from
   `updated_at`. Host URL shape comes from a configurable URL template
   (`heisenberg.seo.url_template`, default the preview route) so hosts map it to their real blog routes.
   `url_template` accepts either shape:

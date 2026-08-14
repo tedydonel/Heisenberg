@@ -7,18 +7,19 @@ namespace Heisenberg\Http\Controllers;
 use Heisenberg\Contracts\PostUrlResolver;
 use Heisenberg\Models\Post;
 use Heisenberg\Models\SeoMeta;
+use Heisenberg\Services\TranslationStatusService;
 use Heisenberg\Support\LocaleConfig;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Http\Response;
 
 /**
- * `GET /sitemap.xml` (docs/seo-system.md §5, Wave S2b) — one `<url>` per published, sitemap-
- * eligible post row, with `<xhtml:link rel="alternate" hreflang>` entries across its translation
- * group + `x-default` (docs/content-translation.md's split-row model: a "post" in the sitemap
- * sense is one locale row, not the group). Loaded only when `config('heisenberg.seo.sitemap')` is
- * true (see `HeisenbergServiceProvider::registerSeoRoutes()`); URLs come from
- * the {@see PostUrlResolver} contract, the SAME resolver `PreviewController::showPost()` uses for its own
- * hreflang alternates, so the two surfaces never disagree.
+ * `GET /sitemap.xml` (docs/seo-system.md §5) — one `<url>` per published, sitemap-eligible post
+ * PER LOCALE it is readable in, each carrying `<xhtml:link rel="alternate" hreflang>` entries for
+ * the other locales plus `x-default`. Under the single-row model (docs/content-translation.md §0)
+ * a post is one row in several languages, so the per-locale URLs come from resolving that same row
+ * once per locale rather than from separate sibling rows — which is what this emitted before the
+ * model changed, and why a fully translated post briefly appeared here exactly once with no
+ * alternates at all.
  *
  * Eligibility (a row is IN the sitemap when):
  *  - `type === 'post'` (docs/email-system.md §3 — an email document has no public URL)
@@ -28,19 +29,17 @@ use Illuminate\Http\Response;
  *    `'index, follow'` when there is no row / the column is empty, same posture as
  *    `NativeSeoMetaProvider::meta()`)
  *
- * Efficient by construction: exactly two queries regardless of post count — all eligible-
- * candidate posts, then their `SeoMeta` rows in one `whereIn`, both eager-loaded rather than
- * queried per row. The hreflang groups reuse the SAME published-posts collection (grouped by
- * `translation_group_id` in memory) rather than a query per group.
- *
  * URLs resolve through the {@see PostUrlResolver} CONTRACT (not the bundled `SeoUrlResolver`
  * class directly) — a host binding `heisenberg.seo.url_resolver` to its own implementation
- * controls every URL this controller emits.
+ * controls every URL this controller emits, and it is the SAME resolver
+ * `PreviewController::showPost()` uses for its own hreflang, so the two can never disagree.
  */
 class SitemapController
 {
-    public function __construct(private PostUrlResolver $urls)
-    {
+    public function __construct(
+        private PostUrlResolver $urls,
+        private TranslationStatusService $status,
+    ) {
     }
 
     public function index(): Response
@@ -62,12 +61,7 @@ class SitemapController
 
         $eligible = $published->filter(fn (Post $post) => $this->isEligible($post, $seoRows));
 
-        // Group ALL published rows (not just eligible ones) by translation_group_id -- hreflang
-        // alternates point at any published sibling, whether or not IT is itself sitemap-eligible.
-        $groups = $published->filter(fn (Post $post) => ! empty($post->translation_group_id))
-            ->groupBy('translation_group_id');
-
-        $xml = $this->buildXml($eligible, $groups);
+        $xml = $this->buildXml($eligible);
 
         return response($xml, 200)->header('Content-Type', 'application/xml; charset=UTF-8');
     }
@@ -88,45 +82,68 @@ class SitemapController
         return ! str_contains($robots, 'noindex');
     }
 
-    /**
-     * @param \Illuminate\Support\Collection<int, Post> $eligible
-     * @param \Illuminate\Support\Collection<string, \Illuminate\Support\Collection<int, Post>> $groups
-     */
-    private function buildXml($eligible, $groups): string
+    /** @param \Illuminate\Support\Collection<int, Post> $eligible */
+    private function buildXml($eligible): string
     {
         $defaultLocale = LocaleConfig::default();
         $body = '';
 
         foreach ($eligible as $post) {
-            $loc = $this->urls->url($post);
+            $locales = $this->localesWithContent($post);
             $lastmod = $post->updated_at?->toAtomString();
 
-            $body .= '<url>';
-            $body .= '<loc>' . $this->xmlEscape($loc) . '</loc>';
-            if ($lastmod !== null) {
-                $body .= '<lastmod>' . $this->xmlEscape($lastmod) . '</lastmod>';
-            }
-
-            $siblings = ! empty($post->translation_group_id) ? ($groups->get($post->translation_group_id) ?? collect()) : collect();
-            if ($siblings->count() >= 2) {
-                foreach ($siblings as $sibling) {
-                    $body .= '<xhtml:link rel="alternate" hreflang="' . $this->xmlEscape((string) $sibling->locale)
-                        . '" href="' . $this->xmlEscape($this->urls->url($sibling)) . '" />';
+            foreach ($locales as $locale) {
+                $body .= '<url>';
+                $body .= '<loc>' . $this->xmlEscape($this->urlFor($post, $locale)) . '</loc>';
+                if ($lastmod !== null) {
+                    $body .= '<lastmod>' . $this->xmlEscape($lastmod) . '</lastmod>';
                 }
 
-                $default = $siblings->firstWhere('locale', $defaultLocale);
-                if ($default !== null) {
-                    $body .= '<xhtml:link rel="alternate" hreflang="x-default" href="'
-                        . $this->xmlEscape($this->urls->url($default)) . '" />';
+                if (count($locales) >= 2) {
+                    foreach ($locales as $alternate) {
+                        $body .= '<xhtml:link rel="alternate" hreflang="' . $this->xmlEscape($alternate)
+                            . '" href="' . $this->xmlEscape($this->urlFor($post, $alternate)) . '" />';
+                    }
+                    if (in_array($defaultLocale, $locales, true)) {
+                        $body .= '<xhtml:link rel="alternate" hreflang="x-default" href="'
+                            . $this->xmlEscape($this->urlFor($post, $defaultLocale)) . '" />';
+                    }
                 }
-            }
 
-            $body .= '</url>';
+                $body .= '</url>';
+            }
         }
 
         return '<?xml version="1.0" encoding="UTF-8"?>' . "\n"
             . '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9" xmlns:xhtml="http://www.w3.org/1999/xhtml">'
             . $body . '</urlset>';
+    }
+
+    /**
+     * The locales this ONE row is actually readable in — the same "has a title in that locale"
+     * rule PreviewController's hreflang uses, so the sitemap and the page can never disagree.
+     * Falls back to the row's own locale so a post always appears at least once.
+     *
+     * @return list<string>
+     */
+    private function localesWithContent(Post $post): array
+    {
+        $locales = [];
+        foreach ($this->status->statuses($post) as $status) {
+            if (($status['title'] ?? false) === true) {
+                $locales[] = (string) $status['locale'];
+            }
+        }
+
+        return $locales !== [] ? $locales : [(string) ($post->locale ?: LocaleConfig::default())];
+    }
+
+    private function urlFor(Post $post, string $locale): string
+    {
+        $clone = clone $post;
+        $clone->locale = $locale;
+
+        return $this->urls->url($clone);
     }
 
     private function xmlEscape(string $value): string

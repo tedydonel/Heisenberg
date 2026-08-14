@@ -131,16 +131,14 @@ class SitemapTest extends TestCase
         $this->assertCount(0, $xml->xpath('//xhtml:link'));
     }
 
-    public function test_published_siblings_emit_hreflang_alternates_and_x_default(): void
+    /**
+     * One row, several languages (docs/content-translation.md §0): the SAME post is emitted once
+     * per locale it is readable in, and each of those URLs carries the full alternate set. The
+     * old shape of this test built two sibling ROWS, which the model no longer has.
+     */
+    public function test_a_post_translated_into_a_second_locale_emits_one_url_per_locale(): void
     {
-        $en = $this->makePost(['locale' => 'en', 'title_en' => 'English title']);
-        $fr = Post::create([
-            'translation_group_id' => $en->translation_group_id,
-            'locale' => 'fr',
-            'title_en' => '',
-            'title_fr' => 'Titre français',
-            'status' => 'published',
-        ]);
+        $this->makePost(['locale' => 'en', 'title_en' => 'English title', 'title_fr' => 'Titre français']);
 
         $xml = $this->fetchXml();
         $urls = $xml->xpath('//s:url');
@@ -150,26 +148,16 @@ class SitemapTest extends TestCase
             $links = $url->xpath('.//xhtml:link');
             $hreflangs = array_map(fn ($l) => (string) $l['hreflang'], $links);
             sort($hreflangs);
-            // en, fr, x-default -- every row in a 2-locale group carries all three.
             $this->assertSame(['en', 'fr', 'x-default'], $hreflangs);
         }
     }
 
-    public function test_an_unpublished_sibling_does_not_count_toward_alternates(): void
+    public function test_an_untranslated_post_emits_one_url_and_no_alternates(): void
     {
-        $en = $this->makePost(['locale' => 'en']);
-        Post::create([
-            'translation_group_id' => $en->translation_group_id,
-            'locale' => 'fr',
-            'title_en' => '',
-            'title_fr' => 'Brouillon',
-            'status' => 'draft',
-        ]);
+        $this->makePost(['locale' => 'en', 'title_en' => 'English only', 'title_fr' => '']);
 
         $xml = $this->fetchXml();
 
-        // The FR draft never appears as a <url> (excluded), and the EN row gets no hreflang
-        // block either -- it has no PUBLISHED sibling to relate to.
         $this->assertCount(1, $xml->xpath('//s:url'));
         $this->assertCount(0, $xml->xpath('//xhtml:link'));
     }
