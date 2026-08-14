@@ -881,34 +881,91 @@
         show(tb.querySelector('[data-tb-action="save"]'), !!(c.innerBlocks && c.innerBlocks.enabled));
     }
 
-    // Where the floating toolbar anchors for a selected block. A nested wrapper is
-    // display:contents (flex containers must see the real child root as their item) so it
-    // cannot anchor an absolute — and anchoring to the child's own ROOT put the 32px bar
-    // *inside* the container's content box, covering sibling text and swallowing the clicks
-    // meant for it (a nested child then read as "not editable"). So a nested selection
-    // anchors to its TOP-LEVEL ancestor, exactly where a top-level block's toolbar sits:
-    // never over container content, and the bar still reflects the selected child.
-    function toolbarHost(blk) {
-        if (!blk.classList.contains('hb-blk--nested')) return blk;
-        let top = blk, parent = blk.parentElement ? blk.parentElement.closest('.hb-blk') : null;
-        while (parent) {
-            top = parent;
-            parent = parent.parentElement ? parent.parentElement.closest('.hb-blk') : null;
-        }
-        return top;
+    // The toolbar FOLLOWS the selected block, at whatever depth it sits.
+    //
+    // It used to dock in the DOM, inside the selected block — which a nested child cannot do: its
+    // wrapper is display:contents (flex containers must see the real child root as their item) and
+    // so anchors no absolute at all. The workaround was to dock a nested selection in its TOP-LEVEL
+    // ancestor, which is why the bar appeared to be stuck on the parent container while the author
+    // was editing a child: it was gated for the child, but sitting somewhere else entirely.
+    //
+    // So it does not dock anywhere now. It lives in a canvas-level layer and is placed with
+    // position:fixed from the selected block's own measured box, which every block has regardless
+    // of depth or display mode. That also drops the reasons docking was avoided: being outside the
+    // container's content box, it can neither push sibling content around nor be clipped by an
+    // ancestor's overflow.
+    const TB_GAP = 2;
+
+    // A nested wrapper is display:contents and has NO box of its own — measure the block's real
+    // rendered root instead. Same resolution the drop-line math uses (see resolveDropIndex).
+    function blockBox(blk) {
+        return (blk.querySelector(':scope > [data-block-id]') || blk).getBoundingClientRect();
     }
+
+    // Above the block, left-aligned with it, kept inside the canvas viewport: flipped below when
+    // there is no room above (a first block scrolled to the top of the stage), pulled left when
+    // the bar would otherwise run past the canvas edge, and hidden outright while the block it
+    // belongs to is scrolled out of sight — a bar pinned to a block nobody can see is just chrome
+    // floating over someone else's content.
+    function positionToolbar() {
+        const tb = document.querySelector('[data-hb-block-toolbar]');
+        if (!tb || tb.hidden || !selected || !selected.isConnected) return;
+        const canvas = document.querySelector('.hb-canvas');
+        const view = canvas
+            ? canvas.getBoundingClientRect()
+            : { top: 0, left: 0, right: window.innerWidth, bottom: window.innerHeight };
+        const box = blockBox(selected);
+        const h = tb.offsetHeight || 32;
+        const w = tb.offsetWidth || 0;
+
+        let top = box.top - h - TB_GAP;
+        if (top < view.top) top = Math.min(box.bottom + TB_GAP, view.bottom - h);
+        const left = Math.max(view.left, Math.min(box.left, view.right - w));
+
+        tb.style.top = Math.round(top) + 'px';
+        tb.style.left = Math.round(left) + 'px';
+        tb.style.visibility = (box.bottom < view.top || box.top > view.bottom) ? 'hidden' : '';
+    }
+
+    // Re-place on anything that can move the block under the bar: the canvas scrolling (capture —
+    // a scroll event does not bubble), the window resizing, and the block's own box changing as
+    // its text is typed or an image finishes loading.
+    let tbFollow = null;
+    function followSelected(blk) {
+        if (tbFollow) tbFollow.disconnect();
+        if (typeof ResizeObserver === 'undefined') return;
+        tbFollow = new ResizeObserver(positionToolbar);
+        tbFollow.observe(blk.querySelector(':scope > [data-block-id]') || blk);
+    }
+    if (!document.__hbTbFollow) {
+        document.__hbTbFollow = true;
+        document.addEventListener('scroll', positionToolbar, true);
+        window.addEventListener('resize', positionToolbar);
+        document.addEventListener('hb:blocks-changed', positionToolbar);
+    }
+
     function dockToolbar(blk, model) {
         const tb = document.querySelector('[data-hb-block-toolbar]');
         if (!tb) return;
         gateToolbar(tb, model);
         tb.hidden = false;
-        const host = toolbarHost(blk);
-        host.insertBefore(tb, host.firstChild);
+        tb.classList.add('hb-tb--float');
+        // Inside .hb-canvas rather than the body so the bar keeps inheriting the editor theme's
+        // custom properties; position:fixed means the canvas's own overflow never clips it.
+        const layer = document.querySelector('.hb-canvas') || document.body;
+        if (tb.parentElement !== layer) layer.appendChild(tb);
+        positionToolbar();
+        followSelected(blk);
     }
     function stowToolbar() {
         const tb = document.querySelector('[data-hb-block-toolbar]');
         const holder = document.querySelector('.hb-blk-toolbar-holder');
-        if (tb && holder) { tb.hidden = true; holder.appendChild(tb); }
+        if (tbFollow) { tbFollow.disconnect(); tbFollow = null; }
+        if (!tb || !holder) return;
+        tb.hidden = true;
+        tb.classList.remove('hb-tb--float');
+        tb.style.top = tb.style.left = tb.style.visibility = '';
+        holder.appendChild(tb);
     }
 
     function switchInspector(index) {
@@ -972,8 +1029,8 @@
     }
 
     // Rebuilds one block's DOM in place from its current model — used after any attribute write.
-    // Preserves the current selection (re-docks the toolbar if this was the selected block) and the
-    // caret position if the user is mid-edit in one of the block's rich-text fields.
+    // Preserves the current selection (re-points the toolbar at the fresh element if this was the
+    // selected block) and the caret position if the user is mid-edit in one of its rich-text fields.
     function reRenderBlock(id) {
         const old = findBlockEl(id);
         const model = findModel(id);
@@ -981,8 +1038,6 @@
 
         const caret = captureCaret(old);
         const wasSelected = selected === old;
-        const tb = document.querySelector('[data-hb-block-toolbar]');
-        const tbWasDocked = !!(wasSelected && tb && old.contains(tb));
         // A re-rendered PARENT swallows its selected child's DOM — re-select it after.
         const selectedId = selected && old.contains(selected) && selected !== old
             ? selected.getAttribute('data-block') : null;
@@ -991,14 +1046,14 @@
         const next = renderBlockEl(model, nested ? 1 : 0);
         if (!next) return false;
         if (!old.parentNode) return false;
-        // The toolbar must survive the swap — it lives inside `old` while docked.
-        if (tb && old.contains(tb)) stowToolbar();
         old.parentNode.replaceChild(next, old);
 
         if (wasSelected) {
             selected = next;
             next.classList.add('is-selected');
-            if (tbWasDocked) { dockToolbar(next, model); }
+            // The bar itself survived the swap untouched (it lives in the canvas layer, never
+            // inside the block) — this re-measures against the new element and re-observes it.
+            dockToolbar(next, model);
         } else if (selectedId) {
             selected = null; // the old child element is gone; re-select its fresh DOM
             selectById(selectedId);
@@ -1259,8 +1314,8 @@
         return !!(el && el.closest && el.closest('.hb-canvas'));
     }
 
-    // Canvas reorder — the gesture starts ONLY from the docked toolbar's grip (.hb-tb__btn--drag),
-    // which exists only inside the currently SELECTED block. Starting there (never from a
+    // Canvas reorder — the gesture starts ONLY from the toolbar's grip (.hb-tb__btn--drag), and the
+    // toolbar is only ever shown for the currently SELECTED block. Starting there (never from a
     // pointerdown on the block body) is what keeps this from ever hijacking rich-text selection or
     // caret placement: the wrap's own mousedown-to-select listener and the .hb-ce contenteditable
     // regions never see a pointerdown that belongs to a drag.
@@ -1269,7 +1324,7 @@
             if (e.button != null && e.button !== 0) return;
             const grip = e.target.closest('.hb-tb__btn--drag');
             if (!grip) return;
-            const blk = selected; // the toolbar is only ever docked inside the selected block
+            const blk = selected; // the toolbar only ever acts for the selected block
             const wrap = wrapEl();
             if (!blk || !wrap) return;
             // Nested blocks reorder via the toolbar's up/down (moveById) — their
@@ -1577,11 +1632,12 @@
 
         // Select on mousedown (so the caret still lands where clicked).
         wrap.addEventListener('mousedown', (e) => {
-            // The floating toolbar is DOCKED inside a block element — and a NESTED child's bar
-            // docks in its top-level ANCESTOR (toolbarHost). Without this guard, pressing any
-            // toolbar button read as a click on that ancestor and re-selected the container out
-            // from under the nested child the bar was acting for, so the button then applied to
-            // the wrong block (or to nothing, once gateToolbar re-gated it).
+            // Belt and braces: a press on the toolbar must never be read as a press on a block and
+            // re-select something out from under the block the bar is acting for. It cannot reach
+            // this listener today (the bar floats in .hb-canvas, an ANCESTOR of this wrap, so the
+            // event never bubbles here) — the guard that carries the weight is the deselect-on-
+            // empty-canvas listener further down, which does sit at that level. This one costs
+            // nothing and keeps the rule true wherever the bar ends up living.
             if (e.target.closest('.hb-tb')) return;
             const blk = e.target.closest('.hb-blk');
             if (blk) select(blk);

@@ -113,11 +113,14 @@
 .hb-ce:empty::before { content: attr(data-ph); color: var(--ghost, #C4C4C4); pointer-events: none; }
 .hb-ce { outline: none; }
 
-/* The floating block toolbar, docked above the selected block (mirrors the
-   builder's .btoolbar). The singleton lives in a hidden holder until a block
-   is selected, then it's moved in as the wrapper's first child. */
+/* The floating block toolbar, above the SELECTED block at any nesting depth (mirrors the builder's
+   .btoolbar). The singleton lives in a hidden holder until a block is selected, then moves into the
+   canvas layer and is placed from that block's measured box — block-runtime's positionToolbar()
+   owns top/left, this only says what kind of positioning it is. Fixed rather than absolute because
+   a nested child's display:contents wrapper anchors nothing, and because it must not be clipped by
+   the canvas's own overflow while a block sits at the edge of the stage. */
 .hb-blk-toolbar-holder { position: absolute; width: 0; height: 0; overflow: hidden; }
-.hb-blk > .hb-tb { position: absolute; top: calc(var(--hb-block-toolbar-h, 32px) * -1); left: 0; z-index: 30; }
+.hb-tb--float { position: fixed; z-index: 45; }
 
 /* Per-selection gating: a group/button switched off for the selected block
    (supports.color/align, rich-text) must actually hide — the .hb-tb__* rules

@@ -55,8 +55,9 @@
         const FORMAT_EXEC = { bold: 'bold', italic: 'italic', underline: 'underline', strikethrough: 'strikeThrough' };
 
         // Resolve the block the toolbar currently belongs to via the documented runtime API only —
-        // never via DOM ancestry, since the toolbar is docked INSIDE whichever block is selected
-        // (block-runtime's dockToolbar) and is stowed with no block ancestor at all in between.
+        // never via DOM ancestry, since the toolbar has none to speak of: it floats in the canvas
+        // layer over whichever block is selected (block-runtime's dockToolbar/positionToolbar) and
+        // is stowed in a detached holder in between.
         function currentBlock() {
             if (!window.hbEditor) return null;
             const id = window.hbEditor.getSelectedId();

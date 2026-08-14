@@ -1,6 +1,6 @@
 # The Block Toolbar — full composition and contract wiring
 
-What the docked block toolbar can render, which block-contract key turns each group on, and where
+What the floating block toolbar can render, which block-contract key turns each group on, and where
 each button's value goes. Companion to [`inspector-composition.md`](inspector-composition.md);
 schema reference in [`block-schema.md`](block-schema.md).
 
@@ -11,10 +11,24 @@ schema reference in [`block-schema.md`](block-schema.md).
 
 ## 1. What it is
 
-One toolbar element exists for the whole document. It is **docked into the selected block** —
-`dockToolbar()` inserts it as that block's first child — and stowed back into a holder on
-deselect. It is not per-block markup, so it carries no block state of its own; every handler
-resolves the current block through the runtime API:
+One toolbar element exists for the whole document. It **floats above the selected block at any
+nesting depth** — `dockToolbar()` moves it into the canvas layer and `positionToolbar()` places it
+with `position: fixed` from that block's own measured box — and it is stowed back into a hidden
+holder on deselect.
+
+It used to be docked in the DOM, inserted as the selected block's first child, which a nested child
+could not do: its wrapper is `display: contents` (flex containers must see the real child root as
+their item) and anchors no absolute at all. A nested selection therefore docked in its **top-level
+ancestor**, which is why the bar looked stuck on the parent container the whole time a child was
+being edited — correctly gated for the child, sitting somewhere else entirely. Measuring instead of
+docking removes the depth problem and the reasons docking was chosen: outside the container's
+content box, the bar can neither displace sibling content nor be clipped by an ancestor's overflow.
+It re-places on canvas scroll, window resize and the block's own box changing, and hides while its
+block is scrolled out of the canvas viewport. Real-browser coverage:
+[`tests/js/toolbar-follow-matrix.mjs`](../tests/js/toolbar-follow-matrix.mjs).
+
+It is not per-block markup, so it carries no block state of its own; every handler resolves the
+current block through the runtime API:
 
 ```js
 const id    = window.hbEditor.getSelectedId();
@@ -22,7 +36,8 @@ const model = window.hbEditor.getModel(id);
 const contract = window.hbEditor.getContract(model.name);
 ```
 
-Never via DOM ancestry — while stowed it has no block ancestor at all.
+Never via DOM ancestry — it has none to speak of: it floats over the selection rather than sitting
+inside it, and while stowed it has no block ancestor at all.
 
 **Unlike the Style panel, the toolbar gates correctly.** `gateToolbar(tb, model)` runs on every
 selection and shows/hides groups from the newly selected block's contract. This is the model the

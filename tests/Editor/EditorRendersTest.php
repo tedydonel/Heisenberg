@@ -642,15 +642,18 @@ class EditorRendersTest extends TestCase
         $this->assertStringContainsString('data-hb-post-layout-y', $html);
     }
 
-    public function test_a_toolbar_click_never_reselects_the_docked_ancestor(): void
+    public function test_a_toolbar_click_never_reselects_whatever_it_floats_over(): void
     {
         $html = $this->get('/editor')->getContent();
 
-        // The floating toolbar docks INSIDE a block element — a nested child's bar docks in its
-        // top-level ancestor (toolbarHost). Without this guard, pressing any toolbar button read
-        // as a canvas click on that ancestor and re-selected the container out from under the
-        // child the bar was acting for.
+        // The floating toolbar lives in the canvas layer (block-runtime's dockToolbar), so a press
+        // on it lands inside .hb-canvas and must not fall through to the selection logic and
+        // re-select whichever block the bar happens to be floating over, out from under the one it
+        // is acting for. Both mousedown listeners carry the guard — the select-on-mousedown one as
+        // belt and braces, the deselect-on-empty-canvas one because the event really does reach it.
+        // See tests/js/toolbar-follow-matrix.mjs for real-browser coverage of where the bar lands.
         $this->assertStringContainsString("if (e.target.closest('.hb-tb')) return;", $html);
+        $this->assertStringContainsString("!e.target.closest('.hb-tb')", $html);
     }
 
     public function test_the_columns_block_has_a_working_column_count_control(): void
