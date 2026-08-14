@@ -207,22 +207,40 @@
 
     .hb-post-divider { border: 0; border-top: 1px solid var(--hb-border, #E4E4E4); width: 100%; margin: 0; flex: none; }
 
+    .hb-post-trash-row { display: flex; align-items: center; gap: 6px; padding: 0 var(--hb-space-3, 12px); }
     .hb-post-trash {
         display: flex;
         align-items: center;
         gap: 8px;
-        width: 100%;
+        flex: 1 1 auto;
         height: 44px;
-        padding: 0 var(--hb-space-3, 12px);
+        padding: 0;
         border: 0;
         background: transparent;
         cursor: pointer;
         text-align: left;
-        flex: none;
     }
     .hb-post-trash:hover { background: var(--hb-surface-hover, #F7F7F7); }
+    .hb-post-trash:disabled { opacity: .5; cursor: not-allowed; }
+    .hb-post-trash:disabled:hover { background: transparent; }
     .hb-post-trash__icon { display: inline-flex; width: 15px; height: 15px; color: var(--hb-danger, #D4191A); flex: none; }
     .hb-post-trash__label { font-family: var(--hb-font-sans, Rubik, sans-serif); font-size: var(--hb-fs-sm, 12px); font-weight: 500; color: var(--hb-danger, #D4191A); }
+    {{-- Armed (two-step confirm, same posture as ai-history-dialog's delete button): the label
+         text swaps client-side, this just gives the arm its own visual weight. --}}
+    .hb-post-trash.is-armed .hb-post-trash__label { text-decoration: underline; }
+    .hb-post-trash-cancel {
+        flex: none;
+        height: 28px;
+        padding: 0 10px;
+        border: 1px solid var(--hb-border, #E4E4E4);
+        border-radius: var(--hb-radius-md, 5px);
+        background: var(--hb-bg, #fff);
+        color: var(--hb-text-secondary, #5A5A5A);
+        font-family: var(--hb-font-sans, Rubik, sans-serif);
+        font-size: var(--hb-fs-sm, 12px);
+        cursor: pointer;
+    }
+    .hb-post-trash-cancel:hover { background: var(--hb-surface-hover, #F7F7F7); }
 </style>
 <script>
     (() => {
@@ -303,6 +321,8 @@
     'postAllowComments' => true,
     'postDiscussionUrlTemplate' => '',
     'postRevisionsUrlTemplate' => '',
+    // "Move to trash" (Post tab, below Revisions) — DELETE __ID__ url template.
+    'postTrashUrlTemplate' => '',
     // The Post tab's Featured image (set on Post::featuredImage BelongsTo). Seeded from
     // EditorController::show() for an existing post; null for /editor (blank document). The
     // inspector's script calls updateFeaturedImage() on every pick/remove so the change
@@ -352,6 +372,7 @@
     <div class="hb-inspector__post-content" data-hb-inspector-post-content @if ($panelActiveIndex !== 0) hidden @endif>
         @include('heisenberg::components.live.inspector.post-title-summary')
         @include('heisenberg::components.live.inspector.post-meta-live-script')
+        @include('heisenberg::components.live.inspector.post-trash-script')
         @include('heisenberg::components.live.inspector.post-taxonomy-toc')
         @include('heisenberg::components.live.inspector.featured-image-behavior')
 

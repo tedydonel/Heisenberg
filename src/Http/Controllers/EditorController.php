@@ -402,6 +402,9 @@ final class EditorController
             'postTagsUrlTemplate' => route('heisenberg.editor.posts.store') . '/__ID__/tags/__ITEM_ID__',
             'postLayoutUrlTemplate' => route('heisenberg.editor.posts.store') . '/__ID__/layout',
             'postRevisionsUrlTemplate' => route('heisenberg.editor.posts.store') . '/__ID__/revisions',
+            // Move to trash — DELETE on the SAME URL PostController's own update/show routes use
+            // (same base template convention as the others here), just a different verb.
+            'postTrashUrlTemplate' => route('heisenberg.editor.posts.store') . '/__ID__',
             'postDiscussionUrlTemplate' => route('heisenberg.editor.posts.store') . '/__ID__/discussion',
             'postFeaturedImageUrlTemplate' => route('heisenberg.editor.posts.store') . '/__ID__/featured-image',
             'postTocUrlTemplate' => route('heisenberg.editor.posts.store') . '/__ID__/toc',

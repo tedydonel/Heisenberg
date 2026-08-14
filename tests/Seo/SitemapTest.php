@@ -120,6 +120,18 @@ class SitemapTest extends TestCase
         $this->assertCount(0, $xml->xpath('//s:url'));
     }
 
+    public function test_a_trashed_published_post_is_excluded(): void
+    {
+        // A soft-deleted post must not linger in a public listing — Post::query() picks up
+        // Eloquent's default SoftDeletingScope, so this needs no bespoke filtering here.
+        $post = $this->makePost();
+        $post->delete();
+
+        $xml = $this->fetchXml();
+
+        $this->assertCount(0, $xml->xpath('//s:url'));
+    }
+
     // ── hreflang alternates ──────────────────────────────────────────────
 
     public function test_a_solo_post_has_no_hreflang_alternates(): void

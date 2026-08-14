@@ -45,6 +45,8 @@ all, while the external server keeps them and never sees `write_canvas` (see
 | **Read a post's SEO/social metadata** | `get_seo` | Both surfaces. Full `SeoMeta` row (both locales) + `has_seo`; `null` when unset. Does not run the analyzer. |
 | **Set SEO/social metadata** | `update_seo` | Both surfaces. `{post_id, locale?, meta_title?, meta_description?, og_title?, og_description?, og_image?, canonical_url?, robots?, focus_keyphrase?, in_sitemap?, schema_type?, schema_data?}`; `locale` (default the post's own) routes the localized fields to their `_{locale}` column, the rest are locale-neutral; `updateOrCreate`s on `(able_type, able_id)`; at least one field; strings capped at 255; `robots` limited to comma-separated `index`/`noindex`/`follow`/`nofollow` tokens; `schema_data` must be a JSON object. |
 | **Score a post's SEO** | `analyze_seo` | Both surfaces. `{post_id, locale?}` → `SeoAnalyzer::analyze()`'s `{score, rating, checks[]}` verbatim (docs/seo-system.md §4), against the post's SAVED state — no draft overrides (that's the editor panel's own live-scoring path, not this tool). |
+| **Move a post to the trash** | `trash_post` | Both surfaces, no draft-only restriction — reversible (see Reversibility). `{post_id}`. Soft-deletes via `Post::delete()`'s own cascade (blocks + revisions trashed together); the post drops out of `list_posts`, the sitemap, and every other default-scoped listing until restored. Double-gated: the AUTHORS tool tier, THEN `PostPolicy::delete()` against the calling actor (same admins-only check the HTTP "Move to trash" button's endpoint runs). |
+| **Restore a trashed post** | `restore_post` | Both surfaces. `{post_id}`. Undoes `trash_post` exactly — `Post::restore()`'s cascade brings back the same batch's blocks/revisions. Double-gated the same way, via `PostPolicy::restore()`. Refuses a post that isn't trashed, or one that doesn't exist. |
 
 ### Whole-document reach — the direct code path everywhere
 
@@ -71,6 +73,17 @@ writes through the normal save path, which snapshots a revision.
 `restore_revision` reverses any of them. Nothing bypasses that path.
 `write_canvas` is reversible through the editor's own undo stack instead — it
 never touches the database.
+
+`trash_post` is its own kind of reversible: it is a soft delete
+(`Post::delete()`), not a content edit, so it takes no revision snapshot —
+`restore_post` (`Post::restore()`) is the exact, symmetric undo, bringing
+back the same cascade batch of blocks and revisions `trash_post` took down.
+This reversibility is *why* both tools hold no draft-only or editor-only
+restriction, unlike a true hard delete: nothing is ever unrecoverably lost by
+calling `trash_post`, only hidden until `restore_post` (or a host's own
+trash-screen UI) brings it back. There is deliberately no `force_delete_post`
+tool (see "Deliberate gaps" below) — a genuine hard delete stays a
+database-level operation a host performs itself, not an MCP tool surface.
 
 ## Surface split
 
@@ -114,3 +127,4 @@ a result for every call it makes.
 | **Media upload** | `list_media` is intentionally read-only for bytes; `update_media` (2026-08-11) covers metadata (alt/caption/credit) without opening an upload surface. |
 | **Status changes over the inbound MCP server** | Deliberate: the external API stays draft-only (see Surface split). |
 | **Theme editing** | `get_theme` is read-only by design — the assistant honors the theme, it does not rewrite it. |
+| **Permanent (hard) post deletion** | No `force_delete_post` tool, and no `DELETE /editor/posts/{post}/force` HTTP route either — the editor has no "permanently delete" affordance to back either surface with, and unlike `trash_post` this would be genuinely unrecoverable. A host that wants it already has the database: `Post::withTrashed()->find($id)->forceDelete()`. |

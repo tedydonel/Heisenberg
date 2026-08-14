@@ -175,12 +175,27 @@
                 data-hb-revisions-open
                 :data-hb-post-id="$postId ?? ''"
                 :data-hb-revisions-url-template="$postRevisionsUrlTemplate" />
-            <button type="button" class="hb-post-trash">
-                <span class="hb-post-trash__icon" aria-hidden="true">
-                    @include('heisenberg::components.ui.icon', ['name' => 'trash', 'size' => 15])
-                </span>
-                <span class="hb-post-trash__label">{{ __('heisenberg::editor.inspector.post_move_trash') }}</span>
-            </button>
+            {{-- Move to trash — two-step inline confirm (same "arm on first click, fire on
+                 second, Cancel disarms" pattern as ai-history-dialog's delete button; never
+                 window.confirm). Wiring in post-trash-script.blade.php: it DELETEs
+                 postTrashUrlTemplate, and on success navigates to a blank /editor (the document
+                 no longer exists, so there is nothing left here to stay on). Disabled before the
+                 first save, like every other post-scoped control — hb:post-id lifts it. --}}
+            <div class="hb-post-trash-row" data-hb-post-trash-row>
+                <button type="button" class="hb-post-trash" data-hb-post-trash
+                    data-hb-post-id="{{ $postId ?? '' }}"
+                    data-hb-trash-url-template="{{ $postTrashUrlTemplate }}"
+                    data-hb-editor-index-url="{{ route('heisenberg.editor.index') }}"
+                    data-hb-confirm-label="{{ __('heisenberg::editor.inspector.post_move_trash_confirm') }}"
+                    data-hb-msg-network="{{ __('heisenberg::editor.topbar.save_network') }}"
+                    @if ($postId === null) disabled title="{{ __('heisenberg::editor.inspector.post_move_trash_save_first') }}" @endif>
+                    <span class="hb-post-trash__icon" aria-hidden="true">
+                        @include('heisenberg::components.ui.icon', ['name' => 'trash', 'size' => 15])
+                    </span>
+                    <span class="hb-post-trash__label" data-hb-post-trash-label>{{ __('heisenberg::editor.inspector.post_move_trash') }}</span>
+                </button>
+                <button type="button" class="hb-post-trash-cancel" data-hb-post-trash-cancel hidden>{{ __('heisenberg::editor.common.cancel') }}</button>
+            </div>
         </div>
         <x-live.revisions-dialog />
 

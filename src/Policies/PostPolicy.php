@@ -94,6 +94,23 @@ class PostPolicy
         return $this->roleGate->is($user, 'admins');
     }
 
+    /** Reversing {@see delete()} — same admins-only, no-ownership-exception posture. */
+    public function restore(Authenticatable $user, Post $post): bool
+    {
+        return $this->roleGate->is($user, 'admins');
+    }
+
+    /**
+     * Listing what's currently in the trash (PostTrashController::trashed()) — a class-based
+     * ability with no single post to check ownership against, same shape as
+     * {@see CategoryPolicy::viewAny()}. Same `admins`-only tier as delete()/restore(): the trash
+     * listing surfaces every author's trashed posts, not just the caller's own.
+     */
+    public function viewTrashed(Authenticatable $user): bool
+    {
+        return $this->roleGate->is($user, 'admins');
+    }
+
     /**
      * General-purpose lifecycle gate used by PostController's transition guard
      * for EVERY target status (not only `published`): may $user move a post

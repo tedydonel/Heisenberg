@@ -535,4 +535,74 @@ class InspectorWiringTest extends TestCase
         $this->assertMatchesRegularExpression('/\.hb-post-meta__value--btn \{[^}]*font-size: 11px;/s', $html);
         $this->assertDoesNotMatchRegularExpression('/\.hb-post-meta__value--btn \{[^}]*font: inherit;/s', $html);
     }
+
+    // ── Post → Move to trash (2026-08-14) ─────────────────────────────────────────
+    // The button used to be pure decoration: no data attribute, no listener, no endpoint. This
+    // pins that it now actually carries its endpoint/confirm hooks and the same
+    // disabled-before-first-save posture as every other post-scoped control.
+
+    /** The button's own opening tag — `data-hb-post-trash` NOT followed by `-` (the wrapping
+     *  `-row` div and the label/cancel elements share the same prefix). */
+    private function trashButtonTag(string $html): string
+    {
+        preg_match('/<button[^>]*\sdata-hb-post-trash(?!-)[^>]*>/', $html, $m);
+
+        return $m[0] ?? '';
+    }
+
+    public function test_the_trash_button_carries_its_endpoint_and_is_disabled_before_the_first_save(): void
+    {
+        $html = $this->editorHtml();
+
+        $buttonTag = $this->trashButtonTag($html);
+        $this->assertNotSame('', $buttonTag, 'the trash button never rendered');
+
+        $this->assertStringContainsString('data-hb-trash-url-template="', $buttonTag);
+        $this->assertStringContainsString('__ID__', $buttonTag, 'the trash endpoint must be an __ID__ template, like every other post-scoped url here');
+        $this->assertStringContainsString('data-hb-editor-index-url="', $buttonTag, 'no post-navigate-away target on success');
+        $this->assertStringContainsString('data-hb-confirm-label="', $buttonTag);
+
+        // A blank /editor document has no id yet — same disabled-until-hb:post-id posture the
+        // Summary status control's own pin (above) asserts.
+        $this->assertStringContainsString('disabled', $buttonTag);
+        $this->assertStringContainsString(
+            'title="' . e(__('heisenberg::editor.inspector.post_move_trash_save_first')) . '"',
+            $buttonTag,
+        );
+    }
+
+    public function test_the_trash_button_wires_a_two_step_confirm_never_window_confirm(): void
+    {
+        $html = $this->editorHtml();
+
+        // The Cancel affordance ships hidden, revealed only once the button arms.
+        $this->assertStringContainsString('data-hb-post-trash-cancel', $html);
+        $cancelTag = substr($html, (int) strpos($html, 'data-hb-post-trash-cancel'));
+        $cancelTag = substr($cancelTag, 0, (int) strpos($cancelTag, '>') + 1);
+        $this->assertStringContainsString('hidden', $cancelTag);
+
+        $this->assertStringNotContainsString('window.confirm', $html);
+
+        // hb:post-id (fired on the first save) is what lifts the disabled state and learns the
+        // real post id — same contract revisions-dialog.blade.php's own row uses.
+        $this->assertStringContainsString('__hbPostTrashPostId', $html);
+    }
+
+    public function test_the_trash_button_dispatches_the_shared_save_state_channel_on_failure(): void
+    {
+        $html = $this->editorHtml();
+
+        // Scoped to the trash-button's own script (its unique marker) so this pins THAT script's
+        // behaviour, not just that the hb:save-state string exists somewhere else on the page
+        // (topbar.blade.php's save wiring already emits it too).
+        $marker = strpos($html, 'data-hb-post-trash]');
+        $this->assertIsInt($marker, 'the trash button script never rendered');
+        $script = substr($html, $marker);
+
+        // Failures must surface through the SAME channel every other save/tool failure uses
+        // (footer.blade.php's save-status pill), not a bespoke one only this button understands.
+        $this->assertStringContainsString("CustomEvent('hb:save-state'", $script);
+        $this->assertStringContainsString("state: 'error'", $script);
+        $this->assertStringContainsString("state: 'saving'", $script);
+    }
 }

@@ -938,6 +938,57 @@ class McpToolRegistry
                 },
             ],
 
+            // ── trash ────────────────────────────────────────────────
+            // Both surfaces, no draft-only restriction: unlike create_post/update_post this
+            // never puts unreviewed content live, and unlike a hard delete it is reversible —
+            // trash_post soft-deletes (Post::delete()'s own cascade batches its blocks/
+            // revisions together), restore_post undoes it exactly (Post::restore()'s matching
+            // cascade). Same "reversible, so it's safe on the external server" reasoning
+            // create_translation's own docblock gives for its surface posture. Gated a SECOND
+            // time beyond the AUTHORS tool tier by PostPolicy::delete()/restore() against the
+            // CALLING actor (Auth::user() or a GuestActor) — same double-gate set_post_status
+            // already applies for its own lifecycle tier check, so an AUTHORS-tier MCP token
+            // still can't trash/restore a post unless the acting user actually holds the
+            // admins tier PostPolicy requires (mirrors the HTTP endpoint's own authorization
+            // exactly — PostTrashController delegates to the SAME policy methods).
+            'trash_post' => [
+                'description' => 'Move a post to the trash (soft delete) — reversible via restore_post. A trashed post disappears from list_posts, the sitemap, and every other listing until restored; its blocks and revisions are trashed in the same batch and come back together on restore.',
+                'tier' => self::TIER_AUTHORS,
+                'inputSchema' => $this->schema(['post_id' => ['type' => 'integer']], ['post_id']),
+                'handler' => function (array $args): array {
+                    $post = $this->findPost($args['post_id'] ?? null);
+                    if (! $this->postPolicy->delete($this->currentActor(), $post)) {
+                        throw new McpToolException('You are not authorized to trash this post.');
+                    }
+                    $post->delete();
+                    $post->refresh();
+
+                    return ['post_id' => $post->getKey(), 'trashed' => true, 'deleted_at' => $post->deleted_at?->toIso8601String()];
+                },
+            ],
+
+            'restore_post' => [
+                'description' => 'Restore a post previously moved to the trash by trash_post. Its blocks and revisions from that same trash batch are restored with it.',
+                'tier' => self::TIER_AUTHORS,
+                'inputSchema' => $this->schema(['post_id' => ['type' => 'integer']], ['post_id']),
+                'handler' => function (array $args): array {
+                    $id = (int) ($args['post_id'] ?? 0);
+                    $post = $this->postClass()::withTrashed()->find($id);
+                    if ($post === null) {
+                        throw new McpToolException("No post with id {$id}.");
+                    }
+                    if (! $post->trashed()) {
+                        throw new McpToolException("Post {$id} is not trashed.");
+                    }
+                    if (! $this->postPolicy->restore($this->currentActor(), $post)) {
+                        throw new McpToolException('You are not authorized to restore this post.');
+                    }
+                    $post->restore();
+
+                    return ['post_id' => $post->getKey(), 'trashed' => false];
+                },
+            ],
+
             // ── theme ────────────────────────────────────────────────
             'get_theme' => [
                 'description' => 'Read the active theme\'s design tokens as CSS custom properties (colors, font sizes, spacing, radii, fonts) under the --hb-t- namespace, with their current values. Use these variable names in authored content (e.g. var(--hb-t-accent-1) as a color/style value) instead of hardcoded values, so content honors the site theme.',

@@ -361,6 +361,10 @@ return [
         'post_pending_review' => 'En attente de relecture',
         'post_stick_top' => 'Épingler en haut du blog',
         'post_move_trash' => 'Mettre à la corbeille',
+        // Confirmation en deux temps (post-trash-script.blade.php) — libellé affiché après le
+        // premier clic, avant que le second clic déclenche réellement la suppression.
+        'post_move_trash_confirm' => 'Cliquez à nouveau pour confirmer',
+        'post_move_trash_save_first' => 'Enregistrez l’article pour le mettre à la corbeille.',
         'post_categories' => 'Catégories',
         'post_category_add_ph' => 'Ajouter ou rechercher une catégorie…',
         'post_category_empty' => 'Aucune catégorie pour l’instant.',

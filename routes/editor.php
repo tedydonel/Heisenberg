@@ -12,6 +12,7 @@ use Heisenberg\Http\Controllers\PostController;
 use Heisenberg\Http\Controllers\PostRevisionsController;
 use Heisenberg\Http\Controllers\PostSettingsController;
 use Heisenberg\Http\Controllers\PostTagController;
+use Heisenberg\Http\Controllers\PostTrashController;
 use Heisenberg\Http\Controllers\PreviewController;
 use Heisenberg\Http\Controllers\SavedThemeController;
 use Heisenberg\Http\Controllers\SeoAnalysisController;
@@ -36,6 +37,14 @@ Route::middleware(config('heisenberg.middleware.editor', ['web']))->group(functi
     Route::post('/editor/posts', [PostController::class, 'store'])->name('heisenberg.editor.posts.store');
     Route::put('/editor/posts/{post}', [PostController::class, 'update'])->whereNumber('post')->name('heisenberg.editor.posts.update');
     Route::get('/editor/posts/{post}', [PostController::class, 'show'])->whereNumber('post')->name('heisenberg.editor.posts.show');
+    // Move to trash / restore / trash listing (PostTrashController) — the "Move to trash" button
+    // in the Post tab's Summary, and a standalone API for a host to build its own trash screen.
+    // `/editor/posts/trashed` is a literal segment, never captured by the numeric {post} routes
+    // above/below (whereNumber rejects it outright), so registration order doesn't matter here —
+    // kept grouped with the other post routes for readability.
+    Route::delete('/editor/posts/{post}', [PostTrashController::class, 'trash'])->whereNumber('post')->name('heisenberg.editor.posts.trash');
+    Route::post('/editor/posts/{post}/restore', [PostTrashController::class, 'restore'])->whereNumber('post')->name('heisenberg.editor.posts.restore');
+    Route::get('/editor/posts/trashed', [PostTrashController::class, 'trashed'])->name('heisenberg.editor.posts.trashed');
     // Revision history (read-only — restore is client-driven via hbEditor.replaceDoc()).
     Route::get('/editor/posts/{post}/revisions', [PostRevisionsController::class, 'index'])->whereNumber('post')->name('heisenberg.editor.posts.revisions.index');
     Route::get('/editor/posts/{post}/revisions/{revision}', [PostRevisionsController::class, 'show'])->whereNumber('post')->whereNumber('revision')->name('heisenberg.editor.posts.revisions.show');

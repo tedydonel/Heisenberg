@@ -362,6 +362,10 @@ return [
         'post_pending_review' => 'Pending review',
         'post_stick_top' => 'Stick to the top of the blog',
         'post_move_trash' => 'Move to trash',
+        // Two-step confirm (post-trash-script.blade.php) — the label the button swaps to on
+        // its first click, before the second click actually fires the DELETE.
+        'post_move_trash_confirm' => 'Click again to confirm',
+        'post_move_trash_save_first' => 'Save the post to trash it.',
         'post_categories' => 'Categories',
         'post_category_add_ph' => 'Add or find a category…',
         'post_category_empty' => 'No categories yet.',

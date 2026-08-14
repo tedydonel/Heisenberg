@@ -143,6 +143,7 @@
         :post-layout-url-template="$postLayoutUrlTemplate" :post-allow-comments="$postAllowComments ?? true"
         :post-discussion-url-template="$postDiscussionUrlTemplate"
         :post-revisions-url-template="$postRevisionsUrlTemplate ?? ''"
+        :post-trash-url-template="$postTrashUrlTemplate ?? ''"
         :post-featured-image="$postFeaturedImage ?? null"
         :post-featured-image-url-template="$postFeaturedImageUrlTemplate ?? ''"
         :post-toc-entries="$postTocEntries ?? []"
