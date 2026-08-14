@@ -908,8 +908,13 @@
     {{-- Where this document lives once it has an id. A save from the blank /editor creates the
          post but leaves the browser on /editor, so refreshing re-opened an empty editor and the
          work looked lost (it was in the DB the whole time). After a create we rewrite the URL to
-         this, so refresh/bookmark/back all land on the saved post. --}}
-    data-hb-editor-url-template="{{ route('heisenberg.editor.index') }}/__ID__"
+         this, so refresh/bookmark/back all land on the saved post. Per document type
+         (docs/email-system.md §6.2): a new email's first save lands on /editor/email/{id}, its own
+         authoring address — pointing it at /editor/{id} would rewrite to a URL that only
+         redirects back here. --}}
+    data-hb-editor-url-template="{{ $documentType === 'email'
+        ? route('heisenberg.editor.email.show', ['post' => '__ID__'])
+        : route('heisenberg.editor.show', ['post' => '__ID__']) }}"
 >
     <div class="hb-topbar__zone hb-topbar__zone--left">
         @foreach ($leftButtons as $btn)

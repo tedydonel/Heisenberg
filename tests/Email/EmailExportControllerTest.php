@@ -271,7 +271,7 @@ class EmailExportControllerTest extends TestCase
 
     public function test_the_topbar_renders_the_export_control_for_an_email_document(): void
     {
-        $html = $this->get('/editor?type=email')->assertOk()->getContent();
+        $html = $this->get('/editor/email')->assertOk()->getContent();
 
         // Matched on the ROOT TAG itself, not the bare data-attribute/class name alone — the
         // topbar's own (unconditional) wiring script references `[data-hb-export-toggle]` and

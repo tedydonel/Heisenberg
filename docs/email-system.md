@@ -122,6 +122,33 @@ which is what a "view in browser" URL is for; a host that wants otherwise tighte
 `middleware.email` or sets `heisenberg.email.routes` false and renders through `EmailRenderer`
 itself.
 
+## 6.2 …and authored at its own address too
+
+The same rule one level up: an email is a different kind of document, so it is edited at a
+different URL. `routes/editor.php`:
+
+- **`GET /editor/email`** — a blank email. (`GET /editor?type=email`, the old form, redirects here:
+  a query param is a poor way to say what kind of thing someone is authoring, and it left the type
+  invisible in the address bar.)
+- **`GET /editor/email/{post}`** — an existing email document.
+- `GET /editor/{post}` redirects an email to the surface above, and `GET /editor/email/{post}`
+  redirects a plain post back to `/editor/{post}`. Each document therefore has exactly one
+  authoring URL whichever link points at it — redirects rather than 404s, because these are links
+  people already hold (a bookmark, a row in a host's admin list). Authorization runs before either
+  surface decides where to send the request, so a redirect never confirms an id exists to someone
+  who may not read it.
+- The topbar's post-create URL rewrite is per type, so a new email's first save lands on
+  `/editor/email/{id}` rather than a `/editor/{id}` that only redirects back.
+
+What the split buys is a **Post tab shaped for an email** rather than a post's panel with pieces
+switched off. `documentType` already gated the palette (email-safe blocks only), the 600px canvas,
+the SEO/Social panel, Featured image, Discussion and Table of contents; with a surface of its own
+it also drops Categories/Tags and Page layout (taxonomy organizes a listing an email never appears
+in; the padding sliders move the `.hb-page` sheet an email is not rendered into) and the "stick to
+the top of the blog" toggle. What remains is what an email actually has: subject/title, status and
+send date, revisions, translations, trash — and the slug, relabelled **Email address** and shown as
+`/emails/{slug}`, because on this document type that field IS the link the author is about to send.
+
 ### Getting a built email OUT of the editor
 
 Heisenberg renders and the host sends — but before a host is ready to wire up its own mailer, or

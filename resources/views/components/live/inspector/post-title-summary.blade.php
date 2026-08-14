@@ -161,10 +161,13 @@
                     <span class="hb-post-toggle-row__label">{{ __('heisenberg::editor.inspector.post_pending_review') }}</span>
                     <x-ui.toggle :on="$postPendingReview" name="post-pending-review" />
                 </div>
+                @if ($documentType !== 'email')
+                {{-- "Stick to the top of the blog" is about a listing an email is never in. --}}
                 <div class="hb-post-toggle-row">
                     <span class="hb-post-toggle-row__label">{{ __('heisenberg::editor.inspector.post_stick_top') }}</span>
                     <x-ui.toggle :on="$postStickToTop" name="post-stick-top" />
                 </div>
+                @endif
             </div>
             <hr class="hb-post-divider">
             {{-- Revisions — opens the history dialog (live/revisions-dialog.blade.php). Lives
@@ -185,7 +188,10 @@
                 <button type="button" class="hb-post-trash" data-hb-post-trash
                     data-hb-post-id="{{ $postId ?? '' }}"
                     data-hb-trash-url-template="{{ $postTrashUrlTemplate }}"
-                    data-hb-editor-index-url="{{ route('heisenberg.editor.index') }}"
+                    {{-- Where the author lands after trashing this document: a blank one of the
+                         SAME kind (docs/email-system.md §6.2). Dropping someone who just trashed
+                         an email onto a blank blog post is a surface switch they did not ask for. --}}
+                    data-hb-editor-index-url="{{ $documentType === 'email' ? route('heisenberg.editor.email.new') : route('heisenberg.editor.index') }}"
                     data-hb-confirm-label="{{ __('heisenberg::editor.inspector.post_move_trash_confirm') }}"
                     data-hb-msg-network="{{ __('heisenberg::editor.topbar.save_network') }}"
                     @if ($postId === null) disabled title="{{ __('heisenberg::editor.inspector.post_move_trash_save_first') }}" @endif>

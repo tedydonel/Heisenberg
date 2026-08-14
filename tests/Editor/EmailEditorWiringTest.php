@@ -46,20 +46,71 @@ class EmailEditorWiringTest extends TestCase
 
     public function test_editor_type_email_seeds_a_blank_email_document(): void
     {
-        $html = $this->get('/editor?type=email')->assertOk()->getContent();
+        $html = $this->get('/editor/email')->assertOk()->getContent();
 
         $this->assertStringContainsString('hb-canvas--email', $html);
     }
 
     public function test_an_existing_email_posts_editor_page_carries_the_email_canvas_class(): void
     {
+        $post = $this->makeEmail();
+
+        $html = $this->get("/editor/email/{$post->id}")->assertOk()->getContent();
+
+        $this->assertStringContainsString('hb-canvas--email', $html);
+    }
+
+    // ── one authoring URL per document type (docs/email-system.md §6.2) ──────
+
+    private function makeEmail(): Post
+    {
         $post = Post::create(['title_en' => 'A Newsletter', 'locale' => 'en']);
         $post->type = 'email';
         $post->save();
 
-        $html = $this->get("/editor/{$post->id}")->assertOk()->getContent();
+        return $post;
+    }
 
-        $this->assertStringContainsString('hb-canvas--email', $html);
+    public function test_the_old_type_query_form_redirects_to_the_email_editors_own_address(): void
+    {
+        $this->get('/editor?type=email')->assertRedirect('/editor/email');
+    }
+
+    public function test_an_email_opened_on_the_post_surface_redirects_to_the_email_surface(): void
+    {
+        $post = $this->makeEmail();
+
+        $this->get("/editor/{$post->id}")->assertRedirect("/editor/email/{$post->id}");
+    }
+
+    public function test_a_plain_post_opened_on_the_email_surface_redirects_back(): void
+    {
+        $post = Post::create(['title_en' => 'A Blog Post', 'locale' => 'en']);
+
+        $this->get("/editor/email/{$post->id}")->assertRedirect("/editor/{$post->id}");
+    }
+
+    /**
+     * Authorization runs BEFORE either surface decides where to send the request, so the redirect
+     * can never confirm that an id exists to someone who may not read it.
+     */
+    public function test_the_redirect_never_leaks_a_draft_to_an_unauthorized_visitor(): void
+    {
+        $this->app['env'] = 'production'; // the LocalDevRoleGate bypass is local-only
+        $post = $this->makeEmail();
+
+        $this->get("/editor/{$post->id}")->assertForbidden();
+        $this->get("/editor/email/{$post->id}")->assertForbidden();
+    }
+
+    /** A new email's first save must rewrite the URL to the email surface, not the post one. */
+    public function test_the_topbar_adopts_the_email_url_after_a_new_emails_first_save(): void
+    {
+        $emailHtml = $this->get('/editor/email')->assertOk()->getContent();
+        $postHtml = $this->get('/editor')->assertOk()->getContent();
+
+        $this->assertStringContainsString('data-hb-editor-url-template="http://localhost/editor/email/__ID__"', $emailHtml);
+        $this->assertStringContainsString('data-hb-editor-url-template="http://localhost/editor/__ID__"', $postHtml);
     }
 
     public function test_an_existing_plain_posts_editor_page_never_carries_the_email_canvas_class(): void
@@ -75,7 +126,7 @@ class EmailEditorWiringTest extends TestCase
 
     public function test_the_email_documents_palette_only_lists_email_surface_blocks(): void
     {
-        $html = $this->get('/editor?type=email')->getContent();
+        $html = $this->get('/editor/email')->getContent();
 
         // Email-safe (10 of 12 shipped contracts).
         $this->assertStringContainsString('data-hb-insert-block="heisenberg/heading"', $html);
@@ -96,7 +147,7 @@ class EmailEditorWiringTest extends TestCase
 
     public function test_email_document_hides_seo_social_discussion_toc_and_featured_image(): void
     {
-        $html = $this->get('/editor?type=email')->getContent();
+        $html = $this->get('/editor/email')->getContent();
 
         // The SEO/Social panel and its two sidebar nav entries are not rendered at all. Matched
         // on the ROOT TAG (`<div data-hb-panel-seo`), not the bare attribute name — sidebar.
@@ -119,11 +170,40 @@ class EmailEditorWiringTest extends TestCase
 
     public function test_email_document_keeps_translations_and_the_summary(): void
     {
-        $html = $this->get('/editor?type=email')->getContent();
+        $html = $this->get('/editor/email')->getContent();
 
         $this->assertStringContainsString('data-hb-post-translations-field', $html);
         $this->assertStringContainsString('data-hb-post-status', $html);
         $this->assertStringContainsString('data-hb-post-popup-trigger="slug"', $html);
+    }
+
+    /**
+     * Blog furniture an email has no use for: taxonomy organizes a listing it never appears in,
+     * the page-padding sliders move the .hb-page sheet an email is not rendered into, and
+     * "stick to the top of the blog" is that listing again.
+     */
+    public function test_email_document_hides_taxonomy_page_layout_and_the_blog_pin(): void
+    {
+        $html = $this->get('/editor/email')->getContent();
+
+        $this->assertStringNotContainsString('data-hb-disclosure-body data-hb-post-taxonomy-field', $html);
+        $this->assertStringNotContainsString('data-hb-disclosure-body data-hb-post-layout-field', $html);
+        $this->assertStringNotContainsString('name="post-stick-top"', $html);
+    }
+
+    /** The Summary's slug row names what the slug actually IS here: the email's serving address. */
+    public function test_the_summary_slug_row_reads_as_the_emails_serving_address(): void
+    {
+        $post = $this->makeEmail();
+        $post->slug = 'august-letter';
+        $post->save();
+
+        $html = $this->get("/editor/email/{$post->id}")->assertOk()->getContent();
+        $postHtml = $this->get('/editor')->getContent();
+
+        $this->assertStringContainsString('/emails/august-letter', $html);
+        $this->assertStringContainsString(__('heisenberg::editor.inspector.summary_email_address'), $html);
+        $this->assertStringNotContainsString(__('heisenberg::editor.inspector.summary_email_address'), $postHtml);
     }
 
     public function test_a_plain_post_document_still_renders_the_full_chrome(): void

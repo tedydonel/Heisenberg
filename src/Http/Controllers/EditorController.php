@@ -18,6 +18,7 @@ use Heisenberg\Services\TranslationStatusService;
 use Heisenberg\Support\BlockViewData;
 use Heisenberg\Support\LocaleConfig;
 use Illuminate\Contracts\View\View;
+use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response;
 use Illuminate\Support\Facades\Gate;
@@ -31,7 +32,34 @@ final class EditorController
     private const DEFAULT_PAGE_PADDING_X = 56;
     private const DEFAULT_PAGE_PADDING_Y = 56;
 
-    public function index(Request $request, BlockRegistryService $registry, ThemeRepository $themes, SavedThemeRepository $savedThemes, FontCatalogService $fonts): View
+    /**
+     * GET /editor — a blank POST document.
+     *
+     * `?type=email` used to seed a blank email here. Emails now have their own authoring address
+     * (docs/email-system.md §6.2), so that query form redirects to it rather than rendering a
+     * second, differently-addressed email editor: one document type, one URL.
+     */
+    public function index(Request $request, BlockRegistryService $registry, ThemeRepository $themes, SavedThemeRepository $savedThemes, FontCatalogService $fonts): View|RedirectResponse
+    {
+        if ($this->documentType($request->query('type')) === 'email') {
+            return redirect()->route('heisenberg.editor.email.new');
+        }
+
+        return $this->blankDocument('post', $registry, $themes, $savedThemes, $fonts);
+    }
+
+    /**
+     * GET /editor/email — a blank EMAIL document (docs/email-system.md §6.2). Same shell as
+     * index() above, stamped with the type the FIRST save will carry (see PostController::save()'s
+     * create-only `type` handling) — which is what gates the palette down to the email-safe
+     * blocks, narrows the canvas to the 600px shell, and gives the Post tab its email shape.
+     */
+    public function newEmail(BlockRegistryService $registry, ThemeRepository $themes, SavedThemeRepository $savedThemes, FontCatalogService $fonts): View
+    {
+        return $this->blankDocument('email', $registry, $themes, $savedThemes, $fonts);
+    }
+
+    private function blankDocument(string $documentType, BlockRegistryService $registry, ThemeRepository $themes, SavedThemeRepository $savedThemes, FontCatalogService $fonts): View
     {
         // The editor is one big server-rendered component tree; the FIRST render
         // after a view-cache rebuild compiles/loads hundreds of Blade views and
@@ -43,12 +71,6 @@ final class EditorController
             @set_time_limit(120);
         }
 
-        // "New email" entry point (docs/email-system.md §7-E3): GET /editor?type=email seeds a
-        // blank, unsaved EMAIL document — same blank-document shape as a plain /editor, just
-        // stamped with the type the FIRST save will carry (see PostController::save()'s
-        // create-only `type` handling). Any value other than the literal 'email' is a plain post,
-        // same "unknown = the safe default" posture the lifecycle status resolution already uses.
-        $documentType = $this->documentType($request->query('type'));
         $shared = $this->sharedViewData($registry, $themes, $savedThemes, $fonts);
 
         return view('heisenberg::editor.index', array_merge($shared, [
@@ -69,7 +91,7 @@ final class EditorController
             'postPagePaddingX' => self::DEFAULT_PAGE_PADDING_X,
             'postPagePaddingY' => self::DEFAULT_PAGE_PADDING_Y,
             'postAllowComments' => true,
-            'postMeta' => $this->postMeta(null),
+            'postMeta' => $this->postMeta(null, $documentType),
             // The SEO/Social panel's shared slug (bare, no leading `/`) + seed payload
             // (docs/seo-system.md §3, Wave S2a) — null model means the blank /editor document,
             // same defaults a first save would produce. The panel itself renders disabled until
@@ -94,23 +116,62 @@ final class EditorController
     }
 
     /**
-     * Opens an EXISTING post in the editor shell; index.blade.php hydrates the canvas
-     * through window.hbEditor's public API. The model class is resolved manually because
-     * config('heisenberg.models.post') is host-swappable (no implicit route binding).
-     * Runs the same PostPolicy view check as PostController::show() — this page ships the
-     * post's full content, so an anonymous visitor must not be able to read drafts by ID.
+     * GET /editor/{post} — opens an EXISTING POST in the editor shell.
+     *
+     * An email opened here redirects to its own authoring address (docs/email-system.md §6.2)
+     * instead of rendering in the post surface. The two document types answer to different URLs
+     * precisely so the shell around them can differ; serving an email from the post URL would put
+     * it back in the surface the split exists to keep it out of. A redirect rather than a 404
+     * because this is a link people already hold — a saved bookmark, a row in a host's admin list.
      */
-    public function show(Request $request, BlockRegistryService $registry, ThemeRepository $themes, SavedThemeRepository $savedThemes, FontCatalogService $fonts, string $post): View
+    public function show(Request $request, BlockRegistryService $registry, ThemeRepository $themes, SavedThemeRepository $savedThemes, FontCatalogService $fonts, string $post): View|RedirectResponse
     {
-        if (PHP_SAPI !== 'cli') {
-            @set_time_limit(120); // same cold-render headroom as index()
-        }
+        $model = $this->openable($request, $post);
 
+        return $model->type === 'email'
+            ? redirect()->route('heisenberg.editor.email.show', ['post' => $model->getKey()])
+            : $this->openDocument($model, $registry, $themes, $savedThemes, $fonts);
+    }
+
+    /**
+     * GET /editor/email/{post} — opens an EXISTING EMAIL document. The mirror of show() above: a
+     * plain post asked for here redirects back to the post surface, so each document is reachable
+     * at exactly one authoring URL no matter which one a link points at.
+     */
+    public function showEmail(Request $request, BlockRegistryService $registry, ThemeRepository $themes, SavedThemeRepository $savedThemes, FontCatalogService $fonts, string $post): View|RedirectResponse
+    {
+        $model = $this->openable($request, $post);
+
+        return $model->type === 'email'
+            ? $this->openDocument($model, $registry, $themes, $savedThemes, $fonts)
+            : redirect()->route('heisenberg.editor.show', ['post' => $model->getKey()]);
+    }
+
+    /**
+     * Resolve a post for editing. The model class is resolved manually because
+     * config('heisenberg.models.post') is host-swappable (no implicit route binding). Runs the
+     * same PostPolicy view check as PostController::show() — the editor ships the post's full
+     * content, so an anonymous visitor must not be able to read drafts by ID. Authorization
+     * happens BEFORE either caller decides where to send the request, so a redirect never reveals
+     * that an id exists to someone who may not read it.
+     */
+    private function openable(Request $request, string $post): Post
+    {
         /** @var class-string<Post> $class */
         $class = (string) config('heisenberg.models.post', Post::class);
         $model = $class::query()->with(['blocks', 'categories', 'tags', 'featuredImage', 'tocEntries', 'seoMeta'])->findOrFail($post);
 
         Gate::forUser($request->user() ?? new GuestActor())->authorize('view', $model);
+
+        return $model;
+    }
+
+    /** Renders the editor shell around an already-resolved, already-authorized document. */
+    private function openDocument(Post $model, BlockRegistryService $registry, ThemeRepository $themes, SavedThemeRepository $savedThemes, FontCatalogService $fonts): View
+    {
+        if (PHP_SAPI !== 'cli') {
+            @set_time_limit(120); // same cold-render headroom as index()
+        }
 
         // Seed the Post tab's featured image on first render — the {id, url, srcset, sizes, alt}
         // shape the inspector's hidden inputs expect so the preview (replace/remove) button
@@ -155,7 +216,7 @@ final class EditorController
             'postPagePaddingY' => $model->page_padding_y ?? self::DEFAULT_PAGE_PADDING_Y,
             'postAllowComments' => $model->allow_comments ?? true,
             'postFeaturedImage' => $featuredImage,
-            'postMeta' => $this->postMeta($model),
+            'postMeta' => $this->postMeta($model, $documentType),
             // The SEO/Social panel's shared slug + seed payload (docs/seo-system.md §3) — see
             // postSeo()'s own docblock for the accessor-fallback rationale.
             'postSlug' => (string) $model->slug,
@@ -242,7 +303,7 @@ final class EditorController
      *
      * @return list<array{key: string, label: string, value: string}>
      */
-    private function postMeta(?Post $model): array
+    private function postMeta(?Post $model, string $documentType = 'post'): array
     {
         $currentStatus = (string) ($model?->status ?? 'draft');
         $transitions = (array) config('heisenberg.lifecycle.transitions', []);
@@ -268,12 +329,32 @@ final class EditorController
                 'value' => '',
             ],
             [
+                // Same editable slug on both document types, but it means different things and so
+                // reads differently: a post's public path, or — for an email — the ONE address the
+                // built email is served at (docs/email-system.md §6.1), prefix included, so the
+                // author can see what the link they are about to send actually looks like.
                 'key' => 'url',
-                'label' => (string) __('heisenberg::editor.inspector.summary_url'),
-                'value' => ($model !== null && (string) $model->slug !== '') ? '/' . $model->slug : '—',
+                'label' => (string) __($documentType === 'email'
+                    ? 'heisenberg::editor.inspector.summary_email_address'
+                    : 'heisenberg::editor.inspector.summary_url'),
+                'value' => ($model !== null && (string) $model->slug !== '')
+                    ? $this->slugPath($documentType) . $model->slug
+                    : '—',
                 'raw' => (string) ($model?->slug ?? ''),
             ],
         ];
+    }
+
+    /** `/` for a post, `/{email.route_prefix}/` for an email — see postMeta()'s `url` row. */
+    private function slugPath(string $documentType): string
+    {
+        if ($documentType !== 'email') {
+            return '/';
+        }
+
+        $prefix = trim((string) config('heisenberg.email.route_prefix', 'emails'), '/') ?: 'emails';
+
+        return '/' . $prefix . '/';
     }
 
     /**

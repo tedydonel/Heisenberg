@@ -338,6 +338,7 @@ return [
         'summary_status' => 'Statut',
         'summary_publish' => 'Publication',
         'summary_url' => 'URL',
+        'summary_email_address' => 'Adresse de l\'e-mail',
         'summary_immediately' => 'Immédiatement',
         // Le champ de slug modifiable de la ligne URL (2026-08-11).
         'summary_slug_label' => 'Slug',

@@ -24,6 +24,15 @@ Route::middleware(config('heisenberg.middleware.editor', ['web']))->group(functi
     Route::get('/editor', [EditorController::class, 'index'])->name('heisenberg.editor.index');
     Route::get('/editor/components', [EditorController::class, 'components'])->name('heisenberg.editor.components');
     Route::get('/editor/media', [EditorController::class, 'media'])->name('heisenberg.editor.media');
+    // Email authoring lives on its own address (docs/email-system.md §6.2) — a separate document
+    // type gets a separate URL, so the shell around it can differ (email-safe palette, 600px
+    // canvas, an email-shaped Post tab) without a query param deciding what kind of thing the
+    // author is editing. The literal `email` segment can never be swallowed by the numeric
+    // `/editor/{post}` route below (whereNumber rejects it), so registration order is free; these
+    // are kept first for readability. Each surface redirects to the other for the wrong document
+    // type, so a document has exactly one authoring URL whichever link points at it.
+    Route::get('/editor/email', [EditorController::class, 'newEmail'])->name('heisenberg.editor.email.new');
+    Route::get('/editor/email/{post}', [EditorController::class, 'showEmail'])->whereNumber('post')->name('heisenberg.editor.email.show');
     // Open an EXISTING post in the editor shell (vs. the blank `/editor` above) — hydrates the
     // canvas from its saved block tree. `whereNumber` disambiguates from the literal `components`/
     // `media` segments above (Post's PK is a plain auto-increment id, same reasoning as the
