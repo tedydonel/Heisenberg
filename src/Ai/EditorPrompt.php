@@ -517,20 +517,17 @@ class EditorPrompt
         - The document arrives below on every turn, already read. Never ask the user to paste
           it or tell you what's on the page.
         - Building the current page IS a tool action: write_canvas (see HOW YOU BUILD above).
-          Never merely announce that you are about to build — make the write_canvas call in the
-          same turn, then close with a one-line note of what you did.
+          Never merely announce a build — make the call in the same turn, then close with a
+          one-line note of what you did.
         - The block contracts above are complete: every attribute with its type, enum and
-          default, and every style attribute each block accepts. Do NOT call describe_block
-          to double-check them — spend those tokens building.
+          default, and every style attribute each block accepts. Do NOT call describe_block to
+          double-check them — spend those tokens building.
         - Never call render_preview for the current page: the canvas IS the preview, live in
           front of the user.
-        - Do not spend rounds on discovery. For an authoring request, call write_canvas
-          immediately; if you genuinely need other tool calls (e.g. reading a saved post,
-          attaching a tag), batch as many as you can into as few rounds as possible, not one
-          call per round.
-        - Tool errors are descriptive (unknown block, line-numbered parse errors). Fix from
-          the error message alone and resubmit — do not re-describe blocks or retry the same
-          call unchanged.
+        - Do not spend rounds on discovery. For an authoring request call write_canvas
+          immediately; batch any other calls you genuinely need into as few rounds as possible.
+        - Tool errors are descriptive (unknown block, line-numbered parse errors). Fix from the
+          error message alone and resubmit — never retry the same call unchanged.
         TXT;
     }
 
@@ -539,15 +536,13 @@ class EditorPrompt
     {
         return <<<TXT
         LOCALES — one post, several languages on the SAME row
-        Structure exists once; only words differ. Each locale's text is a suffixed attribute
-        variant (heading `content` -> `content_fr`), never a separate post. get_post's
-        `translations` map: locale -> {is_default, title, excerpt, blocks_translated,
-        blocks_total, complete}.
+        Structure exists once; only words differ. A locale's text is a suffixed attribute
+        variant (`content` -> `content_fr`), never a separate post. get_post's `translations`:
+        locale -> {is_default, title, excerpt, blocks_translated, blocks_total, complete}.
         create_translation(post_id, target_locale, title?, excerpt?, code?) edits THAT post:
-        title/excerpt -> title_<locale>/excerpt_<locale>; code must match the post's SAME block
-        sequence (get_post's `code`) with ONLY text translated — never names/ids/URLs/media
-        refs — folded in BY POSITION. Restructuring (add/remove/reorder blocks) is refused, not
-        applied. No new post, no slug, no status change.
+        title/excerpt -> title_<locale>/excerpt_<locale>; `code` repeats the post's OWN block
+        sequence with only text translated — never names/ids/URLs/media refs — folded in by
+        position. Restructuring is refused; no new post, slug or status change.
         TXT;
     }
 
@@ -557,12 +552,12 @@ class EditorPrompt
         return <<<TXT
         SEO — get_seo reads a post's meta/social row (both locales); update_seo writes it.
         `locale` routes meta_title/meta_description/og_title/og_description/focus_keyphrase to
-        that locale's column (default: the post's own locale); og_image/canonical_url/robots/
+        that locale's column (default: the post's own); og_image/canonical_url/robots/
         schema_type/schema_data/in_sitemap are locale-neutral. Good meta: title 30-60 chars,
-        description 50-160 chars, set focus_keyphrase and use it in title/slug/description/intro.
+        description 50-160, set focus_keyphrase and use it in title/slug/description/intro.
         Workflow: analyze_seo -> fix the worst fail/warn checks -> analyze_seo again.
-        MEDIA — update_media sets alt_text_en/_fr + caption_en/_fr (write REAL French, never a
-        copy) and credit. set_featured_image sets/clears a post's featured image.
+        MEDIA — update_media sets alt_text_en/_fr + caption_en/_fr (REAL French, never a copy)
+        and credit. set_featured_image sets/clears a post's featured image.
         TXT;
     }
 }

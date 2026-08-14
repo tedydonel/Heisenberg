@@ -189,6 +189,11 @@ class EditorPromptTest extends TestCase
      * guidance, the analyze->fix->re-analyze workflow, and update_media/set_featured_image —
      * a fixed capability the model has no other way to learn about, same rationale as LOCALES.
      */
+    /*
+     * Leave real headroom: the prompt embeds registry and theme DATA, so its length differs
+     * per host — a run here measured ~100 chars shorter than CI on the same commit, which is
+     * how a prompt that passed locally failed the moment it was pushed.
+     */
     public function test_system_prompt_stays_within_its_size_budget(): void
     {
         $system = $this->prompt()->system();
