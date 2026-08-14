@@ -149,6 +149,19 @@ return [
         'url_template' => null,
         'url_resolver' => \Heisenberg\Services\SeoUrlResolver::class,
     ],
+    // ── Email documents (docs/email-system.md §6.1) ───────────────────────────
+    // A built email is served at its OWN address — `/{prefix}/{slug}` — and nowhere else: the
+    // post preview route 404s for `type = 'email'`, and the editor's id-scoped
+    // `/editor/{post}/email-preview` only redirects here. 'routes' loads routes/email.php
+    // (same opt-out posture as `comments`/`translations` above; a host that serves its own
+    // "view in browser" page turns it off and calls EmailRenderer directly). 'route_prefix' is
+    // the first URL segment — change it if `/emails` collides with a host's own routing.
+    // `heisenberg.middleware.email` gates the group; PostPolicy `view` runs regardless, so a
+    // DRAFT email is never readable by a visitor no matter how open that stack is.
+    'email' => [
+        'routes'       => true,
+        'route_prefix' => 'emails',
+    ],
     'css_prefix'   => 'hb',           // emitted CSS class/var prefix (gtc-block -> hb-block)
     'components'   => [
         // safe component allowlist (§3.8), e.g.:
@@ -571,6 +584,11 @@ return [
         // `middleware.seo` gates the sitemap (routes/seo.php: GET /sitemap.xml) — the lightest
         // stack a crawler's/visitor's unauthenticated GET needs, same posture as `comments`.
         'seo'       => ['web'],
+        // `middleware.email` gates the served email routes (routes/email.php: the built email at
+        // its own slug, plus the HTML/.eml export). Same lightest-stack posture: a recipient
+        // following a "view in browser" link is not an authenticated editor. Draft emails stay
+        // protected by PostPolicy `view` inside the controller, not by this stack.
+        'email'     => ['web'],
         // `middleware.translations` gates the public translations API (routes/translations.php)
         // — same lightest-stack posture as `comments`/`seo`: a blog visitor's language-switcher
         // fetch must not require the editor stack.

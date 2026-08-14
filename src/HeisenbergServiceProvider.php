@@ -285,6 +285,7 @@ class HeisenbergServiceProvider extends ServiceProvider
             $this->registerCommentRoutes();
             $this->registerTranslationRoutes();
             $this->registerSeoRoutes();
+            $this->registerEmailRoutes();
             $this->registerAiRoutes();
             $this->registerMcpRoutes();
             $this->registerPolicies();
@@ -393,6 +394,21 @@ class HeisenbergServiceProvider extends ServiceProvider
     {
         if ($this->app['config']->get('heisenberg.seo.sitemap', true)) {
             $this->loadRoutesFrom(__DIR__ . '/../routes/seo.php');
+        }
+    }
+
+    /**
+     * Load the served-email routes (routes/email.php: a built email at its own slug, plus the
+     * HTML/.eml export, docs/email-system.md §6.1). Same opt-out posture as the comments group
+     * — a host that serves its own "view in browser" page sets `heisenberg.email.routes` false
+     * and calls {@see \Heisenberg\Services\EmailRenderer} directly. Turning it off also removes
+     * the redirect target of the editor's own preview/export buttons, which is why they 404
+     * rather than render anything themselves: an email has ONE public address or none.
+     */
+    protected function registerEmailRoutes(): void
+    {
+        if ($this->app['config']->get('heisenberg.email.routes', true)) {
+            $this->loadRoutesFrom(__DIR__ . '/../routes/email.php');
         }
     }
 

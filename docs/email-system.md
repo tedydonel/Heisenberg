@@ -86,18 +86,54 @@ every embed via the mailer — drop it into `Mail::to(...)->send(...)` and it wo
 mailers consume the result object directly. An MCP surface note: AI authors emails through the same
 canvas path; `create_post` gains the `type` arg (draft emails only, same posture).
 
+## 6.1 One address: a built email is served at its own slug
+
+An email document is a post row, but it is not a page — so it does not live on the post surface.
+Everything that renders one lives under its own route group (`routes/email.php`, opt-out via
+`heisenberg.email.routes`, gated by `heisenberg.middleware.email`):
+
+- **`GET /{email.route_prefix}/{slug}`** (default `/emails/{slug}`) — the built email itself. Same
+  `preview: true` render described above; `X-Robots-Tag: noindex, nofollow` on the response, since
+  an email is not web content (the sitemap excludes `type = 'email'` for the same reason). Sent as
+  a header rather than injected into the markup, so the bytes a reader receives are byte-identical
+  to what a mailer would send.
+- **`GET /{prefix}/{slug}/export?format=html|eml`** — the two downloads below, from that same
+  address.
+
+And nothing else renders one:
+
+- `GET /editor/{post}/preview` — the POST preview — **404s** for `type = 'email'`. Rendering an
+  email there would dress it in the post page's shell (SEO head, hreflang, comments thread) and
+  hand it a second public address.
+- `GET /editor/{post}/email-preview` and `/email-export` — the topbar's buttons, which know a post
+  id but not a slug the author may still be editing — resolve, authorize, and **redirect** to the
+  slug URL (`format` carried through). The author's tab therefore lands on the real, shareable
+  address, and there is one route to reason about when asking who can read a built email.
+- Every one of them 404s for a non-email post, and `GET /{prefix}/{slug}` is scoped to
+  `type = 'email'`, so a post's slug is never reachable there. The slug lookup prefers the active
+  locale's row (the posts table's unique index is `['locale', 'slug']`, so one slug legitimately
+  exists per locale).
+
+`heisenberg.middleware.email` defaults to `['web']` — a recipient following a "view in browser"
+link is not an authenticated editor — and that is deliberately not the access control: every entry
+point runs the same PostPolicy `view` check the editor does, so a DRAFT email 403s for a visitor
+however open that stack is. A published email is readable at its slug by anyone who has the link,
+which is what a "view in browser" URL is for; a host that wants otherwise tightens
+`middleware.email` or sets `heisenberg.email.routes` false and renders through `EmailRenderer`
+itself.
+
 ### Getting a built email OUT of the editor
 
 Heisenberg renders and the host sends — but before a host is ready to wire up its own mailer, or
 for the common case of pasting a built email straight into an ESP (Mailchimp, Klaviyo, …), the
-editor also exports. `EmailPreviewController` (routes/editor.php), gated exactly like
-`email-preview`/`email-size` above (PostPolicy `view`) plus a 404 for a non-email post:
+editor also exports. `EmailPreviewController`, gated exactly like the served email above (PostPolicy
+`view`) plus a 404 for a non-email post:
 
-- **`GET /editor/{post}/email-export?format=html`** — the ESP paste/upload case. Renders through
+- **`GET /emails/{slug}/export?format=html`** — the ESP paste/upload case. Renders through
   the SAME `preview: true` path the browser preview uses: images are absolute, publicly-fetchable
   URLs, never `cid:` references, because a platform ingesting raw HTML has no MIME parts to
   resolve them against. Downloads as `<slug>-<locale>.html` (`Content-Disposition: attachment`).
-- **`GET /editor/{post}/email-export?format=eml`** — the self-contained case. Builds a real
+- **`GET /emails/{slug}/export?format=eml`** — the self-contained case. Builds a real
   RFC-822 message with Symfony Mime directly (`Symfony\Component\Mime\Email`) from the REAL,
   cid-embedded render — subject, a `text/plain` part, a `text/html` part, and every embed
   re-attached as an inline part keyed to the exact `cid` already in the HTML, the same pairing
@@ -114,7 +150,7 @@ the .eml file itself, not just a live send).
 
 The topbar exposes both formats as a download menu beside Preview, email documents only, disabled
 until the document has been saved once (`emailExportUrlTemplate`, seeded the same __ID__-template
-way as the preview/size URLs).
+way as the preview/size URLs — those id routes redirect to the slug, §6.1).
 
 ## 7. Waves
 

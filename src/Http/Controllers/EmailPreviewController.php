@@ -12,6 +12,7 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response;
 use Illuminate\Support\Facades\Gate;
+use Illuminate\Support\Facades\Route;
 use Illuminate\Support\Str;
 use Symfony\Component\HttpFoundation\Response as BaseResponse;
 use Symfony\Component\Mime\Address;
@@ -21,15 +22,21 @@ use Symfony\Component\Mime\Part\DataPart;
 use Symfony\Component\Mime\Part\File as MimeFile;
 
 /**
- * Email authoring's read-only endpoints (docs/email-system.md §7-E3, §6): a browser-renderable
- * preview of a `type = 'email'` post, its rendered size for the topbar/footer's size chip, and
- * — the "get it OUT of the editor" seam (§6) — the export action that hands back either an
- * ESP-ready HTML file or a self-contained .eml. All run the SAME PostPolicy `view` check
- * {@see PreviewController::showPost()} and {@see EditorController::show()} already run — an
- * email's rendered content is exactly as sensitive as a post's, so an anonymous visitor must not
- * read a draft email by enumerating ids. `export()` additionally 404s for a non-email post — this
- * route only ever makes sense for `type = 'email'`, and existing() alone (as show()/size() do)
- * would otherwise happily "export" an ordinary post.
+ * Email authoring's read-only endpoints (docs/email-system.md §6.1, §7-E3).
+ *
+ * A built email is served at ONE address — `{email.route_prefix}/{slug}` (routes/email.php) —
+ * and nowhere else. That is the whole shape of this controller: `showBySlug()`/`exportBySlug()`
+ * render, while the editor's id-scoped `/editor/{post}/email-preview` and `/editor/{post}/
+ * email-export` only look the post up and REDIRECT there. The editor knows a post id (a slug is
+ * a value the author can still be editing), the reader gets a real, shareable, slug-shaped URL,
+ * and there is exactly one route to reason about when asking who can read a built email.
+ *
+ * Every entry point runs the same PostPolicy `view` check {@see PreviewController::showPost()}
+ * and {@see EditorController::show()} run — an email's rendered content is exactly as sensitive
+ * as a post's, so an anonymous visitor must not read a draft email by enumerating ids or
+ * guessing slugs. And every one of them 404s for a non-email post: these routes only ever make
+ * sense for `type = 'email'`, and the post's own surface (preview, sitemap) reciprocates by
+ * 404ing/excluding emails, so neither document type is ever reachable through the other's URL.
  */
 class EmailPreviewController
 {
@@ -38,21 +45,58 @@ class EmailPreviewController
     }
 
     /**
-     * GET /editor/{post}/email-preview — the topbar's Preview button target for a saved email
-     * document. Renders through the SAME {@see EmailRenderer} the Mailable uses, with one
-     * difference: `preview: true` asks it to rewrite embedded images to their real, publicly
-     * reachable URLs instead of `cid:` references — a `cid:` scheme has no meaning outside a
-     * MIME multipart message, so a browser tab given the Mailable's actual HTML would render
-     * every image broken. See {@see EmailRenderer::rewriteImages()}'s own docblock.
+     * GET `{prefix}/{slug}` — the built email itself, the one URL it is ever served at.
+     *
+     * Renders through the SAME {@see EmailRenderer} the Mailable uses, with one difference:
+     * `preview: true` asks it to rewrite embedded images to their real, publicly reachable URLs
+     * instead of `cid:` references — a `cid:` scheme has no meaning outside a MIME multipart
+     * message, so a browser tab given the Mailable's actual HTML would render every image
+     * broken. See {@see EmailRenderer::rewriteImages()}'s own docblock.
      */
-    public function show(Request $request, string $post): Response
+    public function showBySlug(Request $request, string $slug): Response
     {
-        $model = $this->findOrFail($post);
+        $model = $this->findBySlugOrFail($slug);
         Gate::forUser($this->actor($request))->authorize('view', $model);
 
         $result = $this->renderer->render($model, app()->getLocale(), preview: true);
 
-        return response($result->html, 200, ['Content-Type' => 'text/html; charset=UTF-8']);
+        return response($result->html, 200, [
+            'Content-Type' => 'text/html; charset=UTF-8',
+            // A served email is a real page on the host's domain, and an email is not web content:
+            // it has no place in a search index (the sitemap excludes `type = 'email'` for the
+            // same reason). Sent as a HEADER rather than injected into the markup so the bytes a
+            // reader receives stay exactly the bytes the renderer produced — the same HTML the
+            // export hands an ESP and the Mailable sends, not a web-only variant of it.
+            'X-Robots-Tag' => 'noindex, nofollow',
+        ]);
+    }
+
+    /**
+     * GET `{prefix}/{slug}/export?format=html|eml` — {@see self::export()}'s real destination,
+     * reached by the same slug the email is served at rather than by id.
+     */
+    public function exportBySlug(Request $request, string $slug): BaseResponse
+    {
+        $model = $this->findBySlugOrFail($slug);
+        Gate::forUser($this->actor($request))->authorize('view', $model);
+
+        return $this->exportModel($request, $model);
+    }
+
+    /**
+     * GET /editor/{post}/email-preview — the topbar's Preview button target for a saved email
+     * document, which the editor can only address by id. Resolves and authorizes here (so a
+     * draft's slug is never handed to someone who may not read the email), then redirects to
+     * {@see self::showBySlug()}: the rendering happens at the slug URL, so that is the address
+     * the author's tab lands on and can share.
+     */
+    public function show(Request $request, string $post): BaseResponse
+    {
+        $model = $this->findOrFail($post);
+        abort_unless($model->type === 'email', 404);
+        Gate::forUser($this->actor($request))->authorize('view', $model);
+
+        return redirect()->to($this->slugUrl($model));
     }
 
     /**
@@ -64,6 +108,7 @@ class EmailPreviewController
     public function size(Request $request, string $post): JsonResponse
     {
         $model = $this->findOrFail($post);
+        abort_unless($model->type === 'email', 404);
         Gate::forUser($this->actor($request))->authorize('view', $model);
 
         $result = $this->renderer->render($model, app()->getLocale());
@@ -72,15 +117,9 @@ class EmailPreviewController
     }
 
     /**
-     * GET /editor/{post}/email-export?format=html|eml — the "get it out of the editor" seam
-     * (docs/email-system.md §6). `format=html` is the ESP paste/upload case: the SAME
-     * `preview: true` render show() uses (real, publicly-fetchable image URLs, no `cid:`
-     * scheme a platform ingesting raw HTML could never resolve). `format=eml` is the
-     * self-contained case: a real RFC-822 message built directly with Symfony Mime from the
-     * REAL, cid-embedded render (never the preview variant) — subject, text/plain, text/html,
-     * and every embed re-attached as an inline part keyed to the exact `cid` already burned
-     * into the HTML, the identical pairing {@see \Heisenberg\Mail\HeisenbergMailable} does for
-     * a live send. Any `format` other than the literal `eml` defaults to `html`.
+     * GET /editor/{post}/email-export?format=html|eml — the topbar's download menu, which (like
+     * its Preview button) can only address a post by id. Redirects to {@see self::exportBySlug()}
+     * carrying `format` through, so the download too comes from the email's own slug URL.
      */
     public function export(Request $request, string $post): BaseResponse
     {
@@ -88,6 +127,24 @@ class EmailPreviewController
         abort_unless($model->type === 'email', 404);
         Gate::forUser($this->actor($request))->authorize('view', $model);
 
+        $format = $request->query('format') === 'eml' ? 'eml' : 'html';
+
+        return redirect()->to($this->slugUrl($model, 'export') . '?format=' . $format);
+    }
+
+    /**
+     * The "get it out of the editor" seam (docs/email-system.md §6). `format=html` is the ESP
+     * paste/upload case: the SAME `preview: true` render {@see self::showBySlug()} uses (real,
+     * publicly-fetchable image URLs, no `cid:` scheme a platform ingesting raw HTML could never
+     * resolve). `format=eml` is the self-contained case: a real RFC-822 message built directly
+     * with Symfony Mime from the REAL, cid-embedded render (never the preview variant) —
+     * subject, text/plain, text/html, and every embed re-attached as an inline part keyed to the
+     * exact `cid` already burned into the HTML, the identical pairing
+     * {@see \Heisenberg\Mail\HeisenbergMailable} does for a live send. Any `format` other than
+     * the literal `eml` defaults to `html`.
+     */
+    private function exportModel(Request $request, Post $model): BaseResponse
+    {
         $locale = app()->getLocale();
         $format = $request->query('format') === 'eml' ? 'eml' : 'html';
 
@@ -186,11 +243,57 @@ class EmailPreviewController
 
     private function findOrFail(string $post): Post
     {
+        return $this->query()->findOrFail($post);
+    }
+
+    /**
+     * Resolve an email by the slug it is served at. Scoped to `type = 'email'` — a POST sharing
+     * this slug is a different document with its own URL and must not surface here — and, when
+     * the same slug exists in several locales (the posts table's unique index is
+     * `['locale', 'slug']`, so that is legal), the row for the active locale wins over an
+     * arbitrary first match.
+     */
+    private function findBySlugOrFail(string $slug): Post
+    {
+        $matches = $this->query()->emails()->where('slug', $slug)->get();
+        abort_if($matches->isEmpty(), 404);
+
+        $locale = app()->getLocale();
+
+        return $matches->firstWhere('locale', $locale) ?? $matches->first();
+    }
+
+    /** @return \Illuminate\Database\Eloquent\Builder<Post> */
+    private function query()
+    {
         /** @var class-string<Post> $class */
         $class = (string) config('heisenberg.models.post', Post::class);
 
-        return $class::query()->with('blocks')->findOrFail($post);
+        return $class::query()->with('blocks');
     }
+
+    /**
+     * Where this email lives publicly. Two ways there is no such place, both answered with 404
+     * rather than a redirect into nothing:
+     *
+     * - the slug is empty. A saved post always has one (Post's saving hook derives it from the
+     *   title and falls back to `untitled`), so this means a row written around the model.
+     * - the host set `heisenberg.email.routes` false, so routes/email.php never loaded. An email
+     *   then has no public address at all, by the host's own choice — which is exactly why these
+     *   id-scoped routes redirect instead of rendering: turning the group off has to actually turn
+     *   serving off, not leave a second way in through the editor's URLs.
+     */
+    private function slugUrl(Post $model, string $suffix = ''): string
+    {
+        $name = $suffix === '' ? 'heisenberg.email.show' : 'heisenberg.email.export.slug';
+        abort_unless(Route::has($name), 404);
+
+        $slug = trim((string) ($model->slug ?? ''));
+        abort_if($slug === '', 404);
+
+        return route($name, ['slug' => $slug]);
+    }
+
 
     private function actor(Request $request): Authenticatable
     {

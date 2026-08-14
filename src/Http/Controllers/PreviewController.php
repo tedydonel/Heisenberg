@@ -124,6 +124,12 @@ class PreviewController
         $class = (string) config('heisenberg.models.post', Post::class);
         $model = $class::query()->with(['featuredImage', 'tocEntries'])->findOrFail($post);
 
+        // An email document is served at its own slug and nowhere else (docs/email-system.md
+        // §6.1, routes/email.php). Rendering one here would dress it in the post page's shell —
+        // SEO head, hreflang, comments thread — none of which an email has any business carrying,
+        // and would give it a second public address that the "one URL" rule exists to prevent.
+        abort_if($model->type === 'email', 404);
+
         Gate::forUser($this->actor($request))->authorize('view', $model);
 
         return $this->renderDoc(

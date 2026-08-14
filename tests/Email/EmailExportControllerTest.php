@@ -12,9 +12,10 @@ use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Storage;
 
 /**
- * docs/email-system.md §6 ("Getting a built email OUT of the editor") — EmailPreviewController::
- * export(). Two formats behind the same GET /editor/{post}/email-export route, gated exactly like
- * email-preview/email-size (PostPolicy `view`), plus a 404 for a non-email post.
+ * docs/email-system.md §6 ("Getting a built email OUT of the editor") — the export action. Two
+ * formats behind GET /emails/{slug}/export, the email's own address (§6.1); the editor's id-scoped
+ * /editor/{post}/email-export redirects there carrying `format`. Gated exactly like the served
+ * email itself (PostPolicy `view`), plus a 404 for a non-email post on both routes.
  */
 class EmailExportControllerTest extends TestCase
 {
@@ -83,7 +84,7 @@ class EmailExportControllerTest extends TestCase
     {
         $post = $this->makeEmailWithImage('a-newsletter');
 
-        $response = $this->get("/editor/{$post->id}/email-export?format=html");
+        $response = $this->get("/emails/{$post->slug}/export?format=html");
 
         $response->assertOk();
         $this->assertStringStartsWith('text/html', (string) $response->headers->get('Content-Type'));
@@ -96,7 +97,7 @@ class EmailExportControllerTest extends TestCase
     {
         $post = $this->makeEmailWithImage();
 
-        $html = $this->get("/editor/{$post->id}/email-export?format=html")->getContent();
+        $html = $this->get("/emails/{$post->slug}/export?format=html")->getContent();
 
         $this->assertStringContainsString('src="http', $html);
         $this->assertStringNotContainsString('cid:', $html);
@@ -107,9 +108,9 @@ class EmailExportControllerTest extends TestCase
     {
         $post = $this->makeEmailWithImage();
 
-        $default = $this->get("/editor/{$post->id}/email-export")->getContent();
-        $bogus = $this->get("/editor/{$post->id}/email-export?format=pdf")->getContent();
-        $html = $this->get("/editor/{$post->id}/email-export?format=html")->getContent();
+        $default = $this->get("/emails/{$post->slug}/export")->getContent();
+        $bogus = $this->get("/emails/{$post->slug}/export?format=pdf")->getContent();
+        $html = $this->get("/emails/{$post->slug}/export?format=html")->getContent();
 
         $this->assertSame($html, $default);
         $this->assertSame($html, $bogus);
@@ -121,7 +122,7 @@ class EmailExportControllerTest extends TestCase
     {
         $post = $this->makeEmailWithImage('a-newsletter');
 
-        $response = $this->get("/editor/{$post->id}/email-export?format=eml");
+        $response = $this->get("/emails/{$post->slug}/export?format=eml");
 
         $response->assertOk();
         $this->assertSame('message/rfc822', $response->headers->get('Content-Type'));
@@ -181,7 +182,7 @@ class EmailExportControllerTest extends TestCase
         config(['mail.from.address' => 'sender@example.test', 'mail.from.name' => 'Example Sender']);
         $post = $this->makeEmailWithImage();
 
-        $raw = $this->get("/editor/{$post->id}/email-export?format=eml")->getContent();
+        $raw = $this->get("/emails/{$post->slug}/export?format=eml")->getContent();
 
         // The html part is quoted-printable encoded (RFC 2045 §6.7): a `cid:` reference can land
         // across a soft line-wrap (`=\r\n`), which is not part of the data and must be undone
@@ -222,7 +223,7 @@ class EmailExportControllerTest extends TestCase
         config(['mail.from.address' => '', 'mail.from.name' => '']);
         $post = $this->makeEmailWithImage();
 
-        $response = $this->get("/editor/{$post->id}/email-export?format=eml");
+        $response = $this->get("/emails/{$post->slug}/export?format=eml");
 
         // Symfony refuses to serialize a message with neither From nor Sender — surfaced as a
         // controlled 422, never a fabricated From and never a raw stack trace.
@@ -231,12 +232,13 @@ class EmailExportControllerTest extends TestCase
 
     // ── gating ───────────────────────────────────────────────────────────────
 
-    public function test_a_non_email_post_404s(): void
+    public function test_a_non_email_post_404s_on_both_routes(): void
     {
         $post = Post::create(['title_en' => 'A Blog Post', 'locale' => 'en', 'status' => 'published']);
 
+        $this->get("/emails/{$post->slug}/export?format=html")->assertNotFound();
+        $this->get("/emails/{$post->slug}/export?format=eml")->assertNotFound();
         $this->get("/editor/{$post->id}/email-export?format=html")->assertNotFound();
-        $this->get("/editor/{$post->id}/email-export?format=eml")->assertNotFound();
     }
 
     public function test_a_draft_email_is_not_exportable_by_a_guest_actor(): void
@@ -245,8 +247,24 @@ class EmailExportControllerTest extends TestCase
         $post->type = 'email';
         $post->save();
 
+        $this->get("/emails/{$post->slug}/export?format=html")->assertForbidden();
+        $this->get("/emails/{$post->slug}/export?format=eml")->assertForbidden();
         $this->get("/editor/{$post->id}/email-export?format=html")->assertForbidden();
-        $this->get("/editor/{$post->id}/email-export?format=eml")->assertForbidden();
+    }
+
+    /**
+     * The topbar's download menu knows a post id, not a slug the author may still be editing —
+     * so it redirects, carrying `format` through, and the download itself comes from the email's
+     * own address like everything else that renders it.
+     */
+    public function test_the_editor_export_route_redirects_to_the_slug_carrying_the_format(): void
+    {
+        $post = $this->makeEmailWithImage('a-newsletter');
+
+        $this->get("/editor/{$post->id}/email-export?format=eml")
+            ->assertRedirect('/emails/a-newsletter/export?format=eml');
+        $this->get("/editor/{$post->id}/email-export")
+            ->assertRedirect('/emails/a-newsletter/export?format=html');
     }
 
     // ── topbar wiring (server-rendered, not a script-execution test) ───────────
