@@ -139,6 +139,38 @@ class McpServerTest extends TestCase
         $this->assertArrayHasKey('typography', $heading['supports']);
     }
 
+    /**
+     * The icon library is DATA, not schema — tens of thousands of `"<set>/<slug>"` references
+     * that fit in no system prompt. Without a lookup, a model asked for "a star icon" composed a
+     * plausible reference that wasn't manifest-listed and rendered nothing. search_icons is that
+     * lookup: it can only return references that resolve.
+     */
+    public function test_icons_are_discoverable_rather_than_guessable(): void
+    {
+        $result = $this->toolData('search_icons', ['query' => 'arrow', 'limit' => 5]);
+
+        $this->assertNotEmpty($result['sets'], 'the install ships at least one icon set');
+        $this->assertLessThanOrEqual(5, count($result['icons']));
+        $this->assertGreaterThan(0, $result['total']);
+
+        $library = app(\Heisenberg\Services\IconLibraryService::class);
+        foreach ($result['icons'] as $reference) {
+            // Pre-joined into exactly the string the `icon` attribute takes — the model never
+            // assembles one itself — and every one of them really exists.
+            $this->assertMatchesRegularExpression('#^[a-z0-9-]+/[a-z0-9-]+$#', $reference);
+            $this->assertTrue($library->exists($reference), "search_icons returned {$reference}, which the manifest does not list");
+            $this->assertStringContainsString('arrow', $reference);
+        }
+    }
+
+    public function test_search_icons_returns_nothing_rather_than_inventing_a_match(): void
+    {
+        $result = $this->toolData('search_icons', ['query' => 'definitelynotanicon']);
+
+        $this->assertSame([], $result['icons']);
+        $this->assertSame(0, $result['total']);
+    }
+
     public function test_describe_block_rejects_an_unknown_name_with_a_useful_message(): void
     {
         $call = $this->callTool('describe_block', ['name' => 'nonesuch']);

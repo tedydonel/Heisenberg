@@ -18,6 +18,7 @@ all, while the external server keeps them and never sees `write_canvas` (see
 |---|---|---|
 | List available block types | `list_blocks` | Slugs are the valid shortcode tags. |
 | Read a block's full contract | `describe_block` | Accepts `name` **or** `names[]` to batch several in one round. |
+| Find a real icon | `search_icons` | REQUIRED before an `icon` block. The library is tens of thousands of `"<set>/<slug>"` references — data, not schema, so it fits in no prompt and `describe_block` cannot carry it. Without this a model composed plausible references that were not manifest-listed and rendered nothing. Returns pre-joined references plus the set list. |
 | **Write the live page** (build/edit the canvas in front of the user) | `write_canvas` | **Editor surface only.** Shortcode `code` + `mode` (`append`/`replace`); validated server-side against the live contracts, applied client-side by the AI panel when the tool frame arrives on the stream. Unsaved until the user saves. |
 | List posts | `list_posts` | Newest first. |
 | Read a post (shortcode + block JSON + `content_version`) | `get_post` | The `content_version` guards concurrent edits. Also returns `translations`: `{<locale>: {is_default, title, excerpt, blocks_translated, blocks_total, complete}}` — per-locale translation COMPLETENESS on this same row (docs/content-translation.md §0), not a sibling map. |

@@ -538,6 +538,9 @@ class EditorPrompt
         - The block contracts above are complete: every attribute with its type, enum and
           default, and every style attribute each block accepts. Do NOT call describe_block to
           double-check them — spend those tokens building.
+        - ICONS ARE THE EXCEPTION to that. An icon block's `icon` is a "<set>/<slug>" reference
+          into a library of tens of thousands of icons, listed nowhere above. Call search_icons
+          and use a reference it returned verbatim; one you composed yourself renders nothing.
         - Never call render_preview for the current page: the canvas IS the preview, live in
           front of the user.
         - Do not spend rounds on discovery. For an authoring request call write_canvas
