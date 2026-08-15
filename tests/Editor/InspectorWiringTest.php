@@ -236,6 +236,11 @@ class InspectorWiringTest extends TestCase
     public function test_the_chip_prototype_is_not_a_template_so_ui_chips_once_assets_still_apply(): void
     {
         $html = $this->editorHtml();
+        // 2026-08-15: ui/chip's stylesheet now lives in the editor.css bundle (resources/css/
+        // editor/36-components.css), loaded via /heisenberg-assets/editor.css. The @once
+        // emission was being captured inside a <template> on first render — the fix is the
+        // same one applied to all 35 affected components.
+        $css = $this->get('/heisenberg-assets/editor.css')->getContent();
 
         // ui/chip carries @once <style>/<script>, and its only other render on /editor is a
         // loop over a prop nothing passes — so a <template> prototype would be the FIRST chip
@@ -244,19 +249,10 @@ class InspectorWiringTest extends TestCase
         // ui/theme-preset-card hit (TODO 6.7).
         $this->assertStringNotContainsString('data-hb-chip-template', $html);
 
-        // The component's own stylesheet must reach the page, and must not sit inside a
-        // <template>. "Inside" means unbalanced open tags before it — the page has plenty of
-        // unrelated, properly-closed templates, so counting opens alone proves nothing.
-        $this->assertStringContainsString('.hb-chip__close', $html);
-        $chipCss = strpos($html, '.hb-chip__close');
-        $this->assertIsInt($chipCss);
-
-        $prefix = substr($html, 0, $chipCss);
-        $this->assertSame(
-            substr_count($prefix, '</template>'),
-            substr_count($prefix, '<template'),
-            "ui/chip's @once assets are emitted inside an unclosed <template> — the CSS never applies",
-        );
+        // The component's own stylesheet must reach the page. The "inside a <template>" trap
+        // is gone (the rules now live in editor.css, never inline), so the only thing this
+        // test still asserts is that the rules shipped at all.
+        $this->assertStringContainsString('.hb-chip__close', $css);
     }
 
     public function test_a_pasted_space_separated_class_string_becomes_separate_chips(): void
@@ -581,7 +577,17 @@ class InspectorWiringTest extends TestCase
         $cancelTag = substr($cancelTag, 0, (int) strpos($cancelTag, '>') + 1);
         $this->assertStringContainsString('hidden', $cancelTag);
 
-        $this->assertStringNotContainsString('window.confirm', $html);
+        // 2026-08-15: scoped to the trash button's own script so a delete-confirm in an unrelated
+        // component (e.g. saved-blocks delete in block-runtime) doesn't trip this. The trash
+        // affordance specifically uses a two-step reveal, not a browser dialog. Slicing on
+        // </script> keeps the check inside this one script block — the page has many more
+        // <script>s after it.
+        $trashMarker = strpos($html, 'data-hb-post-trash]');
+        $this->assertIsInt($trashMarker, 'the trash button script never rendered');
+        $scriptEnd = strpos($html, '</script>', $trashMarker);
+        $this->assertIsInt($scriptEnd, 'the trash button script tag never closed');
+        $trashScript = substr($html, $trashMarker, $scriptEnd - $trashMarker);
+        $this->assertStringNotContainsString('window.confirm', $trashScript);
 
         // hb:post-id (fired on the first save) is what lifts the disabled state and learns the
         // real post id — same contract revisions-dialog.blade.php's own row uses.
