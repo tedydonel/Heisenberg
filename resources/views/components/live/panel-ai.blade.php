@@ -19,8 +19,21 @@
 
     .hb-ai-header { display: flex; flex-direction: column; gap: var(--hb-space-2, 8px); padding: 10px; flex: none; }
     .hb-ai-header__row { display: flex; align-items: center; gap: var(--hb-space-2, 8px); }
-    .hb-ai-header__badge { display: inline-flex; align-items: center; justify-content: center; width: 28px; height: 28px; border-radius: 14px; background: var(--hb-bg-inset, #EEEEEE); flex: none; }
+    /* 2026-08-15: badge background cleared so the fill icons (sparkle-fill) sit on the panel
+       directly. The original grey pill was only there because the regular (outline) sparkle
+       needed contrast to read — the fill weight doesn't. */
+    .hb-ai-header__badge { display: inline-flex; align-items: center; justify-content: center; width: 28px; height: 28px; flex: none; }
     .hb-ai-header__badge-icon { display: inline-flex; width: 16px; height: 16px; color: var(--hb-accent, #000); }
+    .hb-ai-header__action.hb-iconbtn { background: transparent; border-color: transparent; }
+    /* Header action buttons (history / settings) — bare icon only, no chrome. Scoped to this
+       header so the rest of the editor's icon-buttons keep their resting frame. */
+    .hb-ai-header__action.hb-iconbtn {
+        background: transparent;
+        border-color: transparent;
+    }
+    .hb-ai-header__action.hb-iconbtn:hover:not(:disabled) {
+        background: var(--hb-surface-hover, #F7F7F7);
+    }
     .hb-ai-header__title { font-family: var(--hb-font-sans, Rubik, sans-serif); font-size: var(--hb-fs-base, 13px); font-weight: 600; color: var(--hb-text-primary, #0A0A0A); }
     .hb-ai-header__action { flex: none; }
     .hb-ai-header__action:first-of-type { margin-left: auto; }
@@ -237,12 +250,12 @@
             <div class="hb-ai-header">
                 <div class="hb-ai-header__row">
                     <span class="hb-ai-header__badge" aria-hidden="true">
-                        <span class="hb-ai-header__badge-icon">@include('heisenberg::components.ui.icon', ['name' => 'sparkle', 'size' => 16])</span>
+                        <span class="hb-ai-header__badge-icon">@include('heisenberg::components.ui.icon', ['name' => 'sparkle-fill', 'size' => 16])</span>
                     </span>
                     <span class="hb-ai-header__title">{{ __('heisenberg::editor.panel_ai_tools.ai_assistant') }}</span>
-                    <x-ui.icon-button icon="notepad" class="hb-ai-header__action"
+                    <x-ui.icon-button icon="notepad-fill" class="hb-ai-header__action"
                         :label="__('heisenberg::editor.panel_ai_tools.ai_history_open')" data-hb-ai-history-open />
-                    <x-ui.icon-button icon="gear" class="hb-ai-header__action"
+                    <x-ui.icon-button icon="gear-fill" class="hb-ai-header__action"
                         :label="__('heisenberg::editor.ai.settings_open')" data-hb-ai-settings-open />
                 </div>
             </div>
