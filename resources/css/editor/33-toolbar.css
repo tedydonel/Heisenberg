@@ -67,3 +67,18 @@
 .hb-tb-linkpop input:focus { outline: none; border-color: var(--hb-border-focus, #000); }
 .hb-tb-linkpop button { flex: none; height: 28px; padding: 0 10px; border: 0; border-radius: var(--hb-radius-md, 5px); background: var(--hb-accent, #000); color: var(--hb-accent-fg, #fff); font-family: inherit; font-size: var(--hb-fs-sm, 12px); cursor: pointer; }
 .hb-tb-linkpop button:hover { background: var(--hb-accent-hover, #1A1A1A); }
+
+/* Save-as-block popover (toolbar-composition.md §8) — a single field with a Save / Cancel pair
+   stacked below, instead of the link popover's inline Apply. Title above the field so the user
+   knows what they're naming; inline error slot replaces the field's empty-message tone. */
+.hb-tb-savepop { position: fixed; z-index: 50; display: flex; flex-direction: column; gap: 6px; padding: 10px; width: 260px; }
+.hb-tb-savepop__title { font-family: var(--hb-font-sans, Rubik, sans-serif); font-size: var(--hb-fs-sm, 12px); font-weight: var(--hb-fw-medium, 500); color: var(--hb-text-primary, #0A0A0A); }
+.hb-tb-savepop input { height: 30px; padding: 0 8px; border: 1px solid var(--hb-border, #E4E4E4); border-radius: var(--hb-radius-md, 5px); background: var(--hb-bg, #fff); font-family: var(--hb-font-sans, Rubik, sans-serif); font-size: var(--hb-fs-sm, 13px); color: var(--hb-text-primary, #0A0A0A); }
+.hb-tb-savepop input:focus { outline: none; border-color: var(--hb-border-focus, #000); }
+.hb-tb-savepop__error { font-family: var(--hb-font-sans, Rubik, sans-serif); font-size: var(--hb-fs-xs, 11px); color: var(--hb-danger, #B00020); }
+.hb-tb-savepop__actions { display: flex; justify-content: flex-end; gap: 6px; margin-top: 2px; }
+.hb-tb-savepop__actions button { height: 28px; padding: 0 12px; border: 0; border-radius: var(--hb-radius-md, 5px); font-family: inherit; font-size: var(--hb-fs-sm, 12px); cursor: pointer; }
+.hb-tb-savepop__actions [data-save-cancel] { background: transparent; color: var(--hb-text-primary, #0A0A0A); }
+.hb-tb-savepop__actions [data-save-ok] { background: var(--hb-accent, #000); color: var(--hb-accent-fg, #fff); }
+.hb-tb-savepop__actions [data-save-ok]:hover { background: var(--hb-accent-hover, #1A1A1A); }
+.hb-tb-savepop__actions [data-save-ok]:disabled { opacity: 0.6; cursor: progress; }

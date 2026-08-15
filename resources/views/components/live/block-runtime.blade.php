@@ -1257,6 +1257,92 @@
         return copy.id;
     }
 
+    // Insert a saved reusable-block composition ("pattern") — the toolbar's save-as-block
+    // icon writes one through /editor/patterns, the Components panel's Blocks tab reads the
+    // same store and calls this with a pattern id (toolbar-composition.md §8).
+    //
+    // Each top-level entry in the saved shape is run through normalizeModel first, so the
+    // re-id + re-default dance is the same one replaceDoc/duplicateBlock already take — a
+    // pattern inserted on a fresh editor has the same shape as one inserted on a long-lived
+    // one. Insertion walks top-level entries in order, appending each: after the first one
+    // lands it becomes selected, so the rest cascade into it as innerBlocks only when the
+    // container actually allows that child — otherwise they fall through to top-level,
+    // matching insertBlock's own branching. Unknown block names are dropped (same rule as
+    // insertBlock returning null), so a pattern whose contract was removed since saving it
+    // degrades to "fewer blocks than you saved" instead of a hard failure.
+    function insertPattern(blocks) {
+        if (!Array.isArray(blocks) || !blocks.length) return null;
+        let firstId = null;
+        let model = null;
+        for (let i = 0; i < blocks.length; i++) {
+            model = normalizeModel(blocks[i]);
+            if (!model) continue;
+            const el = insertBlockByModel(model);
+            if (el && !firstId) firstId = model.id;
+        }
+        if (firstId) document.dispatchEvent(new CustomEvent('hb:blocks-changed'));
+        return firstId;
+    }
+
+    // ── pattern store I/O (toolbar-composition.md §8) ───────────
+    // The save flow lives in the toolbar (live/toolbar/block-toolbar.blade.php); the Blocks tab
+    // only reads/deletes from the same store. The single shared event `hb:patterns-changed`
+    // refreshes the tab on either side — saves fire it after a successful POST, deletes after
+    // a successful DELETE, and a host that mounts its own patterns UI can fire it too.
+    function patternsIndexUrl() {
+        const root = document.querySelector('[data-hb-panel-cb]');
+        return root ? root.getAttribute('data-hb-patterns-index-url') || '' : '';
+    }
+    function fetchPattern(id) {
+        const url = patternsIndexUrl();
+        if (!url || !id) return Promise.resolve(null);
+        return fetch(url, { headers: { 'Accept': 'application/json' } }).then((r) => r.ok ? r.json() : null)
+            .then((data) => {
+                if (!data || !Array.isArray(data.patterns)) return null;
+                const found = data.patterns.find((p) => String(p.id) === String(id));
+                return found || null;
+            }).catch(() => null);
+    }
+    function deletePattern(id, btn) {
+        const root = document.querySelector('[data-hb-panel-cb]');
+        const url = root ? root.getAttribute('data-hb-patterns-destroy-url') || '' : '';
+        if (!url || !id) return;
+        if (typeof window.confirm === 'function') {
+            const ok = window.confirm(root?.getAttribute('data-hb-pattern-delete-confirm') || 'Delete this saved block?');
+            if (!ok) return;
+        }
+        if (btn) btn.disabled = true;
+        const csrf = document.querySelector('meta[name="csrf-token"]');
+        const headers = { 'Accept': 'application/json', 'Content-Type': 'application/json', 'X-Requested-With': 'XMLHttpRequest' };
+        if (csrf && csrf.content) headers['X-CSRF-TOKEN'] = csrf.content;
+        fetch(url, { method: 'DELETE', headers: headers, body: JSON.stringify({ id: id }) })
+            .then((r) => r.ok ? r.json() : null)
+            .then(() => {
+                document.dispatchEvent(new CustomEvent('hb:patterns-changed'));
+            })
+            .catch(() => {})
+            .finally(() => { if (btn) btn.disabled = false; });
+    }
+
+    // Same body as insertBlock, minus the contract-based newBlockModel() — caller supplies
+    // the already-normalized model so a pattern's saved attributes/supports/innerBlocks
+    // land verbatim rather than being re-defaulted.
+    function insertBlockByModel(model) {
+        const wrap = wrapEl();
+        const app = appenderEl();
+        doc.blocks.push(model);
+        const el = renderBlockEl(model);
+        if (!el) {
+            const i = indexOf(model.id);
+            if (i !== -1) doc.blocks.splice(i, 1);
+            return null;
+        }
+        if (app && app.parentNode === wrap) wrap.insertBefore(el, app);
+        else wrap.appendChild(el);
+        select(el);
+        return el;
+    }
+
     // ── drag & drop reorder / insert (Pointer Events, no HTML5 DnD) ────
     // Shared geometry: given a strip of items, find which one the pointer is over and whether the
     // drop should land before or after it (by which half of its box the pointer is in). Falls back
@@ -1722,6 +1808,29 @@
                 if (card.__hbDragSuppressClick) { card.__hbDragSuppressClick = false; return; }
                 insertBlock(card.getAttribute('data-hb-insert-block'));
             });
+            // Saved-blocks tab cards — pick the saved composition and ask the server for it,
+            // so the live runtime always re-receives a fresh set of ids. The server fetch is
+            // the same GET /editor/patterns the editor's first paint seeded from; without it
+            // the client would have to thread each pattern's full blocks tree into the panel's
+            // initial render payload, which would balloon for any install with a real library.
+            document.addEventListener('click', (e) => {
+                const delBtn = e.target.closest('[data-hb-pattern-delete]');
+                if (delBtn) {
+                    e.stopPropagation();
+                    e.preventDefault();
+                    deletePattern(delBtn.getAttribute('data-hb-pattern-delete'), delBtn);
+                    return;
+                }
+                const card = e.target.closest('[data-hb-saved-block]');
+                if (!card) return;
+                if (card.__hbDragSuppressClick) { card.__hbDragSuppressClick = false; return; }
+                const id = card.getAttribute('data-hb-saved-block');
+                if (!id) return;
+                fetchPattern(id).then((pattern) => {
+                    if (!pattern) return;
+                    insertPattern(pattern.blocks || []);
+                }).catch(() => {});
+            });
             // Click on empty canvas (not a block / toolbar / appender) deselects.
             document.addEventListener('mousedown', (e) => {
                 const canvas = e.target.closest('.hb-canvas');
@@ -2018,6 +2127,7 @@
         readAttr: readAttr,
         moveById: moveById,
         duplicateBlock: duplicateBlock,
+        insertPattern: insertPattern,
         previewState: previewState,
         parentIdOf: function (id) { return parentIdOf(id); },
         moveBlock: moveBlock,

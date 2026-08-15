@@ -6,6 +6,7 @@ namespace Heisenberg\Http\Controllers;
 
 use Heisenberg\Adapters\GuestActor;
 use Heisenberg\Models\Category;
+use Heisenberg\Models\Pattern;
 use Heisenberg\Models\Post;
 use Heisenberg\Models\Tag;
 use Heisenberg\Services\AiProviderRegistry;
@@ -442,6 +443,28 @@ final class EditorController
     }
 
     /**
+     * Initial patterns list seeded into the editor's Blocks tab. Loaded once at render
+     * time — a save through the toolbar's save-as-block icon then re-fetches through
+     * patternsIndexUrl (panel-components-blocks.blade.php) so the tab picks up new entries
+     * without a full reload.
+     *
+     * @return array<int, array{id:int, name:string, blocks:array<int, mixed>, updated_at:?string}>
+     */
+    private function patternsForView(): array
+    {
+        return Pattern::query()
+            ->orderBy('name')
+            ->get(['id', 'name', 'blocks', 'updated_at'])
+            ->map(static fn (Pattern $p): array => [
+                'id' => (int) $p->id,
+                'name' => (string) $p->name,
+                'blocks' => $p->blocks ?: [],
+                'updated_at' => optional($p->updated_at)->toIso8601String(),
+            ])
+            ->all();
+    }
+
+    /**
      * View data both `index()` and `show()` need. No registry allow-list — the client
      * ships whatever BlockRegistryService discovers under resources/blocks.
      */
@@ -455,6 +478,13 @@ final class EditorController
         return [
             'postStatusTransitions' => $postStatusTransitions,
             'postStatusLabels' => $this->statusLabels($postStatusTransitions),
+            // User's saved reusable block compositions — the toolbar's save-as-block writes to
+            // /editor/patterns, the Components panel's Blocks tab reads /editor/patterns and
+            // inserts a picked pattern through hbEditor.insertPattern (toolbar-composition.md §8).
+            'patterns' => $this->patternsForView(),
+            'patternsIndexUrl' => route('heisenberg.editor.patterns.index'),
+            'patternsStoreUrl' => route('heisenberg.editor.patterns.store'),
+            'patternsDestroyUrl' => route('heisenberg.editor.patterns.destroy'),
             'registry' => BlockViewData::clientBlocks($registry),
             'blocksCss' => BlockViewData::blocksCss($registry),
             'theme' => $themes->load(),

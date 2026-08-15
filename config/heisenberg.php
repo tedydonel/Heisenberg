@@ -53,7 +53,7 @@ return [
         'comment'     => \Heisenberg\Models\Comment::class,
         'seo_meta'    => \Heisenberg\Models\SeoMeta::class,
         // 'revision' => \Heisenberg\Models\Revision::class, // M3 (already shipped; see note above)
-        // 'pattern'  => \Heisenberg\Models\Pattern::class,  // M3
+        'pattern'  => \Heisenberg\Models\Pattern::class,
     ],
 
     // ── Tables (default heisenberg_ prefix; set to GTC names to migrate in place) ──

@@ -6,6 +6,7 @@ use Heisenberg\Http\Controllers\CategoryController;
 use Heisenberg\Http\Controllers\EditorController;
 use Heisenberg\Http\Controllers\EmailPreviewController;
 use Heisenberg\Http\Controllers\FontController;
+use Heisenberg\Http\Controllers\HeisenbergPatternController;
 use Heisenberg\Http\Controllers\LocaleController;
 use Heisenberg\Http\Controllers\PostCategoryController;
 use Heisenberg\Http\Controllers\PostController;
@@ -83,6 +84,13 @@ Route::middleware(config('heisenberg.middleware.editor', ['web']))->group(functi
     Route::get('/editor/themes', [SavedThemeController::class, 'index'])->name('heisenberg.editor.themes.index');
     Route::post('/editor/themes', [SavedThemeController::class, 'store'])->name('heisenberg.editor.themes.store');
     Route::delete('/editor/themes', [SavedThemeController::class, 'destroy'])->name('heisenberg.editor.themes.destroy');
+    // The user's saved reusable block compositions ("patterns") — toolbar's save-as-block
+    // writes here, the Components panel's Blocks tab reads /editor/patterns and inserts a
+    // picked pattern through the runtime's insertPattern API (toolbar-composition.md §8).
+    // Same delete-via-body convention as SavedTheme routes above.
+    Route::get('/editor/patterns', [HeisenbergPatternController::class, 'index'])->name('heisenberg.editor.patterns.index');
+    Route::post('/editor/patterns', [HeisenbergPatternController::class, 'store'])->name('heisenberg.editor.patterns.store');
+    Route::delete('/editor/patterns', [HeisenbergPatternController::class, 'destroy'])->name('heisenberg.editor.patterns.destroy');
     // Post <-> category / tag attach-detach — both BelongsToMany as of 2026-08-03 (see
     // Post::categories()/tags() docblocks), so both routes are shaped identically.
     Route::post('/editor/posts/{post}/categories/{category}', [PostCategoryController::class, 'attach'])->whereNumber('post')->whereNumber('category')->name('heisenberg.editor.posts.categories.attach');

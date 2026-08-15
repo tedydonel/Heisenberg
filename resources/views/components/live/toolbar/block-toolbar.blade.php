@@ -11,7 +11,8 @@
        - move-up/move-down call hbEditor.moveBlock; drag is already wired natively by
          block-runtime's wireCanvasBlockDrag (pointerdown on .hb-tb__btn--drag). The ⋯ More menu
          (duplicate/delete) is live; select-parent shows once real nesting exists; save-as-block
-         still has no backing runtime capability — see the boot() comments below.
+         POSTs the selected container's model to /editor/patterns and dispatches hb:patterns-changed
+         so the Blocks tab refreshes without a reload (toolbar-composition.md §8).
 
      Chrome sits on --hb-editing (square); the white icons/overlays are toolbar mechanics,
      not theme colours. --}}
@@ -20,7 +21,14 @@
     $has = fn ($key) => \Illuminate\Support\Arr::get($supports, $key, null) !== null
         && \Illuminate\Support\Arr::get($supports, $key) !== false;
 @endphp
-<div {{ $attributes->merge(['class' => 'hb-tb']) }} data-hb-toolbar role="toolbar" aria-label="Block toolbar">
+<div {{ $attributes->merge(['class' => 'hb-tb']) }} data-hb-toolbar role="toolbar" aria-label="Block toolbar"
+    data-hb-save-title="{{ __('heisenberg::editor.patterns.save_dialog_title') }}"
+    data-hb-save-ph="{{ __('heisenberg::editor.patterns.save_dialog_placeholder') }}"
+    data-hb-save-ok="{{ __('heisenberg::editor.patterns.save_dialog_save') }}"
+    data-hb-save-cancel="{{ __('heisenberg::editor.patterns.save_dialog_cancel') }}"
+    data-hb-save-saving="{{ __('heisenberg::editor.patterns.save_dialog_saving') }}"
+    data-hb-save-error-required="{{ __('heisenberg::editor.patterns.name_required') }}"
+    data-hb-pattern-delete-confirm="{{ __('heisenberg::editor.patterns.delete_confirm') }}">
     <x-live.toolbar.groups.handle :block-type="$blockType" />
 
     @if ($richText)
@@ -161,6 +169,85 @@
             }, 80);
         });
 
+        // Save-as-block — opens a small popover at the toolbar's save button, POSTs the selected
+        // container's full model (id/name/attributes/supports/innerBlocks — the same shape
+        // duplicateBlock clones) to /editor/patterns, and on success fires hb:patterns-changed
+        // so the Blocks tab re-fetches without a reload (toolbar-composition.md §8).
+        function openSaveBlockDialog(tb, ctx) {
+            if (!ctx) return;
+            const root = document.querySelector('[data-hb-panel-cb]');
+            const url = root ? root.getAttribute('data-hb-patterns-store-url') || '' : '';
+            if (!url) return;
+            closeAll();
+            const model = ctx.model;
+            const rect = tb.getBoundingClientRect();
+            const pop = document.createElement('div');
+            pop.className = 'hb-pop hb-tb-savepop';
+            pop.innerHTML = ''
+                + '<div class="hb-tb-savepop__title">' + (tb.dataset.hbSaveTitle || 'Save as block') + '</div>'
+                + '<input type="text" maxlength="120" placeholder="' + (tb.dataset.hbSavePh || '') + '">'
+                + '<div class="hb-tb-savepop__error" hidden></div>'
+                + '<div class="hb-tb-savepop__actions">'
+                + '<button type="button" data-save-cancel>' + (tb.dataset.hbSaveCancel || 'Cancel') + '</button>'
+                + '<button type="button" data-save-ok>' + (tb.dataset.hbSaveOk || 'Save') + '</button>'
+                + '</div>';
+            pop.style.left = Math.max(8, Math.min(window.innerWidth - 280, rect.left)) + 'px';
+            pop.style.top = (rect.bottom + 6) + 'px';
+            document.body.appendChild(pop);
+            const input = pop.querySelector('input');
+            const okBtn = pop.querySelector('[data-save-ok]');
+            const cancelBtn = pop.querySelector('[data-save-cancel]');
+            const errEl = pop.querySelector('.hb-tb-savepop__error');
+            input.value = '';
+            const cleanup = () => {
+                pop.remove();
+                document.removeEventListener('mousedown', onOutside, true);
+                document.removeEventListener('keydown', onKey, true);
+            };
+            const onOutside = (e) => { if (!pop.contains(e.target) && !tb.contains(e.target)) cleanup(); };
+            const onKey = (e) => { if (e.key === 'Escape') { e.preventDefault(); cleanup(); } else if (e.key === 'Enter') { e.preventDefault(); doSave(); } };
+            const doSave = () => {
+                const name = input.value.trim();
+                if (!name) {
+                    errEl.hidden = false;
+                    errEl.textContent = tb.dataset.hbSaveErrorRequired || 'Give the block a name.';
+                    input.focus();
+                    return;
+                }
+                okBtn.disabled = true;
+                okBtn.textContent = tb.dataset.hbSaveSaving || 'Saving…';
+                errEl.hidden = true;
+                const csrf = document.querySelector('meta[name="csrf-token"]');
+                const headers = { 'Accept': 'application/json', 'Content-Type': 'application/json', 'X-Requested-With': 'XMLHttpRequest' };
+                if (csrf && csrf.content) headers['X-CSRF-TOKEN'] = csrf.content;
+                fetch(url, { method: 'POST', headers: headers, body: JSON.stringify({ name: name, blocks: [model] }) })
+                    .then(async (r) => {
+                        const data = await r.json().catch(() => null);
+                        if (!r.ok || !data || data.saved !== true) {
+                            const msg = (data && data.errors && (data.errors.name || data.errors.blocks)) || 'Could not save.';
+                            errEl.hidden = false;
+                            errEl.textContent = Array.isArray(msg) ? msg.join(' ') : String(msg);
+                            okBtn.disabled = false;
+                            okBtn.textContent = tb.dataset.hbSaveOk || 'Save';
+                            return;
+                        }
+                        cleanup();
+                        document.dispatchEvent(new CustomEvent('hb:patterns-changed', { detail: { pattern: data.pattern } }));
+                    })
+                    .catch(() => {
+                        errEl.hidden = false;
+                        errEl.textContent = 'Network error.';
+                        okBtn.disabled = false;
+                        okBtn.textContent = tb.dataset.hbSaveOk || 'Save';
+                    });
+            };
+            cancelBtn.addEventListener('click', cleanup);
+            okBtn.addEventListener('click', doSave);
+            document.addEventListener('mousedown', onOutside, true);
+            document.addEventListener('keydown', onKey, true);
+            setTimeout(() => input.focus(), 0);
+        }
+
         const boot = () => document.querySelectorAll('[data-hb-toolbar]').forEach((tb) => {
             if (tb.__hbTb) return; tb.__hbTb = true;
 
@@ -263,10 +350,12 @@
                 //
                 // `select-parent` is unreachable today (gateToolbar hides it until blocks nest)
                 // but written against the real API so it works the moment containers exist.
-                // `save` has no runtime capability yet — a no-op until reusable blocks land.
                 if (ctx && window.hbEditor && action === 'select-parent') {
                     const parent = window.hbEditor.parentIdOf?.(ctx.id);
                     if (parent) window.hbEditor.selectById(parent);
+                }
+                if (action === 'save') {
+                    openSaveBlockDialog(tb, ctx);
                 }
             }));
 
