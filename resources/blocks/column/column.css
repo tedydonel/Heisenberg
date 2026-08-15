@@ -52,7 +52,11 @@
        other cell instead of forcing the row wider. Unset, the basis falls back to 0 and the
        cap to `none` — the original equal-shares behavior, untouched. An explicit Max Width
        still wins over the width-derived cap. */
-    flex: 1 1 var(--hb-column-w, 0);
+    /* flex-basis: auto (not 0) so columns in column-direction flex containers collapse
+       correctly when only one column has content — flex: 1 1 0 made the empty column
+       0px tall because the container has auto height and flex-grow can't distribute
+       extra space when there isn't any. */
+    flex: 1 1 var(--hb-column-w, auto);
     height: var(--hb-column-h, auto);
     transition: color 140ms ease, background-color 140ms ease, box-shadow 140ms ease, transform 140ms ease;
     color: var(--hb-column-color, inherit);
@@ -63,13 +67,17 @@
     max-height: var(--hb-column-maxh, none);
 }
 
-/* Column direction is fixed (no `layout.direction` support to flip it): a column stacks its
-   children. Padding composes the two affordances that both target it: a per-side Padding
-   value (spacing.padding.<side>) wins, falling back to the Flex Layout padding
+/* Direction comes from --hb-flex-direction (the variable SupportsStyle writes from the
+   inspector's Flex Layout segmented — wrap/column/row). The capability rule would default
+   it to row; we override here so the contract wins. A column's children can now stack
+   vertically (column) or lay out side-by-side (row) per the inspector choice.
+
+   Padding composes the two affordances that both target it: a per-side Padding value
+   (spacing.padding.<side>) wins, falling back to the Flex Layout padding
    (layout.padding), falling back to none. Without this composition the capability rule's flat
    `padding: var(--hb-flex-padding, 0)` would silently overwrite every per-side value. */
 [data-block-id].hb-supports.hb-flex-layout.hb-block-column {
-    flex-direction: column;
+    flex-direction: var(--hb-flex-direction, column);
     gap: var(--hb-flex-gap, 8px);
     padding:
         var(--hb-column-pt, var(--hb-flex-padding, 0))

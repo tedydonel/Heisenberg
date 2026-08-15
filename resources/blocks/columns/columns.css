@@ -53,12 +53,14 @@
     margin: var(--hb-columns-mt, 0) var(--hb-columns-mr, 0) var(--hb-columns-mb, 0) var(--hb-columns-ml, 0);
 }
 
-/* Row direction is fixed (no `layout.direction` support to flip it) and the gap defaults to a
-   readable gutter until the inspector's Gap field sets --hb-flex-gap. Padding is the per-side
-   Padding section only — this contract declares no `layout.padding`, so the capability rule's
-   flat `padding: var(--hb-flex-padding, 0)` must not be allowed to overwrite the four sides. */
+/* Direction comes from --hb-flex-direction (the variable SupportsStyle writes from the
+   inspector's Flex Layout segmented — wrap/column/row). The capability rule would default
+   it to row; we override here so the contract wins. Gap defaults to a readable gutter until
+   the inspector's Gap field sets --hb-flex-gap. Padding is the per-side Padding section
+   only — this contract declares no `layout.padding`, so the capability rule's flat
+   `padding: var(--hb-flex-padding, 0)` must not be allowed to overwrite the four sides. */
 [data-block-id].hb-supports.hb-flex-layout.hb-block-columns {
-    flex-direction: row;
+    flex-direction: var(--hb-flex-direction, row);
     gap: var(--hb-flex-gap, 24px);
     padding: var(--hb-columns-pt, 0) var(--hb-columns-pr, 0) var(--hb-columns-pb, 0) var(--hb-columns-pl, 0);
 }

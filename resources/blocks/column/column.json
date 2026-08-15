@@ -140,6 +140,8 @@
     },
     "supports": {
         "layout": {
+            "direction": true,
+            "wrap": true,
             "justify": true,
             "align": true,
             "gap": true,
@@ -421,6 +423,16 @@
                 "source": "supports.layout.align",
                 "default": "",
                 "sanitize": "flex-align"
+            },
+            "--hb-flex-direction": {
+                "source": "supports.layout.direction",
+                "default": "column",
+                "sanitize": "flex-direction"
+            },
+            "--hb-flex-wrap": {
+                "source": "supports.layout.wrap",
+                "default": "",
+                "sanitize": "flex-wrap"
             },
             "--hb-flex-gap": {
                 "source": "supports.layout.gap",
