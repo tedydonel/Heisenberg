@@ -282,26 +282,36 @@ class EditorRendersTest extends TestCase
     public function test_post_body_rows_cannot_shrink_when_a_disclosure_opens_or_closes(): void
     {
         $html = $this->get('/editor')->getContent();
+        // 2026-08-15: ui/disclosure-row.blade.php stylesheet moved to editor.css bundle — see
+        // resources/css/editor/36-components.css. The inline emission was being captured
+        // inside <template> on first render (post-taxonomy-item-template uses the component).
+        $css = $this->get('/heisenberg-assets/editor.css')->getContent();
 
         // The Post stack uses compact 32px rows, separated only by their top edge. Summary is a
         // disclosure too, so it needs the same top separator as the navigation rows.
+        //
+        // 2026-08-15: the rules for .hb-inspector__post-body live in inspector.blade.php's
+        // inline <style>, NOT in the editor.css bundle (the 2026-08-15 component-CSS sweep
+        // only moved ui/* component styles, not live/* page styles). The disclosure-row
+        // rules DO live in the bundle. Split accordingly.
         $this->assertMatchesRegularExpression('/\.hb-inspector__post-body\s*>\s*\*\s*\{[^}]*flex:\s*none/', $html);
         $this->assertStringContainsString('height:32px;padding:0 var(--hb-space-3, 12px);', $html);
-        $this->assertMatchesRegularExpression('/\.hb-disclosure--border\s*\{[^}]*border-top:\s*1px solid/', $html);
-        $this->assertStringNotContainsString('.hb-disclosure--border { border-bottom:', $html);
+        $this->assertMatchesRegularExpression('/\.hb-disclosure--border\s*\{[^}]*border-top:\s*1px solid/', $css);
+        $this->assertStringNotContainsString('.hb-disclosure--border { border-bottom:', $css);
         $this->assertMatchesRegularExpression('/class="hb-disclosure hb-disclosure--border"[^>]*>.*?<span class="hb-disclosure__label">Featured image</s', $html);
         $this->assertMatchesRegularExpression('/class="hb-disclosure hb-disclosure--border"[^>]*>.*?<span class="hb-disclosure__label">Summary</s', $html);
     }
 
     public function test_fixed_height_chrome_rows_do_not_shrink(): void
     {
-        $html = $this->get('/editor')->getContent();
+        // Component CSS moved to editor.css bundle on 2026-08-15 — see sibling test above.
+        $css = $this->get('/heisenberg-assets/editor.css')->getContent();
 
         // Both tab strips declare a fixed height, so both must opt out of flex shrinking — inside a
         // clamped flex column the default flex-shrink: 1 squeezes them by however tall the panel
         // below happens to be, so the row's height changed as you switched sub-tabs.
-        $this->assertMatchesRegularExpression('/\.hb-subtabs\s*\{[^}]*flex:\s*none/', $html);
-        $this->assertMatchesRegularExpression('/\.hb-paneltabs\s*\{[^}]*flex:\s*none/', $html);
+        $this->assertMatchesRegularExpression('/\.hb-subtabs\s*\{[^}]*flex:\s*none/', $css);
+        $this->assertMatchesRegularExpression('/\.hb-paneltabs\s*\{[^}]*flex:\s*none/', $css);
     }
 
     public function test_runtime_exposes_both_model_write_paths(): void

@@ -7,32 +7,7 @@
      else to wire. The 'toggle' event still fires regardless, for anything that wants to react beyond
      show/hide. --}}
 @once
-<style>
-    .hb-categoryhead {
-        display: flex;
-        align-items: center;
-        justify-content: space-between;
-        width: 100%;
-        height: 28px;
-        padding: 0 12px;
-        border: 0;
-        background: transparent;
-        cursor: pointer;
-        flex: none;
-    }
-    .hb-categoryhead__label {
-        font-family: var(--hb-font-sans, Rubik, sans-serif);
-        font-size: var(--hb-fs-xs, 11px);
-        font-weight: 600;
-        letter-spacing: .8px;
-        text-transform: uppercase;
-        color: var(--hb-text-muted, #9A9A9A);
-    }
-    .hb-categoryhead__chevron { display: inline-flex; width: 11px; height: 11px; color: var(--hb-text-muted, #9A9A9A); }
-    .hb-categoryhead__chevron--collapsed { display: none; }
-    .hb-categoryhead[aria-expanded="false"] .hb-categoryhead__chevron--expanded { display: none; }
-    .hb-categoryhead[aria-expanded="false"] .hb-categoryhead__chevron--collapsed { display: inline-flex; }
-</style>
+
 <script>
     (() => {
         const boot = () => {

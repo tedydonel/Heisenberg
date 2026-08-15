@@ -1,28 +1,5 @@
 @once
-<style>
-    .hb-dtp { width: 236px; box-sizing: border-box; padding: 12px; display: flex; flex-direction: column; gap: 10px; font-family: var(--hb-font-sans, Rubik, sans-serif); }
-    .hb-dtp__head { display: flex; align-items: center; gap: 2px; }
-    .hb-dtp__nav { display: inline-flex; align-items: center; justify-content: center; width: 22px; height: 22px; padding: 0; flex: none; border: 0; background: none; border-radius: var(--hb-radius-sm, 3px); color: var(--hb-text-muted, #9A9A9A); cursor: pointer; }
-    .hb-dtp__nav:hover { background: var(--hb-surface-hover, #F7F7F7); color: var(--hb-text-primary, #0A0A0A); }
-    .hb-dtp__label { flex: 1 1 auto; min-width: 0; text-align: center; font-size: var(--hb-fs-sm, 12px); font-weight: 600; color: var(--hb-text-primary, #0A0A0A); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-    .hb-dtp__weekdays { display: grid; grid-template-columns: repeat(7, 1fr); }
-    .hb-dtp__weekdays span { display: block; text-align: center; font-size: var(--hb-fs-xs, 11px); color: var(--hb-text-muted, #9A9A9A); }
-    .hb-dtp__grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 2px; }
-    .hb-dtp__day { display: flex; align-items: center; justify-content: center; height: 26px; padding: 0; border: 0; background: none; border-radius: var(--hb-radius-sm, 3px); font-family: inherit; font-size: var(--hb-fs-xs, 11px); color: var(--hb-text-primary, #0A0A0A); cursor: pointer; }
-    .hb-dtp__day:hover { background: var(--hb-surface-hover, #F7F7F7); }
-    .hb-dtp__day--muted { color: var(--hb-text-muted, #9A9A9A); }
-    .hb-dtp__day--today:not(.hb-dtp__day--selected) { box-shadow: inset 0 0 0 1px var(--hb-border-focus, #000); }
-    .hb-dtp__day--selected { background: var(--hb-accent, #000); color: var(--hb-accent-fg, #fff); }
-    .hb-dtp__day--selected:hover { background: var(--hb-accent-hover, #1A1A1A); }
-    .hb-dtp__time { display: flex; align-items: center; justify-content: center; gap: 6px; padding-top: 10px; border-top: 1px solid var(--hb-border, #E4E4E4); }
-    .hb-dtp__time-input { width: 40px; height: 26px; box-sizing: border-box; border: 1px solid var(--hb-border, #E4E4E4); border-radius: var(--hb-radius-md, 5px); background: var(--hb-bg, #fff); text-align: center; font-family: inherit; font-size: var(--hb-fs-sm, 12px); color: var(--hb-text-primary, #0A0A0A); }
-    .hb-dtp__time-input:focus { outline: 0; border-color: var(--hb-border-focus, #000); }
-    .hb-dtp__time-sep { color: var(--hb-text-muted, #9A9A9A); font-size: var(--hb-fs-sm, 12px); }
-    .hb-dtp__foot { display: flex; align-items: center; justify-content: space-between; padding-top: 8px; border-top: 1px solid var(--hb-border, #E4E4E4); }
-    .hb-dtp__btn { border: 0; background: none; padding: 4px 6px; margin: -4px -6px; border-radius: var(--hb-radius-sm, 3px); cursor: pointer; font-family: inherit; font-size: var(--hb-fs-xs, 11px); font-weight: 600; color: var(--hb-text-primary, #0A0A0A); }
-    .hb-dtp__btn:hover { background: var(--hb-surface-hover, #F7F7F7); }
-    .hb-dtp__btn--muted { color: var(--hb-text-muted, #9A9A9A); }
-</style>
+
 <script>
     (() => {
         const pad2 = (n) => String(n).padStart(2, '0');

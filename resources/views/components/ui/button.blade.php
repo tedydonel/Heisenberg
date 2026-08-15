@@ -5,48 +5,7 @@
      Height is a fixed 28px (explicit request, not from the source's padding-derived ~32px) so every
      button using this component is the same height everywhere it's used. --}}
 @once
-<style>
-    .hb-btn {
-        display: inline-flex;
-        align-items: center;
-        justify-content: center;
-        gap: var(--hb-space-2, 8px);
-        height: 28px;
-        padding: 0 14px;
-        border: 1px solid transparent;
-        border-radius: var(--hb-radius-md, 5px);
-        font-family: var(--hb-font-sans, Rubik, sans-serif);
-        font-size: var(--hb-fs-sm, 12px);
-        font-weight: 500;
-        line-height: 1;
-        cursor: pointer;
-        white-space: nowrap;
-        user-select: none;
-        transition: background-color .12s ease, border-color .12s ease, color .12s ease;
-    }
-    .hb-btn:focus-visible { outline: 2px solid var(--hb-border-focus, #000); outline-offset: 2px; }
-    .hb-btn:disabled { opacity: .5; cursor: not-allowed; }
-    .hb-btn__icon { display: inline-flex; width: 14px; height: 14px; }
 
-    .hb-btn--primary {
-        background: var(--hb-accent, #000);
-        color: var(--hb-accent-fg, #fff);
-    }
-    .hb-btn--primary:hover:not(:disabled) { background: var(--hb-accent-hover, #1a1a1a); }
-
-    .hb-btn--secondary {
-        background: var(--hb-bg, #fff);
-        color: var(--hb-text-primary, #0a0a0a);
-        border-color: var(--hb-border, #e4e4e4);
-    }
-    .hb-btn--secondary:hover:not(:disabled) { background: var(--hb-surface-hover, #f7f7f7); }
-
-    .hb-btn--ghost {
-        background: transparent;
-        color: var(--hb-text-secondary, #5a5a5a);
-    }
-    .hb-btn--ghost:hover:not(:disabled) { background: var(--hb-surface-hover, #f7f7f7); }
-</style>
 @endonce
 
 @props([

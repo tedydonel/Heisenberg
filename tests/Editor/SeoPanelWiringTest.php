@@ -178,24 +178,32 @@ class SeoPanelWiringTest extends TestCase
 
     public function test_the_warn_check_icon_uses_the_warning_token_not_a_fixed_hex(): void
     {
-        $html = $this->blankEditorHtml();
+        // ui/status-check-row styles moved from an @once <style> block into the editor.css
+        // bundle (resources/css/editor/36-components.css) on 2026-08-15 — the inline emission
+        // was being captured inside a <template> on first render and the browser never applied
+        // the rules. The same fix applies here.
+        $css = $this->get('/heisenberg-assets/editor.css')->getContent();
 
-        $this->assertStringContainsString('.hb-statuscheckrow__icon--warn { color: var(--hb-warning', $html);
-        $this->assertStringNotContainsString('.hb-statuscheckrow__icon--warn { color: #8A5A00', $html);
+        $this->assertStringContainsString('.hb-statuscheckrow__icon--warn { color: var(--hb-warning', $css);
+        $this->assertStringNotContainsString('.hb-statuscheckrow__icon--warn { color: #8A5A00', $css);
     }
 
     public function test_the_check_row_prototypes_are_not_inside_an_inert_template_element(): void
     {
         $html = $this->blankEditorHtml();
+        $css = $this->get('/heisenberg-assets/editor.css')->getContent();
 
         // ui/status-check-row emits its stylesheet via @once, at its FIRST render — which is the
         // prototype block below. A <template>'s content is inert, so emitting there put the
         // .hb-statuscheckrow__icon--* color rules somewhere the browser never applies them and
         // every status icon rendered black. The prototypes must live in a plain hidden element.
+        //
+        // 2026-08-15 fix: those rules now live in resources/css/editor/36-components.css (loaded
+        // via /heisenberg-assets/editor.css), so the assertion checks the bundle, not the page HTML.
         $this->assertStringContainsString('data-hb-seo-check-prototypes', $html);
         $this->assertStringNotContainsString('<template data-hb-seo-check-prototypes', $html);
 
-        $stylePos = strpos($html, '.hb-statuscheckrow__icon--pass { color:');
+        $stylePos = strpos($css, '.hb-statuscheckrow__icon--pass { color:');
         $this->assertNotFalse($stylePos, 'the status-check-row stylesheet never reached the page');
         $templatePos = strpos($html, '<template');
         if ($templatePos !== false) {

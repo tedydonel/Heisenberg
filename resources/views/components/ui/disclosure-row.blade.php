@@ -13,31 +13,7 @@
      server-persisted — consistent with this app's no-Livewire/no-backend-round-trip-for-UI-state
      posture elsewhere (e.g. ui/custom-scrollbar, ui/panel-tabs). --}}
 @once
-<style>
-    .hb-disclosure {
-        display: flex;
-        align-items: center;
-        justify-content: space-between;
-        width: 100%;
-        box-sizing: border-box;
-        border: 0;
-        background: transparent;
-        cursor: pointer;
-        text-align: left;
-    }
-    .hb-disclosure--border { border-top: 1px solid var(--hb-border, #E4E4E4); }
-    .hb-disclosure__left { display: inline-flex; align-items: center; gap: 10px; min-width: 0; }
-    .hb-disclosure__icon { display: inline-flex; width: 15px; height: 15px; color: var(--hb-text-secondary, #5A5A5A); flex: none; }
-    .hb-disclosure__label {
-        font-family: var(--hb-font-sans, Rubik, sans-serif);
-        font-size: 13px;
-        font-weight: 500;
-        color: var(--hb-text-primary, #0A0A0A);
-    }
-    .hb-disclosure__chevron { display: inline-flex; width: 13px; height: 13px; color: var(--hb-text-muted, #9A9A9A); flex: none; transition: transform .12s ease; }
-    .hb-disclosure:hover { background: var(--hb-surface-hover, #F7F7F7); }
-    .hb-disclosure[aria-expanded="false"] .hb-disclosure__chevron { transform: rotate(-90deg); }
-</style>
+
 <script>
     (() => {
         const storageKey = (key) => 'hb:disclosure:' + key;

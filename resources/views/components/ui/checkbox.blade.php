@@ -6,32 +6,7 @@
      as the same filled box with a dash glyph, inferred from the checked treatment.
      Real <input type="checkbox"> under the hood — native change/keyboard/indeterminate behavior. --}}
 @once
-<style>
-    .hb-checkbox { display: inline-flex; align-items: center; gap: var(--hb-space-2, 8px); cursor: pointer; }
-    .hb-checkbox--disabled { opacity: .5; cursor: not-allowed; }
-    .hb-checkbox__input { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); }
-    .hb-checkbox__box {
-        display: inline-flex;
-        align-items: center;
-        justify-content: center;
-        width: 15px;
-        height: 15px;
-        flex: none;
-        background: var(--hb-bg, #fff);
-        border: 1px solid var(--hb-border-strong, #C8C8C8);
-        border-radius: 3px;
-    }
-    .hb-checkbox__check { display: inline-flex; width: 11px; height: 11px; color: var(--hb-accent-fg, #fff); visibility: hidden; }
-    .hb-checkbox__input:checked ~ .hb-checkbox__box,
-    .hb-checkbox__input:indeterminate ~ .hb-checkbox__box {
-        background: var(--hb-accent, #000);
-        border-color: var(--hb-accent, #000);
-    }
-    .hb-checkbox__input:checked ~ .hb-checkbox__box .hb-checkbox__check,
-    .hb-checkbox__input:indeterminate ~ .hb-checkbox__box .hb-checkbox__check { visibility: visible; }
-    .hb-checkbox__input:focus-visible ~ .hb-checkbox__box { outline: 2px solid var(--hb-border-focus, #000); outline-offset: 1px; }
-    .hb-checkbox__label { font-family: var(--hb-font-sans, Rubik, sans-serif); font-size: 12.5px; color: var(--hb-text-secondary, #5A5A5A); }
-</style>
+
 <script>
     (() => {
         const boot = () => {

@@ -4,65 +4,7 @@
      and border -> border-focus. No Alpine on this page yet (see icon/tab notes) — vanilla JS,
      same self-contained @once <script> pattern as ui/custom-scrollbar. --}}
 @once
-<style>
-    .hb-select { position: relative; display: inline-flex; width: 100%; font-family: var(--hb-font-sans, Rubik, sans-serif); }
-    .hb-select__trigger {
-        display: flex;
-        align-items: center;
-        justify-content: space-between;
-        gap: var(--hb-space-2, 8px);
-        width: 100%;
-        height: 30px;
-        padding: 0 10px;
-        background: var(--hb-bg, #fff);
-        border: 1px solid var(--hb-border, #E4E4E4);
-        border-radius: var(--hb-radius-md, 5px);
-        color: var(--hb-text-primary, #0A0A0A);
-        font-size: var(--hb-fs-sm, 12px);
-        cursor: pointer;
-    }
-    .hb-select[data-open="true"] .hb-select__trigger { border-color: var(--hb-border-focus, #000); }
-    .hb-select__value--placeholder { color: var(--hb-text-muted, #9A9A9A); }
-    .hb-select__caret { display: inline-flex; width: 14px; height: 14px; color: var(--hb-text-muted, #9A9A9A); flex: none; }
-    .hb-select[data-open="true"] .hb-select__caret { color: var(--hb-text-secondary, #5A5A5A); }
-    .hb-select--disabled .hb-select__trigger { opacity: .5; cursor: not-allowed; }
-    .hb-select__menu {
-        position: absolute;
-        top: calc(100% + var(--hb-space-1, 4px));
-        left: 0;
-        right: 0;
-        z-index: 20;
-        display: flex;
-        flex-direction: column;
-        gap: 2px;
-        padding: var(--hb-space-1, 4px);
-        background: var(--hb-surface, #fff);
-        border: 1px solid var(--hb-border, #E4E4E4);
-        border-radius: var(--hb-radius-md, 5px);
-        box-shadow: 3px 4px 4px rgba(0, 0, 0, .1);
-    }
-    .hb-select[data-open="false"] .hb-select__menu { display: none; }
-    .hb-select__option {
-        display: flex;
-        align-items: center;
-        justify-content: space-between;
-        width: 100%;
-        padding: 6px 8px;
-        border: 0;
-        border-radius: var(--hb-radius-sm, 3px);
-        background: transparent;
-        color: var(--hb-text-secondary, #5A5A5A);
-        font-size: var(--hb-fs-sm, 12px);
-        font-family: inherit;
-        text-align: left;
-        cursor: pointer;
-    }
-    .hb-select__option:hover,
-    .hb-select__option[data-highlighted="true"] { background: var(--hb-bg-muted, #F4F4F4); }
-    .hb-select__option[aria-selected="true"] { background: var(--hb-bg-muted, #F4F4F4); color: var(--hb-text-primary, #0A0A0A); }
-    .hb-select__check { display: inline-flex; width: 14px; height: 14px; visibility: hidden; }
-    .hb-select__option[aria-selected="true"] .hb-select__check { visibility: visible; }
-</style>
+
 <script>
     (() => {
         const boot = () => {

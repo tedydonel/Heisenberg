@@ -15,22 +15,7 @@
      visibility rather than being rebuilt, but a delegated listener needs no re-wiring
      either way, so it's the simplest correct option. --}}
 @once
-<style>
-    .hb-section { display: flex; flex-direction: column; gap: 10px; padding: var(--hb-space-3, 12px); border-top: 1px solid var(--hb-border, #E4E4E4); }
-    .hb-section:first-child { border-top: 0; }
-    .hb-section__head { display: flex; align-items: center; justify-content: space-between; gap: var(--hb-space-2, 8px); min-height: 20px; }
-    .hb-section__title { font-family: var(--hb-font-sans, Rubik, sans-serif); font-size: var(--hb-fs-base, 13px); font-weight: 600; color: var(--hb-text-secondary, #5A5A5A); }
-    .hb-section__right { display: inline-flex; align-items: center; gap: 4px; color: var(--hb-text-muted, #9A9A9A); }
-    .hb-section__caret { display: inline-flex; align-items: center; justify-content: center; width: 14px; height: 14px; padding: 0; border: 0; background: none; cursor: pointer; color: var(--hb-text-muted, #9A9A9A); }
-    .hb-section__caret svg { transition: transform .12s ease; }
-    .hb-section__body { display: flex; flex-direction: column; gap: 10px; }
-    /* Author `display:flex` beats the UA stylesheet's `[hidden] { display: none }` at equal
-       specificity (author always wins over user-agent origin) — Alpine's x-show used to hide this
-       via an inline style instead, which always wins regardless. Now that it's a plain `hidden`
-       attribute toggle, this needs the same explicit override already used elsewhere in the
-       editor for the same reason (e.g. inspector.blade.php's .hb-inspector__block-content[hidden]). */
-    .hb-section__body[hidden] { display: none; }
-</style>
+
 <script>
     (() => {
         const boot = () => {

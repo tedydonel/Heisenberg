@@ -5,32 +5,7 @@
      live/panel-* consumers), and without it an oversized sibling's flex-basis drags this down via
      flex-shrink along with it — measured shrinking to ~21px in the Style panel before this was added. --}}
 @once
-<style>
-    .hb-paneltabs { display: flex; width: 100%; height: 32px; flex: none; }
-    .hb-paneltabs__tab {
-        flex: 1 1 0;
-        display: inline-flex;
-        align-items: center;
-        justify-content: center;
-        border: 0;
-        border-right: 1px solid var(--hb-border, #E4E4E4);
-        border-bottom: 1px solid var(--hb-border, #E4E4E4);
-        background: var(--hb-bg-muted, #F4F4F4);
-        color: var(--hb-text-muted, #9A9A9A);
-        font-family: var(--hb-font-sans, Rubik, sans-serif);
-        font-size: var(--hb-fs-sm, 12px);
-        font-weight: 300;
-        cursor: pointer;
-    }
-    .hb-paneltabs__tab:last-child { border-right: 0; }
-    .hb-paneltabs__tab[aria-selected="true"] {
-        background: transparent;
-        border-bottom-color: transparent;
-        color: var(--hb-text-primary, #0A0A0A);
-        font-weight: 500;
-    }
-    .hb-paneltabs__tab:focus-visible { outline: 2px solid var(--hb-border-focus, #000); outline-offset: -2px; }
-</style>
+
 @endonce
 @include('heisenberg::components.ui.partials.tablist-script')
 

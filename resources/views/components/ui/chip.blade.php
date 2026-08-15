@@ -4,36 +4,7 @@
      the same accent inference used for ui/badge. Real remove behavior: closing dispatches a cancelable
      'remove' event; the chip hides itself unless a listener calls preventDefault(). --}}
 @once
-<style>
-    .hb-chip {
-        display: inline-flex;
-        align-items: center;
-        gap: var(--hb-space-2, 8px);
-        padding: 4px 6px 4px 10px;
-        border-radius: 999px;
-        background: var(--hb-bg-muted, #F4F4F4);
-        color: var(--hb-text-secondary, #5A5A5A);
-        font-family: var(--hb-font-sans, Rubik, sans-serif);
-        font-size: var(--hb-fs-xs, 11px);
-        font-weight: 500;
-    }
-    .hb-chip--selected { background: var(--hb-accent, #000); color: var(--hb-accent-fg, #fff); }
-    .hb-chip--disabled { opacity: .5; }
-    .hb-chip__close {
-        display: inline-flex;
-        align-items: center;
-        justify-content: center;
-        width: 16px;
-        height: 16px;
-        border: 0;
-        border-radius: 999px;
-        background: transparent;
-        color: inherit;
-        cursor: pointer;
-    }
-    .hb-chip__close:hover { background: rgba(0, 0, 0, .08); }
-    .hb-chip__close:focus-visible { outline: 2px solid var(--hb-border-focus, #000); outline-offset: 1px; }
-</style>
+
 <script>
     (() => {
         const boot = () => {
