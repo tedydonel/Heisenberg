@@ -38,11 +38,37 @@
         overflow: hidden;
     }
     .hb-qi[hidden] { display: none; }
-    .hb-qi__scroll { max-height: 320px; overflow-y: auto; padding: var(--hb-space-3, 12px); }
+    /* .hb-qi__body wraps the scroll container + the custom-scrollbar as siblings (panel-components-blocks
+       pattern). `position: relative` + `min-height: 0` let the custom-scrollbar's
+       `position:absolute; height:100%` anchor to this element instead of escaping to the
+       popup (position:fixed). flex: 1 1 auto so it absorbs the popup's leftover height
+       between the header and the footer. */
+    .hb-qi__body {
+        display: flex;
+        flex-direction: column;
+        flex: 1 1 auto;
+        min-height: 0;
+        position: relative;
+    }
+    /* The .hb-scroll-container class is added at runtime by ui/custom-scrollbar when it
+       wires itself to this element — it sets overflow-y:auto and gives the custom bar a
+       target. Padding moved onto the inner grid wrapper so the scroll gutter doesn't
+       eat into the card layout. 240px keeps the popup compact (≈search 36 + scroll 240 +
+       footer 48 + paddings) so it doesn't dominate a viewport. */
+    .hb-qi__scroll { flex: 1 1 auto; min-height: 0; max-height: 240px; }
+    .hb-qi__scroll-inner { padding: var(--hb-space-3, 12px); }
     /* 2-up, same rhythm as the Components panel's card grid. */
     .hb-qi__grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
     .hb-qi-disabled { opacity: .4; cursor: not-allowed; }
     .hb-qi-disabled:hover { background: var(--hb-bg, #fff); }
+    /* Footer row — top hairline separator, full-width secondary button. Uses the same spacing
+       tokens as the rest of the popup (--hb-space-3, --hb-border). */
+    .hb-qi__footer {
+        display: flex;
+        padding: var(--hb-space-3, 12px);
+        border-top: 1px solid var(--hb-border, #E4E4E4);
+    }
+    .hb-qi__footer .hb-btn { width: 100%; }
 </style>
 <script>
     (() => {
@@ -154,6 +180,23 @@
                     close();
                     return;
                 }
+                // "Browse all components" footer button — hand off to the sidebar's own panel
+                // switcher so the activation state, persisted nav, and one-open-at-a-time
+                // viewport rule are all handled by the same code path as the user clicking
+                // the Components nav item directly. Window-level fallback if the sidebar's
+                // helper hasn't booted yet (e.g. on first paint).
+                const browseAll = e.target.closest && e.target.closest('[data-hb-qi-browse-all]');
+                if (browseAll && pop.contains(browseAll)) {
+                    e.preventDefault();
+                    if (typeof window.hbEditorShowPanel === 'function') {
+                        window.hbEditorShowPanel('cb', 0);
+                    } else {
+                        const navBtn = document.querySelector('[data-hb-nav="cb:0"]');
+                        if (navBtn) navBtn.click();
+                    }
+                    close();
+                    return;
+                }
                 // Click outside — but never the appender that just opened us (both appender
                 // handlers stopPropagation, so this is belt-and-braces) nor the popup chrome.
                 if (e.target.closest && (e.target.closest(POPUP) || e.target.closest('[data-hb-insert]') || e.target.closest('[data-hb-inner-appender]'))) return;
@@ -215,12 +258,30 @@
          every [data-hb-qi-block] inside the popup. --}}
     <x-ui.search-field :placeholder="__('heisenberg::editor.quick_inserter.search')"
         data-hb-filter="[data-hb-qi]" data-hb-filter-item="[data-hb-qi-block]" />
-    <div class="hb-qi__scroll">
-        <div class="hb-qi__grid">
-            @foreach ($blockCards as $card)
-                <x-ui.tool-card :icon="$card['icon']" :label="$card['label']"
-                    :data-hb-qi-block="$card['block']" />
-            @endforeach
+    {{-- The body wrapper pairs with the custom-scrollbar as siblings — same shape as
+         live/panel-components-blocks (.hb-panel-cb__body → .hb-panel-cb__scroll + bar).
+         The wrapper is `position: relative` so the bar's `position: absolute; height: 100%`
+         anchors to it, and the scroll container flexes to fill the wrapper so they share
+         the same height. Nesting the bar inside the container would have made its
+         containing block the container itself, which works visually but couples two
+         components that should be peers. --}}
+    <div class="hb-qi__body">
+        <div class="hb-qi__scroll" data-hb-qi-scroll>
+            <div class="hb-qi__scroll-inner">
+                <div class="hb-qi__grid">
+                    @foreach ($blockCards as $card)
+                        <x-ui.tool-card :icon="$card['icon']" :label="$card['label']"
+                            :data-hb-qi-block="$card['block']" />
+                    @endforeach
+                </div>
+            </div>
         </div>
+        <x-ui.custom-scrollbar container="[data-hb-qi-scroll]" />
+    </div>
+    {{-- Footer hand-off — opens the Components tab in the left sidebar (handled by the script
+         above calling window.hbEditorShowPanel('cb', 0)). ui/button supplies the chrome. --}}
+    <div class="hb-qi__footer">
+        <x-ui.button variant="secondary" data-hb-qi-browse-all
+            leadingIcon="squares-four">{{ __('heisenberg::editor.quick_inserter.browse_all') }}</x-ui.button>
     </div>
 </div>

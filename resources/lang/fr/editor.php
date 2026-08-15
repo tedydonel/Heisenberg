@@ -446,6 +446,25 @@ return [
         'card_image' => 'Image',
         'card_divider' => 'Séparateur',
         'card_button' => 'Bouton',
+        'empty_blocks' => 'Aucun bloc enregistré. Sélectionnez un conteneur sur le canvas et utilisez l’icône Enregistrer de la barre d’outils pour sauvegarder sa composition ici.',
+    ],
+
+    // ── Blocs réutilisables sauvegardés (« patterns », panneau Blocs, popover d'enregistrement)
+    'patterns' => [
+        'name_required' => 'Donnez un nom au bloc.',
+        'name_too_long' => 'Le nom doit faire 120 caractères ou moins.',
+        'name_taken' => 'Un bloc avec ce nom existe déjà. Choisissez-en un autre.',
+        'blocks_required' => 'Le contenu du bloc est manquant.',
+        'blocks_invalid_entry' => 'Le bloc n° :index n’est pas un bloc valide.',
+        'not_found' => 'Ce bloc n’existe plus.',
+        'save_dialog_title' => 'Enregistrer comme bloc',
+        'save_dialog_prompt' => 'Nommez cette composition pour la réutiliser depuis l’onglet Blocs.',
+        'save_dialog_placeholder' => 'ex. Héros avec image',
+        'save_dialog_save' => 'Enregistrer',
+        'save_dialog_cancel' => 'Annuler',
+        'save_dialog_saving' => 'Enregistrement…',
+        'delete' => 'Supprimer',
+        'delete_confirm' => 'Supprimer ce bloc enregistré ?',
     ],
 
     // ── Panneau SEO / Social (live/panel-seo-social.blade.php) ────
@@ -689,6 +708,7 @@ return [
     'quick_inserter' => [
         'aria_label' => 'Insérer un bloc',
         'search' => 'Rechercher des blocs…',
+        'browse_all' => 'Parcourir tous les composants',
     ],
 
 ];

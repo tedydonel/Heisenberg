@@ -449,6 +449,26 @@ return [
         'card_image' => 'Image',
         'card_divider' => 'Divider',
         'card_button' => 'Button',
+        'empty_blocks' => 'No saved blocks yet. Pick a container on the canvas and use the toolbar’s save icon to save its composition here.',
+    ],
+
+    // ── User-saved reusable blocks ("patterns", live/panel-components-blocks.blade.php,
+    //    HeisenbergPatternController, toolbar save-as-block popover)
+    'patterns' => [
+        'name_required' => 'Give the block a name.',
+        'name_too_long' => 'Name must be 120 characters or fewer.',
+        'name_taken' => 'A block with that name already exists. Pick another.',
+        'blocks_required' => 'The block content is missing.',
+        'blocks_invalid_entry' => 'Block # :index is not a valid block.',
+        'not_found' => 'That block no longer exists.',
+        'save_dialog_title' => 'Save as block',
+        'save_dialog_prompt' => 'Name this composition so you can drop it again from the Blocks tab.',
+        'save_dialog_placeholder' => 'e.g. Hero with image',
+        'save_dialog_save' => 'Save',
+        'save_dialog_cancel' => 'Cancel',
+        'save_dialog_saving' => 'Saving…',
+        'delete' => 'Delete',
+        'delete_confirm' => 'Delete this saved block?',
     ],
 
     // ── SEO/Social panel (live/panel-seo-social.blade.php + builder inserter)
@@ -692,6 +712,7 @@ return [
     'quick_inserter' => [
         'aria_label' => 'Insert a block',
         'search' => 'Search blocks…',
+        'browse_all' => 'Browse all components',
     ],
 
 ];
