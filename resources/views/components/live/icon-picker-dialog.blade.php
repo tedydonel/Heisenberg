@@ -33,6 +33,15 @@
     .hb-icondialog__item { display: flex; flex-direction: column; align-items: center; gap: 4px; padding: 8px 4px; border: 1px solid transparent; border-radius: var(--hb-radius-md, 5px); background: none; cursor: pointer; font-family: var(--hb-font-sans, Rubik, sans-serif); }
     .hb-icondialog__item:hover { border-color: var(--hb-border, #E4E4E4); background: var(--hb-surface-hover, #F7F7F7); }
     .hb-icondialog__item img { width: 28px; height: 28px; display: block; }
+    /* The Phosphor SVGs ship with fill="currentColor" but the picker renders them via
+       <img> — the SVG is in its own browsing context, currentColor resolves to canvastext
+       (black in both themes), so the icons render as hard black on every theme.
+       Invert the channel under .hb-editor--dark so they track the chrome text colour
+       (--hb-text-primary: #FFF in dark, #0A0A0A in light — filter:invert(1) gives white
+       against black, black against white). Scope is the picker dialog + the Content tab
+       preview field below, both of which sit on the editor chrome (never the canvas paper). */
+    .hb-editor--dark .hb-icondialog__item img,
+    .hb-editor--dark .hb-iconfield img { filter: invert(1); }
     .hb-icondialog__item span { max-width: 100%; font-size: 10px; color: var(--hb-text-muted, #9A9A9A); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
     .hb-icondialog__empty { padding: 48px 0; text-align: center; color: var(--hb-text-muted, #9A9A9A); font-size: var(--hb-fs-base, 13px); }
     .hb-icondialog__empty[hidden] { display: none; }
