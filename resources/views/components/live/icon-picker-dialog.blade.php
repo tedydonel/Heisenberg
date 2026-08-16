@@ -22,7 +22,10 @@
 <style>
     .hb-icondialog { width: 720px; height: 560px; }
     .hb-icondialog__bar { display: flex; gap: 8px; padding: var(--hb-space-3, 12px) var(--hb-space-4, 16px) 0; flex: none; }
-    .hb-icondialog__search { flex: 1 1 auto; min-width: 0; height: 30px; padding: 0 10px; border: 1px solid var(--hb-border, #E4E4E4); border-radius: var(--hb-radius-md, 5px); font-family: var(--hb-font-sans, Rubik, sans-serif); font-size: var(--hb-fs-base, 13px); }
+    /* ui/search-field sits inside .hb-icondialog__bar; the dialog overrides the default
+       height to 30px (instead of the field's 26px) to match the combobox row. */
+    .hb-icondialog__bar > .hb-searchfield { flex: 1 1 auto; min-width: 0; height: 30px; }
+    .hb-icondialog__bar > .hb-searchfield .hb-searchfield__input { height: 100%; font-size: var(--hb-fs-base, 13px); }
     .hb-icondialog__set { flex: none; width: 200px; }
     /* Two-layer scroll shell: __body is the positioned, non-scrolling parent the absolute
        custom-scrollbar anchors to; __scroll is the region the bar drives (the bar itself adds
@@ -128,7 +131,10 @@
                 const grid = scrim.querySelector('[data-hb-icon-grid]');
                 const empty = scrim.querySelector('[data-hb-icon-empty-msg]');
                 const more = scrim.querySelector('[data-hb-icon-more]');
-                const search = scrim.querySelector('[data-hb-icon-search]');
+                // ui/search-field wraps the real <input>; data-hb-icon-search sits on the
+                // wrapper, and the input is .hb-searchfield__input inside it.
+                const searchWrap = scrim.querySelector('[data-hb-icon-search]');
+                const search = searchWrap ? searchWrap.querySelector('.hb-searchfield__input') : null;
                 const setCombo = scrim.querySelector('[data-hb-icon-set] [data-hb-combobox]');
                 let targetId = null;
                 let offset = 0;
@@ -243,8 +249,8 @@
             </button>
         </div>
         <div class="hb-icondialog__bar">
-            <input type="search" class="hb-icondialog__search" data-hb-icon-search
-                placeholder="{{ __('heisenberg::editor.icon_picker.search_ph') }}" aria-label="{{ __('heisenberg::editor.icon_picker.search_ph') }}">
+            <x-ui.search-field :placeholder="__('heisenberg::editor.icon_picker.search_ph')"
+                :aria-label="__('heisenberg::editor.icon_picker.search_ph') ?? null" data-hb-icon-search />
             <div class="hb-icondialog__set" data-hb-icon-set>
                 <x-ui.combobox static value="" :options="$hbIconSetOptions"
                     :placeholder="__('heisenberg::editor.icon_picker.all_sets')"
