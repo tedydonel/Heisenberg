@@ -1,8 +1,14 @@
-/* Border/radius intentionally absent: text blocks declare no `border` support, so no
+/* Two classes are deliberate: rendered article surfaces commonly style headings through a
+   wrapper selector such as `.prose h2` (specificity 0,1,1). A bare `.hb-block-heading`
+   (0,1,0) loses that cascade, so `--hb-heading-ff` is present but the surface's default family
+   wins; the canvas has no article wrapper and therefore looks correct. `.hb-block` plus the
+   component class (0,2,0) keeps authored typography authoritative without `!important`.
+
+   Border/radius intentionally absent: text blocks declare no `border` support, so no
    border-side or radius variables exist and no rule here reads them. (NB: never write a
    literal star-slash sequence inside this comment — it terminates it early and the CSS
    parser then swallows the entire base rule below.) */
-.hb-block-heading {
+.hb-block.hb-block-heading {
     transition: color 140ms ease, background-color 140ms ease, box-shadow 140ms ease, transform 140ms ease;
     color: var(--hb-heading-color);
     background: var(--hb-heading-bg);
