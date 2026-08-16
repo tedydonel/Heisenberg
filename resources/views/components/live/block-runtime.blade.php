@@ -416,7 +416,22 @@
             value = normalizeCssNumber(String(value).trim(), sanitizer);
             const fallback = normalizeCssNumber(definition.default == null ? '' : String(definition.default).trim(), sanitizer);
             const safe = cssValueValid(value, sanitizer) ? value : (cssValueValid(fallback, sanitizer) ? fallback : '');
-            if (safe) declarations.push(name + ': ' + safe);
+            if (safe) {
+                // font-family values are token streams — an unquoted multi-word family like
+                // "Press Start 2P" parses as a sequence of idents, but the font-family parser
+                // only treats the first one as the family and discards the rest, so the font
+                // silently falls back. Wrap any value with whitespace that isn't already quoted
+                // so the font-family parser sees a single string token. Same fix as
+                // BlockRenderer::blockStyleDeclarations — both emission paths must agree, since
+                // the editor canvas uses the JS one and the published page uses the PHP one.
+                let finalSafe = safe;
+                if (sanitizer === 'font-family' && finalSafe.length > 0
+                    && finalSafe[0] !== '"' && finalSafe[0] !== "'"
+                    && /\s/.test(finalSafe)) {
+                    finalSafe = '"' + finalSafe.replace(/"/g, '\\"') + '"';
+                }
+                declarations.push(name + ': ' + finalSafe);
+            }
         }
         return declarations.length ? declarations.join('; ') + ';' : '';
     }
@@ -1871,7 +1886,15 @@
             if (m) inner.push(m);
         });
         return {
-            id: 'hb' + (++blockSeq), name: raw.name, schemaVersion: c.version == null ? null : c.version,
+            // Preserve the original id if the post-supplied one already matches the runtime
+            // naming pattern (hb<n>); only synthesise a fresh one when there's no id at all
+            // (newly-inserted blocks minted by the palette / runtime use that pattern too, so
+            // collisions across re-renders are impossible without it). Reassigning every id
+            // unconditionally — the previous behaviour — silently broke the inspector's
+            // data-hb-control lookups and hbEditor.setSupport writes, because the model id
+            // didn't match the id the controls had been wired against on first render.
+            id: (typeof raw.id === 'string' && /^hb\d+$/.test(raw.id)) ? raw.id : ('hb' + (++blockSeq)),
+            name: raw.name, schemaVersion: c.version == null ? null : c.version,
             attributes: attrs, supports: (raw.supports && typeof raw.supports === 'object') ? raw.supports : {},
             innerBlocks: inner,
         };

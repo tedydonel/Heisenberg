@@ -246,6 +246,38 @@ class BlockRendererTest extends TestCase
         $this->assertStringContainsString('Title', $html);
     }
 
+    /**
+     * The font-family value is wrapped in quotes ONLY when it contains whitespace — a
+     * single-word family like "Pacifico" is already a valid CSS ident and stays bare, while a
+     * multi-word family like "Press Start 2P" becomes a single string token so the
+     * font-family parser stops discarding the trailing words. The var() reference path is
+     * untouched.
+     */
+    public function test_heading_font_family_is_quoted_when_multi_word_only(): void
+    {
+        $renderer = $this->renderer();
+
+        $single = $renderer->renderBlock(
+            $this->block('heisenberg/heading', ['content' => 'a'], ['typography' => ['fontFamily' => 'Pacifico']]),
+            'en'
+        );
+        $this->assertStringContainsString('--hb-heading-ff: Pacifico', $single);
+
+        $multi = $renderer->renderBlock(
+            $this->block('heisenberg/heading', ['content' => 'a'], ['typography' => ['fontFamily' => 'Press Start 2P']]),
+            'en'
+        );
+        // The attribute is HTML-escaped on the way out — `&quot;` in the markup decodes to the
+        // literal `"` the CSS font-family parser needs.
+        $this->assertStringContainsString('--hb-heading-ff: &quot;Press Start 2P&quot;', $multi);
+
+        $var = $renderer->renderBlock(
+            $this->block('heisenberg/heading', ['content' => 'a'], ['typography' => ['fontFamily' => 'var(--brand-font)']]),
+            'en'
+        );
+        $this->assertStringContainsString('--hb-heading-ff: var(--brand-font)', $var);
+    }
+
     public function test_skips_editor_only_nodes(): void
     {
         $html = $this->fixtureRenderer()->renderBlock(

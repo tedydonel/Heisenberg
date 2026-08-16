@@ -872,6 +872,17 @@ class BlockRenderer
 
             $safe = $this->sanitizeCssValue((string) $value, (string) ($definition['sanitize'] ?? 'text'), $default, $surface);
             if ($safe !== '') {
+                // font-family values are token streams inside the property — an unquoted
+                // multi-word family name like "Press Start 2P" parses as a sequence of idents
+                // inside the css parser, but the browser's font-family parser only treats the
+                // first one as the family and discards the rest, so the font silently falls
+                // back. Wrap any value that contains a space and isn't already quoted so the
+                // font-family parser sees a single string token.
+                $sanitize = (string) ($definition['sanitize'] ?? 'text');
+                if ($sanitize === 'font-family' && $safe !== '' && $safe[0] !== '"' && $safe[0] !== "'"
+                    && preg_match('/\s/', $safe) === 1) {
+                    $safe = '"' . str_replace('"', '\\"', $safe) . '"';
+                }
                 $declarations[] = $name . ': ' . $safe;
             }
         }
