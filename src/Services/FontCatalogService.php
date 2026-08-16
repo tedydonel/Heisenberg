@@ -141,14 +141,70 @@ class FontCatalogService
     /** Whether a family exists in the catalog (exact, case-insensitive). */
     public function has(string $family): bool
     {
+        return $this->face($family) !== null;
+    }
+
+    /** Return one exact catalog face with its canonical family name and real weights. */
+    public function face(string $family): ?array
+    {
         $needle = mb_strtolower(trim($family));
+        if ($needle === '') {
+            return null;
+        }
+
         foreach ($this->all() as $entry) {
             if (mb_strtolower($entry['f']) === $needle) {
-                return true;
+                return [
+                    'family' => $entry['f'],
+                    'weights' => array_values(array_map('intval', $entry['w'])),
+                ];
             }
         }
 
-        return false;
+        return null;
+    }
+
+    /**
+     * Catalog faces used anywhere in a block tree, including nested components and interaction
+     * states. The editor model is a tree, so inspecting only its top-level `blocks` makes a nested
+     * button/heading keep its fallback until some unrelated top-level block selects the same face.
+     *
+     * @param list<array<string, mixed>> $blocks
+     * @return list<array{family: string, weights: list<int>}>
+     */
+    public function facesForBlocks(array $blocks): array
+    {
+        $faces = [];
+        $pending = array_values($blocks);
+
+        while ($pending !== []) {
+            $block = array_shift($pending);
+            if (! is_array($block)) {
+                continue;
+            }
+
+            $supports = is_array($block['supports'] ?? null) ? $block['supports'] : [];
+            $fontValues = [$supports['typography']['fontFamily'] ?? null];
+            foreach (['hover', 'active', 'focus'] as $state) {
+                $fontValues[] = $supports['states'][$state]['typography']['fontFamily'] ?? null;
+            }
+
+            foreach ($fontValues as $family) {
+                if (! is_string($family) || trim($family) === '' || str_contains($family, 'var(')) {
+                    continue;
+                }
+                $face = $this->face($family);
+                if ($face !== null) {
+                    $faces[mb_strtolower($face['family'])] = $face;
+                }
+            }
+
+            foreach ((array) ($block['innerBlocks'] ?? []) as $child) {
+                $pending[] = $child;
+            }
+        }
+
+        return array_values($faces);
     }
 
     /**

@@ -171,15 +171,14 @@ class PreviewController
     {
         $theme = $this->themes->load();
 
-        // Font faces: the theme's fonts plus any catalog family picked
-        // directly on a block (raw family values, not var() tokens).
-        $faces = $this->themes->fontFaces($theme);
-        foreach ($blocks as $block) {
-            $family = $block['supports']['typography']['fontFamily'] ?? null;
-            if (is_string($family) && $family !== '' && ! str_starts_with($family, 'var(')) {
-                $faces[] = ['family' => $family, 'weights' => [400, 700]];
-            }
-        }
+        // Theme faces plus every raw catalog family used anywhere in the document tree. The
+        // latter must be recursive: buttons/headings commonly live inside group/column blocks.
+        // facesForBlocks() also carries the catalog's real weights rather than guessing 400/700,
+        // keeping published output in parity with the canvas loader.
+        $faces = [
+            ...$this->themes->fontFaces($theme),
+            ...$this->fonts->facesForBlocks($blocks),
+        ];
 
         return view('heisenberg::preview', [
             'hasDoc' => $hasDoc,

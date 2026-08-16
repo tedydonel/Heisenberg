@@ -139,7 +139,67 @@ class EditorPreviewTest extends TestCase
         $this->assertStringNotContainsString('onclick', $html);
     }
 
-    // ── rejection cases PreviewController already intends ───────────────
+    /**
+     * A text-capable block can live at any innerBlocks depth. Its selected web font must be
+     * present in the preview's Google Fonts request without requiring a second, top-level text
+     * block to happen to select the same family first.
+     */
+    public function test_unsaved_preview_loads_a_font_selected_only_on_a_nested_button(): void
+    {
+        $doc = [
+            'title' => 'Nested font preview',
+            'blocks' => [
+                [
+                    'id' => 'group-1',
+                    'name' => 'heisenberg/group',
+                    'attributes' => [],
+                    'supports' => [],
+                    'innerBlocks' => [
+                        [
+                            'id' => 'button-1',
+                            'name' => 'heisenberg/button',
+                            'attributes' => ['text' => 'Nested action'],
+                            'supports' => [
+                                'typography' => [
+                                    'fontFamily' => 'Roboto',
+                                    'fontWeight' => '500',
+                                ],
+                            ],
+                            'innerBlocks' => [],
+                        ],
+                    ],
+                ],
+            ],
+        ];
+
+        $this->postJson('/editor/preview', $doc)->assertOk();
+        $html = (string) $this->get(route('heisenberg.editor.preview'))->assertOk()->getContent();
+
+        $this->assertStringContainsString('--hb-button-ff: Roboto', $html);
+        $this->assertStringContainsString(
+            'family=Roboto:wght@100;200;300;400;500;600;700;800;900',
+            $html,
+        );
+    }
+
+    /**
+     * Render surfaces commonly carry article typography such as `.prose h2` or
+     * `.article-content h1`. A bare `.hb-block-heading` loses that cascade despite the selected
+     * family reaching `--hb-heading-ff`, so every heading appears to keep the surface default
+     * while less-targeted components still change. The block selector needs two class components
+     * (0,2,0) so authored typography outranks those generic wrapper + heading rules (0,1,1).
+     */
+    public function test_heading_font_rule_outranks_render_surface_heading_defaults(): void
+    {
+        $html = (string) $this->get(route('heisenberg.editor.preview'))->assertOk()->getContent();
+
+        $this->assertMatchesRegularExpression(
+            '/\.hb-block\.hb-block-heading\s*\{[^}]*font-family:\s*var\(--hb-heading-ff,\s*inherit\)/s',
+            $html,
+        );
+    }
+
+    // ── rejection cases PreviewController already intends ────────────────
 
     public function test_oversized_payload_is_rejected_with_413(): void
     {

@@ -86,12 +86,19 @@
 
     function hbDocFontFamilies() {
         const families = new Set();
-        (window.hbEditor?.getDoc().blocks || []).forEach((block) => {
-            const family = block.supports?.typography?.fontFamily;
+        const add = (family) => {
             if (typeof family === 'string' && family.trim() !== '' && family.indexOf('var(') === -1) {
                 families.add(family.trim());
             }
+        };
+        const walk = (blocks) => (blocks || []).forEach((block) => {
+            add(block.supports?.typography?.fontFamily);
+            ['hover', 'active', 'focus'].forEach((state) => {
+                add(block.supports?.states?.[state]?.typography?.fontFamily);
+            });
+            walk(block.innerBlocks);
         });
+        walk(window.hbEditor?.getDoc().blocks || []);
         return [...families];
     }
 

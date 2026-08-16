@@ -32,6 +32,30 @@ await page.evaluate((i) => window.hbEditor.setSupport(i, 'typography.fontFamily'
 await page.waitForFunction(() => !!document.getElementById('hb-canvas-fonts'), null, { timeout: 8000 }).catch(() => {});
 const fontLink = await page.evaluate(() => document.getElementById('hb-canvas-fonts')?.href || null);
 ok('canvas font <link> appears for Roboto', !!fontLink && fontLink.includes('Roboto'), String(fontLink));
+
+// A nested text component must load its own face. Previously hbDocFontFamilies() inspected only
+// doc.blocks, so this button stayed on its fallback until a top-level heading happened to select
+// the same family and caused the link to be rebuilt.
+const nestedFont = await page.evaluate(() => {
+    document.querySelector('.hb-canvas').dispatchEvent(new MouseEvent('mousedown', { bubbles: true }));
+    const group = window.hbEditor.insertBlock('heisenberg/group');
+    const groupId = group?.getAttribute('data-block') || null;
+    const button = groupId ? window.hbEditor.insertInto(groupId, 'heisenberg/button') : null;
+    const buttonId = button?.getAttribute('data-block') || null;
+    if (buttonId) window.hbEditor.setSupport(buttonId, 'typography.fontFamily', 'Press Start 2P');
+    return { groupId, buttonId };
+});
+await page.waitForFunction(
+    () => document.getElementById('hb-canvas-fonts')?.href.includes('Press+Start+2P'),
+    null,
+    { timeout: 8000 },
+).catch(() => {});
+const nestedFontLink = await page.evaluate(() => document.getElementById('hb-canvas-fonts')?.href || null);
+ok(
+    'nested button loads Press Start 2P without a top-level heading using it',
+    !!nestedFont.buttonId && !!nestedFontLink && nestedFontLink.includes('Press+Start+2P'),
+    JSON.stringify({ nestedFont, nestedFontLink }),
+);
 const catalogWeights = await page.evaluate(async () => {
     const url = document.querySelector('[data-hb-inspector]').dataset.hbFontsSearchUrl;
     const body = await (await fetch(url + '?q=Roboto&limit=8')).json();
