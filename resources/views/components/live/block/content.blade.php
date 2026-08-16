@@ -18,6 +18,10 @@
                 @elseif (($field['type'] ?? 'text') === 'textarea')
                     <x-ui.text-area :value="$field['value'] ?? ''" width="100%"
                         data-hb-control="{{ $field['key'] ?? '' }}" data-hb-control-kind="attributes" data-hb-control-type="text" />
+                @elseif (($field['type'] ?? 'text') === 'number')
+                    <x-ui.number-stepper :value="$field['value'] ?? 0"
+                        :min="$field['min'] ?? null" :max="$field['max'] ?? null" :step="$field['step'] ?? 1"
+                        data-hb-control="{{ $field['key'] ?? '' }}" data-hb-control-kind="attributes" data-hb-control-type="number" />
                 @else
                     <x-ui.input :value="$field['value'] ?? ''"
                         data-hb-control="{{ $field['key'] ?? '' }}" data-hb-control-kind="attributes" data-hb-control-type="{{ $field['type'] ?? 'text' }}" />

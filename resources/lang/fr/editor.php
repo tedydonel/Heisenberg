@@ -34,6 +34,8 @@ return [
         'send' => 'Envoyer',
         'close' => 'Fermer',
         'retry' => 'Réessayer',
+        'increment' => 'Incrémenter',
+        'decrement' => 'Décrémenter',
     ],
 
     // ── Barre supérieure (live/topbar.blade.php) ──────────────────

@@ -1,5 +1,6 @@
-/* Component chrome — extracted from @once <style> blocks in
-   resources/views/components/ui/*.blade.php on 2026-08-15.
+/* Component chrome — extracted from @once <style> blocks in the
+   ui components (resources/views/components/ui/, .blade.php files) on
+   2026-08-15.
 
    Why this file exists: each ui component declared its CSS inside
    an @once <style> block. Blade's @once memoizes at the FIRST render
@@ -12,8 +13,8 @@
    .hb-checkbox__check glyph rendered next to it instead of inside it.
 
    Loaded by EditorController::css() (concatenates tokens.css + all
-   editor/*.css). Editing this file requires no publish step on langesky
-   because the editor.css is regenerated per-request.
+   files in resources/css/editor). Editing this file requires no publish
+   step on langesky because the editor.css is regenerated per-request.
 */
 
 /* ============================================================
@@ -572,6 +573,54 @@ color: var(--hb-text-primary, #0A0A0A);
 }
 .hb-numfield__value::-webkit-outer-spin-button,
 .hb-numfield__value::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
+
+/* ============================================================
+   number-stepper.blade.php
+   ============================================================ */
+    .hb-numstepper {
+display: inline-flex;
+align-items: stretch;
+width: 100%;
+height: 26px;
+background: var(--hb-bg-inset, #EEEEEE);
+border: 1px solid transparent;
+border-radius: var(--hb-radius-md, 5px);
+transition: border-color .12s ease;
+}
+.hb-numstepper:focus-within { border-color: var(--hb-border-focus, #000); }
+.hb-numstepper--disabled { opacity: .5; }
+.hb-numstepper__btn {
+display: inline-flex;
+align-items: center;
+justify-content: center;
+width: 22px;
+height: 100%;
+padding: 0;
+border: 0;
+background: transparent;
+color: var(--hb-text-muted, #9A9A9A);
+cursor: pointer;
+flex: none;
+}
+.hb-numstepper__btn:hover:not(:disabled) { color: var(--hb-text-primary, #0A0A0A); }
+.hb-numstepper__btn:disabled { cursor: not-allowed; }
+.hb-numstepper__btn:focus-visible { outline: 2px solid var(--hb-border-focus, #000); outline-offset: -2px; }
+.hb-numstepper__value {
+flex: 1 1 auto;
+min-width: 0;
+width: 100%;
+border: 0;
+outline: 0;
+padding: 0;
+background: transparent;
+text-align: center;
+font-family: var(--hb-font-sans, Rubik, sans-serif);
+font-size: var(--hb-fs-sm, 12px);
+color: var(--hb-text-primary, #0A0A0A);
+-moz-appearance: textfield;
+}
+.hb-numstepper__value::-webkit-outer-spin-button,
+.hb-numstepper__value::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
 
 /* ============================================================
    panel-section.blade.php

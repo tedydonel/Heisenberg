@@ -33,6 +33,8 @@ return [
         'send' => 'Send',
         'close' => 'Close',
         'retry' => 'Retry',
+        'increment' => 'Increment',
+        'decrement' => 'Decrement',
     ],
 
     // ── Topbar (live/topbar.blade.php) ────────────────────────────
