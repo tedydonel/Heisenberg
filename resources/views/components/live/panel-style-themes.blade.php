@@ -39,32 +39,32 @@
      them) and switches back to the Style tab so the result is visible, then saves as the active theme. --}}
 @once
 <style>
-    .hb-panel-style { display: flex; flex-direction: column; width: 240px; height: 100%; background: var(--hb-bg, #fff); border-right: 1px solid var(--hb-border, #E4E4E4); flex: none; }
+    .hb-panel-style { display: flex; flex-direction: column; width: 240px; height: 100%; background: var(--hb-bg); border-right: 1px solid var(--hb-border); flex: none; }
     .hb-panel-style__content { display: flex; flex-direction: column; flex: 1 1 auto; min-height: 0; overflow: hidden; position: relative; }
     .hb-panel-style__content[hidden] { display: none; }
 
-    .hb-token-section { display: flex; flex-direction: column; gap: var(--hb-space-3, 12px); padding: var(--hb-space-3, 12px); border-bottom: 1px solid var(--hb-border, #E4E4E4); flex: none; }
+    .hb-token-section { display: flex; flex-direction: column; gap: var(--hb-space-3, 12px); padding: var(--hb-space-3, 12px); border-bottom: 1px solid var(--hb-border); flex: none; }
     .hb-token-section--last { padding: var(--hb-space-4, 16px); border-bottom: 0; }
-    .hb-token-section__title { font-family: var(--hb-font-sans, Rubik, sans-serif); font-size: var(--hb-fs-lg, 16px); font-weight: 500; color: var(--hb-text-primary, #0A0A0A); }
+    .hb-token-section__title { font-family: var(--hb-font-sans, Rubik, sans-serif); font-size: var(--hb-fs-lg, 16px); font-weight: 500; color: var(--hb-text-primary); }
     .hb-token-row { display: flex; align-items: center; gap: var(--hb-space-2, 8px); width: 100%; }
-    .hb-token-row__remove { display: inline-flex; width: 14px; height: 14px; color: var(--hb-text-muted, #9A9A9A); flex: none; cursor: pointer; }
+    .hb-token-row__remove { display: inline-flex; width: 14px; height: 14px; color: var(--hb-text-muted); flex: none; cursor: pointer; }
     .hb-token-add { display: inline-flex; align-items: center; gap: var(--hb-space-2, 8px); border: 0; background: transparent; cursor: pointer; padding: 0; }
-    .hb-token-add__icon { display: inline-flex; width: 14px; height: 14px; color: var(--hb-text-muted, #9A9A9A); }
-    .hb-token-add__label { font-family: var(--hb-font-sans, Rubik, sans-serif); font-size: var(--hb-fs-sm, 12px); font-weight: 500; color: var(--hb-text-muted, #9A9A9A); }
+    .hb-token-add__icon { display: inline-flex; width: 14px; height: 14px; color: var(--hb-text-muted); }
+    .hb-token-add__label { font-family: var(--hb-font-sans, Rubik, sans-serif); font-size: var(--hb-fs-sm, 12px); font-weight: 500; color: var(--hb-text-muted); }
 
-    .hb-token-savebar { padding: var(--hb-space-3, 12px); border-top: 1px solid var(--hb-border, #E4E4E4); display: flex; flex-direction: column; gap: 8px; flex: none; }
+    .hb-token-savebar { padding: var(--hb-space-3, 12px); border-top: 1px solid var(--hb-border); display: flex; flex-direction: column; gap: 8px; flex: none; }
     .hb-token-savebar[hidden] { display: none; }
     .hb-token-saveform { display: flex; align-items: center; gap: 6px; }
     .hb-token-saveform[hidden] { display: none; }
-    .hb-token-saveform__confirm, .hb-token-saveform__cancel { display: inline-flex; align-items: center; justify-content: center; width: 26px; height: 26px; padding: 0; border: 1px solid var(--hb-border, #E4E4E4); border-radius: var(--hb-radius-md, 5px); background: var(--hb-bg, #fff); color: var(--hb-text-muted, #9A9A9A); cursor: pointer; flex: none; }
-    .hb-token-saveform__confirm:hover, .hb-token-saveform__cancel:hover { border-color: var(--hb-border-strong, #C8C8C8); }
-    .hb-token-saveform__error { font-family: var(--hb-font-sans, Rubik, sans-serif); font-size: var(--hb-fs-xs, 11px); color: var(--hb-danger, #D4191A); }
+    .hb-token-saveform__confirm, .hb-token-saveform__cancel { display: inline-flex; align-items: center; justify-content: center; width: 26px; height: 26px; padding: 0; border: 1px solid var(--hb-border); border-radius: var(--hb-radius-md, 5px); background: var(--hb-bg); color: var(--hb-text-muted); cursor: pointer; flex: none; }
+    .hb-token-saveform__confirm:hover, .hb-token-saveform__cancel:hover { border-color: var(--hb-border-strong); }
+    .hb-token-saveform__error { font-family: var(--hb-font-sans, Rubik, sans-serif); font-size: var(--hb-fs-xs, 11px); color: var(--hb-danger); }
     .hb-token-saveform__error[hidden] { display: none; }
 
     .hb-panel-style__scroll { flex: 1 1 auto; min-height: 0; overflow: hidden; position: relative; display: flex; flex-direction: column; }
     .hb-panel-style__grid { display: grid; grid-template-columns: 1fr 1fr; align-content: start; gap: 8px; padding: var(--hb-space-3, 12px); }
     .hb-themepresetcard-wrap { position: relative; }
-    .hb-saved-theme-delete { position: absolute; top: 4px; right: 4px; display: inline-flex; align-items: center; justify-content: center; width: 18px; height: 18px; padding: 0; border: 0; border-radius: 999px; background: var(--hb-bg, #fff); box-shadow: var(--hb-shadow-sm, 0 1px 3px rgba(0, 0, 0, .25)); color: var(--hb-text-muted, #9A9A9A); cursor: pointer; opacity: 0; transition: opacity .12s ease; }
+    .hb-saved-theme-delete { position: absolute; top: 4px; right: 4px; display: inline-flex; align-items: center; justify-content: center; width: 18px; height: 18px; padding: 0; border: 0; border-radius: 999px; background: var(--hb-bg); box-shadow: var(--hb-shadow-sm, 0 1px 3px rgba(0, 0, 0, .25)); color: var(--hb-text-muted); cursor: pointer; opacity: 0; transition: opacity .12s ease; }
     .hb-themepresetcard-wrap:hover .hb-saved-theme-delete, .hb-saved-theme-delete:focus-visible { opacity: 1; }
 
 </style>

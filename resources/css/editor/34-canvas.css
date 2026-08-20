@@ -2,8 +2,8 @@
    paper stands out against it — most visible in the tablet/mobile diff views. The PAGE sheet itself
    stays a light/white paper in any theme (its content tokens are re-pinned to light below), so the
    preview is WYSIWYG with the published post. Mirrors the builder's stage-vs-.page split. */
-.hb-editor__canvas { background: var(--hb-bg-inset, #EEEEEE); }
-.hb-canvas { position: absolute; inset: 0; overflow: auto; background: var(--hb-bg-inset, #EEEEEE); }
+.hb-editor__canvas { background: var(--hb-bg-inset); }
+.hb-canvas { position: absolute; inset: 0; overflow: auto; background: var(--hb-bg-inset); }
 /* Page layout section (inspector.blade.php's Post tab, 2026-08-03): the whole page's X/Y padding
    is user-configurable per post via --hb-page-padding-x/-y, live/canvas.blade.php renders the
    real resolved value (post override, or EditorController's 56px default) as an inline style so
@@ -11,26 +11,26 @@
    context that renders .hb-page without going through that component at all. */
 .hb-page { width: 1280px; max-width: 100%; margin: 0 auto; box-sizing: border-box; padding: var(--hb-page-padding-y, 56px) var(--hb-page-padding-x, 56px); min-height: 100%; background: #FFFFFF; font-family: var(--hb-font-sans, Rubik, sans-serif); transition: width .25s ease, padding .25s ease; }
 
-.hb-page__title { margin: 0 0 28px; font-size: 36px; font-weight: 700; letter-spacing: -0.02em; line-height: 1.2; color: var(--hb-text-primary, #0A0A0A); outline: none; }
-.hb-page__title.is-empty::before { content: attr(data-ph); color: var(--hb-text-disabled, #C4C4C4); }
+.hb-page__title { margin: 0 0 28px; font-size: 36px; font-weight: 700; letter-spacing: -0.02em; line-height: 1.2; color: var(--hb-text-primary); outline: none; }
+.hb-page__title.is-empty::before { content: attr(data-ph); color: var(--hb-text-disabled); }
 .hb-page__blocks { min-height: 220px; }
 
-.hb-appender { display: inline-flex; align-items: center; justify-content: center; width: 30px; height: 30px; padding: 0; border: 0; border-radius: var(--hb-radius-sm, 3px); background: none; color: var(--hb-text-secondary, #5A5A5A); box-shadow: inset 0 0 0 1px var(--hb-border, #E4E4E4); cursor: pointer; }
-.hb-appender:hover { background: var(--hb-surface-hover, #F7F7F7); color: var(--hb-text-primary, #0A0A0A); }
+.hb-appender { display: inline-flex; align-items: center; justify-content: center; width: 30px; height: 30px; padding: 0; border: 0; border-radius: var(--hb-radius-sm, 3px); background: none; color: var(--hb-text-secondary); box-shadow: inset 0 0 0 1px var(--hb-border); cursor: pointer; }
+.hb-appender:hover { background: var(--hb-surface-hover); color: var(--hb-text-primary); }
 
 /* Email documents (docs/email-system.md §7-E3): a 600px frame — the same content width
    EmailRenderer's shell builds around (§5.3) — centered, with subtle paper edges so the author
    sees roughly where the email client's own boundary sits. Declared BEFORE the device-diff rules
    below (same specificity: single class + .hb-page) so desktop/mobile still narrow the sheet
    further when picked on an email document — the device selector stays fully functional. */
-.hb-canvas--email .hb-page { width: 600px; margin-left: auto; margin-right: auto; box-shadow: 1px 0 0 var(--hb-border, #E4E4E4), -1px 0 0 var(--hb-border, #E4E4E4); }
+.hb-canvas--email .hb-page { width: 600px; margin-left: auto; margin-right: auto; box-shadow: 1px 0 0 var(--hb-border), -1px 0 0 var(--hb-border); }
 
 /* Device diff view — narrow the sheet to a device width, centered and full height, with a left/right
    paper edge against the stage (mirrors the builder's dev-tablet/dev-mobile). No top gap: the sheet
    still runs the full stage height. Widths descend desktop > tablet(640) > mobile(390); desktop is
    set on .hb-page itself (see above), not here. */
-.hb-canvas--tablet .hb-page { width: 640px; margin-left: auto; margin-right: auto; box-shadow: 1px 0 0 var(--hb-border, #E4E4E4), -1px 0 0 var(--hb-border, #E4E4E4); }
-.hb-canvas--mobile .hb-page { width: 390px; margin-left: auto; margin-right: auto; padding: 32px 24px 120px; box-shadow: 1px 0 0 var(--hb-border, #E4E4E4), -1px 0 0 var(--hb-border, #E4E4E4); }
+.hb-canvas--tablet .hb-page { width: 640px; margin-left: auto; margin-right: auto; box-shadow: 1px 0 0 var(--hb-border), -1px 0 0 var(--hb-border); }
+.hb-canvas--mobile .hb-page { width: 390px; margin-left: auto; margin-right: auto; padding: 32px 24px 120px; box-shadow: 1px 0 0 var(--hb-border), -1px 0 0 var(--hb-border); }
 
 /* The sheet is a light paper even under the dark editor theme — re-pin the content tokens it uses
    back to light values (and keep it white). The stage around it stays theme-driven (above). */

@@ -14,8 +14,9 @@
          POSTs the selected container's model to /editor/patterns and dispatches hb:patterns-changed
          so the Blocks tab refreshes without a reload (toolbar-composition.md §8).
 
-     Chrome sits on --hb-editing (square); the white icons/overlays are toolbar mechanics,
-     not theme colours. --}}
+     Chrome uses a fixed colour (#3D68F5 — the .pen reference) so the toolbar stays the
+     same across light/dark theme; it's tool UI, not theme-bound. The white icons/overlays
+     are toolbar mechanics, not theme colours. --}}
 @props(['supports' => [], 'richText' => true, 'blockType' => 'Text', 'activeFormats' => ['bold'], 'themeTokens' => []])
 @php
     $has = fn ($key) => \Illuminate\Support\Arr::get($supports, $key, null) !== null

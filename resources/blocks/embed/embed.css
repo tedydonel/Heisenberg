@@ -69,7 +69,7 @@
     align-items: center;
     justify-content: center;
     padding: 8px 12px;
-    border: 1px dashed var(--hb-border, #c9c9c9);
+    border: 1px dashed var(--hb-border);
     border-radius: var(--hb-embed-frame-radius, 4px);
     background: transparent;
     color: var(--hb-muted, #9a9a9a);

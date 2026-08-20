@@ -32,53 +32,53 @@
     .hb-tocdialog__body { position: relative; flex: 1 1 auto; min-height: 0; display: flex; flex-direction: column; }
     .hb-tocdialog__scrollwrap { position: relative; flex: 1 1 auto; min-height: 0; }
     .hb-tocdialog__scroll { height: 100%; box-sizing: border-box; padding: var(--hb-space-4, 16px); }
-    .hb-tocdialog__empty { padding: 48px 0; text-align: center; color: var(--hb-text-muted, #9A9A9A); font-size: var(--hb-fs-base, 13px); font-family: var(--hb-font-sans, Rubik, sans-serif); }
+    .hb-tocdialog__empty { padding: 48px 0; text-align: center; color: var(--hb-text-muted); font-size: var(--hb-fs-base, 13px); font-family: var(--hb-font-sans, Rubik, sans-serif); }
     .hb-tocdialog__empty[hidden] { display: none; }
     .hb-tocdialog__list { display: flex; flex-direction: column; gap: 6px; }
     .hb-tocdialog__row {
         display: flex; align-items: center; gap: var(--hb-space-3, 12px);
         padding: 8px 10px;
-        border: 1px solid var(--hb-border, #E4E4E4);
+        border: 1px solid var(--hb-border);
         border-radius: var(--hb-radius-md, 5px);
     }
     .hb-tocdialog__reorder { display: flex; flex-direction: column; gap: 2px; flex: none; }
     .hb-tocdialog__reorder button {
         display: inline-flex; align-items: center; justify-content: center;
         width: 20px; height: 15px; border: 0; background: none; cursor: pointer; padding: 0;
-        color: var(--hb-text-secondary, #5A5A5A); border-radius: 3px;
+        color: var(--hb-text-secondary); border-radius: 3px;
     }
-    .hb-tocdialog__reorder button:hover:not(:disabled) { background: var(--hb-surface-hover, #F7F7F7); color: var(--hb-text-primary, #0A0A0A); }
+    .hb-tocdialog__reorder button:hover:not(:disabled) { background: var(--hb-surface-hover); color: var(--hb-text-primary); }
     .hb-tocdialog__reorder button:disabled { opacity: .3; cursor: default; }
     .hb-tocdialog__fields { flex: 1 1 auto; min-width: 0; display: flex; gap: 8px; }
     .hb-tocdialog__label, .hb-tocdialog__anchor {
         box-sizing: border-box; height: 30px; padding: 0 10px;
-        border: 1px solid var(--hb-border, #E4E4E4); border-radius: var(--hb-radius-md, 5px);
-        background: var(--hb-bg, #fff); font-family: var(--hb-font-sans, Rubik, sans-serif);
-        font-size: var(--hb-fs-sm, 12px); color: var(--hb-text-primary, #0A0A0A);
+        border: 1px solid var(--hb-border); border-radius: var(--hb-radius-md, 5px);
+        background: var(--hb-bg); font-family: var(--hb-font-sans, Rubik, sans-serif);
+        font-size: var(--hb-fs-sm, 12px); color: var(--hb-text-primary);
     }
-    .hb-tocdialog__label:focus, .hb-tocdialog__anchor:focus { outline: 0; border-color: var(--hb-border-focus, #000); }
+    .hb-tocdialog__label:focus, .hb-tocdialog__anchor:focus { outline: 0; border-color: var(--hb-border-focus); }
     .hb-tocdialog__label { flex: 1 1 60%; min-width: 0; }
     .hb-tocdialog__anchor { flex: 1 1 40%; min-width: 0; font-family: var(--hb-font-mono, ui-monospace, monospace); }
     .hb-tocdialog__remove {
         flex: none; display: inline-flex; align-items: center; justify-content: center;
         width: 28px; height: 28px; border: 0; background: none; cursor: pointer; padding: 0;
-        color: var(--hb-text-muted, #9A9A9A); border-radius: var(--hb-radius-sm, 3px);
+        color: var(--hb-text-muted); border-radius: var(--hb-radius-sm, 3px);
     }
-    .hb-tocdialog__remove:hover { background: var(--hb-danger-subtle, #FEF2F2); color: var(--hb-danger, #D4191A); }
+    .hb-tocdialog__remove:hover { background: var(--hb-danger-subtle); color: var(--hb-danger); }
 
     .hb-tocdialog__foot {
         flex: none; display: flex; align-items: center; gap: 8px;
         padding: 10px var(--hb-space-4, 16px);
-        border-top: 1px solid var(--hb-border, #E4E4E4);
+        border-top: 1px solid var(--hb-border);
         font-family: var(--hb-font-sans, Rubik, sans-serif);
     }
     .hb-tocdialog__add, .hb-tocdialog__loadheadings {
-        flex: none; border: 1px solid var(--hb-border, #E4E4E4); cursor: pointer;
+        flex: none; border: 1px solid var(--hb-border); cursor: pointer;
         padding: 6px 10px; border-radius: var(--hb-radius-control, 6px);
-        background: var(--hb-bg, #fff); color: var(--hb-text-secondary, #5A5A5A);
+        background: var(--hb-bg); color: var(--hb-text-secondary);
         font-family: inherit; font-size: var(--hb-fs-sm, 12px); font-weight: 600;
     }
-    .hb-tocdialog__add:hover, .hb-tocdialog__loadheadings:hover { background: var(--hb-surface-hover, #F7F7F7); }
+    .hb-tocdialog__add:hover, .hb-tocdialog__loadheadings:hover { background: var(--hb-surface-hover); }
     {{-- ONE flexible message slot between the buttons. The note and the status
          used to be two separate flex items — the transient status (flex:none)
          claimed its full text width and crushed the note (flex:1, min-width:0)
@@ -86,14 +86,14 @@
          share this container and the script guarantees only one shows. --}}
     .hb-tocdialog__msgs { flex: 1 1 auto; min-width: 0; overflow: hidden; text-align: right; }
     .hb-tocdialog__note, .hb-tocdialog__status {
-        font-size: var(--hb-fs-xs, 11px); line-height: 1.35; color: var(--hb-text-muted, #9A9A9A);
+        font-size: var(--hb-fs-xs, 11px); line-height: 1.35; color: var(--hb-text-muted);
         display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;
     }
     .hb-tocdialog__note[hidden], .hb-tocdialog__status[hidden] { display: none; }
     .hb-tocdialog__save {
         flex: none; border: 0; cursor: pointer;
         padding: 6px 14px; border-radius: var(--hb-radius-control, 6px);
-        background: var(--hb-accent, #000); color: var(--hb-accent-fg, #fff);
+        background: var(--hb-accent); color: var(--hb-accent-fg);
         font-family: inherit; font-size: var(--hb-fs-sm, 12px); font-weight: 600;
     }
     .hb-tocdialog__save:hover:not(:disabled) { opacity: .85; }
@@ -101,10 +101,10 @@
     .hb-tocdialog__close {
         flex: none; border: 0; cursor: pointer;
         padding: 6px 12px; border-radius: var(--hb-radius-control, 6px);
-        background: var(--hb-bg-muted, #F4F4F4); color: var(--hb-text-secondary, #5A5A5A);
+        background: var(--hb-bg-muted); color: var(--hb-text-secondary);
         font-family: inherit; font-size: var(--hb-fs-sm, 12px); font-weight: 600;
     }
-    .hb-tocdialog__close:hover { background: var(--hb-surface-hover, #F7F7F7); }
+    .hb-tocdialog__close:hover { background: var(--hb-surface-hover); }
 </style>
 <script>
     (() => {

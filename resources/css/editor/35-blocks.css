@@ -81,8 +81,8 @@
 /* Block wrapper — the selection target. Holds the rendered block root and,
    while selected, the floating toolbar. */
 .hb-blk { position: relative; margin: 2px 0; border-radius: 0; }
-.hb-blk:hover:not(.is-selected) { box-shadow: 0 0 0 .6px var(--hb-border-strong, #C8C8C8); }
-.hb-blk.is-selected { box-shadow: 0 0 0 .6px var(--hb-editing, #3D68F5); }
+.hb-blk:hover:not(.is-selected) { box-shadow: 0 0 0 .6px var(--hb-border-strong); }
+.hb-blk.is-selected { box-shadow: 0 0 0 .6px var(--hb-editing); }
 .hb-blk > .hb-block { outline: none; }
 
 /* Nested children (inside a container's inner-blocks slot): the wrapper is
@@ -93,21 +93,21 @@
 .hb-blk--nested { display: contents; margin: 0; }
 .hb-blk--nested:hover:not(.is-selected) { box-shadow: none; }
 .hb-blk--nested.is-selected { box-shadow: none; }
-.hb-blk--nested:hover:not(.is-selected) > [data-block-id] { box-shadow: 0 0 0 .6px var(--hb-border-strong, #C8C8C8); }
-.hb-blk--nested.is-selected > [data-block-id] { box-shadow: 0 0 0 .6px var(--hb-editing, #3D68F5); }
+.hb-blk--nested:hover:not(.is-selected) > [data-block-id] { box-shadow: 0 0 0 .6px var(--hb-border-strong); }
+.hb-blk--nested.is-selected > [data-block-id] { box-shadow: 0 0 0 .6px var(--hb-editing); }
 
 /* Editor-only click-to-add target inside an empty container. */
 .hb-inner-appender {
     display: flex; align-items: center; justify-content: center;
     min-height: 44px; width: 100%; flex: 1 1 auto;
-    border: 1px dashed var(--hb-border-strong, #C8C8C8);
+    border: 1px dashed var(--hb-border-strong);
     border-radius: var(--hb-radius-md, 5px);
     background: transparent; cursor: pointer;
     font-family: var(--hb-font-sans, Rubik, sans-serif);
     font-size: var(--hb-fs-sm, 12px);
-    color: var(--hb-text-muted, #9A9A9A);
+    color: var(--hb-text-muted);
 }
-.hb-inner-appender:hover { border-color: var(--hb-editing, #3D68F5); color: var(--hb-editing, #3D68F5); }
+.hb-inner-appender:hover { border-color: var(--hb-editing); color: var(--hb-editing); }
 
 /* Rich-text editables (.hb-ce) show a placeholder when empty. */
 .hb-ce:empty::before { content: attr(data-ph); color: var(--ghost, #C4C4C4); pointer-events: none; }
@@ -136,7 +136,7 @@
 .hb-blk.is-drop-before::before,
 .hb-blk.is-drop-after::after {
     content: ""; position: absolute; left: 0; right: 0; height: 2px;
-    background: var(--hb-editing, #3D68F5); pointer-events: none;
+    background: var(--hb-editing); pointer-events: none;
 }
 .hb-blk.is-drop-before::before { top: -2px; }
 .hb-blk.is-drop-after::after { bottom: -2px; }
@@ -144,12 +144,12 @@
 /* Container drops (palette → container): the dashed outline marks the RECEIVING
    container; the insertion line paints on a nested child's ROOT element — its
    .hb-blk--nested wrapper is display:contents and can't paint anything. */
-.is-drop-inside { outline: 1.5px dashed var(--hb-editing, #3D68F5); outline-offset: 2px; }
+.is-drop-inside { outline: 1.5px dashed var(--hb-editing); outline-offset: 2px; }
 [data-block-id].is-drop-before, [data-block-id].is-drop-after { position: relative; }
 [data-block-id].is-drop-before::before,
 [data-block-id].is-drop-after::after {
     content: ""; position: absolute; left: 0; right: 0; height: 2px;
-    background: var(--hb-editing, #3D68F5); pointer-events: none;
+    background: var(--hb-editing); pointer-events: none;
 }
 [data-block-id].is-drop-before::before { top: -2px; }
 [data-block-id].is-drop-after::after { bottom: -2px; }
@@ -161,11 +161,11 @@
     position: fixed; top: 0; left: 0; z-index: 1000;
     display: inline-flex; align-items: center; gap: 6px;
     padding: 6px 10px;
-    background: var(--hb-bg, #fff);
-    border: 1px solid var(--hb-border-strong, #C8C8C8);
+    background: var(--hb-bg);
+    border: 1px solid var(--hb-border-strong);
     border-radius: var(--hb-radius-sm, 3px);
     box-shadow: var(--hb-shadow-md, 3px 4px 4px rgba(0, 0, 0, .1));
-    color: var(--hb-text-primary, #0A0A0A);
+    color: var(--hb-text-primary);
     font-family: var(--hb-font-sans, Rubik, sans-serif);
     font-size: var(--hb-fs-sm, 12px);
     pointer-events: none;
@@ -187,7 +187,7 @@
 
 /* Empty image block — a click-to-pick placeholder instead of a broken <img>. */
 .hb-blk .hb-img-empty { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 8px; min-height: 160px; width: 100%; border: 1px dashed var(--line-strong, #C8C8C8); border-radius: var(--r-md, 5px); background: var(--subtle, #FAFAFA); color: var(--muted, #9A9A9A); cursor: pointer; font-family: var(--hb-font-sans, Rubik, sans-serif); font-size: 13px; }
-.hb-blk .hb-img-empty:hover { border-color: var(--hb-editing, #3D68F5); color: var(--hb-editing, #3D68F5); }
+.hb-blk .hb-img-empty:hover { border-color: var(--hb-editing); color: var(--hb-editing); }
 .hb-blk .hb-img-empty svg { width: 26px; height: 26px; opacity: .7; }
 
 /* Container edge-resize affordance — block-runtime's wireContainerResize() puts one of these
@@ -201,5 +201,5 @@
 /* Empty icon block — a click-to-pick placeholder (decorateIconBlock, block-runtime); the
    click dispatches the cancelable hb:pick-icon the icon-picker dialog claims. */
 .hb-blk .hb-icon-empty { display: inline-flex; flex-direction: column; align-items: center; justify-content: center; gap: 6px; min-width: 96px; min-height: 96px; border: 1px dashed var(--line-strong, #C8C8C8); border-radius: var(--r-md, 5px); background: var(--subtle, #FAFAFA); color: var(--muted, #9A9A9A); cursor: pointer; font-family: var(--hb-font-sans, Rubik, sans-serif); font-size: 12px; }
-.hb-blk .hb-icon-empty:hover { border-color: var(--hb-editing, #3D68F5); color: var(--hb-editing, #3D68F5); }
+.hb-blk .hb-icon-empty:hover { border-color: var(--hb-editing); color: var(--hb-editing); }
 .hb-blk .hb-icon-empty svg { width: 22px; height: 22px; opacity: .7; }

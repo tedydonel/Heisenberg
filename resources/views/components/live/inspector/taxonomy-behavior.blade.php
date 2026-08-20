@@ -12,17 +12,17 @@
             .hb-post-discussion-body[hidden],
             .hb-post-layout-body[hidden],
             .hb-post-toc-body[hidden] { display: none; }
-            .hb-post-taxonomy-hint { font-family: var(--hb-font-sans, Rubik, sans-serif); font-size: var(--hb-fs-xs, 11px); color: var(--hb-text-muted, #9A9A9A); }
+            .hb-post-taxonomy-hint { font-family: var(--hb-font-sans, Rubik, sans-serif); font-size: var(--hb-fs-xs, 11px); color: var(--hb-text-muted); }
             .hb-post-taxonomy-hint[hidden] { display: none; }
 
-            .hb-post-toc-summary { font-family: var(--hb-font-sans, Rubik, sans-serif); font-size: var(--hb-fs-sm, 12px); color: var(--hb-text-secondary, #5A5A5A); }
+            .hb-post-toc-summary { font-family: var(--hb-font-sans, Rubik, sans-serif); font-size: var(--hb-fs-sm, 12px); color: var(--hb-text-secondary); }
             .hb-post-toc-edit {
-                align-self: flex-start; border: 1px solid var(--hb-border, #E4E4E4); cursor: pointer;
+                align-self: flex-start; border: 1px solid var(--hb-border); cursor: pointer;
                 padding: 5px 10px; border-radius: var(--hb-radius-control, 6px);
-                background: var(--hb-bg, #fff); color: var(--hb-text-secondary, #5A5A5A);
+                background: var(--hb-bg); color: var(--hb-text-secondary);
                 font-family: var(--hb-font-sans, Rubik, sans-serif); font-size: var(--hb-fs-sm, 12px); font-weight: 600;
             }
-            .hb-post-toc-edit:hover { background: var(--hb-surface-hover, #F7F7F7); }
+            .hb-post-toc-edit:hover { background: var(--hb-surface-hover); }
 
             {{-- Two-layer scroll shell (the scrollbar's `container` can't double as the bar's own
                  direct parent). Shared by BOTH Categories and Tags. `max-height`
@@ -35,27 +35,27 @@
             .hb-post-taxonomy-list-scroll { max-height: 140px; overflow: hidden; }
             .hb-post-taxonomy-list { display: flex; flex-direction: column; gap: 2px; padding-right: 8px; }
             .hb-post-taxonomy-item { width: 100%; box-sizing: border-box; padding: 6px 8px; border-radius: var(--hb-radius-sm, 3px); flex: none; }
-            .hb-post-taxonomy-item:hover { background: var(--hb-bg-muted, #F4F4F4); }
+            .hb-post-taxonomy-item:hover { background: var(--hb-bg-muted); }
             {{-- [hidden] override: ui/checkbox's own .hb-checkbox rule sets display:inline-flex,
                  which otherwise beats the UA stylesheet's [hidden] at equal specificity — same fix
                  already applied elsewhere in this file (see .hb-inspector__icon[hidden] above). --}}
             .hb-post-taxonomy-item[hidden] { display: none; }
-            .hb-post-taxonomy-empty { padding: 6px 8px; font-family: var(--hb-font-sans, Rubik, sans-serif); font-size: var(--hb-fs-xs, 11px); color: var(--hb-text-muted, #9A9A9A); }
+            .hb-post-taxonomy-empty { padding: 6px 8px; font-family: var(--hb-font-sans, Rubik, sans-serif); font-size: var(--hb-fs-xs, 11px); color: var(--hb-text-muted); }
             .hb-post-taxonomy-empty[hidden] { display: none; }
             {{-- outline:0 + a border-color shift on :focus, not a native browser focus ring — same
                  treatment ui/input gives its own text input (there via :focus-within on a wrapping
                  div, since that input has no border of its own; this one has no wrapper, so :focus
                  lands directly on it). Leaving the UA default outline in would show a much heavier
                  ring than every other text field in this app. --}}
-            .hb-post-taxonomy-add-input { width: 100%; height: 30px; box-sizing: border-box; padding: 0 10px; border: 1px solid var(--hb-border, #E4E4E4); border-radius: var(--hb-radius-md, 5px); background: var(--hb-bg, #fff); font-family: var(--hb-font-sans, Rubik, sans-serif); font-size: var(--hb-fs-sm, 12px); color: var(--hb-text-primary, #0A0A0A); transition: border-color .12s ease; }
-            .hb-post-taxonomy-add-input:hover { border-color: var(--hb-border-strong, #C8C8C8); }
-            .hb-post-taxonomy-add-input:focus { outline: 0; border-color: var(--hb-border-focus, #000); }
+            .hb-post-taxonomy-add-input { width: 100%; height: 30px; box-sizing: border-box; padding: 0 10px; border: 1px solid var(--hb-border); border-radius: var(--hb-radius-md, 5px); background: var(--hb-bg); font-family: var(--hb-font-sans, Rubik, sans-serif); font-size: var(--hb-fs-sm, 12px); color: var(--hb-text-primary); transition: border-color .12s ease; }
+            .hb-post-taxonomy-add-input:hover { border-color: var(--hb-border-strong); }
+            .hb-post-taxonomy-add-input:focus { outline: 0; border-color: var(--hb-border-focus); }
             .hb-post-taxonomy-add-input:disabled { opacity: .5; cursor: not-allowed; }
-            .hb-post-taxonomy-add-input::placeholder { color: var(--hb-text-muted, #9A9A9A); }
+            .hb-post-taxonomy-add-input::placeholder { color: var(--hb-text-muted); }
 
             .hb-post-layout-row { display: flex; align-items: center; gap: 10px; }
-            .hb-post-layout-row__label { flex: 1 1 auto; min-width: 0; font-family: var(--hb-font-sans, Rubik, sans-serif); font-size: var(--hb-fs-sm, 12px); color: var(--hb-text-secondary, #5A5A5A); }
-            .hb-post-layout-row__readout { flex: none; width: 34px; text-align: right; font-family: var(--hb-font-sans, Rubik, sans-serif); font-size: var(--hb-fs-xs, 11px); color: var(--hb-text-muted, #9A9A9A); }
+            .hb-post-layout-row__label { flex: 1 1 auto; min-width: 0; font-family: var(--hb-font-sans, Rubik, sans-serif); font-size: var(--hb-fs-sm, 12px); color: var(--hb-text-secondary); }
+            .hb-post-layout-row__readout { flex: none; width: 34px; text-align: right; font-family: var(--hb-font-sans, Rubik, sans-serif); font-size: var(--hb-fs-xs, 11px); color: var(--hb-text-muted); }
 
             {{-- Translations (docs/content-translation.md §0/Wave 2) — one row per configured
                  locale; clicking a row switches the editing locale (no navigation, no request). --}}
@@ -67,14 +67,14 @@
                 width: 100%; padding: 6px 4px; border: 0; border-radius: var(--hb-radius-sm, 3px);
                 background: none; cursor: pointer; text-align: left;
             }
-            .hb-post-translation-row:hover { background: var(--hb-surface-hover, #F7F7F7); }
-            .hb-post-translation-row.is-current { background: var(--hb-bg-muted, #F4F4F4); }
-            .hb-post-translation-row__locale { flex: 1 1 auto; min-width: 0; font-family: var(--hb-font-sans, Rubik, sans-serif); font-size: var(--hb-fs-sm, 12px); color: var(--hb-text-primary, #0A0A0A); }
+            .hb-post-translation-row:hover { background: var(--hb-surface-hover); }
+            .hb-post-translation-row.is-current { background: var(--hb-bg-muted); }
+            .hb-post-translation-row__locale { flex: 1 1 auto; min-width: 0; font-family: var(--hb-font-sans, Rubik, sans-serif); font-size: var(--hb-fs-sm, 12px); color: var(--hb-text-primary); }
             .hb-post-translation-row.is-current .hb-post-translation-row__locale { font-weight: 600; }
             .hb-post-translation-row__chip {
                 flex: none; padding: 2px 8px; border-radius: var(--hb-radius-full, 999px);
                 font-family: var(--hb-font-sans, Rubik, sans-serif); font-size: var(--hb-fs-xs, 11px); font-weight: 600;
-                background: var(--hb-bg-muted, #F4F4F4); color: var(--hb-text-secondary, #5A5A5A);
+                background: var(--hb-bg-muted); color: var(--hb-text-secondary);
             }
             .hb-post-translation-row__chip--complete { background: #E3F5E8; color: #1B7A3D; }
         </style>

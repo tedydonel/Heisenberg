@@ -104,27 +104,27 @@
         height: 30px;
         box-sizing: border-box;
         padding: 0 10px;
-        border: 1px solid var(--hb-border, #E4E4E4);
+        border: 1px solid var(--hb-border);
         border-radius: var(--hb-radius-md, 5px);
-        background: var(--hb-bg, #fff);
+        background: var(--hb-bg);
         font-family: var(--hb-font-sans, Rubik, sans-serif);
         font-size: var(--hb-fs-sm, 12px);
-        color: var(--hb-text-primary, #0A0A0A);
+        color: var(--hb-text-primary);
         transition: border-color .12s ease;
     }
-    .hb-classchips__input:focus { outline: none; border-color: var(--hb-border-focus, #000); }
+    .hb-classchips__input:focus { outline: none; border-color: var(--hb-border-focus); }
     .hb-ihint {
         display: block;
         font-family: var(--hb-font-sans, Rubik, sans-serif);
         font-size: 10px;
         line-height: 1.4;
-        color: var(--hb-text-muted, #9A9A9A);
+        color: var(--hb-text-muted);
     }
-    .hb-ihint--warning { color: var(--hb-danger, #D4191A); }
+    .hb-ihint--warning { color: var(--hb-danger); }
     /* Author rules always beat the UA [hidden] default (different cascade origin, so
        specificity can't settle it) — the explicit override here is the same fix this file's
        own .hb-chips:empty neighbours rely on elsewhere in the panel. */
     .hb-ihint[hidden] { display: none; }
-    [data-hb-control="anchor"].hb-input--warning { border-color: var(--hb-danger, #D4191A); }
+    [data-hb-control="anchor"].hb-input--warning { border-color: var(--hb-danger); }
 </style>
 @endonce

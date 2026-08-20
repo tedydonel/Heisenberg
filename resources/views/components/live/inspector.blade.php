@@ -43,8 +43,8 @@
         flex-direction: column;
         width: 260px;
         height: 100%;
-        background: var(--hb-bg, #fff);
-        border-left: 1px solid var(--hb-border, #E4E4E4);
+        background: var(--hb-bg);
+        border-left: 1px solid var(--hb-border);
         flex: none;
     }
     .hb-inspector__header {
@@ -55,7 +55,7 @@
         flex: none;
     }
     .hb-inspector__title-row { display: flex; align-items: center; gap: 8px; }
-    .hb-inspector__icon { display: inline-flex; width: 22px; height: 22px; color: var(--hb-text-primary, #0A0A0A); flex: none; }
+    .hb-inspector__icon { display: inline-flex; width: 22px; height: 22px; color: var(--hb-text-primary); flex: none; }
     /* Author `display:inline-flex` beats the UA stylesheet's `[hidden]` at equal specificity —
        same fix as .hb-section__body[hidden] in ui/panel-section.blade.php; several per-block
        icons share this class and only one is ever unhidden at a time (see the script below). */
@@ -64,13 +64,13 @@
         font-family: var(--hb-font-sans, Rubik, sans-serif);
         font-size: var(--hb-fs-md, 14px);
         font-weight: 500;
-        color: var(--hb-text-primary, #0A0A0A);
+        color: var(--hb-text-primary);
     }
     .hb-inspector__desc {
         font-family: var(--hb-font-sans, Rubik, sans-serif);
         font-size: var(--hb-fs-sm, 12px);
         line-height: 1.4;
-        color: var(--hb-text-muted, #9A9A9A);
+        color: var(--hb-text-muted);
     }
     .hb-inspector__block-content,
     .hb-inspector__post-content { display: flex; flex-direction: column; flex: 1 1 auto; min-height: 0; overflow: hidden; }
@@ -109,7 +109,7 @@
         text-align: center;
         font-family: var(--hb-font-sans, Rubik, sans-serif);
         font-size: var(--hb-fs-sm, 12px);
-        color: var(--hb-text-muted, #9A9A9A);
+        color: var(--hb-text-muted);
     }
     .hb-inspector__empty[hidden] { display: none; }
 
@@ -118,7 +118,7 @@
         flex-direction: column;
         gap: var(--hb-space-3, 12px);
         padding: var(--hb-space-3, 12px);
-        border-bottom: 1px solid var(--hb-border, #E4E4E4);
+        border-bottom: 1px solid var(--hb-border);
         flex: none;
     }
     .hb-post-title__eyebrow {
@@ -126,15 +126,15 @@
         font-size: var(--hb-fs-xs, 11px);
         font-weight: 500;
         letter-spacing: .5px;
-        color: var(--hb-text-muted, #9A9A9A);
+        color: var(--hb-text-muted);
     }
     .hb-post-title__row { display: flex; align-items: center; gap: 8px; }
-    .hb-post-title__icon { display: inline-flex; width: 15px; height: 15px; color: var(--hb-text-secondary, #5A5A5A); flex: none; }
-    .hb-post-title__value { font-family: var(--hb-font-sans, Rubik, sans-serif); font-size: var(--hb-fs-base, 13px); font-weight: 500; color: var(--hb-text-secondary, #5A5A5A); }
-    .hb-post-title__input { flex: 1 1 auto; min-width: 0; border: 0; outline: 0; background: none; font-family: var(--hb-font-sans, Rubik, sans-serif); font-size: var(--hb-fs-base, 13px); font-weight: 500; color: var(--hb-text-primary, #0A0A0A); }
-    .hb-post-title__input::placeholder { color: var(--hb-text-muted, #9A9A9A); font-weight: 500; }
+    .hb-post-title__icon { display: inline-flex; width: 15px; height: 15px; color: var(--hb-text-secondary); flex: none; }
+    .hb-post-title__value { font-family: var(--hb-font-sans, Rubik, sans-serif); font-size: var(--hb-fs-base, 13px); font-weight: 500; color: var(--hb-text-secondary); }
+    .hb-post-title__input { flex: 1 1 auto; min-width: 0; border: 0; outline: 0; background: none; font-family: var(--hb-font-sans, Rubik, sans-serif); font-size: var(--hb-fs-base, 13px); font-weight: 500; color: var(--hb-text-primary); }
+    .hb-post-title__input::placeholder { color: var(--hb-text-muted); font-weight: 500; }
 
-    .hb-post-dropzone-wrap { padding: var(--hb-space-3, 12px); border-bottom: 1px solid var(--hb-border, #E4E4E4); flex: none; }
+    .hb-post-dropzone-wrap { padding: var(--hb-space-3, 12px); border-bottom: 1px solid var(--hb-border); flex: none; }
     .hb-post-dropzone {
         display: flex;
         flex-direction: column;
@@ -143,17 +143,17 @@
         gap: 8px;
         height: 94px;
         width: 100%;
-        border: 1px solid var(--hb-border-strong, #C8C8C8);
+        border: 1px solid var(--hb-border-strong);
         border-radius: var(--hb-radius-md, 5px);
-        background: var(--hb-bg-subtle, #FAFAFA);
+        background: var(--hb-bg-subtle);
     }
-    .hb-post-dropzone__icon { display: inline-flex; width: 28px; height: 28px; color: var(--hb-text-muted, #9A9A9A); }
-    .hb-post-dropzone__label { font-family: var(--hb-font-sans, Rubik, sans-serif); font-size: var(--hb-fs-sm, 12px); color: var(--hb-text-muted, #9A9A9A); }
+    .hb-post-dropzone__icon { display: inline-flex; width: 28px; height: 28px; color: var(--hb-text-muted); }
+    .hb-post-dropzone__label { font-family: var(--hb-font-sans, Rubik, sans-serif); font-size: var(--hb-fs-sm, 12px); color: var(--hb-text-muted); }
 
     .hb-post-meta { display: flex; flex-direction: column; padding: 6px 0; flex: none; }
     .hb-post-meta__row { display: flex; align-items: center; justify-content: space-between; height: 32px; padding: 0 14px; }
-    .hb-post-meta__label { font-family: var(--hb-font-sans, Rubik, sans-serif); font-size: var(--hb-fs-sm, 12px); color: var(--hb-text-secondary, #5A5A5A); }
-    .hb-post-meta__value { font-family: var(--hb-font-sans, Rubik, sans-serif); font-size: 11px; font-weight: 500; color: var(--hb-text-primary, #0A0A0A); }
+    .hb-post-meta__label { font-family: var(--hb-font-sans, Rubik, sans-serif); font-size: var(--hb-fs-sm, 12px); color: var(--hb-text-secondary); }
+    .hb-post-meta__value { font-family: var(--hb-font-sans, Rubik, sans-serif); font-size: 11px; font-weight: 500; color: var(--hb-text-primary); }
     .hb-post-meta__value--btn {
         max-width: 175px;
         border: 0;
@@ -169,7 +169,7 @@
         text-overflow: ellipsis;
         cursor: pointer;
     }
-    .hb-post-meta__value--btn:not(:disabled):hover { color: var(--hb-editing, #3D68F5); }
+    .hb-post-meta__value--btn:not(:disabled):hover { color: var(--hb-editing); }
     .hb-post-meta__value--btn:disabled { opacity: .5; cursor: not-allowed; }
     /* A picked-but-not-yet-saved value — the Status, Slug and Publish-date controls all
        share this (see post-meta-live-script.blade.php's data-hb-pending / setStatusPending /
@@ -178,7 +178,7 @@
        clears once the server actually confirms the new value (an explicit Save) or the
        pick is rejected/reverted. Without this, a row looked identical to an already-applied
        change — the owner-reported "picked Published, post stayed draft" bug. */
-    .hb-post-meta__value--btn[data-hb-pending="true"] { color: var(--hb-warning, #B45309); }
+    .hb-post-meta__value--btn[data-hb-pending="true"] { color: var(--hb-warning); }
     .hb-post-meta__value--btn[data-hb-pending="true"]::before { content: '\2022'; margin-right: 4px; }
 
     .hb-post-popup { position: fixed; z-index: 1000; }
@@ -186,26 +186,26 @@
     .hb-post-pop { width: 236px; box-shadow: 3px 4px 4px rgba(0, 0, 0, .1); }
 
     .hb-post-slugpop { display: flex; flex-direction: column; gap: 6px; padding: 12px; }
-    .hb-post-slugpop__label { font-size: var(--hb-fs-xs, 11px); font-weight: 600; color: var(--hb-text-secondary, #5A5A5A); }
+    .hb-post-slugpop__label { font-size: var(--hb-fs-xs, 11px); font-weight: 600; color: var(--hb-text-secondary); }
     .hb-post-slugpop__input {
         height: 30px;
         box-sizing: border-box;
         padding: 0 8px;
-        border: 1px solid var(--hb-border, #E4E4E4);
+        border: 1px solid var(--hb-border);
         border-radius: var(--hb-radius-md, 5px);
-        background: var(--hb-bg, #fff);
+        background: var(--hb-bg);
         font-family: inherit;
         font-size: var(--hb-fs-sm, 12px);
-        color: var(--hb-text-primary, #0A0A0A);
+        color: var(--hb-text-primary);
     }
-    .hb-post-slugpop__input:focus { outline: 0; border-color: var(--hb-border-focus, #000); }
+    .hb-post-slugpop__input:focus { outline: 0; border-color: var(--hb-border-focus); }
     .hb-post-slugpop__input:disabled { opacity: .5; cursor: not-allowed; }
 
     .hb-post-toggles { display: flex; flex-direction: column; padding: 6px 0; flex: none; }
     .hb-post-toggle-row { display: flex; align-items: center; justify-content: space-between; gap: 12px; height: 34px; padding: 0 14px; }
-    .hb-post-toggle-row__label { font-family: var(--hb-font-sans, Rubik, sans-serif); font-size: var(--hb-fs-sm, 12px); color: var(--hb-text-secondary, #5A5A5A); }
+    .hb-post-toggle-row__label { font-family: var(--hb-font-sans, Rubik, sans-serif); font-size: var(--hb-fs-sm, 12px); color: var(--hb-text-secondary); }
 
-    .hb-post-divider { border: 0; border-top: 1px solid var(--hb-border, #E4E4E4); width: 100%; margin: 0; flex: none; }
+    .hb-post-divider { border: 0; border-top: 1px solid var(--hb-border); width: 100%; margin: 0; flex: none; }
 
     .hb-post-trash-row { display: flex; align-items: center; gap: 6px; padding: 0 var(--hb-space-3, 12px); }
     .hb-post-trash {
@@ -220,11 +220,11 @@
         cursor: pointer;
         text-align: left;
     }
-    .hb-post-trash:hover { background: var(--hb-surface-hover, #F7F7F7); }
+    .hb-post-trash:hover { background: var(--hb-surface-hover); }
     .hb-post-trash:disabled { opacity: .5; cursor: not-allowed; }
     .hb-post-trash:disabled:hover { background: transparent; }
-    .hb-post-trash__icon { display: inline-flex; width: 15px; height: 15px; color: var(--hb-danger, #D4191A); flex: none; }
-    .hb-post-trash__label { font-family: var(--hb-font-sans, Rubik, sans-serif); font-size: var(--hb-fs-sm, 12px); font-weight: 500; color: var(--hb-danger, #D4191A); }
+    .hb-post-trash__icon { display: inline-flex; width: 15px; height: 15px; color: var(--hb-danger); flex: none; }
+    .hb-post-trash__label { font-family: var(--hb-font-sans, Rubik, sans-serif); font-size: var(--hb-fs-sm, 12px); font-weight: 500; color: var(--hb-danger); }
     {{-- Armed (two-step confirm, same posture as ai-history-dialog's delete button): the label
          text swaps client-side, this just gives the arm its own visual weight. --}}
     .hb-post-trash.is-armed .hb-post-trash__label { text-decoration: underline; }
@@ -232,15 +232,15 @@
         flex: none;
         height: 28px;
         padding: 0 10px;
-        border: 1px solid var(--hb-border, #E4E4E4);
+        border: 1px solid var(--hb-border);
         border-radius: var(--hb-radius-md, 5px);
-        background: var(--hb-bg, #fff);
-        color: var(--hb-text-secondary, #5A5A5A);
+        background: var(--hb-bg);
+        color: var(--hb-text-secondary);
         font-family: var(--hb-font-sans, Rubik, sans-serif);
         font-size: var(--hb-fs-sm, 12px);
         cursor: pointer;
     }
-    .hb-post-trash-cancel:hover { background: var(--hb-surface-hover, #F7F7F7); }
+    .hb-post-trash-cancel:hover { background: var(--hb-surface-hover); }
 </style>
 <script>
     (() => {

@@ -45,7 +45,7 @@
 @once
 <style>
     .hb-tglrow { display: flex; align-items: center; justify-content: space-between; gap: var(--hb-space-2, 8px); cursor: pointer; }
-    .hb-tglrow__l { font-family: var(--hb-font-sans, Rubik, sans-serif); font-size: 12px; color: var(--hb-text-secondary, #5A5A5A); }
+    .hb-tglrow__l { font-family: var(--hb-font-sans, Rubik, sans-serif); font-size: 12px; color: var(--hb-text-secondary); }
     /* The animation-preset menu lists the whole catalog — cap it and scroll. */
     .hb-blockadvanced .hb-select__menu { max-height: 260px; overflow-y: auto; }
 </style>

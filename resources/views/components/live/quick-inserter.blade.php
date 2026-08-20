@@ -60,13 +60,13 @@
     /* 2-up, same rhythm as the Components panel's card grid. */
     .hb-qi__grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
     .hb-qi-disabled { opacity: .4; cursor: not-allowed; }
-    .hb-qi-disabled:hover { background: var(--hb-bg, #fff); }
+    .hb-qi-disabled:hover { background: var(--hb-bg); }
     /* Footer row — top hairline separator, full-width secondary button. Uses the same spacing
        tokens as the rest of the popup (--hb-space-3, --hb-border). */
     .hb-qi__footer {
         display: flex;
         padding: var(--hb-space-3, 12px);
-        border-top: 1px solid var(--hb-border, #E4E4E4);
+        border-top: 1px solid var(--hb-border);
     }
     .hb-qi__footer .hb-btn { width: 100%; }
 </style>

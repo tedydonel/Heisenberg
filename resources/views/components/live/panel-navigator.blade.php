@@ -22,29 +22,29 @@
 @props(['registry' => []])
 @once
 <style>
-    .hb-nav { display: flex; flex-direction: column; width: 240px; height: 100%; background: var(--hb-bg, #fff); border-right: 1px solid var(--hb-border, #E4E4E4); flex: none; }
+    .hb-nav { display: flex; flex-direction: column; width: 240px; height: 100%; background: var(--hb-bg); border-right: 1px solid var(--hb-border); flex: none; }
     .hb-nav__content { display: flex; flex-direction: column; flex: 1 1 auto; min-height: 0; overflow: hidden; }
     .hb-nav__content[hidden] { display: none; }
     .hb-nav__body { flex: 1 1 auto; min-height: 0; overflow: hidden; position: relative; }
 
     /* List View — 28px rows: 10px caret slot, 13px block icon, 12px label, hover grip. */
     .hb-nav-list { display: flex; flex-direction: column; padding: 4px 0 18px; }
-    .hb-nav-row { display: flex; align-items: center; gap: 4px; width: 100%; height: 28px; padding: 0 8px; text-align: left; color: var(--hb-text-secondary, #5A5A5A); background: none; border: 0; position: relative; cursor: pointer; font-family: var(--hb-font-sans, Rubik, sans-serif); }
-    .hb-nav-row:hover { background: var(--hb-surface-hover, #F7F7F7); color: var(--hb-text-primary, #0A0A0A); }
-    .hb-nav-row.is-on { background: var(--hb-bg-muted, #F4F4F4); color: var(--hb-text-primary, #0A0A0A); }
+    .hb-nav-row { display: flex; align-items: center; gap: 4px; width: 100%; height: 28px; padding: 0 8px; text-align: left; color: var(--hb-text-secondary); background: none; border: 0; position: relative; cursor: pointer; font-family: var(--hb-font-sans, Rubik, sans-serif); }
+    .hb-nav-row:hover { background: var(--hb-surface-hover); color: var(--hb-text-primary); }
+    .hb-nav-row.is-on { background: var(--hb-bg-muted); color: var(--hb-text-primary); }
     .hb-nav-row .twist { width: 10px; height: 10px; flex: none; }
     /* Container rows get a real caret in the twist slot; clicking it folds the
        subtree (rotated closed like every other disclosure in the editor). */
-    .hb-nav-row .twist.has-kids { display: inline-flex; align-items: center; justify-content: center; color: var(--hb-text-muted, #9A9A9A); cursor: pointer; transition: transform .12s ease; }
+    .hb-nav-row .twist.has-kids { display: inline-flex; align-items: center; justify-content: center; color: var(--hb-text-muted); cursor: pointer; transition: transform .12s ease; }
     .hb-nav-row .twist.has-kids svg { width: 10px; height: 10px; }
     .hb-nav-row .twist.has-kids.is-closed { transform: rotate(-90deg); }
     .hb-nav-row .ic { width: 13px; height: 13px; flex: none; display: inline-flex; align-items: center; justify-content: center; color: inherit; }
     .hb-nav-row .ic svg { width: 13px; height: 13px; }
     .hb-nav-row .nm { flex: 1; min-width: 0; font-size: 12px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-    .hb-nav-row .grab { margin-left: auto; width: 16px; flex: none; display: inline-flex; align-items: center; justify-content: center; color: var(--hb-text-disabled, #C4C4C4); opacity: 0; transition: opacity .12s; cursor: grab; }
+    .hb-nav-row .grab { margin-left: auto; width: 16px; flex: none; display: inline-flex; align-items: center; justify-content: center; color: var(--hb-text-disabled); opacity: 0; transition: opacity .12s; cursor: grab; }
     .hb-nav-row .grab svg { width: 12px; height: 12px; }
     .hb-nav-row:hover .grab { opacity: 1; }
-    .hb-nav-empty { padding: 40px 20px; text-align: center; color: var(--hb-text-disabled, #C4C4C4); font-size: 12px; line-height: 1.5; }
+    .hb-nav-empty { padding: 40px 20px; text-align: center; color: var(--hb-text-disabled); font-size: 12px; line-height: 1.5; }
 
     /* Drag-to-reorder — dim the dragged row in place; a flat 2px line (no rounded pill, matching the
        canvas's own drop indicator) shows where it will land. */
@@ -52,7 +52,7 @@
     .hb-nav-row.is-drop-before::before,
     .hb-nav-row.is-drop-after::after {
         content: ""; position: absolute; left: 8px; right: 8px; height: 2px;
-        background: var(--hb-editing, #3D68F5); pointer-events: none;
+        background: var(--hb-editing); pointer-events: none;
     }
     .hb-nav-row.is-drop-before::before { top: 0; }
     .hb-nav-row.is-drop-after::after { bottom: 0; }
@@ -61,20 +61,20 @@
 
     /* Outline — stat rows, hairline divider, then heading rows with mono tags (H1 primary, H2+ dashed). */
     .hb-nav-outline { display: flex; flex-direction: column; }
-    .hb-nav-stats { display: flex; flex-direction: column; gap: 4px; padding: 12px; border-bottom: 1px solid var(--hb-border, #E4E4E4); }
+    .hb-nav-stats { display: flex; flex-direction: column; gap: 4px; padding: 12px; border-bottom: 1px solid var(--hb-border); }
     .hb-nav-stat { display: flex; align-items: center; gap: 12px; height: 20px; font-size: 12px; }
-    .hb-nav-stat span { color: var(--hb-text-secondary, #5A5A5A); }
-    .hb-nav-stat b { color: var(--hb-text-primary, #0A0A0A); font-weight: 400; font-variant-numeric: tabular-nums; }
+    .hb-nav-stat span { color: var(--hb-text-secondary); }
+    .hb-nav-stat b { color: var(--hb-text-primary); font-weight: 400; font-variant-numeric: tabular-nums; }
     .hb-nav-heads { display: flex; flex-direction: column; gap: 8px; padding: 12px; }
     .hb-nav-orow { display: flex; align-items: flex-start; gap: 6px; width: 100%; text-align: left; background: none; border: 0; border-radius: var(--hb-radius-sm, 3px); cursor: pointer; }
-    .hb-nav-orow:hover { background: var(--hb-surface-hover, #F7F7F7); }
-    .hb-nav-orow .dash { color: var(--hb-text-muted, #9A9A9A); font-size: 12px; line-height: 1.4; flex: none; }
-    .hb-nav-orow .tag { font-family: var(--hb-font-mono, ui-monospace, SFMono-Regular, Menlo, monospace); font-size: 10px; color: var(--hb-text-muted, #9A9A9A); background: var(--hb-bg-muted, #F4F4F4); border-radius: var(--hb-radius-sm, 3px); padding: 2px 5px; flex: none; }
+    .hb-nav-orow:hover { background: var(--hb-surface-hover); }
+    .hb-nav-orow .dash { color: var(--hb-text-muted); font-size: 12px; line-height: 1.4; flex: none; }
+    .hb-nav-orow .tag { font-family: var(--hb-font-mono, ui-monospace, SFMono-Regular, Menlo, monospace); font-size: 10px; color: var(--hb-text-muted); background: var(--hb-bg-muted); border-radius: var(--hb-radius-sm, 3px); padding: 2px 5px; flex: none; }
     .hb-nav-orow.is-title { gap: 8px; }
-    .hb-nav-orow.is-title .tag { color: var(--hb-text-secondary, #5A5A5A); }
-    .hb-nav-orow .ot { font-size: 11px; line-height: 1.6; color: var(--hb-text-secondary, #5A5A5A); min-width: 0; }
-    .hb-nav-orow.is-title .ot { color: var(--hb-text-primary, #0A0A0A); }
-    .hb-nav-oempty { padding: 28px 16px; text-align: center; color: var(--hb-text-disabled, #C4C4C4); font-size: 12px; line-height: 1.5; }
+    .hb-nav-orow.is-title .tag { color: var(--hb-text-secondary); }
+    .hb-nav-orow .ot { font-size: 11px; line-height: 1.6; color: var(--hb-text-secondary); min-width: 0; }
+    .hb-nav-orow.is-title .ot { color: var(--hb-text-primary); }
+    .hb-nav-oempty { padding: 28px 16px; text-align: center; color: var(--hb-text-disabled); font-size: 12px; line-height: 1.5; }
 </style>
 <script>
     (() => {

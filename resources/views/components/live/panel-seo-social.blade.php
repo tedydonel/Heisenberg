@@ -29,7 +29,7 @@
          hb:media-select contract) — no separate upload surface. --}}
 @once
 <style>
-    .hb-panel-seo { display: flex; flex-direction: column; width: 240px; height: 100%; background: var(--hb-bg, #fff); border-right: 1px solid var(--hb-border, #E4E4E4); flex: none; }
+    .hb-panel-seo { display: flex; flex-direction: column; width: 240px; height: 100%; background: var(--hb-bg); border-right: 1px solid var(--hb-border); flex: none; }
     .hb-panel-seo__content { display: flex; flex-direction: column; flex: 1 1 auto; min-height: 0; overflow: hidden; position: relative; }
     .hb-panel-seo__content[hidden] { display: none; }
     /* Two-layer scroll shell — see live/panel-components-blocks.blade.php's own note on why the
@@ -38,32 +38,32 @@
 
     .hb-seo-field { display: flex; flex-direction: column; gap: var(--hb-space-1, 4px); padding: var(--hb-space-3, 12px); flex: none; }
     .hb-seo-field__row { display: flex; align-items: center; justify-content: space-between; }
-    .hb-seo-field__label { font-family: var(--hb-font-sans, Rubik, sans-serif); font-size: var(--hb-fs-xs, 11px); color: var(--hb-text-secondary, #5A5A5A); }
-    .hb-seo-field__label--muted { color: var(--hb-text-muted, #9A9A9A); }
-    .hb-seo-field__count { font-family: var(--hb-font-sans, Rubik, sans-serif); font-size: var(--hb-fs-xs, 11px); color: var(--hb-text-muted, #9A9A9A); }
+    .hb-seo-field__label { font-family: var(--hb-font-sans, Rubik, sans-serif); font-size: var(--hb-fs-xs, 11px); color: var(--hb-text-secondary); }
+    .hb-seo-field__label--muted { color: var(--hb-text-muted); }
+    .hb-seo-field__count { font-family: var(--hb-font-sans, Rubik, sans-serif); font-size: var(--hb-fs-xs, 11px); color: var(--hb-text-muted); }
 
     .hb-seo-preview {
         display: flex;
         flex-direction: column;
         gap: var(--hb-space-1, 4px);
         padding: var(--hb-space-2, 8px);
-        background: var(--hb-bg-subtle, #FAFAFA);
-        border: 1px solid var(--hb-border, #E4E4E4);
+        background: var(--hb-bg-subtle);
+        border: 1px solid var(--hb-border);
         border-radius: var(--hb-radius-md, 5px);
         font-family: var(--hb-font-sans, Rubik, sans-serif);
     }
-    .hb-seo-preview__crumb { font-size: var(--hb-fs-xs, 11px); color: var(--hb-editing, #3D68F5); }
-    .hb-seo-preview__title { font-size: var(--hb-fs-base, 13px); font-weight: 500; color: var(--hb-success, #3BD186); }
-    .hb-seo-preview__desc { font-size: var(--hb-fs-xs, 11px); line-height: 1.4; color: var(--hb-text-secondary, #5A5A5A); }
+    .hb-seo-preview__crumb { font-size: var(--hb-fs-xs, 11px); color: var(--hb-editing); }
+    .hb-seo-preview__title { font-size: var(--hb-fs-base, 13px); font-weight: 500; color: var(--hb-success); }
+    .hb-seo-preview__desc { font-size: var(--hb-fs-xs, 11px); line-height: 1.4; color: var(--hb-text-secondary); }
 
     .hb-seo-checklist { display: flex; flex-direction: column; gap: 10px; padding: 0 var(--hb-space-3, 12px) var(--hb-space-3, 12px); flex: none; }
-    .hb-seo-checklist__empty { font-family: var(--hb-font-sans, Rubik, sans-serif); font-size: var(--hb-fs-xs, 11px); color: var(--hb-text-muted, #9A9A9A); }
+    .hb-seo-checklist__empty { font-family: var(--hb-font-sans, Rubik, sans-serif); font-size: var(--hb-fs-xs, 11px); color: var(--hb-text-muted); }
     .hb-seo-checklist .hb-statuscheckrow { align-items: flex-start; }
     .hb-seo-checklist .hb-statuscheckrow__icon { margin-top: 1px; }
     .hb-seo-checklist .hb-statuscheckrow__text { font-size: var(--hb-fs-xs, 11px); line-height: 1.35; }
 
     .hb-seo-toggle-row { display: flex; align-items: center; justify-content: space-between; gap: var(--hb-space-2, 8px); padding: 0 var(--hb-space-3, 12px); height: 32px; flex: none; }
-    .hb-seo-toggle-row__label { font-family: var(--hb-font-sans, Rubik, sans-serif); font-size: var(--hb-fs-sm, 12px); color: var(--hb-text-secondary, #5A5A5A); }
+    .hb-seo-toggle-row__label { font-family: var(--hb-font-sans, Rubik, sans-serif); font-size: var(--hb-fs-sm, 12px); color: var(--hb-text-secondary); }
     .hb-seo-toggles { display: flex; flex-direction: column; padding: var(--hb-space-2, 8px) 0; flex: none; }
 
     .hb-seo-dropzone {
@@ -74,30 +74,30 @@
         gap: var(--hb-space-2, 8px);
         height: 100px;
         width: 100%;
-        border: 0.6px solid var(--hb-border-strong, #C8C8C8);
+        border: 0.6px solid var(--hb-border-strong);
         border-radius: var(--hb-radius-md, 5px);
-        background: var(--hb-bg-subtle, #FAFAFA);
+        background: var(--hb-bg-subtle);
         cursor: pointer;
         padding: 0;
         font: inherit;
         appearance: none;
         -webkit-appearance: none;
     }
-    .hb-seo-dropzone:focus-visible { outline: 2px solid var(--hb-border-focus, #000); outline-offset: 2px; }
+    .hb-seo-dropzone:focus-visible { outline: 2px solid var(--hb-border-focus); outline-offset: 2px; }
     .hb-seo-dropzone[hidden] { display: none; }
-    .hb-seo-dropzone__icon { display: inline-flex; width: 24px; height: 24px; color: var(--hb-text-muted, #9A9A9A); }
-    .hb-seo-dropzone__label { font-family: var(--hb-font-sans, Rubik, sans-serif); font-size: var(--hb-fs-sm, 12px); color: var(--hb-text-muted, #9A9A9A); }
+    .hb-seo-dropzone__icon { display: inline-flex; width: 24px; height: 24px; color: var(--hb-text-muted); }
+    .hb-seo-dropzone__label { font-family: var(--hb-font-sans, Rubik, sans-serif); font-size: var(--hb-fs-sm, 12px); color: var(--hb-text-muted); }
     .hb-seo-dropzone-wrap { padding: var(--hb-space-3, 12px); flex: none; }
-    .hb-seo-dropzone-preview { position: relative; height: 100px; width: 100%; border-radius: var(--hb-radius-md, 5px); overflow: hidden; background: var(--hb-bg-subtle, #FAFAFA); border: 1px solid var(--hb-border-strong, #C8C8C8); }
+    .hb-seo-dropzone-preview { position: relative; height: 100px; width: 100%; border-radius: var(--hb-radius-md, 5px); overflow: hidden; background: var(--hb-bg-subtle); border: 1px solid var(--hb-border-strong); }
     .hb-seo-dropzone-preview[hidden] { display: none; }
     .hb-seo-dropzone-preview__img { width: 100%; height: 100%; object-fit: cover; display: block; }
     .hb-seo-dropzone-preview__actions { position: absolute; top: 6px; right: 6px; display: flex; gap: 4px; }
     .hb-seo-dropzone-preview__btn { display: inline-flex; align-items: center; justify-content: center; width: 24px; height: 24px; border: 0; border-radius: 4px; background: rgba(10, 10, 10, .55); color: #fff; cursor: pointer; }
     .hb-seo-dropzone-preview__btn:hover { background: rgba(10, 10, 10, .75); }
-    .hb-seo-dropzone-preview__btn--danger:hover { background: var(--hb-danger, #D4191A); }
+    .hb-seo-dropzone-preview__btn--danger:hover { background: var(--hb-danger); }
 
     .hb-seo-social-preview { display: flex; flex-direction: column; gap: var(--hb-space-2, 8px); padding: var(--hb-space-3, 12px); flex: none; }
-    .hb-seo-divider { border: 0; border-top: 1px solid var(--hb-border, #E4E4E4); width: 100%; margin: 0; flex: none; }
+    .hb-seo-divider { border: 0; border-top: 1px solid var(--hb-border); width: 100%; margin: 0; flex: none; }
 
     /* Score badge (2026-08-11, docs/seo-system.md §4) — new, no .pen source ("the SEO score
        rating UI the design lacked", per the plan's own §4 note). The ring is a conic-gradient
@@ -108,13 +108,13 @@
        score reads as the same visual language as a "draft" translation elsewhere in this editor.
        "excellent" gets a deeper, more saturated green than "good" — distinguishable at a glance,
        not just by the number. */
-    .hb-seo-score { display: flex; align-items: center; gap: var(--hb-space-2, 8px); padding: var(--hb-space-3, 12px); border-bottom: 1px solid var(--hb-border, #E4E4E4); flex: none; transition: opacity .12s ease; }
+    .hb-seo-score { display: flex; align-items: center; gap: var(--hb-space-2, 8px); padding: var(--hb-space-3, 12px); border-bottom: 1px solid var(--hb-border); flex: none; transition: opacity .12s ease; }
     .hb-seo-score--loading { opacity: .6; }
-    .hb-seo-score:not([data-rating]) { --hb-seo-score-color: var(--hb-text-muted, #9A9A9A); }
-    .hb-seo-score[data-rating="unsaved"] { --hb-seo-score-color: var(--hb-text-muted, #9A9A9A); }
-    .hb-seo-score[data-rating="poor"] { --hb-seo-score-color: var(--hb-danger, #D4191A); }
+    .hb-seo-score:not([data-rating]) { --hb-seo-score-color: var(--hb-text-muted); }
+    .hb-seo-score[data-rating="unsaved"] { --hb-seo-score-color: var(--hb-text-muted); }
+    .hb-seo-score[data-rating="poor"] { --hb-seo-score-color: var(--hb-danger); }
     .hb-seo-score[data-rating="needs-work"] { --hb-seo-score-color: #C9862E; }
-    .hb-seo-score[data-rating="good"] { --hb-seo-score-color: var(--hb-success, #3BD186); }
+    .hb-seo-score[data-rating="good"] { --hb-seo-score-color: var(--hb-success); }
     .hb-seo-score[data-rating="excellent"] { --hb-seo-score-color: #17A567; }
     .hb-seo-score__ring {
         position: relative;
@@ -125,13 +125,13 @@
         height: 40px;
         flex: none;
         border-radius: 999px;
-        background: conic-gradient(var(--hb-seo-score-color, var(--hb-text-muted, #9A9A9A)) calc(var(--hb-seo-score-pct, 0) * 1%), var(--hb-bg-muted, #F4F4F4) 0);
+        background: conic-gradient(var(--hb-seo-score-color, var(--hb-text-muted)) calc(var(--hb-seo-score-pct, 0) * 1%), var(--hb-bg-muted) 0);
     }
-    .hb-seo-score__ring::before { content: ''; position: absolute; inset: 3px; border-radius: 999px; background: var(--hb-bg, #fff); }
-    .hb-seo-score__value { position: relative; font-family: var(--hb-font-sans, Rubik, sans-serif); font-size: var(--hb-fs-sm, 12px); font-weight: 600; color: var(--hb-text-primary, #0A0A0A); }
+    .hb-seo-score__ring::before { content: ''; position: absolute; inset: 3px; border-radius: 999px; background: var(--hb-bg); }
+    .hb-seo-score__value { position: relative; font-family: var(--hb-font-sans, Rubik, sans-serif); font-size: var(--hb-fs-sm, 12px); font-weight: 600; color: var(--hb-text-primary); }
     .hb-seo-score__info { display: flex; flex-direction: column; gap: 3px; min-width: 0; }
-    .hb-seo-score__rating { display: inline-block; width: fit-content; font-family: var(--hb-font-sans, Rubik, sans-serif); font-size: var(--hb-fs-xs, 11px); font-weight: 600; color: var(--hb-seo-score-color, var(--hb-text-muted, #9A9A9A)); }
-    .hb-seo-score__status { font-family: var(--hb-font-sans, Rubik, sans-serif); font-size: var(--hb-fs-xs, 11px); color: var(--hb-text-muted, #9A9A9A); }
+    .hb-seo-score__rating { display: inline-block; width: fit-content; font-family: var(--hb-font-sans, Rubik, sans-serif); font-size: var(--hb-fs-xs, 11px); font-weight: 600; color: var(--hb-seo-score-color, var(--hb-text-muted)); }
+    .hb-seo-score__status { font-family: var(--hb-font-sans, Rubik, sans-serif); font-size: var(--hb-fs-xs, 11px); color: var(--hb-text-muted); }
     .hb-seo-score__status[hidden] { display: none; }
 </style>
 <script>

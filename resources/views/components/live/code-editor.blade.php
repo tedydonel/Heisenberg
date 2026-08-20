@@ -54,7 +54,7 @@
     .hb-codeview__gutter {
         flex: none; width: 52px; overflow: hidden; position: relative;
         background: var(--hb-code-gutter-bg);
-        border-right: 1px solid var(--hb-border, #E4E4E4);
+        border-right: 1px solid var(--hb-border);
     }
     .hb-editor--dark .hb-codeview__gutter { border-right-color: #21262d; }
     .hb-codeview__nums {
@@ -65,7 +65,7 @@
     }
     .hb-codeview__nums span { display: block; }
     .hb-codeview__nums .is-active { color: var(--hb-code-body); }
-    .hb-codeview__nums .is-err { color: var(--hb-danger, #D4191A); font-weight: 700; }
+    .hb-codeview__nums .is-err { color: var(--hb-danger); font-weight: 700; }
     .hb-codeview__editor { flex: 1 1 auto; min-width: 0; position: relative; background: var(--hb-code-bg); }
     /* The current-line band sits under the highlight mirror (real-editor affordance). */
     .hb-codeview__band {
@@ -103,29 +103,29 @@
     }
     .hb-codeview__input::-webkit-scrollbar { display: none; }
     .hb-codeview__input::selection { background: rgba(96, 165, 250, .30); }
-    .hb-codeview__input::placeholder { color: var(--hb-text-muted, #9A9A9A); }
+    .hb-codeview__input::placeholder { color: var(--hb-text-muted); }
 
     .hb-codeview__status {
         flex: none; max-height: 140px; overflow-y: auto;
         padding: 10px 16px;
-        background: var(--hb-bg-muted, #F4F4F4);
-        border-top: 1px solid var(--hb-border, #E4E4E4);
+        background: var(--hb-bg-muted);
+        border-top: 1px solid var(--hb-border);
         font-family: var(--hb-font-sans, Rubik, sans-serif);
         font-size: var(--hb-fs-sm, 12px);
     }
     .hb-codeview__status[hidden] { display: none; }
-    .hb-codeview__status-title { display: block; margin-bottom: 6px; font-weight: 600; color: var(--hb-danger, #D4191A); }
+    .hb-codeview__status-title { display: block; margin-bottom: 6px; font-weight: 600; color: var(--hb-danger); }
     .hb-codeview__status-list { display: flex; flex-direction: column; gap: 3px; }
     .hb-codeview__err {
         display: inline-flex; gap: 8px; align-items: baseline;
         border: 0; background: none; padding: 0; cursor: pointer; text-align: left;
-        font: inherit; color: var(--hb-text-secondary, #5A5A5A);
+        font: inherit; color: var(--hb-text-secondary);
     }
-    .hb-codeview__err:hover { color: var(--hb-text-primary, #0A0A0A); }
-    .hb-codeview__err b { color: var(--hb-danger, #D4191A); font-weight: 600; flex: none; }
+    .hb-codeview__err:hover { color: var(--hb-text-primary); }
+    .hb-codeview__err b { color: var(--hb-danger); font-weight: 600; flex: none; }
     .hb-codeview__revert {
         margin-top: 8px; border: 0; background: none; padding: 0; cursor: pointer;
-        font: inherit; font-weight: 600; color: var(--hb-accent, #000); text-decoration: underline;
+        font: inherit; font-weight: 600; color: var(--hb-accent); text-decoration: underline;
     }
 </style>
 <script>

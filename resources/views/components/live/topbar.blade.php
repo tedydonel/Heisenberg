@@ -21,8 +21,8 @@
         justify-content: space-between;
         width: 100%;
         height: 32px;
-        background: var(--hb-bg, #fff);
-        border-bottom: 1px solid var(--hb-border, #E4E4E4);
+        background: var(--hb-bg);
+        border-bottom: 1px solid var(--hb-border);
     }
     .hb-topbar__zone { display: flex; align-items: center; gap: 2px; height: 100%; }
     .hb-topbar__zone--left { padding: 0 10px; }
@@ -48,11 +48,11 @@
         border: 0;
         border-radius: var(--hb-radius-sm, 3px);
         background: transparent;
-        color: var(--hb-text-muted, #9A9A9A);
+        color: var(--hb-text-muted);
         cursor: pointer;
     }
-    .hb-topbar__btn:hover { background: var(--hb-surface-hover, #F7F7F7); color: var(--hb-text-secondary, #5A5A5A); }
-    .hb-topbar__btn:focus-visible { outline: 2px solid var(--hb-border-focus, #000); outline-offset: -2px; }
+    .hb-topbar__btn:hover { background: var(--hb-surface-hover); color: var(--hb-text-secondary); }
+    .hb-topbar__btn:focus-visible { outline: 2px solid var(--hb-border-focus); outline-offset: -2px; }
     .hb-topbar__btn:disabled { opacity: .35; cursor: default; pointer-events: none; }
     .hb-topbar__btn--sm { width: 26px; height: 26px; }
     .hb-topbar__icon { display: inline-flex; width: 14px; height: 14px; }
@@ -64,14 +64,14 @@
         padding: var(--hb-space-1, 4px) var(--hb-space-3, 12px);
         border: 0;
         border-radius: var(--hb-radius-sm, 3px);
-        background: var(--hb-accent, #000);
-        color: var(--hb-accent-fg, #fff);
+        background: var(--hb-accent);
+        color: var(--hb-accent-fg);
         font-family: var(--hb-font-sans, Rubik, sans-serif);
         font-size: var(--hb-fs-sm, 12px);
         font-weight: 600;
         cursor: pointer;
     }
-    .hb-topbar__save:hover { background: var(--hb-accent-hover, #1A1A1A); }
+    .hb-topbar__save:hover { background: var(--hb-accent-hover); }
     .hb-topbar__save[aria-busy="true"] { opacity: .6; cursor: default; }
     /* device preview — a dropdown (Desktop / Tablet / Mobile). The trigger shows only the
        current device's icon; labels live in the menu. */
@@ -80,11 +80,11 @@
     .hb-topbar__device[data-device="desktop"] .hb-dev--desktop,
     .hb-topbar__device[data-device="tablet"] .hb-dev--tablet,
     .hb-topbar__device[data-device="mobile"] .hb-dev--mobile { display: inline-flex; }
-    .hb-topbar__device[data-device="tablet"], .hb-topbar__device[data-device="mobile"] { color: var(--hb-text-primary, #0A0A0A); }
+    .hb-topbar__device[data-device="tablet"], .hb-topbar__device[data-device="mobile"] { color: var(--hb-text-primary); }
     .hb-topbar__devsel-menu {
         position: absolute; top: calc(100% + 5px); right: 0; z-index: 60;
         width: max-content; padding: 4px;
-        background: var(--hb-bg, #fff); border: 1px solid var(--hb-border, #E4E4E4);
+        background: var(--hb-bg); border: 1px solid var(--hb-border);
         border-radius: var(--hb-radius-md, 5px); box-shadow: var(--hb-shadow-lg, 3px 4px 4px rgba(0, 0, 0, .1));
         display: flex; flex-direction: column; gap: 2px;
     }
@@ -93,13 +93,13 @@
         display: inline-flex; align-items: center; gap: 8px; height: 28px; padding: 0 8px;
         border: 0; background: none; border-radius: var(--hb-radius-sm, 3px);
         font-family: var(--hb-font-sans, Rubik, sans-serif); font-size: var(--hb-fs-sm, 12px); font-weight: 400;
-        color: var(--hb-text-secondary, #5A5A5A); text-align: left; cursor: pointer;
+        color: var(--hb-text-secondary); text-align: left; cursor: pointer;
         white-space: nowrap;
     }
     .hb-topbar__devsel-opt > span { display: inline; }
     .hb-topbar__devsel-opt svg { width: 15px; height: 15px; flex: none; }
-    .hb-topbar__devsel-opt:hover { background: var(--hb-surface-hover, #F7F7F7); color: var(--hb-text-primary, #0A0A0A); }
-    .hb-topbar__devsel-opt.is-on { background: var(--hb-surface-hover, #F7F7F7); color: var(--hb-text-primary, #0A0A0A); font-weight: 500; }
+    .hb-topbar__devsel-opt:hover { background: var(--hb-surface-hover); color: var(--hb-text-primary); }
+    .hb-topbar__devsel-opt.is-on { background: var(--hb-surface-hover); color: var(--hb-text-primary); font-weight: 500; }
     /* Email export (docs/email-system.md §6) — devsel-menu shape, own wrapper class only. */
     .hb-topbar__exportsel { position: relative; display: inline-flex; align-items: center; }
     /* Editing-locale dropdown (docs/content-translation.md §0/Wave 2) — a visual sibling of the
@@ -119,7 +119,7 @@
     .hb-topbar__langsel-menu {
         position: absolute; top: calc(100% + 5px); right: 0; z-index: 60;
         width: max-content; min-width: 180px; padding: 4px;
-        background: var(--hb-bg, #fff); border: 1px solid var(--hb-border, #E4E4E4);
+        background: var(--hb-bg); border: 1px solid var(--hb-border);
         border-radius: var(--hb-radius-md, 5px); box-shadow: var(--hb-shadow-lg, 3px 4px 4px rgba(0, 0, 0, .1));
         display: flex; flex-direction: column; gap: 2px;
     }
@@ -129,11 +129,11 @@
         min-height: 28px; padding: 4px 8px; width: 100%; cursor: pointer;
         border: 0; background: none; border-radius: var(--hb-radius-sm, 3px);
         font-family: var(--hb-font-sans, Rubik, sans-serif); font-size: var(--hb-fs-sm, 12px); font-weight: 400;
-        color: var(--hb-text-secondary, #5A5A5A); text-align: left; white-space: nowrap;
+        color: var(--hb-text-secondary); text-align: left; white-space: nowrap;
     }
-    .hb-topbar__langsel-opt:hover { background: var(--hb-surface-hover, #F7F7F7); color: var(--hb-text-primary, #0A0A0A); }
-    .hb-topbar__langsel-opt.is-on { color: var(--hb-text-primary, #0A0A0A); font-weight: 500; }
-    .hb-topbar__langsel-opt__check { width: 12px; height: 12px; flex: none; color: var(--hb-accent, #000); display: inline-flex; visibility: hidden; }
+    .hb-topbar__langsel-opt:hover { background: var(--hb-surface-hover); color: var(--hb-text-primary); }
+    .hb-topbar__langsel-opt.is-on { color: var(--hb-text-primary); font-weight: 500; }
+    .hb-topbar__langsel-opt__check { width: 12px; height: 12px; flex: none; color: var(--hb-accent); display: inline-flex; visibility: hidden; }
     .hb-topbar__langsel-opt.is-on .hb-topbar__langsel-opt__check { visibility: visible; }
 </style>
 {{-- The topbar's whole behaviour script (save/autosave, preview, export, device + locale

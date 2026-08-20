@@ -12,9 +12,9 @@
     .hb-medialib { display: flex; flex-direction: column; gap: var(--hb-space-5, 20px); width: 100%; }
     .hb-medialib__grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: var(--hb-space-5, 20px); align-content: start; }
     .hb-medialib__grid[hidden] { display: none; }
-    .hb-medialib__empty { padding: 48px 0; text-align: center; color: var(--hb-text-muted, #9A9A9A); font-size: var(--hb-fs-base, 13px); }
+    .hb-medialib__empty { padding: 48px 0; text-align: center; color: var(--hb-text-muted); font-size: var(--hb-fs-base, 13px); }
     .hb-medialib__empty[hidden] { display: none; }
-    .hb-medialib .hb-mediacard:focus-visible { outline: 2px solid var(--hb-border-focus, #000); outline-offset: 2px; }
+    .hb-medialib .hb-mediacard:focus-visible { outline: 2px solid var(--hb-border-focus); outline-offset: 2px; }
     .hb-medialib template { display: none; }
 </style>
 @endonce

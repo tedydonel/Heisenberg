@@ -10,7 +10,7 @@
      here to restore a thread and its model/`history` context). --}}
 @once
 <style>
-    .hb-panel-ai { display: flex; flex-direction: column; width: 100%; height: 100%; background: var(--hb-bg, #fff); border-right: 1px solid var(--hb-border, #E4E4E4); flex: none; }
+    .hb-panel-ai { display: flex; flex-direction: column; width: 100%; height: 100%; background: var(--hb-bg); border-right: 1px solid var(--hb-border); flex: none; }
     .hb-panel-ai__content { display: flex; flex-direction: column; flex: 1 1 auto; min-height: 0; overflow: hidden; }
     .hb-panel-ai__content[hidden] { display: none; }
 
@@ -23,7 +23,7 @@
        directly. The original grey pill was only there because the regular (outline) sparkle
        needed contrast to read — the fill weight doesn't. */
     .hb-ai-header__badge { display: inline-flex; align-items: center; justify-content: center; width: 28px; height: 28px; flex: none; }
-    .hb-ai-header__badge-icon { display: inline-flex; width: 16px; height: 16px; color: var(--hb-accent, #000); }
+    .hb-ai-header__badge-icon { display: inline-flex; width: 16px; height: 16px; color: var(--hb-accent); }
     .hb-ai-header__action.hb-iconbtn { background: transparent; border-color: transparent; }
     /* Header action buttons (history / settings) — bare icon only, no chrome. Scoped to this
        header so the rest of the editor's icon-buttons keep their resting frame. */
@@ -32,26 +32,26 @@
         border-color: transparent;
     }
     .hb-ai-header__action.hb-iconbtn:hover:not(:disabled) {
-        background: var(--hb-surface-hover, #F7F7F7);
+        background: var(--hb-surface-hover);
     }
-    .hb-ai-header__title { font-family: var(--hb-font-sans, Rubik, sans-serif); font-size: var(--hb-fs-base, 13px); font-weight: 600; color: var(--hb-text-primary, #0A0A0A); }
+    .hb-ai-header__title { font-family: var(--hb-font-sans, Rubik, sans-serif); font-size: var(--hb-fs-base, 13px); font-weight: 600; color: var(--hb-text-primary); }
     .hb-ai-header__action { flex: none; }
     .hb-ai-header__action:first-of-type { margin-left: auto; }
 
     {{-- The transcript. Reference sets an 11px/15px body on both roles; the
          thread border-tops against the header like the reference's Response
          frame. --}}
-    .hb-ai-thread { display: flex; flex-direction: column; gap: var(--hb-space-3, 12px); padding: var(--hb-space-3, 12px) 10px; border-top: 1px solid var(--hb-border, #E4E4E4); }
+    .hb-ai-thread { display: flex; flex-direction: column; gap: var(--hb-space-3, 12px); padding: var(--hb-space-3, 12px) 10px; border-top: 1px solid var(--hb-border); }
     .hb-ai-msg { display: flex; flex-direction: column; gap: var(--hb-space-1, 4px); width: 100%; font-family: var(--hb-font-sans, Rubik, sans-serif); }
-    .hb-ai-msg__role { font-size: var(--hb-fs-xs, 11px); font-weight: 600; color: var(--hb-text-muted, #9A9A9A); }
-    .hb-ai-msg--assistant .hb-ai-msg__role { color: var(--hb-text-primary, #0A0A0A); }
+    .hb-ai-msg__role { font-size: var(--hb-fs-xs, 11px); font-weight: 600; color: var(--hb-text-muted); }
+    .hb-ai-msg--assistant .hb-ai-msg__role { color: var(--hb-text-primary); }
     .hb-ai-msg__text {
         font-size: var(--hb-fs-xs, 11px); line-height: 15px;
-        color: var(--hb-text-primary, #0A0A0A);
+        color: var(--hb-text-primary);
         margin: 0; white-space: pre-wrap; overflow-wrap: anywhere;
     }
-    .hb-ai-msg--user .hb-ai-msg__text { color: var(--hb-text-muted, #9A9A9A); }
-    .hb-ai-msg--error .hb-ai-msg__text, .hb-ai-msg--note.hb-ai-msg--error .hb-ai-msg__text { color: var(--hb-danger, #D4191A); }
+    .hb-ai-msg--user .hb-ai-msg__text { color: var(--hb-text-muted); }
+    .hb-ai-msg--error .hb-ai-msg__text, .hb-ai-msg--note.hb-ai-msg--error .hb-ai-msg__text { color: var(--hb-danger); }
 
     {{-- Assistant prose is rendered markdown — the renderer owns line breaking. --}}
     .hb-ai-msg--assistant .hb-ai-msg__text { white-space: normal; }
@@ -62,7 +62,7 @@
     .hb-ai-msg__text code {
         font-family: var(--hb-font-mono, 'JetBrains Mono', monospace);
         font-size: 10px; padding: 0 3px; border-radius: 3px;
-        background: var(--hb-bg-inset, #EEEEEE);
+        background: var(--hb-bg-inset);
     }
     .hb-ai-msg__text a { color: inherit; text-decoration: underline; }
     .hb-ai-msg__text strong { font-weight: 600; }
@@ -74,10 +74,10 @@
         display: inline-flex; align-items: center; gap: 2px;
         border: 0; background: transparent; cursor: pointer; padding: 0;
         font-family: inherit; font-size: 9px; font-weight: 500;
-        color: var(--hb-text-disabled, #C4C4C4);
+        color: var(--hb-text-disabled);
     }
     .hb-ai-msg__edit .hb-icon { width: 10px; height: 10px; }
-    .hb-ai-msg__edit:hover { color: var(--hb-text-muted, #9A9A9A); }
+    .hb-ai-msg__edit:hover { color: var(--hb-text-muted); }
 
     {{-- Thinking block: hidden until the stream actually produces reasoning. --}}
     .hb-ai-think { display: flex; flex-direction: column; gap: 2px; width: 100%; }
@@ -85,32 +85,32 @@
     .hb-ai-think__head {
         display: flex; align-items: center; justify-content: space-between;
         width: 100%; padding: 4px 6px; border: 0; cursor: pointer;
-        background: var(--hb-bg-subtle, #FAFAFA); border-radius: var(--hb-radius-md, 5px);
+        background: var(--hb-bg-subtle); border-radius: var(--hb-radius-md, 5px);
         font-family: inherit;
     }
-    .hb-ai-think__left { display: inline-flex; align-items: center; gap: var(--hb-space-1, 4px); color: var(--hb-text-muted, #9A9A9A); }
+    .hb-ai-think__left { display: inline-flex; align-items: center; gap: var(--hb-space-1, 4px); color: var(--hb-text-muted); }
     .hb-ai-think__left .hb-icon { width: 12px; height: 12px; }
-    .hb-ai-think__label { font-size: var(--hb-fs-xs, 11px); font-weight: 500; color: var(--hb-text-muted, #9A9A9A); }
-    .hb-ai-think__chevron { display: inline-flex; color: var(--hb-text-muted, #9A9A9A); transition: transform .15s ease; }
+    .hb-ai-think__label { font-size: var(--hb-fs-xs, 11px); font-weight: 500; color: var(--hb-text-muted); }
+    .hb-ai-think__chevron { display: inline-flex; color: var(--hb-text-muted); transition: transform .15s ease; }
     .hb-ai-think__chevron .hb-icon { width: 12px; height: 12px; }
     .hb-ai-think:not(.is-open) .hb-ai-think__chevron { transform: rotate(180deg); }
     .hb-ai-think__body { padding: 4px 8px 4px 12px; }
     .hb-ai-think:not(.is-open) .hb-ai-think__body { display: none; }
     .hb-ai-think__text {
         font-size: var(--hb-fs-xs, 11px); line-height: 15px; font-style: italic;
-        color: var(--hb-text-muted, #9A9A9A); margin: 0;
+        color: var(--hb-text-muted); margin: 0;
         white-space: pre-wrap; overflow-wrap: anywhere;
     }
 
     {{-- Applied card — check-circle rows, one per tool run / build milestone. --}}
-    .hb-ai-applied { display: flex; flex-direction: column; gap: var(--hb-space-1, 4px); width: 100%; padding: var(--hb-space-2, 8px); border-radius: var(--hb-radius-md, 5px); background: var(--hb-bg-subtle, #FAFAFA); }
+    .hb-ai-applied { display: flex; flex-direction: column; gap: var(--hb-space-1, 4px); width: 100%; padding: var(--hb-space-2, 8px); border-radius: var(--hb-radius-md, 5px); background: var(--hb-bg-subtle); }
     .hb-ai-applied[hidden] { display: none; }
     .hb-ai-applied__label, .hb-ai-suggest__label {
         font-size: 9px; font-weight: 600; letter-spacing: .06em; text-transform: uppercase;
-        color: var(--hb-text-muted, #9A9A9A);
+        color: var(--hb-text-muted);
     }
-    .hb-ai-applied__item { display: flex; align-items: flex-start; gap: var(--hb-space-1, 4px); font-size: var(--hb-fs-xs, 11px); line-height: 15px; color: var(--hb-text-secondary, #5A5A5A); }
-    .hb-ai-applied__item .hb-icon { width: 12px; height: 12px; color: var(--hb-success, #3BD186); flex: none; margin-top: 1px; }
+    .hb-ai-applied__item { display: flex; align-items: flex-start; gap: var(--hb-space-1, 4px); font-size: var(--hb-fs-xs, 11px); line-height: 15px; color: var(--hb-text-secondary); }
+    .hb-ai-applied__item .hb-icon { width: 12px; height: 12px; color: var(--hb-success); flex: none; margin-top: 1px; }
 
     {{-- Quick inserts — success-soft chip pills. --}}
     .hb-ai-suggest { display: flex; flex-direction: column; gap: var(--hb-space-1, 4px); width: 100%; }
@@ -119,47 +119,47 @@
     .hb-ai-suggest__chip {
         display: inline-flex; align-items: center;
         border: 0; cursor: pointer; padding: 2px 8px;
-        background: var(--hb-success-soft, #E0FFF0); border-radius: var(--hb-radius-lg, 8px);
-        font-family: inherit; font-size: 9px; font-weight: 500; color: var(--hb-text-primary, #000);
+        background: var(--hb-success-soft); border-radius: var(--hb-radius-lg, 8px);
+        font-family: inherit; font-size: 9px; font-weight: 500; color: var(--hb-text-primary);
     }
     .hb-ai-suggest__chip:hover { filter: brightness(.97); }
 
     .hb-ai-msg__actions { display: flex; align-items: center; justify-content: flex-end; gap: var(--hb-space-3, 12px); width: 100%; }
     .hb-ai-msg__actions[hidden] { display: none; }
-    .hb-ai-action { display: inline-flex; align-items: center; gap: var(--hb-space-1, 4px); border: 0; background: transparent; cursor: pointer; padding: 0; font-family: inherit; font-size: var(--hb-fs-sm, 12px); font-weight: 500; color: var(--hb-text-secondary, #5A5A5A); }
-    .hb-ai-action .hb-icon { width: 14px; height: 14px; color: var(--hb-text-muted, #9A9A9A); }
+    .hb-ai-action { display: inline-flex; align-items: center; gap: var(--hb-space-1, 4px); border: 0; background: transparent; cursor: pointer; padding: 0; font-family: inherit; font-size: var(--hb-fs-sm, 12px); font-weight: 500; color: var(--hb-text-secondary); }
+    .hb-ai-action .hb-icon { width: 14px; height: 14px; color: var(--hb-text-muted); }
 
     .hb-ai-empty {
         padding: 32px 10px; text-align: center;
         font-family: var(--hb-font-sans, Rubik, sans-serif);
-        font-size: var(--hb-fs-sm, 12px); color: var(--hb-text-muted, #9A9A9A);
+        font-size: var(--hb-fs-sm, 12px); color: var(--hb-text-muted);
     }
     .hb-ai-empty[hidden] { display: none; }
 
     {{-- Composer — muted well + textarea, 32px control row: new chat / model / send. --}}
-    .hb-ai-composer { flex: none; display: flex; flex-direction: column; background: var(--hb-surface-active, #F0F0F0); border-top: 1px solid var(--hb-border, #E4E4E4); }
+    .hb-ai-composer { flex: none; display: flex; flex-direction: column; background: var(--hb-surface-active); border-top: 1px solid var(--hb-border); }
     .hb-ai-composer__input {
         flex: 1 1 auto; min-width: 0; width: 100%;
         border: 0; outline: 0; background: transparent;
         padding: var(--hb-space-1, 4px) var(--hb-space-2, 8px);
         font-family: var(--hb-font-sans, Rubik, sans-serif);
         font-size: var(--hb-fs-sm, 12px); line-height: 1.45;
-        color: var(--hb-text-primary, #0A0A0A);
+        color: var(--hb-text-primary);
         /* Grows to a cap then scrolls, but never shows the browser's scrollbar
            — the well would look broken with a bar down its side. */
         resize: none; max-height: 160px; overflow-y: auto;
         scrollbar-width: none; -ms-overflow-style: none;
     }
     .hb-ai-composer__input::-webkit-scrollbar { width: 0; height: 0; display: none; }
-    .hb-ai-composer__input::placeholder { color: var(--hb-text-muted, #9A9A9A); }
+    .hb-ai-composer__input::placeholder { color: var(--hb-text-muted); }
     .hb-ai-composer__row { display: flex; align-items: center; justify-content: space-between; gap: var(--hb-space-2, 8px); height: 32px; padding: 0 4px 4px 8px; }
     .hb-ai-composer__btn {
         display: inline-flex; align-items: center; justify-content: center;
         width: 24px; height: 24px; border: 0; border-radius: 14px;
-        background: var(--hb-accent, #000); color: var(--hb-accent-fg, #fff); cursor: pointer; flex: none;
+        background: var(--hb-accent); color: var(--hb-accent-fg); cursor: pointer; flex: none;
     }
     .hb-ai-composer__btn:disabled { opacity: .4; cursor: default; }
-    .hb-ai-composer__btn--stop { background: var(--hb-danger, #D4191A); }
+    .hb-ai-composer__btn--stop { background: var(--hb-danger); }
     .hb-ai-composer__btn[hidden] { display: none; }
     .hb-ai-composer__spacer { flex: 1 1 auto; }
     {{-- The real ui/select; only its slot is sized here to sit like a model pill. --}}
@@ -170,7 +170,7 @@
 
     {{-- The block most recently landed pulses while the run is still going —
          the canvas-side half of "watchable building". --}}
-    .hb-canvas [data-block].hb-ai-writing { outline: 2px solid var(--hb-editing-soft, #607EE0); outline-offset: 2px; animation: hb-ai-writing-pulse 1.2s ease-in-out infinite; }
+    .hb-canvas [data-block].hb-ai-writing { outline: 2px solid var(--hb-editing-soft); outline-offset: 2px; animation: hb-ai-writing-pulse 1.2s ease-in-out infinite; }
     @keyframes hb-ai-writing-pulse { 50% { outline-color: transparent; } }
 
     .hb-panel-ai__toolsbody { flex: 1 1 auto; min-height: 0; overflow: hidden; position: relative; }

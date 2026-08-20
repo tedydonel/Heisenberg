@@ -12,29 +12,29 @@
        itself adds hb-scroll-container + overflow on boot) — no native scrollbar. */
     .hb-revdialog__body { position: relative; flex: 1 1 auto; min-height: 0; }
     .hb-revdialog__scroll { height: 100%; box-sizing: border-box; padding: var(--hb-space-4, 16px); }
-    .hb-revdialog__empty { padding: 48px 0; text-align: center; color: var(--hb-text-muted, #9A9A9A); font-size: var(--hb-fs-base, 13px); }
+    .hb-revdialog__empty { padding: 48px 0; text-align: center; color: var(--hb-text-muted); font-size: var(--hb-fs-base, 13px); }
     .hb-revdialog__empty[hidden] { display: none; }
     .hb-revdialog__list { display: flex; flex-direction: column; gap: 6px; }
     .hb-revdialog__row {
         display: flex; align-items: center; gap: var(--hb-space-3, 12px);
         padding: 10px 12px;
-        border: 1px solid var(--hb-border, #E4E4E4);
+        border: 1px solid var(--hb-border);
         border-radius: var(--hb-radius-md, 5px);
         font-family: var(--hb-font-sans, Rubik, sans-serif);
     }
-    .hb-revdialog__row:hover { background: var(--hb-surface-hover, #F7F7F7); }
+    .hb-revdialog__row:hover { background: var(--hb-surface-hover); }
     .hb-revdialog__meta { flex: 1 1 auto; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
-    .hb-revdialog__when { font-size: var(--hb-fs-sm, 12px); font-weight: 600; color: var(--hb-text-primary, #0A0A0A); }
-    .hb-revdialog__sub { font-size: var(--hb-fs-sm, 12px); color: var(--hb-text-muted, #9A9A9A); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .hb-revdialog__when { font-size: var(--hb-fs-sm, 12px); font-weight: 600; color: var(--hb-text-primary); }
+    .hb-revdialog__sub { font-size: var(--hb-fs-sm, 12px); color: var(--hb-text-muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
     .hb-revdialog__type {
         flex: none; padding: 2px 8px; border-radius: 999px;
         font-size: 11px; font-weight: 600;
-        background: var(--hb-bg-muted, #F4F4F4); color: var(--hb-text-secondary, #5A5A5A);
+        background: var(--hb-bg-muted); color: var(--hb-text-secondary);
     }
     .hb-revdialog__restore {
         flex: none; border: 0; cursor: pointer;
         padding: 6px 12px; border-radius: var(--hb-radius-control, 6px);
-        background: var(--hb-accent, #000); color: var(--hb-accent-contrast, #fff);
+        background: var(--hb-accent); color: var(--hb-accent-contrast, #fff);
         font-family: inherit; font-size: var(--hb-fs-sm, 12px); font-weight: 600;
     }
     .hb-revdialog__restore:hover { opacity: .85; }

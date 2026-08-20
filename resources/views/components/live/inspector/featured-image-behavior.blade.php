@@ -5,15 +5,15 @@
         @once
         <style>
             .hb-post-dropzone { cursor: pointer; padding: 0; font: inherit; appearance: none; -webkit-appearance: none; }
-            .hb-post-dropzone:focus-visible { outline: 2px solid var(--hb-border-focus, #000); outline-offset: 2px; }
+            .hb-post-dropzone:focus-visible { outline: 2px solid var(--hb-border-focus); outline-offset: 2px; }
             .hb-post-dropzone[hidden] { display: none; }
-            .hb-post-dropzone-preview { position: relative; height: 94px; width: 100%; border-radius: var(--hb-radius-md, 5px); overflow: hidden; background: var(--hb-bg-subtle, #FAFAFA); border: 1px solid var(--hb-border-strong, #C8C8C8); }
+            .hb-post-dropzone-preview { position: relative; height: 94px; width: 100%; border-radius: var(--hb-radius-md, 5px); overflow: hidden; background: var(--hb-bg-subtle); border: 1px solid var(--hb-border-strong); }
             .hb-post-dropzone-preview[hidden] { display: none; }
             .hb-post-dropzone-preview__img { width: 100%; height: 100%; object-fit: cover; display: block; }
             .hb-post-dropzone-preview__actions { position: absolute; top: 6px; right: 6px; display: flex; gap: 4px; }
             .hb-post-dropzone-preview__btn { display: inline-flex; align-items: center; justify-content: center; width: 24px; height: 24px; border: 0; border-radius: 4px; background: rgba(10, 10, 10, .55); color: #fff; cursor: pointer; }
             .hb-post-dropzone-preview__btn:hover { background: rgba(10, 10, 10, .75); }
-            .hb-post-dropzone-preview__btn--danger:hover { background: var(--hb-danger, #D4191A); }
+            .hb-post-dropzone-preview__btn--danger:hover { background: var(--hb-danger); }
         </style>
         <script>
             (() => {

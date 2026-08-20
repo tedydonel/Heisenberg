@@ -18,8 +18,8 @@
         flex-direction: column;
         width: 100%;
         height: 100%;
-        background: var(--hb-bg, #fff);
-        border-right: 1px solid var(--hb-border, #E4E4E4);
+        background: var(--hb-bg);
+        border-right: 1px solid var(--hb-border);
         overflow: hidden;
     }
     .hb-sidebar__logo-zone {
@@ -28,7 +28,7 @@
         gap: var(--hb-space-2, 8px);
         height: 32px;
         padding: 0 var(--hb-space-2, 8px);
-        border-bottom: 1px solid var(--hb-border, #E4E4E4);
+        border-bottom: 1px solid var(--hb-border);
         flex: none;
     }
     .hb-sidebar__logo-mark {
@@ -43,7 +43,7 @@
         font-size: var(--hb-fs-base, 13px);
         font-weight: 600;
         letter-spacing: -.2px;
-        color: var(--hb-text-primary, #0A0A0A);
+        color: var(--hb-text-primary);
         white-space: nowrap;
     }
     .hb-sidebar__nav {

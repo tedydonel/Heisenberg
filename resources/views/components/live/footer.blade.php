@@ -23,8 +23,8 @@
         justify-content: space-between;
         width: 100%;
         height: 32px;
-        background: var(--hb-bg, #fff);
-        border-top: 1px solid var(--hb-border, #E4E4E4);
+        background: var(--hb-bg);
+        border-top: 1px solid var(--hb-border);
         overflow: hidden;
     }
     .hb-footer__zone { display: flex; align-items: center; gap: 2px; height: 100%; padding: 2px var(--hb-space-3, 12px); }
@@ -38,8 +38,8 @@
         font-family: var(--hb-font-sans, Rubik, sans-serif);
         font-size: 12px;
     }
-    .hb-footer__pill--muted { background: var(--hb-bg-inset, #EEEEEE); color: var(--hb-text-secondary, #5A5A5A); }
-    .hb-footer__pill--muted .hb-footer__icon { color: var(--hb-text-muted, #9A9A9A); }
+    .hb-footer__pill--muted { background: var(--hb-bg-inset); color: var(--hb-text-secondary); }
+    .hb-footer__pill--muted .hb-footer__icon { color: var(--hb-text-muted); }
     .hb-footer__icon { display: inline-flex; width: 13px; height: 13px; flex: none; }
 
     /* Save-status pill states — driven by [data-state] on .hb-footer__pill--status itself (set
@@ -58,18 +58,18 @@
     .hb-footer__pill--status[data-state="conflict"] .hb-footer__icon[data-hb-status-icon="conflict"],
     .hb-footer__pill--status[data-state="error"] .hb-footer__icon[data-hb-status-icon="error"] { display: inline-flex; }
     .hb-footer__pill--status { background: transparent; }
-    .hb-footer__pill--status[data-state="saved"] { color: var(--hb-success, #3BD186); }
-    .hb-footer__pill--status[data-state="saved"] .hb-footer__icon { color: var(--hb-success, #3BD186); }
+    .hb-footer__pill--status[data-state="saved"] { color: var(--hb-success); }
+    .hb-footer__pill--status[data-state="saved"] .hb-footer__icon { color: var(--hb-success); }
     .hb-footer__pill--status[data-state="saving"],
-    .hb-footer__pill--status[data-state="dirty"] { color: var(--hb-text-secondary, #5A5A5A); }
+    .hb-footer__pill--status[data-state="dirty"] { color: var(--hb-text-secondary); }
     .hb-footer__pill--status[data-state="saving"] .hb-footer__icon,
-    .hb-footer__pill--status[data-state="dirty"] .hb-footer__icon { color: var(--hb-text-muted, #9A9A9A); }
+    .hb-footer__pill--status[data-state="dirty"] .hb-footer__icon { color: var(--hb-text-muted); }
     .hb-footer__pill--status[data-state="offline"],
     .hb-footer__pill--status[data-state="conflict"],
-    .hb-footer__pill--status[data-state="error"] { color: var(--hb-danger, #D4191A); }
+    .hb-footer__pill--status[data-state="error"] { color: var(--hb-danger); }
     .hb-footer__pill--status[data-state="offline"] .hb-footer__icon,
     .hb-footer__pill--status[data-state="conflict"] .hb-footer__icon,
-    .hb-footer__pill--status[data-state="error"] .hb-footer__icon { color: var(--hb-danger, #D4191A); }
+    .hb-footer__pill--status[data-state="error"] .hb-footer__icon { color: var(--hb-danger); }
     .hb-footer__pill--status[data-state="saving"] .hb-footer__icon[data-hb-status-icon="saving"] { animation: hb-status-spin 1s linear infinite; }
     @keyframes hb-status-spin { to { transform: rotate(360deg); } }
 
@@ -77,10 +77,10 @@
        postId yet, nothing rendered to measure), then "~123 KB" once GET .../email-size answers.
        Amber past the 100KB warn threshold (Gmail clipping), same transparent-background/tinted-
        text treatment the status pill above uses for its own danger states. */
-    .hb-footer__pill--email-size { color: var(--hb-text-secondary, #5A5A5A); }
-    .hb-footer__pill--email-size .hb-footer__icon { color: var(--hb-text-muted, #9A9A9A); }
-    .hb-footer__pill--email-size[data-warn="true"] { color: var(--hb-warning, #B45309); }
-    .hb-footer__pill--email-size[data-warn="true"] .hb-footer__icon { color: var(--hb-warning, #B45309); }
+    .hb-footer__pill--email-size { color: var(--hb-text-secondary); }
+    .hb-footer__pill--email-size .hb-footer__icon { color: var(--hb-text-muted); }
+    .hb-footer__pill--email-size[data-warn="true"] { color: var(--hb-warning); }
+    .hb-footer__pill--email-size[data-warn="true"] .hb-footer__icon { color: var(--hb-warning); }
 
     /* Flat right-zone buttons (language switcher + code editor) — plain text labels, no pill
        background, no border. The hidden locale POST forms never paint. */
@@ -89,10 +89,10 @@
         height: 100%; padding: 0 var(--hb-space-2, 8px);
         border: 0; background: transparent; border-radius: 0;
         font-family: var(--hb-font-sans, Rubik, sans-serif); font-size: 12px;
-        color: var(--hb-text-secondary, #5A5A5A); cursor: pointer;
+        color: var(--hb-text-secondary); cursor: pointer;
     }
-    .hb-foot-chip:hover { color: var(--hb-text-primary, #0A0A0A); }
-    .hb-foot-chip[aria-pressed="true"] { color: var(--hb-accent, #000); font-weight: 600; }
+    .hb-foot-chip:hover { color: var(--hb-text-primary); }
+    .hb-foot-chip[aria-pressed="true"] { color: var(--hb-accent); font-weight: 600; }
 
     /* Locale switcher — drop-up menu anchored to the language pill. The menu itself escapes the
        footer's overflow:hidden via `position: fixed`; the JS computes its real coordinates from
@@ -103,7 +103,7 @@
     .hb-locale__menu {
         position: fixed; z-index: 60;
         min-width: 140px; padding: 4px;
-        background: var(--hb-bg, #fff); border: 1px solid var(--hb-border, #E4E4E4);
+        background: var(--hb-bg); border: 1px solid var(--hb-border);
         border-radius: var(--hb-radius-md, 5px);
         box-shadow: 3px 4px 4px rgba(0, 0, 0, .1);
         display: flex; flex-direction: column; gap: 2px;
@@ -114,12 +114,12 @@
         height: 28px; padding: 0 8px;
         border: 0; background: none; border-radius: var(--hb-radius-sm, 3px);
         font-family: var(--hb-font-sans, Rubik, sans-serif); font-size: 12px; font-weight: 400;
-        color: var(--hb-text-secondary, #5A5A5A); text-align: left; cursor: pointer;
+        color: var(--hb-text-secondary); text-align: left; cursor: pointer;
         white-space: nowrap; width: 100%;
     }
-    .hb-locale__opt:hover { background: var(--hb-surface-hover, #F7F7F7); color: var(--hb-text-primary, #0A0A0A); }
-    .hb-locale__opt.is-on { background: var(--hb-surface-hover, #F7F7F7); color: var(--hb-text-primary, #0A0A0A); font-weight: 500; }
-    .hb-locale__opt__check { width: 12px; height: 12px; flex: none; color: var(--hb-accent, #000); display: none; }
+    .hb-locale__opt:hover { background: var(--hb-surface-hover); color: var(--hb-text-primary); }
+    .hb-locale__opt.is-on { background: var(--hb-surface-hover); color: var(--hb-text-primary); font-weight: 500; }
+    .hb-locale__opt__check { width: 12px; height: 12px; flex: none; color: var(--hb-accent); display: none; }
     .hb-locale__opt.is-on .hb-locale__opt__check { display: inline-flex; }
 </style>
 <script>

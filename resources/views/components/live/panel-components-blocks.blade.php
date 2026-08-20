@@ -21,7 +21,7 @@
      dispatches hb:patterns-changed, which the script below listens for to re-fetch + re-render. --}}
 @once
 <style>
-    .hb-panel-cb { display: flex; flex-direction: column; width: 240px; height: 100%; background: var(--hb-bg, #fff); border-right: 1px solid var(--hb-border, #E4E4E4); flex: none; }
+    .hb-panel-cb { display: flex; flex-direction: column; width: 240px; height: 100%; background: var(--hb-bg); border-right: 1px solid var(--hb-border); flex: none; }
     .hb-panel-cb__content { display: flex; flex-direction: column; flex: 1 1 auto; min-height: 0; overflow: hidden; }
     .hb-panel-cb__content[hidden] { display: none; }
     /* Two-layer scroll shell — matches live/inspector's Post tab exactly (the one instance of this
@@ -39,7 +39,7 @@
     .hb-panel-cb__card { position: relative; }
     .hb-panel-cb__card-del { position: absolute; top: 4px; right: 4px; width: 22px; height: 22px;
         display: none; align-items: center; justify-content: center;
-        background: var(--hb-surface, #fff); border: 1px solid var(--hb-border, #E4E4E4);
+        background: var(--hb-surface); border: 1px solid var(--hb-border);
         border-radius: 4px; cursor: pointer; color: var(--hb-muted, #6b6b6b); padding: 0; }
     .hb-panel-cb__card:hover .hb-panel-cb__card-del { display: inline-flex; }
     .hb-panel-cb__card-del:hover { color: var(--hb-ink, #111); border-color: var(--hb-ink, #111); }

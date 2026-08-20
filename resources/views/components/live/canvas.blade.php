@@ -20,7 +20,7 @@
          believing it is English" (the topbar dropdown label is the other half). --}}
     .hb-page__locale-badge {
         display: inline-block; margin-bottom: 6px; padding: 2px 8px; border-radius: var(--hb-radius-full, 999px);
-        background: var(--hb-bg-muted, #F4F4F4); color: var(--hb-text-secondary, #5A5A5A);
+        background: var(--hb-bg-muted); color: var(--hb-text-secondary);
         font-family: var(--hb-font-sans, Rubik, sans-serif); font-size: var(--hb-fs-xs, 11px); font-weight: 600;
         letter-spacing: .02em; text-transform: uppercase;
     }

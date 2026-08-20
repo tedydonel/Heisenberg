@@ -43,7 +43,7 @@
    so cascade order (author stylesheet after UA sheet) would otherwise win over [hidden] and leave
    every panel rendered regardless of the attribute — this raises specificity to force it off. */
 .hb-editor__panel > [hidden] { display: none; }
-.hb-editor__canvas { grid-column: 3; grid-row: 2; position: relative; background: var(--hb-bg-subtle, #FAFAFA); overflow: hidden; }
+.hb-editor__canvas { grid-column: 3; grid-row: 2; position: relative; background: var(--hb-bg-subtle); overflow: hidden; }
 /* overflow/min-height match .hb-editor__panel and .hb-editor__canvas above, and are load-bearing,
    not cosmetic: a grid item defaults to `min-height: auto`, so without them this column grows to
    its content height instead of being clamped to the `1fr` row. Everything inside the inspector

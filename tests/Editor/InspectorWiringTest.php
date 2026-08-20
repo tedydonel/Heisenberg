@@ -513,7 +513,7 @@ class InspectorWiringTest extends TestCase
         $html = $this->editorHtml();
 
         $this->assertStringContainsString(
-            ".hb-post-meta__value--btn:not(:disabled):hover { color: var(--hb-editing, #3D68F5); }",
+            ".hb-post-meta__value--btn:not(:disabled):hover { color: var(--hb-editing); }",
             $html,
         );
         $this->assertStringNotContainsString('.hb-post-meta__value--btn:hover { text-decoration: underline; }', $html);

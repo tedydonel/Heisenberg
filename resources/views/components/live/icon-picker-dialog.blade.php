@@ -34,7 +34,7 @@
     .hb-icondialog__scroll { height: 100%; box-sizing: border-box; padding: var(--hb-space-4, 16px); }
     .hb-icondialog__grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(72px, 1fr)); gap: 8px; }
     .hb-icondialog__item { display: flex; flex-direction: column; align-items: center; gap: 4px; padding: 8px 4px; border: 1px solid transparent; border-radius: var(--hb-radius-md, 5px); background: none; cursor: pointer; font-family: var(--hb-font-sans, Rubik, sans-serif); }
-    .hb-icondialog__item:hover { border-color: var(--hb-border, #E4E4E4); background: var(--hb-surface-hover, #F7F7F7); }
+    .hb-icondialog__item:hover { border-color: var(--hb-border); background: var(--hb-surface-hover); }
     .hb-icondialog__item img { width: 28px; height: 28px; display: block; }
     /* The Phosphor SVGs ship with fill="currentColor" but the picker renders them via
        <img> — the SVG is in its own browsing context, currentColor resolves to canvastext
@@ -45,21 +45,21 @@
        preview field below, both of which sit on the editor chrome (never the canvas paper). */
     .hb-editor--dark .hb-icondialog__item img,
     .hb-editor--dark .hb-iconfield img { filter: invert(1); }
-    .hb-icondialog__item span { max-width: 100%; font-size: 10px; color: var(--hb-text-muted, #9A9A9A); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-    .hb-icondialog__empty { padding: 48px 0; text-align: center; color: var(--hb-text-muted, #9A9A9A); font-size: var(--hb-fs-base, 13px); }
+    .hb-icondialog__item span { max-width: 100%; font-size: 10px; color: var(--hb-text-muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .hb-icondialog__empty { padding: 48px 0; text-align: center; color: var(--hb-text-muted); font-size: var(--hb-fs-base, 13px); }
     .hb-icondialog__empty[hidden] { display: none; }
-    .hb-icondialog__more { display: block; margin: var(--hb-space-4, 16px) auto 0; padding: 6px 16px; border: 1px solid var(--hb-border, #E4E4E4); border-radius: var(--hb-radius-control, 6px); background: var(--hb-bg, #fff); cursor: pointer; font-family: var(--hb-font-sans, Rubik, sans-serif); font-size: var(--hb-fs-sm, 12px); }
-    .hb-icondialog__more:hover { background: var(--hb-surface-hover, #F7F7F7); }
+    .hb-icondialog__more { display: block; margin: var(--hb-space-4, 16px) auto 0; padding: 6px 16px; border: 1px solid var(--hb-border); border-radius: var(--hb-radius-control, 6px); background: var(--hb-bg); cursor: pointer; font-family: var(--hb-font-sans, Rubik, sans-serif); font-size: var(--hb-fs-sm, 12px); }
+    .hb-icondialog__more:hover { background: var(--hb-surface-hover); }
     .hb-icondialog__more[hidden] { display: none; }
 
     /* The Content tab's icon field decoration (decorateIconField below): a live preview of the
        picked icon that reopens this dialog. Sits above the raw reference input, which stays for
        power users typing "set/slug" directly. */
-    .hb-iconfield { display: flex; align-items: center; gap: 10px; width: 100%; margin-bottom: 6px; padding: 8px 10px; border: 1px solid var(--hb-border, #E4E4E4); border-radius: var(--hb-radius-md, 5px); background: var(--hb-bg, #fff); cursor: pointer; font-family: var(--hb-font-sans, Rubik, sans-serif); }
-    .hb-iconfield:hover { border-color: var(--hb-border-focus, #000); }
+    .hb-iconfield { display: flex; align-items: center; gap: 10px; width: 100%; margin-bottom: 6px; padding: 8px 10px; border: 1px solid var(--hb-border); border-radius: var(--hb-radius-md, 5px); background: var(--hb-bg); cursor: pointer; font-family: var(--hb-font-sans, Rubik, sans-serif); }
+    .hb-iconfield:hover { border-color: var(--hb-border-focus); }
     .hb-iconfield img { width: 24px; height: 24px; display: block; flex: none; }
     .hb-iconfield img[hidden] { display: none; }
-    .hb-iconfield span { flex: 1 1 auto; min-width: 0; text-align: left; font-size: var(--hb-fs-sm, 12px); color: var(--hb-text-secondary, #5A5A5A); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .hb-iconfield span { flex: 1 1 auto; min-width: 0; text-align: left; font-size: var(--hb-fs-sm, 12px); color: var(--hb-text-secondary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 </style>
 <script>
     (() => {

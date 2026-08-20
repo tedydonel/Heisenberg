@@ -22,8 +22,8 @@
     .hb-mediadialog {
         display: flex; flex-direction: column; overflow: hidden;
         width: 900px; height: 640px; max-width: 100%; max-height: calc(100vh - 48px);
-        background: var(--hb-bg, #fff);
-        border: 1px solid var(--hb-border, #E4E4E4);
+        background: var(--hb-bg);
+        border: 1px solid var(--hb-border);
         border-radius: var(--hb-radius-lg, 8px);
         box-shadow: 3px 4px 4px rgba(0, 0, 0, .1);
         font-family: var(--hb-font-sans, Rubik, sans-serif);
@@ -32,17 +32,17 @@
     .hb-mediadialog__top {
         display: flex; align-items: center; justify-content: space-between;
         height: 32px; padding-left: var(--hb-space-4, 16px);
-        background: var(--hb-bg-muted, #F4F4F4); flex: none;
+        background: var(--hb-bg-muted); flex: none;
     }
-    .hb-mediadialog__title { font-size: var(--hb-fs-sm, 12px); color: var(--hb-accent, #000); white-space: nowrap; flex: none; }
+    .hb-mediadialog__title { font-size: var(--hb-fs-sm, 12px); color: var(--hb-accent); white-space: nowrap; flex: none; }
     .hb-mediadialog__tabs { flex: none; width: 200px; }
     .hb-mediadialog__close {
         display: inline-flex; align-items: center; justify-content: center;
         width: 30px; height: 32px; border: 0; background: none; cursor: pointer;
-        color: var(--hb-text-secondary, #5A5A5A); border-radius: var(--hb-radius-lg, 8px); flex: none;
+        color: var(--hb-text-secondary); border-radius: var(--hb-radius-lg, 8px); flex: none;
     }
-    .hb-mediadialog__close:hover { background: var(--hb-surface-hover, #F7F7F7); color: var(--hb-text-primary, #0A0A0A); }
-    .hb-mediadialog__err { flex: none; padding: 10px var(--hb-space-4, 16px) 0; font-size: var(--hb-fs-sm, 12px); color: var(--hb-danger, #D4191A); text-align: center; }
+    .hb-mediadialog__close:hover { background: var(--hb-surface-hover); color: var(--hb-text-primary); }
+    .hb-mediadialog__err { flex: none; padding: 10px var(--hb-space-4, 16px) 0; font-size: var(--hb-fs-sm, 12px); color: var(--hb-danger); text-align: center; }
     .hb-mediadialog__err[hidden] { display: none; }
     .hb-mediadialog__body { flex: 1 1 auto; min-height: 0; overflow: hidden; position: relative; }
     .hb-mediadialog__body--upload { display: flex; align-items: center; justify-content: center; padding: var(--hb-space-4, 16px); min-height: 420px; }

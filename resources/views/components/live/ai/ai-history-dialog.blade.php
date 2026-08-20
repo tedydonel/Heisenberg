@@ -19,27 +19,27 @@
     .hb-aihistdialog__body { position: relative; flex: 1 1 auto; min-height: 0; display: flex; flex-direction: column; }
     .hb-aihistdialog__scrollwrap { position: relative; flex: 1 1 auto; min-height: 0; }
     .hb-aihistdialog__scroll { height: 100%; box-sizing: border-box; padding: var(--hb-space-4, 16px); }
-    .hb-aihistdialog__empty { padding: 48px 0; text-align: center; color: var(--hb-text-muted, #9A9A9A); font-size: var(--hb-fs-base, 13px); font-family: var(--hb-font-sans, Rubik, sans-serif); }
+    .hb-aihistdialog__empty { padding: 48px 0; text-align: center; color: var(--hb-text-muted); font-size: var(--hb-fs-base, 13px); font-family: var(--hb-font-sans, Rubik, sans-serif); }
     .hb-aihistdialog__empty[hidden] { display: none; }
     .hb-aihistdialog__list { display: flex; flex-direction: column; gap: 6px; }
     .hb-aihistdialog__row {
         display: flex; align-items: center; gap: var(--hb-space-3, 12px);
         padding: 10px 12px;
-        border: 1px solid var(--hb-border, #E4E4E4);
+        border: 1px solid var(--hb-border);
         border-radius: var(--hb-radius-md, 5px);
         font-family: var(--hb-font-sans, Rubik, sans-serif);
         cursor: pointer;
     }
-    .hb-aihistdialog__row:hover { background: var(--hb-surface-hover, #F7F7F7); }
-    .hb-aihistdialog__row.is-selected { border-color: var(--hb-border-strong, #C8C8C8); background: var(--hb-bg-subtle, #FAFAFA); }
-    .hb-aihistdialog__check { flex: none; width: 14px; height: 14px; accent-color: var(--hb-accent, #000); cursor: pointer; }
+    .hb-aihistdialog__row:hover { background: var(--hb-surface-hover); }
+    .hb-aihistdialog__row.is-selected { border-color: var(--hb-border-strong); background: var(--hb-bg-subtle); }
+    .hb-aihistdialog__check { flex: none; width: 14px; height: 14px; accent-color: var(--hb-accent); cursor: pointer; }
     .hb-aihistdialog__meta { flex: 1 1 auto; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
-    .hb-aihistdialog__title { font-size: var(--hb-fs-sm, 12px); font-weight: 600; color: var(--hb-text-primary, #0A0A0A); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-    .hb-aihistdialog__sub { font-size: var(--hb-fs-sm, 12px); color: var(--hb-text-muted, #9A9A9A); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .hb-aihistdialog__title { font-size: var(--hb-fs-sm, 12px); font-weight: 600; color: var(--hb-text-primary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .hb-aihistdialog__sub { font-size: var(--hb-fs-sm, 12px); color: var(--hb-text-muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
     .hb-aihistdialog__open {
         flex: none; border: 0; cursor: pointer;
         padding: 6px 12px; border-radius: var(--hb-radius-control, 6px);
-        background: var(--hb-accent, #000); color: var(--hb-accent-fg, #fff);
+        background: var(--hb-accent); color: var(--hb-accent-fg);
         font-family: inherit; font-size: var(--hb-fs-sm, 12px); font-weight: 600;
     }
     .hb-aihistdialog__open:hover { opacity: .85; }
@@ -48,19 +48,19 @@
     .hb-aihistdialog__foot {
         flex: none; display: flex; align-items: center; gap: var(--hb-space-3, 12px);
         padding: 10px var(--hb-space-4, 16px);
-        border-top: 1px solid var(--hb-border, #E4E4E4);
+        border-top: 1px solid var(--hb-border);
         font-family: var(--hb-font-sans, Rubik, sans-serif);
     }
     .hb-aihistdialog__foot[hidden] { display: none; }
-    .hb-aihistdialog__count { font-size: var(--hb-fs-sm, 12px); color: var(--hb-text-secondary, #5A5A5A); flex: 1 1 auto; }
+    .hb-aihistdialog__count { font-size: var(--hb-fs-sm, 12px); color: var(--hb-text-secondary); flex: 1 1 auto; }
     .hb-aihistdialog__delete, .hb-aihistdialog__cancel {
         border: 0; cursor: pointer;
         padding: 6px 12px; border-radius: var(--hb-radius-control, 6px);
         font-family: inherit; font-size: var(--hb-fs-sm, 12px); font-weight: 600;
     }
-    .hb-aihistdialog__delete { background: var(--hb-danger-subtle, #FEF2F2); color: var(--hb-danger, #D4191A); }
-    .hb-aihistdialog__delete.is-armed { background: var(--hb-danger, #D4191A); color: var(--hb-text-inverse, #fff); }
-    .hb-aihistdialog__cancel { background: var(--hb-bg-muted, #F4F4F4); color: var(--hb-text-secondary, #5A5A5A); }
+    .hb-aihistdialog__delete { background: var(--hb-danger-subtle); color: var(--hb-danger); }
+    .hb-aihistdialog__delete.is-armed { background: var(--hb-danger); color: var(--hb-text-inverse); }
+    .hb-aihistdialog__cancel { background: var(--hb-bg-muted); color: var(--hb-text-secondary); }
     .hb-aihistdialog__cancel[hidden] { display: none; }
 </style>
 <script>

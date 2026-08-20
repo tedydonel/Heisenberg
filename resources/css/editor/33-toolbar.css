@@ -1,7 +1,9 @@
 /* Block toolbar (Pencil Block Toolbar cPGss) — the floating action bar over a selected
-   block. Sits on --hb-editing; the white overlays/icons are toolbar mechanics (white on
-   the accent), the only non-token colours here, matching the .pen exactly. */
-.hb-tb { position: relative; display: inline-flex; align-items: center; gap: 4px; height: var(--hb-block-toolbar-h, 32px); padding: 0; background: var(--hb-editing, #3D68F5); font-family: var(--hb-font-sans, Rubik, sans-serif); }
+   block. Deliberately NOT bound to --hb-editing: the toolbar is tool UI, and tool UI
+   stays the same regardless of light/dark theme so it remains recognizable as the
+   same component. The white overlays/icons are toolbar mechanics (white on the
+   accent), the only non-token colours here, matching the .pen exactly. */
+.hb-tb { position: relative; display: inline-flex; align-items: center; gap: 4px; height: var(--hb-block-toolbar-h, 32px); padding: 0; background: #3D68F5; font-family: var(--hb-font-sans, Rubik, sans-serif); }
 /* a popover anchored under a toolbar trigger (type switcher, etc.) */
 .hb-tb__pop { position: absolute; top: calc(100% + 6px); left: 0; z-index: 40; }
 .hb-tb__pop[hidden] { display: none; }
@@ -34,17 +36,17 @@
 
 /* block-type dropdown (type switcher) */
 .hb-typemenu { width: 220px; display: flex; flex-direction: column; overflow: hidden; }
-.hb-typemenu__search { display: flex; align-items: center; height: 34px; padding: 0 var(--hb-space-3, 12px); border-bottom: 1px solid var(--hb-border, #E4E4E4); }
-.hb-typemenu__search input { flex: 1 1 auto; min-width: 0; border: 0; outline: 0; background: none; font-family: inherit; font-size: var(--hb-fs-base, 13px); color: var(--hb-text-primary, #0A0A0A); }
-.hb-typemenu__search input::placeholder { color: var(--hb-text-muted, #9A9A9A); }
+.hb-typemenu__search { display: flex; align-items: center; height: 34px; padding: 0 var(--hb-space-3, 12px); border-bottom: 1px solid var(--hb-border); }
+.hb-typemenu__search input { flex: 1 1 auto; min-width: 0; border: 0; outline: 0; background: none; font-family: inherit; font-size: var(--hb-fs-base, 13px); color: var(--hb-text-primary); }
+.hb-typemenu__search input::placeholder { color: var(--hb-text-muted); }
 .hb-typemenu__list { display: flex; flex-direction: column; gap: 1px; padding: 6px; max-height: 320px; overflow: auto; }
 .hb-typemenu__item { display: flex; align-items: center; gap: 10px; height: 32px; padding: 0 10px; border: 0; background: none; cursor: pointer; border-radius: var(--hb-radius-control, 6px); text-align: left; }
-.hb-typemenu__item:hover, .hb-typemenu__item--on { background: var(--hb-bg-muted, #F4F4F4); }
-.hb-typemenu__item .ic { display: inline-flex; width: 18px; height: 18px; flex: none; color: var(--hb-text-secondary, #5A5A5A); }
-.hb-typemenu__item .lb { flex: 1 1 auto; min-width: 0; font-size: var(--hb-fs-base, 13px); color: var(--hb-text-primary, #0A0A0A); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.hb-typemenu__item .sc { font-size: var(--hb-fs-xs, 11px); color: var(--hb-text-muted, #9A9A9A); flex: none; }
+.hb-typemenu__item:hover, .hb-typemenu__item--on { background: var(--hb-bg-muted); }
+.hb-typemenu__item .ic { display: inline-flex; width: 18px; height: 18px; flex: none; color: var(--hb-text-secondary); }
+.hb-typemenu__item .lb { flex: 1 1 auto; min-width: 0; font-size: var(--hb-fs-base, 13px); color: var(--hb-text-primary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.hb-typemenu__item .sc { font-size: var(--hb-fs-xs, 11px); color: var(--hb-text-muted); flex: none; }
 .hb-typemenu__item .ck { display: inline-flex; width: 14px; height: 14px; flex: none; color: transparent; }
-.hb-typemenu__item--on .ck { color: var(--hb-accent, #000); }
+.hb-typemenu__item--on .ck { color: var(--hb-accent); }
 .hb-typemenu__item[hidden] { display: none !important; }
 .hb-typemenu__item:disabled { cursor: default; }
 
@@ -53,8 +55,8 @@
 .hb-alignmenu { width: 160px; }
 .hb-moremenu { width: 160px; }
 .hb-moremenu .hb-vmi--danger .hb-vmi__name,
-.hb-moremenu .hb-vmi--danger .hb-vmi__ic { color: var(--hb-danger, #D4191A); }
-.hb-vmi__ic { display: inline-flex; width: 16px; height: 16px; flex: none; color: var(--hb-text-secondary, #5A5A5A); }
+.hb-moremenu .hb-vmi--danger .hb-vmi__ic { color: var(--hb-danger); }
+.hb-vmi__ic { display: inline-flex; width: 16px; height: 16px; flex: none; color: var(--hb-text-secondary); }
 
 /* colour popover — swatches straight off config('heisenberg.tokens.color'); the row/swatch/check
    styling is entirely the existing .hb-vmi pattern, so only the popover's own width is new. */
@@ -63,22 +65,22 @@
 /* link popover — built in script (no static container is authorized for this pass), positioned at
    the current selection; shares the .hb-pop shell (32-pickers.css) for its bg/border/shadow. */
 .hb-tb-linkpop { position: fixed; z-index: 50; display: flex; align-items: center; gap: 6px; padding: 6px; width: 260px; }
-.hb-tb-linkpop input { flex: 1 1 auto; min-width: 0; height: 28px; padding: 0 8px; border: 1px solid var(--hb-border, #E4E4E4); border-radius: var(--hb-radius-md, 5px); background: var(--hb-bg, #fff); font-family: var(--hb-font-sans, Rubik, sans-serif); font-size: var(--hb-fs-sm, 12px); color: var(--hb-text-primary, #0A0A0A); }
-.hb-tb-linkpop input:focus { outline: none; border-color: var(--hb-border-focus, #000); }
-.hb-tb-linkpop button { flex: none; height: 28px; padding: 0 10px; border: 0; border-radius: var(--hb-radius-md, 5px); background: var(--hb-accent, #000); color: var(--hb-accent-fg, #fff); font-family: inherit; font-size: var(--hb-fs-sm, 12px); cursor: pointer; }
-.hb-tb-linkpop button:hover { background: var(--hb-accent-hover, #1A1A1A); }
+.hb-tb-linkpop input { flex: 1 1 auto; min-width: 0; height: 28px; padding: 0 8px; border: 1px solid var(--hb-border); border-radius: var(--hb-radius-md, 5px); background: var(--hb-bg); font-family: var(--hb-font-sans, Rubik, sans-serif); font-size: var(--hb-fs-sm, 12px); color: var(--hb-text-primary); }
+.hb-tb-linkpop input:focus { outline: none; border-color: var(--hb-border-focus); }
+.hb-tb-linkpop button { flex: none; height: 28px; padding: 0 10px; border: 0; border-radius: var(--hb-radius-md, 5px); background: var(--hb-accent); color: var(--hb-accent-fg); font-family: inherit; font-size: var(--hb-fs-sm, 12px); cursor: pointer; }
+.hb-tb-linkpop button:hover { background: var(--hb-accent-hover); }
 
 /* Save-as-block popover (toolbar-composition.md §8) — a single field with a Save / Cancel pair
    stacked below, instead of the link popover's inline Apply. Title above the field so the user
    knows what they're naming; inline error slot replaces the field's empty-message tone. */
 .hb-tb-savepop { position: fixed; z-index: 50; display: flex; flex-direction: column; gap: 6px; padding: 10px; width: 260px; }
-.hb-tb-savepop__title { font-family: var(--hb-font-sans, Rubik, sans-serif); font-size: var(--hb-fs-sm, 12px); font-weight: var(--hb-fw-medium, 500); color: var(--hb-text-primary, #0A0A0A); }
-.hb-tb-savepop input { height: 30px; padding: 0 8px; border: 1px solid var(--hb-border, #E4E4E4); border-radius: var(--hb-radius-md, 5px); background: var(--hb-bg, #fff); font-family: var(--hb-font-sans, Rubik, sans-serif); font-size: var(--hb-fs-sm, 13px); color: var(--hb-text-primary, #0A0A0A); }
-.hb-tb-savepop input:focus { outline: none; border-color: var(--hb-border-focus, #000); }
-.hb-tb-savepop__error { font-family: var(--hb-font-sans, Rubik, sans-serif); font-size: var(--hb-fs-xs, 11px); color: var(--hb-danger, #B00020); }
+.hb-tb-savepop__title { font-family: var(--hb-font-sans, Rubik, sans-serif); font-size: var(--hb-fs-sm, 12px); font-weight: var(--hb-fw-medium, 500); color: var(--hb-text-primary); }
+.hb-tb-savepop input { height: 30px; padding: 0 8px; border: 1px solid var(--hb-border); border-radius: var(--hb-radius-md, 5px); background: var(--hb-bg); font-family: var(--hb-font-sans, Rubik, sans-serif); font-size: var(--hb-fs-sm, 13px); color: var(--hb-text-primary); }
+.hb-tb-savepop input:focus { outline: none; border-color: var(--hb-border-focus); }
+.hb-tb-savepop__error { font-family: var(--hb-font-sans, Rubik, sans-serif); font-size: var(--hb-fs-xs, 11px); color: var(--hb-danger); }
 .hb-tb-savepop__actions { display: flex; justify-content: flex-end; gap: 6px; margin-top: 2px; }
 .hb-tb-savepop__actions button { height: 28px; padding: 0 12px; border: 0; border-radius: var(--hb-radius-md, 5px); font-family: inherit; font-size: var(--hb-fs-sm, 12px); cursor: pointer; }
-.hb-tb-savepop__actions [data-save-cancel] { background: transparent; color: var(--hb-text-primary, #0A0A0A); }
-.hb-tb-savepop__actions [data-save-ok] { background: var(--hb-accent, #000); color: var(--hb-accent-fg, #fff); }
-.hb-tb-savepop__actions [data-save-ok]:hover { background: var(--hb-accent-hover, #1A1A1A); }
+.hb-tb-savepop__actions [data-save-cancel] { background: transparent; color: var(--hb-text-primary); }
+.hb-tb-savepop__actions [data-save-ok] { background: var(--hb-accent); color: var(--hb-accent-fg); }
+.hb-tb-savepop__actions [data-save-ok]:hover { background: var(--hb-accent-hover); }
 .hb-tb-savepop__actions [data-save-ok]:disabled { opacity: 0.6; cursor: progress; }
