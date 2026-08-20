@@ -547,6 +547,12 @@ return [
         'save_to_themes' => 'Save to Themes',
         'save_theme_name_ph' => 'Theme name…',
         'save_theme_confirm_aria' => 'Confirm',
+        // Update mode: when the active theme was loaded from a saved entry, the bar's label
+        // swaps to "Update :name" and the name field is locked to that name (the backend upserts
+        // on POST /editor/themes, so re-saving under the same name overwrites in place).
+        'update_theme' => 'Update ":name"',
+        'update_theme_aria' => 'Update theme',
+        'save_as_new' => 'Save as new theme…',
         'search_themes' => 'Search themes…',
         'category_your_themes' => 'Your themes',
         'no_saved_themes' => 'No saved themes yet',

@@ -379,8 +379,13 @@
                 if (!input) return;
                 if (label) side.dataset.hbVarBound = value; else delete side.dataset.hbVarBound;
                 input.value = resolved;
+                // Stamp the guard flag on the side so the typing-guard listener (capture phase,
+                // registered last in this script) recognises this as a programmatic value-set
+                // and doesn't drop the binding before the delegated write path runs.
+                side.__hbVarJustBound = true;
                 input.dispatchEvent(new Event('input', { bubbles: true }));
                 input.dispatchEvent(new Event('change', { bubbles: true }));
+                side.__hbVarJustBound = false;
                 hbSyncVarTrigger(side);
             });
             const aggregateInput = control.querySelector('input');
@@ -409,7 +414,9 @@
             // then tracks the token if its value is later edited in the Style tab.
             const swatch = control.querySelector('.hb-colorlayer__swatch');
             if (swatch) swatch.style.background = value || 'transparent';
+            control.__hbVarJustBound = true;
             hex.dispatchEvent(new Event('input', { bubbles: true }));
+            control.__hbVarJustBound = false;
             hbSyncVarTrigger(control);
             closeStylePopups(root);
             return;
@@ -427,10 +434,17 @@
             if (label) control.dataset.hbVarBound = value;
             else delete control.dataset.hbVarBound;
             input.value = resolved;
+            // Stamp the guard flag on the control for the same reason as the aggregate branches
+            // above: the captured typing-guard listener below would otherwise drop this binding
+            // on the synthesized input event because the resolved integer (e.g. "16") does not
+            // match the token's label (e.g. "Large"). Clearing it on the next line restores
+            // user-typing detection for anything that fires after this dispatch.
+            control.__hbVarJustBound = true;
             // Re-use the one delegated write path rather than calling setSupport here, so the
             // linked-value/aggregate handlers (spacing, corners) still see the edit.
             input.dispatchEvent(new Event('input', { bubbles: true }));
             input.dispatchEvent(new Event('change', { bubbles: true }));
+            control.__hbVarJustBound = false;
         }
         hbSyncVarTrigger(control);
         closeStylePopups(root);
@@ -458,10 +472,21 @@
         const root = mountedStyleRoot(control);
         if (!root) return;
         const bound = control.dataset.hbVarBound;
-        if (bound) {
+        if (bound && !control.__hbVarJustBound) {
             const input = control.matches('input') ? control : control.querySelector('input');
-            const expected = hbVarResolvedValue(root, bound) ?? hbVarLabelOf(root, bound);
-            if (input && input.value !== expected) {
+            // Any user input that doesn't reproduce the token's LABEL drops the binding.
+            // The previous predicate compared the typed value to the token's RESOLVED VALUE
+            // (the integer the field actually displays) — that meant typing back the same hex
+            // that the token happened to resolve to silently kept the binding, and a later
+            // theme change overwrote a value the user thought they had typed literally. The
+            // label is the visible token identity in the menu, so re-typing it is the only
+            // case where the user could plausibly want to preserve the binding.
+            //
+            // __hbVarJustBound is the transient flag varselect sets/unsets around its own
+            // synthetic input events; without it the guard would drop a freshly-set binding
+            // before the delegated write handler reads it (capture phase runs before bubble).
+            const label = hbVarLabelOf(root, bound);
+            if (input && input.value !== '' && input.value !== label) {
                 delete control.dataset.hbVarBound;
                 const group = hbAggregateGroupOf(control);
                 if (group) {

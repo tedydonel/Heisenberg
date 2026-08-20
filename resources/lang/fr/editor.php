@@ -543,6 +543,12 @@ return [
         'save_to_themes' => 'Enregistrer dans Thèmes',
         'save_theme_name_ph' => 'Nom du thème…',
         'save_theme_confirm_aria' => 'Confirmer',
+        // Mode mise à jour : quand le thème actif provient d'un thème enregistré, le bouton
+        // bascule sur « Mettre à jour :name » et le champ nom est verrouillé sur cette valeur
+        // (le backend upsert sur POST /editor/themes écrase l'entrée du même nom).
+        'update_theme' => 'Mettre à jour « :name »',
+        'update_theme_aria' => 'Mettre à jour le thème',
+        'save_as_new' => 'Enregistrer comme nouveau thème…',
         'search_themes' => 'Rechercher des thèmes…',
         'category_your_themes' => 'Vos thèmes',
         'no_saved_themes' => 'Aucun thème enregistré pour l’instant',
