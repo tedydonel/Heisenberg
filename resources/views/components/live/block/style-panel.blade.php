@@ -38,9 +38,16 @@
      * straight through made every row read as "var(--hb-t-accent-1)" instead of "Accent".
      *
      * So each section yields two parallel maps: what the row shows (label => swatch/value) and
-     * what selecting it writes (label => CSS reference).
+     * what selecting it writes (label => CSS reference). Numeric values are stripped of their
+     * unit for display — the variable-menu trailing slot shows "16" rather than "16px", matching
+     * what the inspector field shows after the user picks a token and what the Style/Themes
+     * panel accepts when the user types "16" alone.
      */
-    $hbVarMenu = static function (array $rows, string $display): array {
+    $stripUnit = static function (string $value): string {
+        return (string) (preg_match('/^(-?\d*\.?\d+)/', $value, $m) ? $m[1] : '');
+    };
+
+    $hbVarMenu = static function (array $rows, string $display) use ($stripUnit): array {
         $labels = [];
         $values = [];
         foreach ($rows as $row) {
@@ -50,7 +57,10 @@
             }
             // Fall back to the machine name when a token has no label, so a row is never blank.
             $label = trim((string) ($row['label'] ?? '')) !== '' ? $row['label'] : $name;
-            $labels[$label] = $row[$display] ?? '';
+            $rawValue = (string) ($row[$display] ?? '');
+            // Numeric values render without their unit (regex matches "16" in "16px"); hex and
+            // family names pass through unchanged because the leading character is not a digit.
+            $labels[$label] = $stripUnit($rawValue);
             $values[$label] = 'var(--' . \Heisenberg\Services\ThemeRepository::CSS_PREFIX . $name . ')';
         }
 
@@ -69,16 +79,25 @@
     $hbFontValues['Default'] = '';
 
     /*
-     * Reverse map, `var(--hb-t-name) => Label`, emitted onto the panel root. A bound field must
-     * READ as "Accent" while the model holds `var(--hb-t-accent-1)`, and that has to survive a
-     * reload and a re-selection — not just the click that set it — so the lookup has to be on the
-     * page rather than remembered in the moment.
+     * Two reverse maps, both emitted onto the panel root.
+     *   - data-hb-var-labels : var(--hb-t-name) => Label   (e.g. var(--hb-t-sp-3) => "Large")
+     *   - data-hb-var-values : var(--hb-t-name) => integer (e.g. var(--hb-t-sp-3) => "16")
+     * A bound field must READ as the integer (not the label) while the model holds the
+     * reference, and that has to survive a reload and a re-selection — so the lookups live
+     * on the page rather than in the moment. The label map is kept for the typing guard
+     * fallback (when a token has no resolvable integer, the label still describes it).
      */
     $hbVarLabels = [];
-    foreach ([$hbColorValues, $hbSpaceValues, $hbFontValues] as $pairs) {
-        foreach ($pairs as $label => $ref) {
+    $hbVarValues = [];
+    foreach ([
+        [$hbColorValues, $hbColorTokens],
+        [$hbSpaceValues, $hbSpaceTokens],
+        [$hbFontValues, $hbFontTokens],
+    ] as [$refs, $displays]) {
+        foreach ($refs as $label => $ref) {
             if (is_string($ref) && $ref !== '') {
                 $hbVarLabels[$ref] = $label;
+                $hbVarValues[$ref] = (string) ($displays[$label] ?? '');
             }
         }
     }
@@ -116,7 +135,7 @@
     // Corner radius lives under border; opacity under appearance. Either one earns the section.
     $showAppearance = $showStroke || $has('appearance');
 @endphp
-<div data-hb-var-labels="{{ json_encode($hbVarLabels, JSON_UNESCAPED_SLASHES) }}" {{ $attributes->merge(['class' => 'hb-blockstyle']) }}>
+<div data-hb-var-labels="{{ json_encode($hbVarLabels, JSON_UNESCAPED_SLASHES) }}" data-hb-var-values="{{ json_encode($hbVarValues, JSON_UNESCAPED_SLASHES) }}" {{ $attributes->merge(['class' => 'hb-blockstyle']) }}>
     {{-- State is per-INSTANCE, not contract-declared: BlockRenderer::stateStylesCss() reads
          `supports.states` off the block instance, and `states` is deliberately absent from
          BlockContractValidator::SUPPORT_KEYS, so no contract can declare it. Always mounted. --}}

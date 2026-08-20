@@ -175,7 +175,10 @@
             // ui/combobox owns its own display state (the input doubles as the search field), so
             // writing input.value directly would be overwritten the next time it re-renders.
             // Show the matching option's LABEL when one exists (e.g. animate 'fade-up' reads
-            // "Fade up"); values outside the loaded options (fonts) fall back to themselves.
+            // "Fade up"); a font family bound to a theme token falls back to the resolved
+            // family name from data-hb-var-values (so a `var(--hb-t-font-sans)` reads as
+            // "Rubik", not the variable reference); anything else falls back to the value
+            // itself.
             if (type === 'combobox') {
                 const text = value == null ? '' : String(value);
                 let optionLabel = null;
@@ -184,10 +187,13 @@
                         optionLabel = option.querySelector('span')?.textContent.trim() || null;
                     }
                 });
-                if (el.__hbCombobox?.setValue) el.__hbCombobox.setValue(text, optionLabel || text);
+                const styleRoot = mountedStyleRoot(el) || el.closest('.hb-blockstyle');
+                const resolved = hbVarResolvedValue(styleRoot, text);
+                const display = optionLabel || resolved || text;
+                if (el.__hbCombobox?.setValue) el.__hbCombobox.setValue(text, display);
                 else {
                     const field = el.querySelector('[data-hb-combobox-input]');
-                    if (field) field.value = optionLabel || text;
+                    if (field) field.value = display;
                     el.dataset.value = text;
                 }
                 return;
@@ -204,10 +210,15 @@
                 // Re-derive the binding from the stored value rather than trusting a leftover
                 // attribute, so selecting a different block cannot carry the previous one's label.
                 const ref = value == null ? '' : String(value);
-                const label = hbVarLabelOf(mountedStyleRoot(el) || el.closest('.hb-blockstyle'), ref);
+                const styleRoot = mountedStyleRoot(el) || el.closest('.hb-blockstyle');
+                const label = hbVarLabelOf(styleRoot, ref);
                 if (label) el.dataset.hbVarBound = ref;
                 else delete el.dataset.hbVarBound;
-                input.value = label || ref;
+                // Bound field shows the token's VALUE (the integer) when one resolves, falling
+                // back to the label for tokens with no resolvable number (colours, font families)
+                // and to the raw value when nothing is bound.
+                const resolved = hbVarResolvedValue(styleRoot, ref);
+                input.value = label ? (resolved ?? label) : ref;
             }
             if (type === 'range') {
                 const readout = el.closest('.hb-icol')?.querySelector('[data-hb-range-readout]');

@@ -77,6 +77,46 @@ class ThemeRepositoryTest extends TestCase
         $this->assertFileDoesNotExist($this->path);
     }
 
+    public function test_bare_integer_values_are_accepted_and_stored_with_px(): void
+    {
+        // The inspector and Style/Themes panel show integers without their unit, so the user
+        // never has to type "px" — a bare "16" must validate and round-trip as "16px".
+        $theme = $this->repo()->defaults();
+        $theme['spaces'] = [
+            ['name' => 'sp-1', 'label' => 'Small', 'value' => '4'],
+            ['name' => 'sp-2', 'label' => 'Medium', 'value' => '8'],
+            ['name' => 'sp-3', 'label' => 'Large', 'value' => '16'],
+        ];
+
+        $result = $this->repo()->save($theme);
+        $this->assertTrue($result['saved'], implode(', ', $result['errors']));
+
+        $loaded = $this->repo()->load();
+        $values = array_column($loaded['spaces'], 'value', 'name');
+        $this->assertSame('4px', $values['sp-1']);
+        $this->assertSame('8px', $values['sp-2']);
+        $this->assertSame('16px', $values['sp-3']);
+    }
+
+    public function test_values_with_explicit_units_round_trip_unchanged(): void
+    {
+        // 0.75rem and 50% must NOT have their units rewritten — only bare integers are
+        // auto-promoted.
+        $theme = $this->repo()->defaults();
+        $theme['spaces'] = [
+            ['name' => 'sp-rem', 'label' => 'Rem', 'value' => '0.75rem'],
+            ['name' => 'sp-pct', 'label' => 'Percent', 'value' => '50%'],
+        ];
+
+        $result = $this->repo()->save($theme);
+        $this->assertTrue($result['saved'], implode(', ', $result['errors']));
+
+        $loaded = $this->repo()->load();
+        $values = array_column($loaded['spaces'], 'value', 'name');
+        $this->assertSame('0.75rem', $values['sp-rem']);
+        $this->assertSame('50%', $values['sp-pct']);
+    }
+
     public function test_duplicate_radius_name_is_rejected(): void
     {
         $theme = $this->repo()->defaults();

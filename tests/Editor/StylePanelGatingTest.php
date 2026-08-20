@@ -501,9 +501,10 @@ class StylePanelGatingTest extends TestCase
         // write handler ignores events whose target is not the combobox root — so the model
         // would never see the change either.
         $this->assertStringContainsString("if (control.getAttribute('data-hb-control-type') === 'combobox') {", $html);
-        // Two arguments, not one: the model gets the CSS reference, the field shows the token's
-        // name. Passing the reference as the label made a bound field read as var(--hb-t-…).
-        $this->assertStringContainsString('control.__hbCombobox?.setValue(value, label || value);', $html);
+        // Two arguments, not one: the model gets the CSS reference, the field shows the
+        // token's resolved value (integer or family name). Passing the reference as the label
+        // made a bound field read as var(--hb-t-…).
+        $this->assertStringContainsString('control.__hbCombobox?.setValue(value, resolved);', $html);
     }
 
     public function test_a_composed_shadow_survives_the_renderer(): void
@@ -736,27 +737,29 @@ class StylePanelGatingTest extends TestCase
         $this->assertStringContainsString('<span class="hb-section__title">Typography</span>', $markup);
     }
 
-    public function test_a_bound_field_displays_the_token_name_not_its_css_reference(): void
+    public function test_a_bound_field_displays_the_token_value_not_its_css_reference(): void
     {
         $html = $this->editorHtml();
 
         // Picking a token wrote var(--hb-t-…) straight into the field, so a bound control read as
-        // its own CSS reference. The field now shows the NAME while the model keeps the
-        // reference, split by data-hb-var-bound.
+        // its own CSS reference. The field now shows the VALUE (the integer the Style/Themes
+        // panel holds, e.g. "16") while the model keeps the reference, split by data-hb-var-bound.
         $this->assertStringContainsString('function hbVarLabelOf(root, ref)', $html);
+        $this->assertStringContainsString('function hbVarResolvedValue(root, ref)', $html);
         $this->assertStringContainsString('data-hb-var-labels="{', $html);
+        $this->assertStringContainsString('data-hb-var-values="{', $html);
         $this->assertStringContainsString('if (label) control.dataset.hbVarBound = value;', $html);
-        $this->assertStringContainsString('input.value = label || value;', $html);
+        $this->assertStringContainsString('input.value = resolved;', $html);
 
-        // The write path must send the reference, never the displayed label.
+        // The write path must send the reference, never the displayed integer.
         $this->assertStringContainsString('raw = el.dataset.hbVarBound || input.value;', $html);
 
-        // The label map has to survive reload and re-selection, so it is re-derived on sync from
-        // the stored value rather than trusting a leftover attribute.
+        // The label/value maps have to survive reload and re-selection, so they are re-derived
+        // on sync from the stored value rather than trusting a leftover attribute.
         $this->assertStringContainsString('if (label) el.dataset.hbVarBound = ref;', $html);
 
-        // The indicator reads the binding, not the visible text — a bound field displays a name,
-        // which would otherwise look like a hand-typed literal.
+        // The indicator reads the binding, not the visible text — a bound field displays an
+        // integer, which would otherwise look like a hand-typed literal.
         $this->assertStringContainsString("if (control.dataset.hbVarBound) {", $html);
         $this->assertStringContainsString("button.dataset.hbVarState = 'bound';", $html);
     }
@@ -766,9 +769,14 @@ class StylePanelGatingTest extends TestCase
         $html = $this->editorHtml();
 
         // Otherwise the stale reference would keep being written and silently discard what was
-        // typed. Compared against the label rather than relying on listener order.
+        // typed. Compared against the resolved integer (the value the field actually displays)
+        // — falling back to the label when a token has no resolvable number.
         $this->assertStringContainsString(
-            'if (input && input.value !== hbVarLabelOf(root, bound)) delete control.dataset.hbVarBound;',
+            'const expected = hbVarResolvedValue(root, bound) ?? hbVarLabelOf(root, bound);',
+            $html,
+        );
+        $this->assertStringContainsString(
+            "if (input && input.value !== expected) {\n                delete control.dataset.hbVarBound;",
             $html,
         );
     }

@@ -218,11 +218,15 @@ class ThemeRepository
         $errors = [];
         $theme = ['colors' => [], 'fontSizes' => [], 'spaces' => [], 'radii' => [], 'fonts' => []];
 
+        // A bare integer (no unit) is accepted and stored as <n>px on save — the Style/Themes
+        // panel and the inspector both display integers without their unit, so requiring "16px"
+        // from the user just to express "16" is gratuitous. Values with units (0.75rem, 50%, etc.)
+        // pass through unchanged.
         $kinds = [
             'colors' => '/^(#[0-9a-fA-F]{3,8}|rgba?\(\s*\d{1,3}\s*,\s*\d{1,3}\s*,\s*\d{1,3}\s*(,\s*(0|1|0?\.\d+)\s*)?\)|hsla?\(\s*\d{1,3}\s*,\s*\d{1,3}%\s*,\s*\d{1,3}%\s*(,\s*(0|1|0?\.\d+)\s*)?\))$/',
-            'fontSizes' => '/^\d+(\.\d+)?(px|rem|em|%|vw|vh)$/',
-            'spaces' => '/^\d+(\.\d+)?(px|rem|em|%|vw|vh)$/',
-            'radii' => '/^\d+(\.\d+)?(px|rem|em|%|vw|vh)$/',
+            'fontSizes' => '/^\d+(\.\d+)?(px|rem|em|%|vw|vh)?$/',
+            'spaces' => '/^\d+(\.\d+)?(px|rem|em|%|vw|vh)?$/',
+            'radii' => '/^\d+(\.\d+)?(px|rem|em|%|vw|vh)?$/',
         ];
 
         foreach (['colors', 'fontSizes', 'spaces', 'radii'] as $section) {
@@ -246,6 +250,12 @@ class ThemeRepository
                 if (preg_match($kinds[$section], $value) !== 1) {
                     $errors[] = "{$section}.{$i} ('{$name}'): invalid value '{$value}'";
                     continue;
+                }
+                // Bare integer (no unit) — promote to px so the CSS the block renderer emits
+                // stays valid. The unit-stripping display path in the inspector picks "16"
+                // back out of "16px" for the field, so the user never has to type the unit.
+                if (preg_match('/^\d+(\.\d+)?$/', $value) === 1) {
+                    $value = $value . 'px';
                 }
                 if (mb_strlen($label) > 40) {
                     $label = mb_substr($label, 0, 40);

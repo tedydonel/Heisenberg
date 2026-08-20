@@ -231,6 +231,19 @@
         }
     }
 
+    // `var(--hb-t-sp-3)` -> "16". The integer the user typed in the Style/Themes panel, with
+    // the unit stripped — the field shows this when bound (not the label) so a bound field
+    // reads as its VALUE rather than its NAME. Empty when the token has no resolvable
+    // number (a hex colour, a font family); callers fall back to the label in that case.
+    function hbVarResolvedValue(root, ref) {
+        if (!root || !ref) return null;
+        try {
+            return JSON.parse(root.getAttribute('data-hb-var-values') || '{}')[ref] || null;
+        } catch (e) {
+            return null;
+        }
+    }
+
     function hbVarStateOf(value) {
         const v = String(value ?? '').trim();
         if (v === '') return 'unset';
@@ -274,6 +287,15 @@
         return sides
             .map((side) => root.querySelector(hbControlSelector(['spacing', group, side].join('.'))))
             .filter(Boolean);
+    }
+
+    // Returns 'padding' / 'margin' when the field is a spacing aggregate, else null. The
+    // sibling-clearing branch in the typing guard needs only the group to look up its sides —
+    // the axis split (left/right vs top/bottom) doesn't matter there, every side gets cleared.
+    function hbAggregateGroupOf(field) {
+        if (!field || !field.matches?.(HB_AGGREGATE_FIELDS)) return null;
+        return field.getAttribute('data-hb-style-all-value')
+            || (field.hasAttribute('data-hb-style-padding-axis') ? 'padding' : 'margin');
     }
 
     function hbDecorateVarTriggers(root) {
@@ -342,17 +364,21 @@
         // handler ignores events whose target is not the combobox root, so the model would never
         // see the change either.
         const label = hbVarLabelOf(root, value);
+        // Bound field shows the token's VALUE (the integer), not its name (the label) — and
+        // falls back to the label when the token carries no resolvable number (a hex colour,
+        // a font family).
+        const resolved = hbVarResolvedValue(root, value) ?? label ?? value;
 
         // A spacing aggregate fans the token into its covered side controls — they carry the
         // real data-hb-control write paths — then mirrors the binding on itself so the field
-        // shows the token name (not "Mixed") and its trigger reads bound.
+        // shows the token value (not "Mixed") and its trigger reads bound.
         const aggregateSides = hbAggregateSideControls(root, control);
         if (aggregateSides) {
             aggregateSides.forEach((side) => {
                 const input = side.querySelector('input');
                 if (!input) return;
                 if (label) side.dataset.hbVarBound = value; else delete side.dataset.hbVarBound;
-                input.value = label || value;
+                input.value = resolved;
                 input.dispatchEvent(new Event('input', { bubbles: true }));
                 input.dispatchEvent(new Event('change', { bubbles: true }));
                 hbSyncVarTrigger(side);
@@ -360,7 +386,7 @@
             const aggregateInput = control.querySelector('input');
             if (aggregateInput) {
                 if (label) control.dataset.hbVarBound = value; else delete control.dataset.hbVarBound;
-                aggregateInput.value = label || value;
+                aggregateInput.value = resolved;
                 aggregateInput.classList.remove('hb-field__value--mixed');
                 control.dataset.hbStyleMixed = 'false';
             }
@@ -370,11 +396,13 @@
         }
 
         // A colour layer holds its value in its own hex field and commits through its stack, so
-        // the write goes there rather than to a control path.
+        // the write goes there rather than to a control path. The hex field is a TEXT input, so
+        // the resolved (label / reference) goes there unchanged — for a colour token this is the
+        // label "Accent", since colours have no integer to show.
         if (control.classList.contains('hb-colorlayer')) {
             const hex = control.querySelector('.hb-colorlayer__hex');
             if (!hex) return;
-            hex.value = label || value;
+            hex.value = resolved;
             if (label) control.dataset.hbVarBound = value; else delete control.dataset.hbVarBound;
             // Paint the swatch with the reference itself, not a resolved hex: the theme's
             // --hb-t-* properties are on the page, so the browser resolves it — and the swatch
@@ -390,14 +418,15 @@
         if (control.getAttribute('data-hb-control-type') === 'combobox') {
             // ui/combobox already separates the two: dataset.value is what the model gets, the
             // input text is what the user sees.
-            control.__hbCombobox?.setValue(value, label || value);
+            control.__hbCombobox?.setValue(value, resolved);
         } else {
             const input = control.matches('input') ? control : control.querySelector('input');
             if (!input) return;
-            // Show the token's name, remember the reference for the write path.
+            // Show the token's value (integer for lengths, label otherwise), remember the
+            // reference for the write path.
             if (label) control.dataset.hbVarBound = value;
             else delete control.dataset.hbVarBound;
-            input.value = label || value;
+            input.value = resolved;
             // Re-use the one delegated write path rather than calling setSupport here, so the
             // linked-value/aggregate handlers (spacing, corners) still see the edit.
             input.dispatchEvent(new Event('input', { bubbles: true }));
@@ -407,20 +436,43 @@
         closeStylePopups(root);
     });
 
-    // Typing over a bound field breaks the binding: the text is no longer the token's name, so
+    // Typing over a bound field breaks the binding: the text is no longer the token's value, so
     // keeping the reference would silently discard what was typed. Cleared BEFORE the delegated
     // write handler reads it — both listeners are on document and this one is registered first,
-    // but the guard does not rely on that: it compares the text to the label, so a stale
-    // attribute can never outlive the value it described.
+    // but the guard does not rely on that: it compares the text to the resolved value (the
+    // integer the field actually displays) and falls back to the label, so a stale attribute
+    // can never outlive the value it described.
+    //
+    // Spacing's aggregate fields (data-hb-style-all-value / padding-axis / margin-axis) lack
+    // data-hb-control on purpose (see spacing-controls comment), yet still carry the binding
+    // when a token is picked — extend the selector to cover them. They live together with
+    // per-side controls that hold their OWN data-hb-control and inherited the binding when the
+    // token was selected, so clear those siblings too: the typed literal the aggregate fans out
+    // does not match the token, and stale side bindings would resurrect the reference on the
+    // next syncControls walk.
     document.addEventListener('input', (event) => {
-        const control = event.target.closest('[data-hb-control]');
+        const control = event.target.closest(
+            '[data-hb-control], [data-hb-style-all-value], [data-hb-style-padding-axis], [data-hb-style-margin-axis]'
+        );
         if (!control) return;
         const root = mountedStyleRoot(control);
         if (!root) return;
         const bound = control.dataset.hbVarBound;
         if (bound) {
             const input = control.matches('input') ? control : control.querySelector('input');
-            if (input && input.value !== hbVarLabelOf(root, bound)) delete control.dataset.hbVarBound;
+            const expected = hbVarResolvedValue(root, bound) ?? hbVarLabelOf(root, bound);
+            if (input && input.value !== expected) {
+                delete control.dataset.hbVarBound;
+                const group = hbAggregateGroupOf(control);
+                if (group) {
+                    root.querySelectorAll(`[data-hb-style-side-value="${group}"]`).forEach((side) => {
+                        if (side.dataset.hbVarBound) {
+                            delete side.dataset.hbVarBound;
+                            hbSyncVarTrigger(side);
+                        }
+                    });
+                }
+            }
         }
         hbSyncVarTrigger(control);
     }, true);
