@@ -1252,14 +1252,22 @@
         return true;
     }
 
-    // Nested-aware duplicate: deep-clones the model (normalizeModel assigns fresh ids
-    // through the whole subtree and re-merges contract defaults) as the next sibling.
+    // Nested-aware duplicate: deep-clones the model and re-merges contract defaults as the
+    // next sibling. normalizeModel is told the cloned source's id matches hb\d+ (it was just
+    // minted on first render), so by default it PRESERVES the id — and a duplicate that keeps
+    // its source's id collides with the source at every lookup: locateBlock/findModel/findBlockEl
+    // all return the FIRST match (the source), so any edit the user makes after selecting the
+    // duplicate overwrites the source. Reassign ids across the duplicated subtree post-clone.
     function duplicateBlock(id) {
         const loc = locateBlock(id);
         const source = loc ? loc.list[loc.index] : null;
         if (!source) return null;
         const copy = normalizeModel(JSON.parse(JSON.stringify(source)));
         if (!copy) return null;
+        (function reid(m) {
+            m.id = 'hb' + (++blockSeq);
+            (m.innerBlocks || []).forEach(reid);
+        })(copy);
         loc.list.splice(loc.index + 1, 0, copy);
         if (loc.parent) reRenderBlock(loc.parent.id);
         else {
