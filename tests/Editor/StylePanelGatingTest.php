@@ -769,14 +769,17 @@ class StylePanelGatingTest extends TestCase
         $html = $this->editorHtml();
 
         // Otherwise the stale reference would keep being written and silently discard what was
-        // typed. Compared against the resolved integer (the value the field actually displays)
-        // — falling back to the label when a token has no resolvable number.
+        // typed. The predicate compares the typed text to the token's LABEL — the visible name in
+        // the variable menu — not its resolved value (the integer/hex the field displays).
+        // Comparing to the resolved value was the old behaviour: a literal that happened to equal
+        // the token's hex stayed bound, and a later theme change overwrote a value the user
+        // thought they had typed literally (commit 5b7d19b2, "hex binding clarity").
         $this->assertStringContainsString(
-            'const expected = hbVarResolvedValue(root, bound) ?? hbVarLabelOf(root, bound);',
+            'const label = hbVarLabelOf(root, bound);',
             $html,
         );
         $this->assertStringContainsString(
-            "if (input && input.value !== expected) {\n                delete control.dataset.hbVarBound;",
+            "if (input && input.value !== '' && input.value !== label) {\n                delete control.dataset.hbVarBound;",
             $html,
         );
     }
