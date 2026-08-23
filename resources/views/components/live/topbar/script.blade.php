@@ -262,6 +262,14 @@
             const includeSeo = explicit && hbPendingSeo !== null;
             const extra = Object.assign({ autosave: !explicit }, hbTitleSaveExtra());
             if (hbPostId !== null) extra.content_version = hbContentVersion;
+            // docs/content-translation.md §0/Wave 2 — the locale the canvas was editing when
+            // this save was built. PostController::save() uses it to rescue the home content
+            // if a client-side path overwrote a bare translatable attribute while editing
+            // a non-home locale (the MCP create_translation fold generalised to the save
+            // envelope). A no-op for correctly-built payloads.
+            if (window.hbEditor && window.hbEditor.getEditingLocale) {
+                extra.editingLocale = window.hbEditor.getEditingLocale();
+            }
             // docs/email-system.md §7-E3: the FIRST save of a type=email document carries `type`
             // so PostController's create-only handling stamps it — see that method's own note.
             // Never sent once hbPostId exists (every save after the first is an update, where

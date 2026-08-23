@@ -113,6 +113,13 @@ class SavePostRequest extends FormRequest
             'registryHash' => ['required', 'string'],
             'computedStyles' => ['sometimes', 'nullable', 'string'],
             'autosave' => ['sometimes', 'boolean'],
+            // The locale the editor's canvas was rendering/writing while this save was built
+            // (docs/content-translation.md §0/Wave 2). Optional — saves that don't carry it get
+            // the legacy "treat every translatable write as a home-locale write" behaviour. When
+            // present and different from the post's home locale, PostController::save() runs a
+            // defensive server-side fold so a client-side overwrite of bare attributes can never
+            // silently destroy the home content.
+            'editingLocale' => ['sometimes', 'nullable', 'string', 'max:8'],
             // `present`, not `required`: `[]` is a legitimate emptied post, but the key must
             // still be sent so an omitted tree never silently preserves the old one.
             'blocks' => ['present', 'array'],

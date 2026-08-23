@@ -8,6 +8,9 @@ use Heisenberg\Adapters\GuestActor;
 use Heisenberg\Http\Requests\SavePostRequest;
 use Heisenberg\Models\Post;
 use Heisenberg\Policies\PostPolicy;
+use Heisenberg\Services\BlockRegistryService;
+use Heisenberg\Support\LocalizedAttributes;
+use Heisenberg\Support\LocaleConfig;
 use Illuminate\Contracts\Auth\Authenticatable;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -54,8 +57,10 @@ use Illuminate\Support\Facades\Gate;
  */
 class PostController
 {
-    public function __construct(private PostPolicy $policy)
-    {
+    public function __construct(
+        private PostPolicy $policy,
+        private BlockRegistryService $registry,
+    ) {
     }
 
     public function show(Request $request, string $post): JsonResponse
@@ -189,7 +194,19 @@ class PostController
                 $this->captureRevision($post, $actor, $request->boolean('autosave'));
             }
 
-            $this->replaceBlocks($post, (array) $request->input('blocks', []));
+            // Defensive locale-aware fold (docs/content-translation.md §0/Wave 2): when the
+            // save signals a non-home editing locale and the incoming block's bare translatable
+            // attribute has been overwritten (differs from what we just stored), restore the
+            // stored home value AND write the incoming value into the `_<editingLocale>` slot.
+            // This rescues the home content from any client-side path that wrote to the bare
+            // attribute while editing a non-home locale — the MCP `create_translation` fold
+            // has done this for years; this is the same posture extended to the general save.
+            $incomingBlocks = (array) $request->input('blocks', []);
+            if ($existing !== null) {
+                $incomingBlocks = $this->defendAgainstBareOverwrite($post, $incomingBlocks, (string) $request->input('editingLocale', ''));
+            }
+
+            $this->replaceBlocks($post, $incomingBlocks);
             $post->bumpContentVersion();
 
             return $post->fresh(['blocks']);
@@ -477,6 +494,99 @@ class PostController
         if ($stale->isNotEmpty()) {
             $revisionClass::query()->whereKey($stale->all())->forceDelete();
         }
+    }
+
+    /**
+     * Server-side defence against the "switch to fr from the topbar, edit, and the original
+     * content gets replaced" failure mode. The client tells us the locale it was EDITING while
+     * building this save; if that differs from the post's home locale, we treat any
+     * translatable attribute whose BARE value differs from the just-stored value as a
+     * translation that landed in the wrong slot — restore the stored home value to bare and
+     * fold the incoming value into `content_<editingLocale>`.
+     *
+     * This is the same posture MCP `create_translation`'s foldTranslatedBlocks() takes,
+     * generalised to the editor's save envelope: the client is authoritative about what the
+     * translated text IS (it lives in the incoming bare value); the server is authoritative
+     * about preserving the home content. When the client is already correct (it sent the
+     * translated text in `content_fr` and bare is unchanged), this is a no-op — the bare-vs-
+     * stored comparison is identical, nothing to restore, nothing to fold. When a client-side
+     * bug wrote the translation into bare, this restores the home content and slots the
+     * translation correctly, so both locales render the right language after save.
+     *
+     * Not applicable to creates ($existing === null): there's no prior tree to compare against.
+     * The right-hand key match uses the block `id` first, then positional fallback for any
+     * block that doesn't carry one (a brand-new block mid-save).
+     *
+     * @param  list<array<string, mixed>> $incoming
+     * @return list<array<string, mixed>>
+     */
+    private function defendAgainstBareOverwrite(Post $post, array $incoming, string $editingLocale): array
+    {
+        if ($editingLocale === '' || ! LocaleConfig::isValid($editingLocale)) {
+            return $incoming;
+        }
+
+        $homeLocale = (string) ($post->locale ?: LocaleConfig::default());
+        if ($editingLocale === $homeLocale) {
+            return $incoming;
+        }
+
+        $post->loadMissing('blocks');
+        $storedById = [];
+        $storedByPosition = [];
+        foreach ($post->blocks as $index => $blockModel) {
+            $content = $blockModel->content ?? null;
+            if (! is_array($content)) {
+                continue;
+            }
+            $storedByPosition[$index] = $content;
+            $id = $content['id'] ?? null;
+            if (is_string($id) && $id !== '') {
+                $storedById[$id] = $content;
+            }
+        }
+
+        $defended = [];
+        foreach ($incoming as $position => $incomingBlock) {
+            if (! is_array($incomingBlock)) {
+                $defended[] = $incomingBlock;
+                continue;
+            }
+
+            $stored = $storedById[(string) ($incomingBlock['id'] ?? '')] ?? $storedByPosition[$position] ?? null;
+            $defendedBlock = $incomingBlock;
+
+            if (is_array($stored) && is_string($storedBlockName = $stored['name'] ?? null) && $storedBlockName === ($incomingBlock['name'] ?? null)) {
+                $translatable = $this->registry->translatableAttributes($storedBlockName);
+                $storedAttrs = is_array($stored['attributes'] ?? null) ? $stored['attributes'] : [];
+                $incomingAttrs = is_array($incomingBlock['attributes'] ?? null) ? $incomingBlock['attributes'] : [];
+
+                foreach ($translatable as $key) {
+                    $storedValue = (string) ($storedAttrs[$key] ?? '');
+                    $incomingValue = (string) ($incomingAttrs[$key] ?? '');
+                    // Bare unchanged from storage — leave it (it IS the home content).
+                    if ($incomingValue === $storedValue) {
+                        continue;
+                    }
+                    // Bare changed AND no suffixed slot set yet — rescue: restore bare to the
+                    // stored home value and write the incoming value into `content_<editingLocale>`.
+                    $suffixedKey = $key . '_' . $editingLocale;
+                    if (array_key_exists($suffixedKey, $incomingAttrs)) {
+                        // The client already wrote the translation into the suffixed slot;
+                        // preserve it. The bare change is then either a parallel home edit or
+                        // a stray overwrite; leave it as the client sent it.
+                        continue;
+                    }
+                    $incomingAttrs[$key] = $storedValue;
+                    $incomingAttrs = LocalizedAttributes::write($incomingAttrs, $key, $editingLocale, $incomingValue);
+                }
+                $defendedBlock['attributes'] = $incomingAttrs;
+            }
+
+            $defended[] = $defendedBlock;
+        }
+
+        return $defended;
     }
 
     /**
