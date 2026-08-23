@@ -22,9 +22,11 @@ use Illuminate\Support\Collection;
  * Participates in the same `deleted_batch_id` cascade soft-delete/restore
  * mechanism as `blocks` — see {@see Post::delete()} / {@see Post::restore()}.
  *
- * NOT wired into any save/autosave/publish controller flow — that is owned by
- * a different layer. {@see snapshotOf()} is the model-level primitive a future
- * controller calls; nothing in this package invokes it yet.
+ * Wired into the save flow by {@see \Heisenberg\Http\Controllers\PostController::captureRevision()},
+ * which calls {@see snapshotOf()} on every non-autosave save (one rolling `auto_save` row per
+ * post replaces the previous one; manual saves accumulate, pruned to `heisenberg.revisions.keep`
+ * when set). Restore is client-driven: {@see \Heisenberg\Http\Controllers\PostRevisionsController}
+ * serves the block tree and the editor's replaceDoc() applies it, so a restore is undoable.
  */
 class Revision extends Model
 {
