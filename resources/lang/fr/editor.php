@@ -300,6 +300,7 @@ return [
         'err_stray_close' => 'Balise fermante inattendue [/:slug]',
         'err_unclosed' => '[:slug] ouvert à la ligne :line n\'est jamais fermé',
         'err_outside' => 'Contenu en dehors de tout bloc',
+        'apply_failed' => 'Impossible d\'appliquer les modifications du code.',
     ],
 
     // ── Éditeur d'effets (live/pickers/effect-editor.blade.php) ───

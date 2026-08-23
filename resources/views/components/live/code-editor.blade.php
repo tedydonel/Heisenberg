@@ -661,7 +661,20 @@
                     if (result.errors.length) { showErrors(result.errors); return false; }
                     clearStatus();
                     applying = true;
-                    window.hbEditor.replaceDoc(result.blocks);
+                    // Locale-aware apply (block-runtime.blade.php's applyCanvasWrite, exposed on
+                    // hbEditor). When editing the home locale this is a plain doc replace (same
+                    // as the old replaceDoc call). When editing a NON-home locale it folds the
+                    // incoming blocks into the existing tree's `_<locale>` variants by position
+                    // — leaving the home-locale bare values untouched. The old direct
+                    // replaceDoc call bypassed that fold and overwrote the bare attributes with
+                    // whatever the Code view contained; pasting a translation while editing fr
+                    // then made both locales show the translated language (the bare attribute
+                    // held the translation).
+                    const writeResult = window.hbEditor.applyCanvasWrite(result.blocks, 'replace');
+                    if (!writeResult || !writeResult.ok) {
+                        showErrors([{ line: 0, message: (writeResult && writeResult.error) || msg('msgApplyFailed') }]);
+                        return false;
+                    }
                     applying = false;
                     dirty = false;
                     return true;
@@ -774,7 +787,8 @@
     data-msg-err-stray-close="{{ __('heisenberg::editor.code.err_stray_close') }}"
     data-msg-err-unclosed="{{ __('heisenberg::editor.code.err_unclosed') }}"
     data-msg-err-outside="{{ __('heisenberg::editor.code.err_outside') }}"
-    data-msg-line-label="{{ __('heisenberg::editor.code.line_label') }}">
+    data-msg-line-label="{{ __('heisenberg::editor.code.line_label') }}"
+    data-msg-apply-failed="{{ __('heisenberg::editor.code.apply_failed') }}">
     <div class="hb-codeview__main">
         <div class="hb-codeview__gutter" aria-hidden="true"><div class="hb-codeview__nums" data-hb-cv-nums></div></div>
         <div class="hb-codeview__editor">

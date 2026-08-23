@@ -300,6 +300,7 @@ return [
         'err_stray_close' => 'Unexpected closing tag [/:slug]',
         'err_unclosed' => '[:slug] opened on line :line is never closed',
         'err_outside' => 'Content outside of any block',
+        'apply_failed' => 'Could not apply the code changes.',
     ],
 
     // ── Effect editor (live/pickers/effect-editor.blade.php) ──────
