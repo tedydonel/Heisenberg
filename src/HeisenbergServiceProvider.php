@@ -286,6 +286,7 @@ class HeisenbergServiceProvider extends ServiceProvider
             $this->registerTranslationRoutes();
             $this->registerSeoRoutes();
             $this->registerEmailRoutes();
+            $this->registerPublicRoutes();
             $this->registerAiRoutes();
             $this->registerMcpRoutes();
             $this->registerPolicies();
@@ -410,6 +411,22 @@ class HeisenbergServiceProvider extends ServiceProvider
     {
         if ($this->app['config']->get('heisenberg.email.routes', true)) {
             $this->loadRoutesFrom(__DIR__ . '/../routes/email.php');
+        }
+    }
+
+    /**
+     * Load the opt-in public show routes (routes/public.php: GET /posts/{locale}/{slug}).
+     * Off by default — the package's stated design is "the host owns the page around it";
+     * turning this on ships a turnkey public show route through BlockRenderer + the same
+     * SEO/head/alternates/featured/comments pipeline the editor preview produces. A host
+     * that wants a different URL shape (or their own template wrapper) keeps this off and
+     * binds their own route + view through the {@see \Heisenberg\Contracts\PostUrlResolver}
+     * seam + the published-template contract (docs/post-template-schema.md).
+     */
+    protected function registerPublicRoutes(): void
+    {
+        if ($this->app['config']->get('heisenberg.public.routes', false)) {
+            $this->loadRoutesFrom(__DIR__ . '/../routes/public.php');
         }
     }
 

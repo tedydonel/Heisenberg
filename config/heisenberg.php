@@ -149,6 +149,20 @@ return [
         'url_template' => null,
         'url_resolver' => \Heisenberg\Services\SeoUrlResolver::class,
     ],
+    // ── Public post show route (docs/post-template-schema.md, the bundled turnkey option) ──
+    // A working blog out of the box: GET /posts/{locale}/{slug} serving published posts
+    // through BlockRenderer + the same SEO/head/alternates/featured/comments pipeline the
+    // editor preview produces. Opt-in (`false` by default) — the package's stated design is
+    // "the host owns the page around it", but the TODO/2026-08-04 entry calls the missing
+    // public surface a blocker; this flips the default to opt-in so an adopter can run a
+    // working blog without writing their own controller. A host that wants a different
+    // public URL shape sets this to false, binds their own `PostUrlResolver` to map the
+    // post to their real route, and serves their own view through the template contract.
+    'public' => [
+        'routes'    => false, // load routes/public.php (GET /posts/{locale}/{slug})
+        // 'route_prefix' is reserved for a future mount-prefix change; the route is fixed
+        // at /posts/{locale}/{slug} today and that matches the bundled resolver's output.
+    ],
     // ── Email documents (docs/email-system.md §6.1) ───────────────────────────
     // A built email is served at its OWN address — `/{prefix}/{slug}` — and nowhere else: the
     // post preview route 404s for `type = 'email'`, and the editor's id-scoped
@@ -593,6 +607,12 @@ return [
         // — same lightest-stack posture as `comments`/`seo`: a blog visitor's language-switcher
         // fetch must not require the editor stack.
         'translations' => ['web'],
+        // `middleware.public` gates the bundled public show route (routes/public.php:
+        // GET /posts/{locale}/{slug}). Same lightest-stack posture as `comments`/`seo`/
+        // `translations`/`email`: a visitor following a link to a published post is not
+        // an authenticated editor. The controller's own status='published' + scopePosts()
+        // guard is what keeps draft/scheduled/archived/trashed/email rows off this URL.
+        'public'     => ['web'],
         'mcp'       => [],
     ],
 
