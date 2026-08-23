@@ -255,7 +255,7 @@ class SeoAnalyzer
         if ($headings === []) {
             return $wordCount >= 300
                 ? $this->check('heading-hierarchy', 'warn', 'Long content has no subheadings — add H2/H3s to break it up.')
-                : $this->check('heading-hierarchy', 'pass', 'No headings needed for this short content.');
+                : $this->check('heading-hierarchy', 'na', 'No headings needed for this short content.');
         }
 
         $previous = null;
@@ -278,7 +278,7 @@ class SeoAnalyzer
         }
 
         if ($longest === 0) {
-            return $this->check('paragraph-length', 'pass', 'No paragraphs to check.');
+            return $this->check('paragraph-length', 'na', 'No paragraphs to check.');
         }
         if ($longest > 200) {
             return $this->check('paragraph-length', 'warn', "The longest paragraph is about {$longest} words — break it into shorter ones.", ['words' => $longest, 'max' => 200]);
@@ -293,7 +293,7 @@ class SeoAnalyzer
     private function imageAltsCheck(array $images): array
     {
         if ($images === []) {
-            return $this->check('image-alts', 'pass', 'No images to check.');
+            return $this->check('image-alts', 'na', 'No images to check.');
         }
 
         $missing = count(array_filter($images, static fn (array $i): bool => ! $i['hasAlt']));
@@ -349,7 +349,7 @@ class SeoAnalyzer
     private function canonicalCheck(string $canonical): array
     {
         if ($canonical === '') {
-            return $this->check('canonical', 'pass', 'No canonical URL set — the page canonicalizes to itself.');
+            return $this->check('canonical', 'na', 'No canonical URL set — the page canonicalizes to itself.');
         }
 
         $valid = preg_match('#^https?://#i', $canonical) === 1 && filter_var($canonical, FILTER_VALIDATE_URL) !== false;
@@ -721,19 +721,25 @@ class SeoAnalyzer
         ];
     }
 
-    /** A keyphrase-dependent check when no keyphrase is set: warn, HALF weight, uniform message. */
+    /** A keyphrase-dependent check when no keyphrase is set: 'na' (score() filters it out), uniform message. */
     private function notApplicable(string $id): array
     {
-        $result = $this->check($id, 'warn', 'Set a focus keyphrase to unlock this check.');
-        $result['weight'] = $result['weight'] / 2;
-
-        return $result;
+        // No keyphrase → the dependent check has nothing to score against, so it neither
+        // helps nor hurts the score. Listed in the UI as 'na' so the author sees the check
+        // exists and what would unlock it — it isn't a "needs attention" warn.
+        return $this->check($id, 'na', 'Set a focus keyphrase to unlock this check.');
     }
 
     /** @param list<array<string,mixed>> $checks */
     private function score(array $checks): int
     {
-        $totalWeight = array_sum(array_column($checks, 'weight'));
+        // `na` checks ("no images to check", "no keyphrase set" — nothing to score against)
+        // contribute nothing to the numerator AND are excluded from the denominator: a post
+        // that hasn't done a thing is neither penalised for it nor credited for it. `warn`
+        // banks a quarter (was half — too generous: "needs attention" is not half a pass,
+        // so a title-only post climbed to ~60% purely on half-credit warns).
+        $scoring = array_values(array_filter($checks, static fn (array $c): bool => ($c['status'] ?? null) !== 'na'));
+        $totalWeight = array_sum(array_column($scoring, 'weight'));
         if ($totalWeight <= 0) {
             return 0;
         }
@@ -741,12 +747,12 @@ class SeoAnalyzer
         $achieved = array_sum(array_map(static function (array $c): float {
             $factor = match ($c['status']) {
                 'pass' => 1.0,
-                'warn' => 0.5,
+                'warn' => 0.25,
                 default => 0.0,
             };
 
             return $c['weight'] * $factor;
-        }, $checks));
+        }, $scoring));
 
         return (int) round($achieved / $totalWeight * 100);
     }

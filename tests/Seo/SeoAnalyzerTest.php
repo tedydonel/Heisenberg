@@ -109,7 +109,7 @@ class SeoAnalyzerTest extends TestCase
             $this->assertArrayHasKey('message', $check);
             $this->assertArrayHasKey('message_key', $check);
             $this->assertArrayHasKey('params', $check);
-            $this->assertContains($check['status'], ['pass', 'warn', 'fail']);
+            $this->assertContains($check['status'], ['pass', 'warn', 'fail', 'na']);
         }
     }
 
@@ -166,7 +166,7 @@ class SeoAnalyzerTest extends TestCase
 
         foreach (['keyphrase-in-title', 'keyphrase-in-slug', 'keyphrase-in-description', 'keyphrase-in-intro', 'density'] as $id) {
             $check = $this->checkById($result, $id);
-            $this->assertSame('warn', $check['status'], "{$id} should warn when no keyphrase is set");
+            $this->assertSame('na', $check['status'], "{$id} should be 'na' when no keyphrase is set");
             $this->assertSame('Set a focus keyphrase to unlock this check.', $check['message']);
         }
     }
@@ -325,7 +325,7 @@ class SeoAnalyzerTest extends TestCase
     {
         $post = $this->makePost();
         $noParagraphs = $this->analyzer()->analyze($post, 'en');
-        $this->assertSame('pass', $this->checkById($noParagraphs, 'paragraph-length')['status']);
+        $this->assertSame('na', $this->checkById($noParagraphs, 'paragraph-length')['status']);
 
         $this->addBlock($post, 0, 'heisenberg/paragraph', ['content' => $this->words(250)]);
         $long = $this->analyzer()->analyze($post->fresh(), 'en');
@@ -337,7 +337,7 @@ class SeoAnalyzerTest extends TestCase
     public function test_image_alts_pass_warn_fail(): void
     {
         $noImages = $this->makePost();
-        $this->assertSame('pass', $this->checkById($this->analyzer()->analyze($noImages, 'en'), 'image-alts')['status']);
+        $this->assertSame('na', $this->checkById($this->analyzer()->analyze($noImages, 'en'), 'image-alts')['status']);
 
         $allAlt = $this->makePost(['slug' => 'all-alt']);
         $this->addBlock($allAlt, 0, 'heisenberg/image', ['url' => 'https://cdn.example/a.jpg', 'alt' => 'A widget']);
@@ -405,7 +405,7 @@ class SeoAnalyzerTest extends TestCase
         $post = $this->makePost();
 
         $empty = $this->analyzer()->analyze($post, 'en', ['canonical' => '']);
-        $this->assertSame('pass', $this->checkById($empty, 'canonical')['status']);
+        $this->assertSame('na', $this->checkById($empty, 'canonical')['status']);
 
         $valid = $this->analyzer()->analyze($post, 'en', ['canonical' => 'https://example.com/post']);
         $this->assertSame('pass', $this->checkById($valid, 'canonical')['status']);
@@ -508,7 +508,12 @@ class SeoAnalyzerTest extends TestCase
     {
         $thin = $this->makePost();
         $thinResult = $this->analyzer()->analyze($thin, 'en');
-        $this->assertContains($thinResult['rating'], ['poor', 'needs-work']);
+        // 'poor' (not 'needs-work'): the score math must NOT inflate a post with nothing in it
+        // past the lowest rating band. This is the explicit bar set when the warn factor was
+        // tightened from 0.5 to 0.25 and the "nothing to check" cases were moved to 'na'
+        // (excluded from the score denominator). See test_title_only_post_scores_poor for the
+        // user-facing example that motivated the change.
+        $this->assertSame('poor', $thinResult['rating']);
 
         $rich = $this->makePost(['slug' => 'widget-care-guide', 'status' => 'published']);
         $this->addBlock($rich, 0, 'heisenberg/heading', ['content' => 'Widget care basics', 'level' => 2]);
@@ -529,6 +534,33 @@ class SeoAnalyzerTest extends TestCase
         ]);
 
         $this->assertGreaterThan($thinResult['score'], $richResult['score']);
+    }
+
+    /**
+     * Regression for the "title-only post reaches ~57% SEO score" report: with the warn factor at
+     * 0.5 and the "nothing to check" cases (no images / empty canonical / no paragraphs /
+     * short-no-headings) banking full pass credit, a post with literally nothing but a title
+     * climbed to ~60% — "good" territory starting at 65 was within reach without any real SEO work.
+     * The tighten-score change (warn 0.5→0.25, na excluded from the denominator) drops this case
+     * well below the 'poor'/'needs-work' boundary at 45. If a future change pushes this number
+     * back up, the bar the user actually cares about is here.
+     */
+    public function test_title_only_post_scores_poor(): void
+    {
+        $post = $this->makePost([
+            // The bare minimum a real post has: one title, auto-derived slug, status unset
+            // (Post::booted() regenerates the slug from the title when it's empty, but makePost
+            // sets both — left in to mirror what the editor actually produces on first save).
+            'title_en' => 'A Great Post About Widgets',
+            'slug' => 'a-great-post-about-widgets',
+            'status' => 'draft',
+            'locale' => 'en',
+        ]);
+
+        $result = $this->analyzer()->analyze($post, 'en');
+
+        $this->assertLessThan(45, $result['score'], "title-only post should score in 'poor' (<45), got {$result['score']}");
+        $this->assertSame('poor', $result['rating']);
     }
 
     private function rating(int $score): string

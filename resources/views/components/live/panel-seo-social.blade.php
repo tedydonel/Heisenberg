@@ -260,6 +260,10 @@
                 <x-ui.status-check-row status="pass" text="" data-hb-check-proto="pass" />
                 <x-ui.status-check-row status="warn" text="" data-hb-check-proto="warn" />
                 <x-ui.status-check-row status="fail" text="" data-hb-check-proto="fail" />
+                {{-- 'na' (2026-08-23): "nothing to score against" — e.g. no images on a text-only
+                     post. Same neutral grey icon as ui/status-check-row's icon map. The JS
+                     allow-list below mirrors this exact set. --}}
+                <x-ui.status-check-row status="na" text="" data-hb-check-proto="na" />
             </div>
             <span class="hb-seo-checklist__empty" data-hb-seo-checklist-empty>{{ __('heisenberg::editor.panel_seo_social.checklist_empty') }}</span>
         </div>
@@ -493,7 +497,7 @@
                         return true;
                     });
                     merged.forEach((check) => {
-                        const status = ['pass', 'warn', 'fail'].indexOf(check && check.status) !== -1 ? check.status : 'pass';
+                        const status = ['pass', 'warn', 'fail', 'na'].indexOf(check && check.status) !== -1 ? check.status : 'pass';
                         const row = rowPrototype(status);
                         if (!row) return;
                         row.removeAttribute('data-hb-check-proto');

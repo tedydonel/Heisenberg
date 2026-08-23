@@ -6,7 +6,12 @@
      warning-circle (only vendored in the "regular"/hollow weight — EditorIcon falls back to it
      automatically, same as any other icon this package requests in a weight that isn't vendored),
      colored with --hb-warning (2026-08-12, tokens.css §warn) so it carries real status color in
-     both themes instead of a fixed hex. --}}
+     both themes instead of a fixed hex.
+     "na" (2026-08-23, the SEO score tightening — "nothing to score against", e.g. no images on a
+     text-only post) is a FOURTH status: Phosphor's minus-circle in the muted text color, so the
+     row reads as "not applicable" rather than pass/fail/warn. Rendered as 'na' so the panel's
+     row allow-list can hand it through verbatim; the JS allow-list in panel-seo-social mirrors
+     this exact set. --}}
 @once
 
 @endonce
@@ -17,6 +22,7 @@
         'pass' => 'check-circle-fill',
         'warn' => 'warning-circle',
         'fail' => 'x-circle-fill',
+        'na'   => 'minus-circle',
     ];
     $status = array_key_exists($status, $hbStatusCheckIcons) ? $status : 'pass';
 @endphp

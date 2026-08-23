@@ -844,7 +844,7 @@ class McpToolRegistry
             ],
 
             'analyze_seo' => [
-                'description' => 'Run the SEO checklist/score against a post\'s SAVED SeoMeta + content (no draft overrides — this is the tool surface, not the editor panel\'s live re-scoring). Returns {score, rating, checks[]} — each check has id/group/status(pass|warn|fail)/weight/message. Workflow: analyze_seo, fix the worst-weighted fail/warn checks with update_seo (or by editing content), analyze_seo again.',
+                'description' => 'Run the SEO checklist/score against a post\'s SAVED SeoMeta + content (no draft overrides — this is the tool surface, not the editor panel\'s live re-scoring). Returns {score, rating, checks[]} — each check has id/group/status(pass|warn|fail|na)/weight/message. `na` means "nothing to score against" (e.g. no images on a text-only post) and does NOT count toward the score. Workflow: analyze_seo, fix the worst-weighted fail/warn checks with update_seo (or by editing content), analyze_seo again.',
                 'tier' => self::TIER_READ,
                 'inputSchema' => $this->schema([
                     'post_id' => ['type' => 'integer'],
