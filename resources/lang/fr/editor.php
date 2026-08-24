@@ -616,6 +616,7 @@ return [
         'tab_list' => 'Vue en liste',
         'tab_outline' => 'Plan',
         'empty_blocks' => 'Aucun bloc pour l’instant.',
+        'moved' => 'Déplacé.',
         'empty_headings' => 'Aucun titre pour l’instant. Ajoutez des blocs de titre pour bâtir un plan.',
         'stat_characters' => 'Caractères :',
         'stat_words' => 'Mots :',

@@ -619,6 +619,7 @@ return [
     'panel_navigator' => [
         'tab_list' => 'List View',
         'tab_outline' => 'Outline',
+        'moved' => 'Moved.',
         'empty_blocks' => 'No blocks yet.',
         'empty_headings' => 'No headings yet. Add Heading blocks to build an outline.',
         'stat_characters' => 'Characters:',

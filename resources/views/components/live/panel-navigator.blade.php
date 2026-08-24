@@ -41,7 +41,9 @@
     .hb-nav-row .ic { width: 13px; height: 13px; flex: none; display: inline-flex; align-items: center; justify-content: center; color: inherit; }
     .hb-nav-row .ic svg { width: 13px; height: 13px; }
     .hb-nav-row .nm { flex: 1; min-width: 0; font-size: 12px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-    .hb-nav-row .grab { margin-left: auto; width: 16px; flex: none; display: inline-flex; align-items: center; justify-content: center; color: var(--hb-text-disabled); opacity: 0; transition: opacity .12s; cursor: grab; }
+    .hb-nav-row .grab { margin-left: auto; width: 16px; flex: none; display: inline-flex; align-items: center; justify-content: center; color: var(--hb-text-disabled); opacity: .4; transition: opacity .12s; cursor: grab; }
+    /* Fully visible on the row's hover/active state — the .4 baseline is the
+       discoverability floor so a user who never hovers still sees the handle exists. */
     .hb-nav-row .grab svg { width: 12px; height: 12px; }
     .hb-nav-row:hover .grab { opacity: 1; }
     .hb-nav-empty { padding: 40px 20px; text-align: center; color: var(--hb-text-disabled); font-size: 12px; line-height: 1.5; }
@@ -264,7 +266,21 @@
                         if (fromIndex !== -1 && hoverIndex !== -1) {
                             const desired = hover.below ? hoverIndex + 1 : hoverIndex;
                             const toIndex = desired > fromIndex ? desired - 1 : desired;
-                            if (toIndex !== fromIndex) window.hbEditor.moveBlock(fromIndex, toIndex);
+                            if (toIndex !== fromIndex && window.hbEditor.moveBlock(fromIndex, toIndex)) {
+                                // moveBlock fires hb:blocks-changed and the list rebuilds
+                                // (the original row element is gone); the moved block lands
+                                // at its new index. Select it in the canvas + highlight the
+                                // rebuilt row so the reorder is visibly reflected (without
+                                // this, the canvas selection stayed on a different block and
+                                // the navigator row was un-highlighted — the user couldn't
+                                // tell the drag had taken effect).
+                                if (window.hbEditor.selectById) window.hbEditor.selectById(id);
+                                const rebuilt = root.querySelector('[data-nav-row="' + cssId(id) + '"]');
+                                if (rebuilt) {
+                                    root.querySelectorAll('.hb-nav-row').forEach((r) => r.classList.toggle('is-on', r === rebuilt));
+                                }
+                                announce(root, t('moved', 'Moved.'));
+                            }
                         }
                     }
                     cleanup();
@@ -326,7 +342,12 @@
                 }
                 const row = e.target.closest('[data-nav-row]');
                 if (row) {
-                    scrollToBlock(row.getAttribute('data-nav-row'));
+                    const id = row.getAttribute('data-nav-row');
+                    scrollToBlock(id);
+                    // Select the block in the canvas (toolbar docks, inspector follows,
+                    // hb:block-selected fires for every other consumer) — scrollToBlock
+                    // alone only moves the viewport, it doesn't set the canvas selection.
+                    if (window.hbEditor && window.hbEditor.selectById) window.hbEditor.selectById(id);
                     root.querySelectorAll('.hb-nav-row').forEach((r) => r.classList.toggle('is-on', r === row));
                     return;
                 }
@@ -371,6 +392,7 @@
     // unclosed block.)
     $hbNavStrings = [
         'empty_blocks' => __('heisenberg::editor.panel_navigator.empty_blocks'),
+        'moved' => __('heisenberg::editor.panel_navigator.moved'),
         'empty_headings' => __('heisenberg::editor.panel_navigator.empty_headings'),
         'stat_characters' => __('heisenberg::editor.panel_navigator.stat_characters'),
         'stat_words' => __('heisenberg::editor.panel_navigator.stat_words'),
