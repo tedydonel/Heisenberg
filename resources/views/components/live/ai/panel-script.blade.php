@@ -332,8 +332,13 @@
                 };
 
                 const autoGrow = () => {
+                    // Clamp between the CSS min-height (so a short/empty prompt never shrinks
+                    // back to a sliver — see .hb-ai-composer__input min-height in panel-ai.blade)
+                    // and the max-height cap (160px). scrollHeight drives growth; the min keeps
+                    // the click target + placeholder legible on a fresh tab and after clearing.
                     input.style.height = 'auto';
-                    input.style.height = Math.min(input.scrollHeight, 160) + 'px';
+                    const minHeight = 60;
+                    input.style.height = Math.min(160, Math.max(minHeight, input.scrollHeight)) + 'px';
                 };
 
                 const selectionContext = () => {

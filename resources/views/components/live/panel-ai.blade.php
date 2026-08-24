@@ -145,8 +145,14 @@
         font-family: var(--hb-font-sans, Rubik, sans-serif);
         font-size: var(--hb-fs-sm, 12px); line-height: 1.45;
         color: var(--hb-text-primary);
-        /* Grows to a cap then scrolls, but never shows the browser's scrollbar
-           — the well would look broken with a bar down its side. */
+        /* Default height: ~3 visible lines (matches the rows="3" attribute below). Without
+           this min-height, the textarea renders at rows="2" intrinsic ≈ 35-43px on a fresh
+           tab — a sliver where the placeholder is barely legible and the click target is tiny.
+           The autosize handler (panel-script) clamps to max(min-height, scrollHeight) so this
+           also stops the box from shrinking back to a sliver after a short prompt is typed
+           and then cleared. Grows to the cap then scrolls (scrollbar hidden — the well would
+           look broken with a bar down its side). */
+        min-height: 60px; box-sizing: border-box;
         resize: none; max-height: 160px; overflow-y: auto;
         scrollbar-width: none; -ms-overflow-style: none;
     }
@@ -267,7 +273,7 @@
         </div>
 
         <div class="hb-ai-composer">
-            <textarea class="hb-ai-composer__input" data-hb-ai-prompt rows="2"
+            <textarea class="hb-ai-composer__input" data-hb-ai-prompt rows="3"
                 placeholder="{{ __('heisenberg::editor.panel_ai_tools.ai_prompt_ph') }}"></textarea>
             <div class="hb-ai-composer__row">
                 <button type="button" class="hb-ai-composer__btn" data-hb-ai-new
