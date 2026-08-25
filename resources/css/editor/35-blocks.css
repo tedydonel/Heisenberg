@@ -1,12 +1,4 @@
-/* Block model — the document's living blocks on the paper sheet.
-   The per-block CSS (resources/blocks/<slug>/<slug>.css) is embedded by the
-   block-runtime component and styles the rendered `.hb-block-*` roots via a set
-   of design tokens (--ink, --accent-*, --fs-*, --space-*, …). Those tokens are
-   the builder's content palette, not the editor's --hb-* chrome tokens, so we
-   pin them here on the sheet itself. The sheet is a light paper in any theme
-   (see 34-canvas.css), so these stay light too — no dark variants. */
 .hb-page {
-    /* neutrals / surfaces (heisenberg.pen light values) */
     --ink: #0a0a0a;
     --ink-soft: #1a1a1a;
     --slate: #5a5a5a;
@@ -23,8 +15,6 @@
     --line-strong: #c8c8c8;
     --hl: #ffd166;
 
-    /* accent ramp — accent-1 is body ink (mirrors the builder's `--accent-1: var(--ink)`),
-       accent-3 the brand blue, 4/5 its tints; the rest fill the block palette. */
     --accent-1: #0a0a0a;
     --accent-2: #5a5a5a;
     --accent-3: #3d68f5;
@@ -36,7 +26,6 @@
     --accent-surface: #f7f7f7;
     --accent-danger: #d4191a;
 
-    /* type + space + radius scales */
     --fs-sm: 13px;
     --fs-md: 14px;
     --fs-lg: 16px;
@@ -70,33 +59,24 @@
     --font-serif: Georgia, "Times New Roman", serif;
     --font-mono: "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
 
-    /* Editing blue, pinned light for the same reason as everything above: the
-       selection ring and the block toolbar sit ON the white sheet, not on the
-       editor chrome, so they must NOT inherit the lightened dark-theme value
-       (--hb-editing: #6E8DFF, 02-dark-theme.css). That override is correct for
-       chrome, wrong here — it renders a washed-out blue on white paper. */
     --hb-editing: #3d68f5;
 }
 
-/* Block wrapper — the selection target. Holds the rendered block root and,
-   while selected, the floating toolbar. */
 .hb-blk { position: relative; margin: 2px 0; border-radius: 0; }
+.hb-blk { cursor: grab; }
+.hb-blk .hb-ce { cursor: text; }
+.hb-blk .hb-inner-appender, .hb-blk .hb-img-empty { cursor: pointer; }
+body.hb-canvas-drag, body.hb-canvas-drag * { cursor: grabbing !important; }
 .hb-blk:hover:not(.is-selected) { box-shadow: 0 0 0 .6px var(--hb-border-strong); }
 .hb-blk.is-selected { box-shadow: 0 0 0 .6px var(--hb-editing); }
 .hb-blk > .hb-block { outline: none; }
 
-/* Nested children (inside a container's inner-blocks slot): the wrapper is
-   display:contents so the container's flex layout sees the REAL child root as
-   its item — selection/hover paint on that root via child combinators, and
-   the toolbar anchors to it through the host class (block-runtime docks it
-   there because a boxless wrapper can't anchor an absolute). */
 .hb-blk--nested { display: contents; margin: 0; }
 .hb-blk--nested:hover:not(.is-selected) { box-shadow: none; }
 .hb-blk--nested.is-selected { box-shadow: none; }
 .hb-blk--nested:hover:not(.is-selected) > [data-block-id] { box-shadow: 0 0 0 .6px var(--hb-border-strong); }
 .hb-blk--nested.is-selected > [data-block-id] { box-shadow: 0 0 0 .6px var(--hb-editing); }
 
-/* Editor-only click-to-add target inside an empty container. */
 .hb-inner-appender {
     display: flex; align-items: center; justify-content: center;
     min-height: 44px; width: 100%; flex: 1 1 auto;
@@ -109,29 +89,14 @@
 }
 .hb-inner-appender:hover { border-color: var(--hb-editing); color: var(--hb-editing); }
 
-/* Rich-text editables (.hb-ce) show a placeholder when empty. */
 .hb-ce:empty::before { content: attr(data-ph); color: var(--ghost, #C4C4C4); pointer-events: none; }
 .hb-ce { outline: none; }
 
-/* The floating block toolbar, above the SELECTED block at any nesting depth (mirrors the builder's
-   .btoolbar). The singleton lives in a hidden holder until a block is selected, then moves into the
-   canvas layer and is placed from that block's measured box — block-runtime's positionToolbar()
-   owns top/left, this only says what kind of positioning it is. Fixed rather than absolute because
-   a nested child's display:contents wrapper anchors nothing, and because it must not be clipped by
-   the canvas's own overflow while a block sits at the edge of the stage. */
 .hb-blk-toolbar-holder { position: absolute; width: 0; height: 0; overflow: hidden; }
 .hb-tb--float { position: fixed; z-index: 45; }
 
-/* Per-selection gating: a group/button switched off for the selected block
-   (supports.color/align, rich-text) must actually hide — the .hb-tb__* rules
-   set display:inline-flex, which would otherwise beat the [hidden] attribute. */
 .hb-tb [hidden] { display: none; }
 
-/* Drag & drop reorder / insert (see block-runtime.blade.php: wireCanvasBlockDrag, wirePaletteDrag).
-   The dragged block dims in place — no ghost follows the cursor for a reorder, since there's an
-   existing element to dim; only the palette→canvas insert drag shows a floating chip below, because
-   there's no element on the canvas yet to represent it. A flat 2px line (no rounded pill, matching
-   the .6px selection ring language) shows where the drop will land. */
 .hb-blk.is-dragging { opacity: .4; }
 .hb-blk.is-drop-before::before,
 .hb-blk.is-drop-after::after {
@@ -141,9 +106,6 @@
 .hb-blk.is-drop-before::before { top: -2px; }
 .hb-blk.is-drop-after::after { bottom: -2px; }
 
-/* Container drops (palette → container): the dashed outline marks the RECEIVING
-   container; the insertion line paints on a nested child's ROOT element — its
-   .hb-blk--nested wrapper is display:contents and can't paint anything. */
 .is-drop-inside { outline: 1.5px dashed var(--hb-editing); outline-offset: 2px; }
 [data-block-id].is-drop-before, [data-block-id].is-drop-after { position: relative; }
 [data-block-id].is-drop-before::before,
@@ -154,9 +116,6 @@
 [data-block-id].is-drop-before::before { top: -2px; }
 [data-block-id].is-drop-after::after { bottom: -2px; }
 
-/* The floating chip that follows the pointer while dragging a Components card onto the canvas.
-   pointer-events: none is load-bearing — without it, elementFromPoint(pointerX, pointerY) would hit
-   the ghost itself (it's positioned exactly there) instead of the block/canvas underneath it. */
 .hb-drag-ghost {
     position: fixed; top: 0; left: 0; z-index: 1000;
     display: inline-flex; align-items: center; gap: 6px;
@@ -173,33 +132,20 @@
 }
 .hb-drag-ghost .hb-icon, .hb-drag-ghost svg { width: 16px; height: 16px; flex: none; }
 
-/* Third-party embedded content is INERT on the canvas. A loaded iframe owns its own
-   document, so a click inside it is delivered to THAT document and the editor never sees
-   a mousedown — the block can't be selected, moved or edited (its settings live in the
-   inspector, which needs the selection). Disabling pointer events lets every click fall
-   through to the block wrapper. Editor-only chrome: the published page (and the preview)
-   never loads this stylesheet, so the real embed stays fully interactive there. */
 .hb-canvas .hb-blk iframe,
 .hb-canvas .hb-blk video,
 .hb-canvas .hb-blk audio,
 .hb-canvas .hb-blk object,
 .hb-canvas .hb-blk embed { pointer-events: none; }
 
-/* Empty image block — a click-to-pick placeholder instead of a broken <img>. */
 .hb-blk .hb-img-empty { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 8px; min-height: 160px; width: 100%; border: 1px dashed var(--line-strong, #C8C8C8); border-radius: var(--r-md, 5px); background: var(--subtle, #FAFAFA); color: var(--muted, #9A9A9A); cursor: pointer; font-family: var(--hb-font-sans, Rubik, sans-serif); font-size: 13px; }
 .hb-blk .hb-img-empty:hover { border-color: var(--hb-editing); color: var(--hb-editing); }
 .hb-blk .hb-img-empty svg { width: 26px; height: 26px; opacity: .7; }
 
-/* Container edge-resize affordance — block-runtime's wireContainerResize() puts one of these
-   on a resizable block ROOT while the pointer sits in the 6px band inside its right/bottom
-   edge (contract declares supports.size.width/height). !important because a container's own
-   content (e.g. an .hb-ce with cursor:text) must not win the band. Editor-only chrome. */
 .hb-canvas .hb-resize-ew, .hb-canvas .hb-resize-ew * { cursor: ew-resize !important; }
 .hb-canvas .hb-resize-ns, .hb-canvas .hb-resize-ns * { cursor: ns-resize !important; }
 .hb-canvas .hb-resize-nwse, .hb-canvas .hb-resize-nwse * { cursor: nwse-resize !important; }
 
-/* Empty icon block — a click-to-pick placeholder (decorateIconBlock, block-runtime); the
-   click dispatches the cancelable hb:pick-icon the icon-picker dialog claims. */
 .hb-blk .hb-icon-empty { display: inline-flex; flex-direction: column; align-items: center; justify-content: center; gap: 6px; min-width: 96px; min-height: 96px; border: 1px dashed var(--line-strong, #C8C8C8); border-radius: var(--r-md, 5px); background: var(--subtle, #FAFAFA); color: var(--muted, #9A9A9A); cursor: pointer; font-family: var(--hb-font-sans, Rubik, sans-serif); font-size: 12px; }
 .hb-blk .hb-icon-empty:hover { border-color: var(--hb-editing); color: var(--hb-editing); }
 .hb-blk .hb-icon-empty svg { width: 22px; height: 22px; opacity: .7; }

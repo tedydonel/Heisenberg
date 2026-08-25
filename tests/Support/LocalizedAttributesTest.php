@@ -14,8 +14,6 @@ use PHPUnit\Framework\TestCase;
  */
 class LocalizedAttributesTest extends TestCase
 {
-    // ── read() ────────────────────────────────────────────────────────────
-
     public function test_read_prefers_the_locale_suffixed_variant(): void
     {
         $attributes = ['content' => 'Hello', 'content_fr' => 'Bonjour'];
@@ -43,8 +41,6 @@ class LocalizedAttributesTest extends TestCase
         $this->assertSame('', LocalizedAttributes::read($attributes, 'content', 'fr'));
     }
 
-    // ── write() ───────────────────────────────────────────────────────────
-
     public function test_write_always_writes_the_suffixed_variant(): void
     {
         $result = LocalizedAttributes::write(['content' => 'Hello'], 'content', 'fr', 'Bonjour');
@@ -70,8 +66,6 @@ class LocalizedAttributesTest extends TestCase
         $this->assertNull(LocalizedAttributes::read($attributes, 'text', 'en'));
     }
 
-    // ── hasContent() ──────────────────────────────────────────────────────
-
     public function test_has_content_rejects_null_empty_string_and_empty_array(): void
     {
         $this->assertFalse(LocalizedAttributes::hasContent(null));
@@ -87,8 +81,6 @@ class LocalizedAttributesTest extends TestCase
         $this->assertTrue(LocalizedAttributes::hasContent(0));
         $this->assertTrue(LocalizedAttributes::hasContent(false));
     }
-
-    // ── locales() ─────────────────────────────────────────────────────────
 
     public function test_locales_returns_every_candidate_when_there_are_no_translatable_keys(): void
     {

@@ -34,8 +34,6 @@ class SeoPanelWiringTest extends TestCase
         return $this->get('/editor')->getContent();
     }
 
-    // ── field markers (blank /editor document) ──────────────────────────────
-
     public function test_every_seo_field_carries_its_data_hb_seo_field_marker(): void
     {
         $html = $this->blankEditorHtml();
@@ -74,8 +72,6 @@ class SeoPanelWiringTest extends TestCase
         return str_contains(substr($html, $pos, $window), $needle);
     }
 
-    // ── the shared slug mechanism (no second write path) ─────────────────────
-
     public function test_the_seo_panel_slug_field_shares_the_summary_slug_marker_not_a_second_one(): void
     {
         $html = $this->blankEditorHtml();
@@ -102,8 +98,6 @@ class SeoPanelWiringTest extends TestCase
         $this->assertStringNotContainsString('data-hb-seo-field="slug"', $html);
     }
 
-    // ── score container + analyze URL template ───────────────────────────────
-
     public function test_the_panel_carries_a_score_container_and_the_analyze_url_template(): void
     {
         $html = $this->blankEditorHtml();
@@ -128,8 +122,6 @@ class SeoPanelWiringTest extends TestCase
         );
     }
 
-    // ── hbPendingSeo mechanism actually shipped ──────────────────────────────
-
     public function test_topbar_ships_the_pending_seo_mechanism(): void
     {
         $html = $this->blankEditorHtml();
@@ -138,8 +130,6 @@ class SeoPanelWiringTest extends TestCase
         $this->assertStringContainsString('hb:post-seo-change', $html);
         $this->assertStringContainsString('hb:post-seo-rejected', $html);
     }
-
-    // ── seeded values actually render (existing post) ────────────────────────
 
     public function test_an_existing_posts_seo_meta_seeds_the_panel(): void
     {
@@ -173,8 +163,6 @@ class SeoPanelWiringTest extends TestCase
 
         $this->assertFalse($this->markerFollowedByWithin($html, 'data-hb-seo-field="meta_title"', 'disabled', 300));
     }
-
-    // ── checklist row color/size (owner-reported: font too big, icons black) ─
 
     public function test_the_warn_check_icon_uses_the_warning_token_not_a_fixed_hex(): void
     {

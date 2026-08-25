@@ -1,7 +1,3 @@
-{{-- live/toolbar/more-menu — the ⋯ popover: block-level actions that need no dedicated
-     toolbar button. Each item carries data-more-action; block-toolbar.blade.php's delegated
-     click listener maps them onto window.hbEditor (duplicate = insertBlock + copy
-     attributes/supports; delete = removeBlock). --}}
 <div class="hb-pop hb-moremenu" data-hb-moremenu>
     <div class="hb-varmenu__list">
         <button type="button" class="hb-vmi" data-more-action="duplicate">

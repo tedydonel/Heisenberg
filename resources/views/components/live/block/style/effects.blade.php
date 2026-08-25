@@ -1,4 +1,3 @@
-{{-- live/block/style/effects — Effects stack and editor trigger. --}}
 <x-ui.panel-section title="Effects">
     <x-slot:action>
         <button type="button" class="hb-itrail hb-itrail--bare" aria-label="Add effect" data-hb-style-add="effects">

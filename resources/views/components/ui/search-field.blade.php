@@ -1,10 +1,3 @@
-{{-- ui/search-field — 36px inline row, bottom border only (no full
-     box), leading 13px search icon. Real editable text input, not a static hint.
-
-     Opt-in filtering: pass `data-hb-filter="<container selector>"` and
-     `data-hb-filter-item="<item selector>"` and typing hides every matching item
-     inside the container whose text doesn't contain the query (case-insensitive).
-     Items are live-queried per keystroke, so lists rebuilt later still filter. --}}
 @once
 
 <script>
@@ -26,7 +19,7 @@
                     });
                 };
                 input.addEventListener('input', apply);
-                input.addEventListener('search', apply); // the native clear (x) button
+                input.addEventListener('search', apply);
             });
         };
         if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', boot, { once: true });

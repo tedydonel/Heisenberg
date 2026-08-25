@@ -1,20 +1,9 @@
-{{-- live/code-editor — the Code view: a shortcode dialect of the block contracts, round-tripping
-     with the canvas through window.hbEditor's doc model. One tag per block ([slug …]body[/slug]);
-     plain attribute names are contract attributes, dotted names are supports paths — exactly the
-     values the inspector and toolbar write (e.g. typography.fontSize, states.hover.color.text).
-     `layers` keys are never serialized: they are inspector editing state, re-synthesized from the
-     scalar by the layer-list rebuild. Parsing validates against the live registry and reports
-     line-numbered errors; the doc is only replaced by a clean parse, so the canvas can never be
-     clobbered by half-typed code. Toggled by the footer's [data-hb="code-editor"] chip. --}}
 @once
 <style>
     .hb-codeview {
         position: absolute; inset: 0; z-index: 5;
         display: flex; flex-direction: column;
         background: var(--hb-code-bg);
-        /* A real editor palette (GitHub Light/Dark) — component-local custom properties,
-           deliberately independent of the chrome theme tokens (like the color picker's
-           documented exceptions): a code surface needs a full token spectrum. */
         --hb-code-bg: #ffffff;
         --hb-code-gutter-bg: #f6f8fa;
         --hb-code-gutter-fg: #8c959f;
@@ -67,7 +56,6 @@
     .hb-codeview__nums .is-active { color: var(--hb-code-body); }
     .hb-codeview__nums .is-err { color: var(--hb-danger); font-weight: 700; }
     .hb-codeview__editor { flex: 1 1 auto; min-width: 0; position: relative; background: var(--hb-code-bg); }
-    /* The current-line band sits under the highlight mirror (real-editor affordance). */
     .hb-codeview__band {
         position: absolute; left: 0; right: 0; top: 0; height: 20px;
         background: var(--hb-code-line);
@@ -97,8 +85,6 @@
         overflow: auto; resize: none; outline: none;
         background: transparent; color: transparent;
         caret-color: var(--hb-code-body);
-        /* Native scrollbars stay hidden from first paint — the two ui/custom-scrollbar
-           instances below are the visible affordance for both axes. */
         scrollbar-width: none;
     }
     .hb-codeview__input::-webkit-scrollbar { display: none; }
@@ -131,8 +117,6 @@
 <script>
     (() => {
         const LINE_H = 20;
-        // Values are quoted OR bare; a bare value may not contain whitespace/]/" and may
-        // not END in a slash, so a tight `…=4/]` still self-closes cleanly.
         const TAG_RE = /\[(\/)?([a-z][a-z0-9-]*)((?:\s+[a-zA-Z0-9_.:-]+\s*=\s*(?:"(?:[^"\\]|\\.)*"|[^\s\]"]*[^\s\]"\/]))*)\s*(\/)?\]/g;
         const ATTR_RE = /([a-zA-Z0-9_.:-]+)\s*=\s*(?:"((?:[^"\\]|\\.)*)"|([^\s\]"]*[^\s\]"\/]))/g;
 
@@ -159,10 +143,6 @@
             return value;
         };
 
-        // ── the short dialect ──────────────────────────────────────
-        // CSS/Tailwind-familiar short names over the full supports paths. Long form always
-        // stays valid (aliases are additive), and a contract attribute of the same name
-        // wins over an alias. Real slugs likewise win over tag aliases.
         const ALIASES = {
             color: 'color.text', bg: 'color.background',
             font: 'typography.fontFamily', weight: 'typography.fontWeight',
@@ -190,7 +170,6 @@
         const REVERSE = {};
         Object.keys(ALIASES).forEach((short) => { REVERSE[ALIASES[short]] = short; });
         const STATES = ['hover', 'active', 'focus'];
-        // CSS box shorthands: 1 value = all, 2 = pairs, 4 = each (key order is the CSS order).
         const BOX_SHORTHANDS = {
             padding: { path: 'spacing.padding', keys: ['top', 'right', 'bottom', 'left'] },
             margin: { path: 'spacing.margin', keys: ['top', 'right', 'bottom', 'left'] },
@@ -210,7 +189,6 @@
             if (a === c && b === d) return a + ' ' + b;
             return [a, b, c, d].join(' ');
         };
-        // Heading levels ride the tag itself (h1…h6, HTML-familiar); paragraph is p.
         const TAG_SHORT = {
             p: { slug: 'paragraph' },
             h1: { slug: 'heading', attrs: { level: 1 } }, h2: { slug: 'heading', attrs: { level: 2 } },
@@ -225,15 +203,9 @@
             }
             return { tag: slug, skip: [] };
         };
-        // Unquoted values keep the code light; anything outside this set gets quotes.
         const UNQUOTED_OK = /^[A-Za-z0-9_.#%(),:+*-]+$/;
         const fmtValue = (v) => UNQUOTED_OK.test(v) ? v : '"' + escAttr(v) + '"';
 
-        // ── body formatting ────────────────────────────────────────
-        // Rich-text bodies pretty-print too: block-level boundaries start a new line and
-        // long prose word-wraps near BODY_WIDTH. HTML collapses the inserted newlines back
-        // to whitespace, so wrapping never changes what renders — and it is idempotent, so
-        // the round trip is stable.
         const BODY_WIDTH = 90;
         const breakBlocks = (text) => text.replace(/(<\/(?:div|p|section|blockquote|ul|ol|li|h[1-6])>|<br\s*\/?>)\s*(?=<)/gi, '$1\n');
         const wrapLine = (line, width) => {
@@ -254,13 +226,7 @@
         };
         const formatBody = (body) => breakBlocks(body).split('\n').reduce((lines, line) => lines.concat(wrapLine(line, BODY_WIDTH)), []);
 
-        // ── serializer: doc.blocks → shortcode text ────────────────
-        // A tag whose inline form would exceed this width pretty-prints one attribute
-        // per line (Prettier-style), closing bracket back at the tag's indent.
         const MAX_TAG_WIDTH = 80;
-        // Canonical supports order in serialized code — mirrors the inspector's panel
-        // order so the text reads like the panel, with state overrides last. Stable
-        // sort, so leaves inside one group keep their relative order.
         const GROUP_ORDER = ['align', 'position', 'layout', 'appearance', 'typography', 'size', 'color', 'spacing', 'border', 'effects', 'animation', 'states'];
         const groupRank = (path) => {
             const i = GROUP_ORDER.indexOf(path.split('.')[0]);
@@ -288,21 +254,16 @@
             for (const key in defs) {
                 if (!Object.prototype.hasOwnProperty.call(defs, key) || key === rich || t.skip.indexOf(key) !== -1) continue;
                 const def = defs[key] || {};
-                // docs/content-translation.md §0/Wave 2 — Code view shows/edits whichever locale
-                // the canvas is currently editing, through the same read/write rule as every
-                // other surface (window.hbEditor.readAttr/resolveAttrKey).
                 const value = model.attributes ? (window.hbEditor && window.hbEditor.readAttr ? window.hbEditor.readAttr(model, key) : model.attributes[key]) : undefined;
                 if (value === undefined || value === null) continue;
                 const dflt = def.default === undefined || def.default === null ? '' : def.default;
-                if (String(value) === String(dflt)) continue; // only non-default values appear in code
+                if (String(value) === String(dflt)) continue;
                 const text = (typeof value === 'object') ? JSON.stringify(value) : String(value);
                 parts.push(key + '=' + fmtValue(text));
             }
             const leaves = [];
             flattenSupports(model.supports || {}, '', leaves);
             leaves.sort((x, y) => groupRank(x[0]) - groupRank(y[0]));
-            // Compress: state prefixes, box collapse (all four sides → CSS shorthand),
-            // then the alias table; the full dotted path is the fallback, never an error.
             const slots = [];
             const boxes = {};
             leaves.forEach(([path, value]) => {
@@ -344,7 +305,6 @@
             });
             const inline = indent + '[' + slug + (parts.length ? ' ' + parts.join(' ') : '');
             const wide = parts.length > 0 && (inline + ']').length > MAX_TAG_WIDTH;
-            // `open` always ends right where the closing bracket (or `/]`) belongs.
             const open = wide
                 ? indent + '[' + slug + '\n' + parts.map((p) => indent + '  ' + p).join('\n') + '\n' + indent
                 : inline;
@@ -365,7 +325,6 @@
             return out ? out + '\n' : '';
         };
 
-        // ── parser: shortcode text → models + line-numbered errors ─
         const unescAttr = (v) => v.replace(/\\(["\\])/g, '$1');
         const setPath = (obj, path, value) => {
             const parts = path.split('.');
@@ -405,7 +364,6 @@
                     state = name.slice(0, ci);
                     name = name.slice(ci + 1);
                 }
-                // Contract attributes win over aliases; a state prefix always means supports.
                 if (!state && Object.prototype.hasOwnProperty.call(defs, name)) {
                     const def = defs[name] || {};
                     let value = raw;
@@ -420,8 +378,6 @@
                         err(line, msg('msgErrInvalidValue', { name: rawName, slug: slug }));
                         return;
                     }
-                    // docs/content-translation.md §0/Wave 2 — a translatable attribute written
-                    // from Code view lands on the same key setAttribute()/rich-text editing would.
                     const attrKey = window.hbEditor && window.hbEditor.resolveAttrKey ? window.hbEditor.resolveAttrKey(model.name, name) : name;
                     model.attributes[attrKey] = value;
                     return;
@@ -433,8 +389,6 @@
                     err(line, msg('msgErrUnknownAttr', { name: rawName, slug: slug }));
                     return;
                 }
-                // Long-form state paths must name a REAL state — `states.300.…` would
-                // round-trip forever and never emit any CSS.
                 if (group === 'states') {
                     const seg = path.split('.');
                     if (STATES.indexOf(seg[1]) === -1 || seg.length < 3) {
@@ -446,8 +400,6 @@
                 if (box) {
                     const declared = dataGet(contract.supports, box.path);
                     const values = raw.trim().split(/\s+/).slice(0, 4);
-                    // A side-map declaration (or a multi-value) expands CSS-style; a scalar
-                    // declaration with one value writes the scalar path directly.
                     if ((declared && typeof declared === 'object') || values.length > 1) {
                         const sides = expandBox(values, box.keys);
                         box.keys.forEach((k) => setPath(model.supports, prefix + box.path + '.' + k, sides[k]));
@@ -492,7 +444,6 @@
                     attach(stack.pop());
                     continue;
                 }
-                // Real slugs win; then the tag aliases (p, h1…h6 — the level rides the tag).
                 let name = map[slug], preset = null;
                 if (!name && TAG_SHORT[slug]) {
                     name = map[TAG_SHORT[slug].slug];
@@ -513,8 +464,6 @@
                     model: { name: name, attributes: {}, supports: {}, innerBlocks: [] },
                 };
                 if (preset) { for (const k in preset) frame.model.attributes[k] = preset[k]; }
-                // Errors point at the attribute's OWN line — pretty-printed tags span
-                // several lines, so the tag's first line would often be the wrong one.
                 const attrsAt = m.index + 1 + slug.length;
                 ATTR_RE.lastIndex = 0;
                 let a;
@@ -532,15 +481,9 @@
             return { blocks: rootBlocks, errors: errors };
         };
 
-        // ── highlighter: same tokenizer, escaped segment by segment ─
         const escHtml = (s) => s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
-        // Body prose: inline HTML tags get their own token color so rich-text markup reads
-        // as markup, not as plain text.
         const bodyHtml = (text) => text.replace(/(<[^>]*>)|([^<]+)|(<)/g, (all, tag, plain, lone) =>
             tag ? '<span class="h">' + escHtml(tag) + '</span>' : escHtml(plain || lone || ''));
-        // Attribute values color by TYPE: numbers/units, hex colours (underlined with
-        // themselves — an inline swatch that can't disturb the overlay metrics), var()
-        // token references, strings. State prefixes (hover:) get their own color.
         const valueToken = (value) => {
             if (value.charAt(0) === '"') return '<span class="s">' + value + '</span>';
             if (/^#[0-9a-fA-F]{3,8}$/.test(value)) return '<span class="c" style="border-bottom:2px solid ' + value + '">' + value + '</span>';
@@ -571,7 +514,6 @@
             return out + bodyHtml(text.slice(last)) + '\n';
         };
 
-        // ── the view ───────────────────────────────────────────────
         const boot = () => {
             document.querySelectorAll('[data-hb-codeview]').forEach((root) => {
                 if (root.__hbCodeview) return;
@@ -596,9 +538,8 @@
                     let html = '';
                     for (let i = 1; i <= count; i++) html += '<span class="ln' + (errLines.has(i) ? ' is-err' : '') + '">' + i + '</span>';
                     nums.innerHTML = html;
-                    activeLn = -1; // rebuilt — the band updater re-marks the active number
+                    activeLn = -1;
                 };
-                // Current-line band + active gutter number, tracked from the caret.
                 const band = root.querySelector('[data-hb-cv-band]');
                 let activeLn = -1;
                 const updateBand = () => {
@@ -617,8 +558,6 @@
                     hl.innerHTML = highlight(input.value);
                     renderGutter();
                     updateBand();
-                    // Content growth changes scrollWidth/Height without any resize event the
-                    // bars could see — nudge them so they appear/retract as the code changes.
                     root.querySelectorAll('[data-hb-custom-scrollbar]').forEach((b) => b.__hbScrollbar && b.__hbScrollbar.refresh());
                 };
                 const syncScroll = () => {
@@ -652,8 +591,6 @@
                     refresh();
                     syncScroll();
                 };
-                // Only a CLEAN parse ever touches the doc — errors leave the canvas untouched
-                // and light the gutter + status strip instead.
                 const validateAndApply = () => {
                     const result = parseShortcode(input.value, msg);
                     errLines = new Set(result.errors.map((e) => e.line));
@@ -661,15 +598,6 @@
                     if (result.errors.length) { showErrors(result.errors); return false; }
                     clearStatus();
                     applying = true;
-                    // Locale-aware apply (block-runtime.blade.php's applyCanvasWrite, exposed on
-                    // hbEditor). When editing the home locale this is a plain doc replace (same
-                    // as the old replaceDoc call). When editing a NON-home locale it folds the
-                    // incoming blocks into the existing tree's `_<locale>` variants by position
-                    // — leaving the home-locale bare values untouched. The old direct
-                    // replaceDoc call bypassed that fold and overwrote the bare attributes with
-                    // whatever the Code view contained; pasting a translation while editing fr
-                    // then made both locales show the translated language (the bare attribute
-                    // held the translation).
                     const writeResult = window.hbEditor.applyCanvasWrite(result.blocks, 'replace');
                     if (!writeResult || !writeResult.ok) {
                         showErrors([{ line: 0, message: (writeResult && writeResult.error) || msg('msgApplyFailed') }]);
@@ -694,7 +622,6 @@
                     if (shell) shell.classList.toggle('hb-editor--codeview', code);
                     if (chip) {
                         chip.setAttribute('aria-pressed', code ? 'true' : 'false');
-                        // The chip names the surface the NEXT click takes you to.
                         const label = chip.querySelector('span');
                         const next = code ? chip.dataset.labelVisual : chip.dataset.labelCode;
                         if (label && next) label.textContent = next;
@@ -704,11 +631,6 @@
                     if (code) { serializeIntoView(); input.focus(); }
                 };
 
-                // Machine-authored markup belongs in the Code view — that is where a generated
-                // page is read and corrected. The AI panel applies its blocks through the
-                // runtime and then calls these, so the result shows up as code rather than
-                // only as text in the chat. `sync` is the no-jump variant: it refreshes the
-                // view if it is already open and pristine, and does nothing otherwise.
                 window.hbCodeView.open = () => setMode(true);
                 window.hbCodeView.sync = () => { if (visible && !dirty) serializeIntoView(); };
 
@@ -737,8 +659,6 @@
                     syncScroll();
                 });
 
-                // The footer chip is the single Visual ⇄ Code switch. Leaving Code with
-                // pending edits parses first; errors block the switch so nothing is lost.
                 if (!document.__hbCodeToggle) {
                     document.__hbCodeToggle = true;
                     document.addEventListener('click', (event) => {
@@ -750,22 +670,11 @@
                     });
                 }
 
-                // A doc change made elsewhere (e.g. an inspector edit) while Code is open and
-                // pristine re-serializes; once the user has typed, their text wins on apply.
                 const onExternalChange = () => { if (visible && !applying && !dirty) serializeIntoView(); };
                 document.addEventListener('hb:blocks-changed', onExternalChange);
                 document.addEventListener('hb:block-updated', onExternalChange);
             });
         };
-        // The dialect, available to anything else on the page. docs/code-view.md calls this the
-        // machine-authoring surface, and the AI panel is its first non-human caller: routing
-        // generated markup through THIS parser means AI output is validated against the same
-        // registry the canvas uses, reports the same line-numbered errors, and lands through the
-        // same undo stack — instead of a second, drifting insertion path.
-        //
-        // `parse` supplies its own message lookup because the real one reads a root element's
-        // data-* strings, which a non-DOM caller doesn't have; error *positions* are what matter
-        // to a caller that isn't rendering the gutter.
         window.hbCodeView = {
             parse: (text) => parseShortcode(String(text == null ? '' : text), (key) => key),
             serialize: serializeDoc,
@@ -797,8 +706,6 @@
             <textarea class="hb-codeview__input" data-hb-cv-input spellcheck="false" wrap="off"
                 aria-label="{{ __('heisenberg::editor.code.aria_input') }}"
                 placeholder="{{ __('heisenberg::editor.code.placeholder') }}"></textarea>
-            {{-- Smoothing off on both axes: precise scrolling matters in a text surface, and
-                 caret-driven native scrolls must never fight an easing loop. --}}
             <x-ui.custom-scrollbar container="[data-hb-cv-input]" :smooth="false" />
             <x-ui.custom-scrollbar container="[data-hb-cv-input]" axis="x" :smooth="false" />
         </div>

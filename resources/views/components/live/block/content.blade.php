@@ -1,7 +1,3 @@
-{{-- live/block/content — Block.content (cQkqr). Driven by the block contract's
-     `attributes`: controls whose control.section is `settings` render in the block's
-     own titled section, `general` render in the General section (id / title / class).
-     Shown here for a heading-like block; the same structure fills from any contract. --}}
 @props([
     'blockTitle' => 'Block',
     'settings' => [],
@@ -30,23 +26,6 @@
         @endforeach
     </x-ui.panel-section>
 
-    {{-- General — the three contract attributes every block declares under control.section
-         "general": `anchor` (the element id), `titleAttr` (the title tooltip) and `extraClasses`
-         (extra classes on the block root). All three are already consumed by both shipped
-         contracts' render.template, so the data path existed end to end; these three inputs were
-         simply never attached to it (docs/inspector-composition.md §3). Wired 2026-08-04.
-
-         Unlike the settings section above, this is NOT built from the contract — the three keys
-         are fixed, because `render.template` references them by name. A contract that renames
-         them loses this section rather than getting a renamed one.
-
-         Labelled "Anchor" rather than "Id": the field IS the HTML id attribute, but "Id" read as
-         internal/technical and the field went undiscovered — authors reach for it through the
-         TOC dialog's "jump to" language, not through "id". The hint line ties the two together.
-         data-hb-anchor-warning is presentation-only (see inspector.blade.php's anchor-specific
-         input/focusout listeners, just below handleControlEvent): a duplicate-id nudge and a
-         gentle blur-time normalize to the server's `/^[A-Za-z][\w-]*$/` anchor shape, neither of
-         which touch the model write path above. --}}
     <x-ui.panel-section title="General" collapsible>
         <div class="hb-irow hb-irow--top">
             <div class="hb-icol">
@@ -62,11 +41,7 @@
                     data-hb-control="titleAttr" data-hb-control-kind="attributes" data-hb-control-type="text" />
             </div>
         </div>
-        {{-- `extraClasses` is a single space-separated string in the model (contract type
-             "string", sanitize "text") presented as chips (contract control type "chips").
-             syncControls rebuilds the chip list from that string; Enter in the input appends,
-             a chip's close button removes. See inspector.blade.php's chips handling. --}}
-        <div class="hb-icol">
+                <div class="hb-icol">
             <span class="hb-ilbl">Class</span>
             <div class="hb-classchips" data-hb-control="extraClasses" data-hb-control-kind="attributes" data-hb-control-type="chips">
                 <div class="hb-chips" data-hb-chip-list>
@@ -76,21 +51,7 @@
                 </div>
                 <input type="text" class="hb-classchips__input" placeholder="Add class…" aria-label="Add class" data-hb-chip-input>
             </div>
-            {{-- Prototype cloned per chip, so the rendered markup stays 1:1 with ui/chip rather
-                 than being hand-rolled in JS.
-
-                 Deliberately a hidden real element and NOT a <template>: ui/chip carries its own
-                 @once <style>/<script>, and the loop above is the page's only other chip render
-                 — over a prop nothing passes, so it never executes. A <template> here would
-                 therefore be the FIRST chip render on /editor, putting the @once blocks inside
-                 template.content, where browsers neither apply the CSS nor run the script. Every
-                 chip on the page would render unstyled. This is the same trap
-                 ui/theme-preset-card hit; there the fix was ordering, here it is
-                 avoiding <template> altogether.
-
-                 It sits OUTSIDE .hb-classchips so chipValues() — which scans [data-hb-chip]
-                 within the host — never counts the prototype as a real class. --}}
-            <span data-hb-chip-prototype hidden aria-hidden="true"><x-ui.chip label="" /></span>
+                        <span data-hb-chip-prototype hidden aria-hidden="true"><x-ui.chip label="" /></span>
         </div>
     </x-ui.panel-section>
 </div>
@@ -121,9 +82,6 @@
         color: var(--hb-text-muted);
     }
     .hb-ihint--warning { color: var(--hb-danger); }
-    /* Author rules always beat the UA [hidden] default (different cascade origin, so
-       specificity can't settle it) — the explicit override here is the same fix this file's
-       own .hb-chips:empty neighbours rely on elsewhere in the panel. */
     .hb-ihint[hidden] { display: none; }
     [data-hb-control="anchor"].hb-input--warning { border-color: var(--hb-danger); }
 </style>

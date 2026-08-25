@@ -1,9 +1,3 @@
-{{-- livewire/media-library — the live Media Dialog (WO65C/Krcma). Reuses the
-     presentational live/media components (media-card, upload-dropzone). Tab state
-     is pure UI, so Alpine owns it (instant, no round-trip); data (search, upload,
-     select) is Livewire. On upload we jump to the Library tab and show each file
-     as an in-grid card in the media-card *uploading* state — the design already
-     carries that state (QPTbJ), so no progress bar clutters the upload tab. --}}
 <div class="hb-mlw" x-data="{ tab: 'library', pending: [] }"
     x-on:livewire-upload-start="tab = 'library'"
     x-on:livewire-upload-progress="pending.forEach(p => p.progress = $event.detail.progress)"
@@ -41,7 +35,6 @@
         .hb-mlw__search input::placeholder { color: var(--hb-text-muted); }
         .hb-mlw__grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: var(--hb-space-5, 20px); align-content: start; }
         .hb-mlw__empty { padding: 48px 0; text-align: center; color: var(--hb-text-muted); font-size: var(--hb-fs-base, 13px); }
-        /* CSS spinner for the optimistic uploading cards (mirrors the card's spinner) */
         .hb-mlw__spin { width: 32px; height: 32px; border-radius: 50%; border: 3px solid var(--hb-bg-inset);
             border-top-color: var(--hb-text-muted); animation: hb-mediacard-spin 1s linear infinite; }
     </style>
@@ -60,7 +53,6 @@
         </button>
     </div>
 
-    {{-- Upload tab: just the dropzone. Progress now shows per-file in the library. --}}
     <div class="hb-mlw__body hb-mlw__body--upload" x-show="tab === 'upload'" x-cloak>
         <label class="hb-mlw__drop">
             <input type="file" class="hb-mlw__file" wire:model="uploads" multiple
@@ -69,8 +61,6 @@
         </label>
     </div>
 
-    {{-- Library tab: search + grid. Optimistic uploading cards (Alpine, wire:ignore
-         so morphs don't touch them) sit above the real grid and clear on finish. --}}
     <div class="hb-mlw__body hb-mlw__body--library" x-show="tab === 'library'">
         <div class="hb-mlw__search">
             <span class="hb-mlw__search-ic" aria-hidden="true">@include('heisenberg::components.ui.icon', ['name' => 'magnifying-glass', 'size' => 13])</span>

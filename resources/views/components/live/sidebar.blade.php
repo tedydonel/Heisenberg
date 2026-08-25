@@ -1,16 +1,3 @@
-{{-- live/sidebar — logo zone (bottom border) + vertical nav list of 8
-     ui/nav-item instances, reused as-is (not duplicated). "Components" carries the real active-state
-     override from the source, which is what corrected ui/nav-item's active styling.
-
-     Flagged discrepancy, not silently resolved: the source node is literally 180px, but the document's
-     own $sidebar-w variable is 240, and the real page composition (bTaeD) instances this component at
-     200px. Three different numbers. Used the concrete node's own value (180) since that's what this
-     specific component instance is built at — still needs confirming which is authoritative.
-
-     Collapse behavior is our own addition (no collapsed state exists in the design); the icon-rail
-     width (52px) and label-hiding treatment are judgment calls. Toggled by the topbar's "Toggle left panel" button via
-     a class on the closest .hb-editor ancestor (see live/topbar's script) — vanilla JS, same reasoning
-     as elsewhere: Alpine isn't loaded on this page yet. --}}
 @once
 <style>
     .hb-sidebar {
@@ -55,9 +42,6 @@
         overflow: hidden;
     }
 
-    /* Collapsed width itself comes from the grid track (--hb-editor-sidebar-w in 20-shell.css,
-       responsive per breakpoint) — .hb-sidebar just follows it via width:100%. Only the
-       icons-only treatment lives here. */
     .hb-editor--sidebar-collapsed .hb-sidebar__brand,
     .hb-editor--sidebar-collapsed .hb-navitem span:not(.hb-navitem__icon) {
         display: none;
@@ -65,31 +49,17 @@
     .hb-editor--sidebar-collapsed .hb-navitem { justify-content: center; }
 </style>
 <script>
-    {{-- Nav → middle-panel switcher. Our own addition — the design shows each screen's static
-         state, not a live switcher; this is new interaction wiring on request. Each nav item carries
-         data-hb-nav="<panel-key>:<tab-index>"; clicking it hides every panel root, shows the matching
-         one, and activates its internal panel-tabs tab via the tablist's own exposed activate() API
-         (see ui/partials/tablist-script) so each panel's existing show/hide-content listener fires
-         exactly as if the user had clicked that tab directly. --}}
     (() => {
         const PANEL_SELECTOR = {
             cb: '[data-hb-panel-cb]',
             seo: '[data-hb-panel-seo]',
             style: '[data-hb-panel-style]',
             ai: '[data-hb-panel-ai]',
-            {{-- Navigator (List View | Outline) — not a rail item; opened by the topbar Layers button
-                 via window.hbEditorShowPanel('nav', 0), and hidden again when a rail item switches away. --}}
             nav: '[data-hb-panel-nav]',
         };
-        // Show one left child panel (hiding the rest) and activate its tab. Shared with the topbar
-        // Layers button so the Navigator opens through the exact same swap the rail items use.
         const showPanel = (panelKey, tabIndex) => {
             const selector = PANEL_SELECTOR[panelKey];
             if (!selector) return;
-            // Choosing a panel MEANS "show me that panel" — if the panel area is
-            // collapsed, reopen it here instead of making the user find the
-            // topbar toggle. Below 1024px the one-open-at-a-time rule applies,
-            // same as the topbar's own toggles.
             const shell = document.querySelector('.hb-editor');
             if (shell && shell.classList.contains('hb-editor--panel-collapsed')) {
                 if (window.hbSetPanelCollapsed) window.hbSetPanelCollapsed(shell, 'panel', false);
@@ -105,11 +75,6 @@
             const target = document.querySelector(selector);
             if (!target) return;
             target.hidden = false;
-            // The panel just switched from [hidden] to visible — anything inside it that scrolls
-            // (ui/custom-scrollbar) booted while it measured zero and needs to recheck now. Fired
-            // once immediately (usually enough — reading a geometry property forces a synchronous
-            // layout) and once more a frame later, since [hidden]-attribute-driven reveals haven't
-            // reliably settled layout by the immediate read in every engine tested.
             document.dispatchEvent(new CustomEvent('hb:refresh'));
             requestAnimationFrame(() => document.dispatchEvent(new CustomEvent('hb:refresh')));
             const tablist = target.querySelector('[data-hb-tablist]');
@@ -120,9 +85,6 @@
         };
         window.hbEditorShowPanel = showPanel;
 
-        // The chosen panel survives a refresh: each nav click stores its
-        // "<panel>:<tab>" key, and boot() replays it once so the editor reopens
-        // where it was left instead of always resetting to Components.
         const NAV_STORE = 'hb-editor:active-nav';
 
         const activateNav = (btn, persist) => {
@@ -135,7 +97,7 @@
             });
 
             if (persist) {
-                try { localStorage.setItem(NAV_STORE, btn.dataset.hbNav || ''); } catch (e) { /* private mode */ }
+                try { localStorage.setItem(NAV_STORE, btn.dataset.hbNav || ''); } catch (e) { }
             }
             showPanel(panelKey, tabIndex);
         };
@@ -147,13 +109,10 @@
                 btn.addEventListener('click', () => activateNav(btn, true));
             });
 
-            // Restore once, after the rail is wired. Restoring must not reopen a
-            // deliberately collapsed panel area, so the collapse state is stashed
-            // and put back around the showPanel call.
             if (!document.__hbNavRestored) {
                 document.__hbNavRestored = true;
                 let stored = null;
-                try { stored = localStorage.getItem(NAV_STORE); } catch (e) { /* private mode */ }
+                try { stored = localStorage.getItem(NAV_STORE); } catch (e) { }
                 const btn = stored ? document.querySelector('[data-hb-nav="' + stored.replace(/"/g, '\\"') + '"]') : null;
                 if (btn && stored !== 'cb:0') {
                     const shell = document.querySelector('.hb-editor');
@@ -178,10 +137,6 @@
     $navItems = [
         ['icon' => 'cube-fill', 'label' => __('heisenberg::editor.sidebar.nav_components'), 'panel' => 'cb', 'tab' => 0, 'active' => true],
         ['icon' => 'grid-four-fill', 'label' => __('heisenberg::editor.sidebar.nav_blocks'), 'panel' => 'cb', 'tab' => 1],
-        // The SEO/Social panel is meaningless for an email document (docs/email-system.md §3,
-        // §7-E3) — its nav entries are dropped here, server-side, rather than rendered and
-        // hidden: editor/index.blade.php doesn't mount the panel component itself either, so a
-        // rendered nav entry would point at nothing.
         ...($documentType !== 'email' ? [
             ['icon' => 'globe-fill', 'label' => __('heisenberg::editor.sidebar.nav_seo'), 'panel' => 'seo', 'tab' => 0],
             ['icon' => 'share-network-fill', 'label' => __('heisenberg::editor.sidebar.nav_socials'), 'panel' => 'seo', 'tab' => 1],

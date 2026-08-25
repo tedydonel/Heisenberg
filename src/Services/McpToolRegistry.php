@@ -196,7 +196,6 @@ class McpToolRegistry
     private function tools(): array
     {
         return [
-            // ── discovery ────────────────────────────────────────────
             // The contract set IS the authoring schema: an agent reads these two
             // and knows exactly what it may emit.
             'list_blocks' => [
@@ -298,7 +297,6 @@ class McpToolRegistry
                 },
             ],
 
-            // ── the live canvas (editor surface only) ────────────────
             // The assistant's ONE write path to the page open in front of the
             // user. Execution is split: this handler validates the shortcode
             // against the live contracts (so the model gets line-numbered
@@ -378,7 +376,6 @@ class McpToolRegistry
                 },
             ],
 
-            // ── posts ────────────────────────────────────────────────
             'list_posts' => [
                 'description' => 'List posts, newest first. Defaults to type "post" (blog/page documents) — pass type "email" to list email documents instead (docs/email-system.md §3).',
                 'tier' => self::TIER_READ,
@@ -498,7 +495,6 @@ class McpToolRegistry
                 },
             ],
 
-            // ── translations (both surfaces) ────────────────────────
             // The single-row model (docs/content-translation.md §0): a post's translation is
             // NOT a separate row — it is locale-suffixed attribute variants (`content_fr`, …) on
             // the SAME row. This tool keeps its Wave-1 name (existing agents already call it) but
@@ -533,7 +529,6 @@ class McpToolRegistry
                 'handler' => fn (array $args): array => $this->createTranslation($args),
             ],
 
-            // ── lifecycle (editor surface only) ─────────────────────
             'set_post_status' => [
                 'description' => 'Change a post\'s lifecycle status (draft / pending_review / published / scheduled / archived). '
                     . 'Editor-assistant surface only — the external MCP server never offers this tool and keeps '
@@ -553,7 +548,6 @@ class McpToolRegistry
                 'handler' => fn (array $args): array => $this->setPostStatus($args),
             ],
 
-            // ── taxonomy + media ─────────────────────────────────────
             'list_categories' => [
                 'description' => 'Every category.',
                 'tier' => self::TIER_READ,
@@ -795,7 +789,6 @@ class McpToolRegistry
                 'handler' => fn (array $args): array => $this->updateMedia($args),
             ],
 
-            // ── SEO ──────────────────────────────────────────────────
             // docs/seo-system.md §6. get_seo/analyze_seo are read-only; update_seo is the one
             // write path, matching NativeSeoMetaProvider/PostController::applySeo's own
             // updateOrCreate-on-(able_type,able_id) shape so the DB never carries two rows for
@@ -859,7 +852,6 @@ class McpToolRegistry
                 },
             ],
 
-            // ── page settings ────────────────────────────────────────
             'set_page_layout' => [
                 'description' => 'Set a post\'s page padding, in pixels (0-400). Mirrors the editor\'s Page Layout panel. Does not touch content or content_version.',
                 'tier' => self::TIER_AUTHORS,
@@ -922,7 +914,6 @@ class McpToolRegistry
                 'handler' => fn (array $args): array => $this->setFeaturedImage($args),
             ],
 
-            // ── revisions ────────────────────────────────────────────
             'list_revisions' => [
                 'description' => 'List a post\'s revision history, newest first (id, timestamp, type, title, block count). Pass a revision_id to restore_revision to roll back.',
                 'tier' => self::TIER_READ,
@@ -978,7 +969,6 @@ class McpToolRegistry
                 },
             ],
 
-            // ── trash ────────────────────────────────────────────────
             // Both surfaces, no draft-only restriction: unlike create_post/update_post this
             // never puts unreviewed content live, and unlike a hard delete it is reversible —
             // trash_post soft-deletes (Post::delete()'s own cascade batches its blocks/
@@ -1029,7 +1019,6 @@ class McpToolRegistry
                 },
             ],
 
-            // ── theme ────────────────────────────────────────────────
             'get_theme' => [
                 'description' => 'Read the active theme\'s design tokens as CSS custom properties (colors, font sizes, spacing, radii, fonts) under the --hb-t- namespace, with their current values. Use these variable names in authored content (e.g. var(--hb-t-accent-1) as a color/style value) instead of hardcoded values, so content honors the site theme.',
                 'tier' => self::TIER_READ,

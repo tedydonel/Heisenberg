@@ -53,9 +53,6 @@ class SupportsCapabilityFixtureTest extends TestCase
         ];
     }
 
-    // ── Deliverable 5: a fixture opting into the new supports renders the
-    //    expected --hb-* vars and nothing unsafe ────────────────────────
-
     public function test_fixture_opting_into_every_new_support_renders_the_expected_inline_vars(): void
     {
         $html = $this->renderer()->renderBlock($this->block([], [
@@ -121,8 +118,6 @@ class SupportsCapabilityFixtureTest extends TestCase
         $this->assertStringContainsString('--hb-text-align: left', $html);
         $this->assertStringContainsString('--hb-shadow: none', $html);
     }
-
-    // ── Border: four sides + four corners ──────────────────────────────
 
     public function test_fixture_declaring_border_sides_and_radius_renders_every_custom_property(): void
     {
@@ -241,8 +236,6 @@ class SupportsCapabilityFixtureTest extends TestCase
         }
     }
 
-    // ── Per-kind valid / invalid / adversarial (attribute-sourced probes) ──
-
     public function test_opacity_kind_valid_and_invalid_values(): void
     {
         foreach (['0', '1', '0.5', '.75', '50%', '100%', '0%'] as $good) {
@@ -359,8 +352,6 @@ class SupportsCapabilityFixtureTest extends TestCase
         }
     }
 
-    // ── hb-align-wide / hb-align-full dead-branch fix ──────────────────
-
     public function test_wide_and_full_alignment_classes_render_when_declared_and_selected(): void
     {
         $wide = $this->renderer()->renderBlock([
@@ -406,9 +397,6 @@ class SupportsCapabilityFixtureTest extends TestCase
         $this->assertStringNotContainsString('hb-align-wide', $html);
         $this->assertStringNotContainsString('hb-align-full', $html);
     }
-
-    // ── Capability opt-in: the text blocks now claim `hb-supports`, but must not
-    //    claim the STRUCTURAL markers, which do not apply to a text block ────────
 
     public function test_text_blocks_opt_into_the_capability_sheet_but_not_its_structural_markers(): void
     {

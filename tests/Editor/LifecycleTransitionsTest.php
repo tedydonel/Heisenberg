@@ -79,8 +79,6 @@ class LifecycleTransitionsTest extends TestCase
         return ['id' => $store->json('post.id'), 'version' => $store->json('post.content_version')];
     }
 
-    // ── draft -> published (the reported bug) ───────────────────────────
-
     public function test_draft_to_published_succeeds_for_an_editor_and_stamps_published_at(): void
     {
         $editor = new LifecycleFakeActor(1, 'editor');
@@ -189,8 +187,6 @@ class LifecycleTransitionsTest extends TestCase
         $this->assertNull($fresh->published_at);
     }
 
-    // ── draft -> scheduled (the other half of the reported bug) ─────────
-
     public function test_draft_to_scheduled_with_a_future_datetime_succeeds(): void
     {
         $editor = new LifecycleFakeActor(4, 'editor');
@@ -231,8 +227,6 @@ class LifecycleTransitionsTest extends TestCase
         $this->assertNull($fresh->scheduled_at);
     }
 
-    // ── published -> draft (unpublish) ───────────────────────────────────
-
     public function test_published_to_draft_unpublish_works_for_the_allowed_tier(): void
     {
         $editor = new LifecycleFakeActor(6, 'editor');
@@ -254,8 +248,6 @@ class LifecycleTransitionsTest extends TestCase
         $this->assertSame('draft', $unpublished->json('post.status'));
         $this->assertSame('draft', Post::find($post['id'])->status);
     }
-
-    // ── an edge deliberately NOT added stays 422 ─────────────────────────
 
     /**
      * `published -> scheduled` is deliberately absent from the graph (config's comment:
@@ -285,8 +277,6 @@ class LifecycleTransitionsTest extends TestCase
         $response->assertStatus(422);
         $this->assertSame('published', Post::find($post['id'])->status);
     }
-
-    // ── the actual user-visible bug: seeded Status options for a draft post ──
 
     /**
      * The Summary Status control's option list comes from EditorController::postMeta(),

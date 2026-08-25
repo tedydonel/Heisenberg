@@ -29,7 +29,6 @@ $mediaItems = [
     ['name' => 'Visa Photo.jpg', 'state' => 'uploading', 'progress' => 42, 'status' => 'Uploading… 42%'],
     ['name' => 'Passport Scan.pdf', 'state' => 'uploading', 'progress' => 78, 'status' => 'Uploading… 78%'],
 ];
-// Block-inspector demo: two contracts drive the Style tab's section gating.
 $headingSupports = [
     'align' => ['left', 'center', 'right'],
     'color' => ['text' => true, 'background' => true],
@@ -279,11 +278,6 @@ $inspStyle = 'width:272px; border:1px solid var(--hb-border); border-radius:8px;
         </section>
 
         <section class="hb-preview__section" style="min-height:auto;">
-            {{-- The padding/margin mode-switcher popover used to be demoed here too
-                 (live/pickers/padding-values-menu.blade.php) — it's no longer a standalone,
-                 independently-instantiable component (inlined into live/block/style/spacing.blade.php,
-                 2026-08-04), so there's nothing left to showcase in isolation; see the Block tab's
-                 own Style sub-tab (Padding/Margin sections) to see it live instead. --}}
             <h2 class="hb-preview__section-title">Popovers — drop shadow · variable pickers</h2>
             <div style="display:flex; gap:24px; flex-wrap:wrap; margin-top:16px; align-items:flex-start;">
                 <x-live.pickers.effect-editor />

@@ -1,10 +1,3 @@
-    // Anchor field (Content → General): presentation-only side effects layered on top of the
-    // generic write path above, never a second way to reach the model.
-    //   - duplicate-id awareness: a subtle warning while the typed value collides with another
-    //     block's anchor (walked live off window.hbEditor.getDoc() — no server round trip).
-    //   - a gentle shape guard on blur: strip spaces to dashes, drop characters the server's
-    //     `/^[A-Za-z][\w-]*$/` (PostSettingsController) would reject, and drop a non-letter lead.
-    //     Never runs mid-keystroke, so it can't fight typing.
     function anchorControlInput(event) {
         const host = event.target.closest ? event.target.closest('[data-hb-control="anchor"]') : null;
         if (!host) return null;
@@ -17,8 +10,6 @@
         return value.replace(/^[^A-Za-z]+/, '');
     }
 
-    // Same shape toc-dialog.blade.php's collectHeadings() walks — every block model in the doc,
-    // innerBlocks included, minus the one currently being edited.
     function anchorIsDuplicate(value, ownId) {
         if (!value || !window.hbEditor || typeof window.hbEditor.getDoc !== 'function') return false;
         let found = false;
@@ -46,17 +37,12 @@
         setAnchorWarning(host, anchorIsDuplicate(input.value.trim(), window.hbEditor.getSelectedId()));
     });
 
-    // 'focusout' (not 'blur') so one delegated listener can catch every anchor field, matching
-    // the pattern the focusin/focusout pair above already uses — 'blur' does not bubble.
     document.addEventListener('focusout', (event) => {
         const input = anchorControlInput(event);
         if (!input) return;
         const normalized = normalizeAnchorValue(input.value);
         if (normalized !== input.value) {
             input.value = normalized;
-            // Replays through the real write path (handleControlEvent) rather than calling
-            // setAttribute directly, so var-binding bookkeeping and hb:block-updated stay
-            // exactly as they would for a manual edit — same technique as commitLinkedSides.
             input.dispatchEvent(new Event('input', { bubbles: true }));
             input.dispatchEvent(new Event('change', { bubbles: true }));
         }
@@ -64,9 +50,6 @@
         if (window.hbEditor) setAnchorWarning(host, anchorIsDuplicate(normalized, window.hbEditor.getSelectedId()));
     });
 
-    // Style compositions with local visual state above the reusable inputs (3x3 flex target,
-    // gap radios, linked padding, expandable side grids, layer stacks) — keep their transitions
-    // inside the mounted sidebar so selecting another block never freezes the presentation.
     function mountedStyleRoot(target) {
         const root = target.closest('.hb-blockstyle');
         return root && !root.closest('[hidden]') ? root : null;
@@ -113,11 +96,6 @@
         allInput.value = value;
     }
 
-    // Aggregates whose per-side fields carry their OWN data-hb-control (Stroke's
-    // stroke-sides, Appearance's appearance-corners) commit by replaying the shared
-    // control path on each side — no second write path, so var-binding and state tabs
-    // keep working. Spacing is the exception: its sides commit as one object through
-    // commitSpacingGroup(), which is why it isn't routed here.
     function commitLinkedSides(root, group) {
         styleFields(root, `[data-hb-style-side-value="${group}"]`).forEach((field) => {
             if (!field.hasAttribute('data-hb-control')) return;
@@ -128,7 +106,6 @@
         });
     }
 
-    // The non-spacing linked groups, kept in one place so sync and commit agree.
     const HB_LINKED_GROUPS = ['stroke-sides', 'appearance-corners'];
 
     function closeStylePopups(root, except = null) {
@@ -140,11 +117,6 @@
         });
     }
 
-    // Shared "anchor a floating .hb-pop popup to its trigger, clamped inside the viewport"
-    // math — used by both showStylePopup() (which also closes every OTHER popup, since those
-    // are mutually exclusive menus) and showNestedStylePopup() below (which deliberately does
-    // NOT, because a gradient stop's colour editor is meant to stay open alongside the gradient
-    // popup it belongs to, not replace it).
     function positionStylePopup(popup, trigger) {
         const rect = trigger.getBoundingClientRect();
         const width = popup.offsetWidth;
@@ -169,8 +141,6 @@
         positionStylePopup(popup, trigger);
     }
 
-    // Opens (or repositions) a popup WITHOUT closing its sibling popups — the gradient-stop
-    // editor's own trigger lives INSIDE the "color" popup it must stay stacked alongside.
     function showNestedStylePopup(root, name, trigger) {
         const popup = root.querySelector(`[data-hb-style-popup="${name}"]`);
         if (!popup) return;
@@ -233,9 +203,6 @@
         syncPaddingControls(root);
     }
 
-    // ── Margin: mirrors the four Padding functions above exactly (own attribute vocabulary —
-    // data-hb-style-margin-*, not a `group` parameter on the padding ones — so Margin is
-    // additive here and Padding's own code path is untouched). ──
     function marginSideInputs(root) {
         const names = ['left', 'right', 'top', 'bottom'];
         return Object.fromEntries(names.map((name) => [
@@ -280,29 +247,12 @@
         syncMarginControls(root);
     }
 
-    // ── Spacing → model (2026-08-04) ──────────────────────────────────────────────────
-    // The four per-side fields carry their own data-hb-control and write through the shared
-    // delegated listener like every other Style control. The "one value" / "horizontal-vertical"
-    // fields cannot: one input owning two or four model paths is not something a single
-    // data-hb-control can express. Both aggregate modes already fan their value out into the four
-    // side INPUTS (setPaddingAxisValue/setStyleLinkedValue, above) — so by the time this runs the
-    // side inputs are the source of truth for all three modes, and one write of the whole
-    // `spacing.{group}` object covers every mode identically.
-    //
-    // Writing the object rather than four separate paths is deliberate: setSupport re-renders the
-    // block on every call, so four calls per keystroke would rebuild the block's DOM four times
-    // while the user types. setSupport's path walker assigns whatever value it is handed, and
-    // BlockRenderer resolves `supports.spacing.padding.top` through dataGet, so an object written
-    // at `spacing.padding` reads back identically to four scalar writes.
     function commitSpacingGroup(root, group) {
         if (!window.hbEditor) return;
         const id = window.hbEditor.getSelectedId();
         if (!id) return;
         const sides = group === 'padding' ? paddingSideInputs(root) : marginSideInputs(root);
         if (Object.values(sides).some((input) => !input)) return;
-        // hbStatePath, like the per-side controls' own writes: on a non-default State tab the
-        // aggregate modes must retarget states.<state>.spacing.* too, or "one value" padding
-        // authored on Hover would silently write the BASE style instead.
         window.hbEditor.setSupport(id, hbStatePath(root, 'spacing.' + group), {
             top: sides.top.value,
             right: sides.right.value,
@@ -311,24 +261,14 @@
         });
     }
 
-    // Aggregate fields hold no model path of their own, so syncControls (which walks
-    // [data-hb-control]) leaves them untouched on selection. Re-derive them from the freshly
-    // synced side inputs, or re-selecting a block would show its real per-side values under a
-    // stale "all sides" summary.
     function syncSpacingAggregates(root) {
-        // Guarded per group: a contract may declare only one of padding/margin
-        // (column has no margin, embed no padding) and the other's DOM is absent.
         if (root.querySelector('[data-hb-style-padding-side]')) syncPaddingControls(root);
         if (root.querySelector('[data-hb-style-margin-side]')) syncMarginControls(root);
-        // Stroke weight + corner radius: their per-side fields were just filled from the
-        // model by syncControls, so the "all" field summarises them (or reads Mixed).
         HB_LINKED_GROUPS.forEach((group) => {
             if (root.querySelector(`[data-hb-style-side-value="${group}"]`)) syncStyleLinkedValue(root, group);
         });
     }
 
-    // Flex mode segmented (the extracted wrap/column/row control): ONE control, TWO model
-    // paths — wrap ≡ direction=row + flex-wrap=wrap; column/row set that direction, wrap off.
     document.addEventListener('change', (event) => {
         const mode = event.target.closest('[data-hb-style-flexmode]');
         if (!mode || event.target !== mode || !event.detail) return;
@@ -342,9 +282,6 @@
         window.hbEditor.setSupport(id, hbStatePath(style, 'layout.wrap'), value === 'wrap' ? 'wrap' : '');
     });
 
-    // Sync the flex section's bespoke controls (mode segmented, 3×3 grid, spacing radios)
-    // from the model — the counterpart of syncControls' generic branches for controls that
-    // address two paths at once and therefore carry no data-hb-control.
     function syncFlexControls(root, model) {
         const grid = root.querySelector('[data-hb-style-alignment-grid]');
         const mode = root.querySelector('[data-hb-style-flexmode]');
@@ -386,13 +323,8 @@
         });
     }
 
-    // State tab switch: retarget the panel, re-read every control against the new state, and ask
-    // the canvas to force that state's look on the selected block so the edit is visible.
     document.addEventListener('change', (event) => {
         const tabs = event.target.closest('[data-hb-style-state]');
-        // Only the state tablist's OWN change may retarget — selects and segmented controls
-        // bubble a look-alike change (detail.value) that must never become a "state" — and
-        // the value is allowlisted so nothing else can ever be written as one.
         if (!tabs || event.target !== tabs) return;
         const root = mountedStyleRoot(tabs);
         if (!root || !event.detail) return;

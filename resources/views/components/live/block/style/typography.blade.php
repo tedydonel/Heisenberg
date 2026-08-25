@@ -1,48 +1,16 @@
-{{-- live/block/style/typography — Typography controls, gated per control.
-
-     2026-08-05: `$typography` was declared as a prop and never read, and style-panel passed a
-     hardcoded all-true map, so every block offered all five fields. That is wrong per contract:
-     heading declares lineHeight and paragraph does not, and neither declares letterSpacing — so
-     paragraph showed a line-height field with no style variable behind it, and both showed a
-     letter-spacing field that writes into the void. style-panel now derives the map from the real
-     contract; each field renders only when its own key is supported.
-
-     The Horizontal/Vertical alignment segmenteds carry no data-hb-control at all — they are
-     decorative today and are left ungated rather than tied to a key they do not write. See
-     docs/inspector-composition.md §4.2. --}}
 @props(['typography' => []])
 @php
     $on = fn (string $key): bool => (bool) ($typography[$key] ?? false);
-    // The two fields in this row gate independently, so the row itself only renders when at
-    // least one survives — otherwise a bare flex row would add stray vertical space.
     $showMetricsRow = $on('lineHeight') || $on('letterSpacing');
 @endphp
 <x-ui.panel-section title="Typography">
     @if ($on('fontFamily'))
-        {{-- ui/combobox against the vendored Google Fonts catalog, NOT a static list.
-             This was a ui/select with five literal families (Default/Rubik/Inter/Georgia/JetBrains
-             Mono). The left sidebar's Style tab already does this properly — same component, same
-             GET /editor/fonts endpoint, same paged search/loadmore contract — so this reuses that
-             wiring rather than reimplementing it. Options start empty and are filled by the
-             inspector's own search handler on focus/typing. --}}
         <div class="hb-irow hb-style-typography__font-row">
             <x-ui.combobox class="hb-style-typography__font" :options="[]" value=""
                 placeholder="Default" empty-label="No fonts found" aria-label="Font family"
                 data-hb-style-font-family
                 data-hb-control="typography.fontFamily" data-hb-control-kind="supports" data-hb-control-type="combobox" />
-            {{-- The `x` clear-font button is REPLACED by the theme-variable trigger:
-                 "since on the typography font combobox does not support input, please the x icon
-                 in line with it for that 'selection-all-fill' icon".
-
-                 Clearing is not lost — the font token menu's first row is the empty "Default"
-                 entry ThemeRepository::tokens() always prepends, and picking it writes '' exactly
-                 as the x did.
-
-                 Rendered here rather than injected by hbDecorateVarTriggers(), which only
-                 decorates text/number controls: a combobox owns its own trailing caret, so the
-                 trigger sits beside the field instead of inside it. `data-hb-style-var-for` names
-                 the control it acts on, since it is a sibling of the combobox, not a descendant. --}}
-            <button type="button" class="hb-itrail hb-itrail--bare hb-varbtn--inline"
+                        <button type="button" class="hb-itrail hb-itrail--bare hb-varbtn--inline"
                 data-hb-style-var-trigger data-hb-style-var-for="typography.fontFamily"
                 aria-expanded="false" aria-label="{{ __('heisenberg::editor.inspector.bind_theme_variable') }}">
                 @include('heisenberg::components.ui.icon', ['name' => 'selection-all-fill', 'size' => 14])
@@ -76,10 +44,6 @@
             @endif
         </div>
     @endif
-    {{-- TEXT alignment — distinct from the standalone Alignment section, which places the BLOCK
-         within its parent (`supports.align` → `hb-align-*` class). These place the text inside the
-         block, via SupportsStyle's --hb-text-align / --hb-text-align-v; the labels say which
-         is which. --}}
     @if ($on('textAlign') || $on('textAlignVertical'))
         <div class="hb-irow hb-irow--top">
             @if ($on('textAlign'))
@@ -96,9 +60,7 @@
             @if ($on('textAlignVertical'))
                 <div class="hb-icol">
                     <span class="hb-ilbl">Text vertical</span>
-                    {{-- SupportsStyle emits these through `align-self`, whose sanitizer is
-                         `align-3` (start|center|end) — not top/middle/bottom. --}}
-                    <x-ui.segmented :active-index="null" :items="[
+                                        <x-ui.segmented :active-index="null" :items="[
                         ['value' => 'start', 'icon' => 'vertical_align_top', 'label' => 'Align text top'],
                         ['value' => 'center', 'icon' => 'vertical_align_center', 'label' => 'Align text middle'],
                         ['value' => 'end', 'icon' => 'vertical_align_bottom', 'label' => 'Align text bottom'],

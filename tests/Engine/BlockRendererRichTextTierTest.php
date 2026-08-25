@@ -134,8 +134,6 @@ class BlockRendererRichTextTierTest extends TestCase
         $this->assertStringNotContainsString('onmouseover', $html);
     }
 
-    // ── fixtures ──────────────────────────────────────────────
-
     private function writeLeaf(string $slug, string $tier): void
     {
         $contract = [

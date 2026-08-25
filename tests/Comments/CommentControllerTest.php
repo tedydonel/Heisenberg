@@ -65,8 +65,6 @@ class CommentControllerTest extends TestCase
         return $comment;
     }
 
-    // ── thread() ─────────────────────────────────────────────────────────
-
     public function test_thread_returns_200_with_the_nested_shape_on_a_published_post(): void
     {
         $post = $this->publishedPost();
@@ -127,8 +125,6 @@ class CommentControllerTest extends TestCase
         $this->assertFalse($response->json('allow_comments'));
         $this->assertFalse($response->json('can_comment'));
     }
-
-    // ── store() ──────────────────────────────────────────────────────────
 
     public function test_guest_can_submit_a_pending_comment(): void
     {

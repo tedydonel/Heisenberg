@@ -84,8 +84,6 @@ class SeoAnalyzerTest extends TestCase
         $this->fail("No check with id {$id} in result");
     }
 
-    // ── shape ────────────────────────────────────────────────────────────
-
     public function test_empty_everything_does_not_crash_and_returns_the_expected_shape(): void
     {
         // Post::booted() always fills in a slug from the title even when both are blank
@@ -112,8 +110,6 @@ class SeoAnalyzerTest extends TestCase
             $this->assertContains($check['status'], ['pass', 'warn', 'fail', 'na']);
         }
     }
-
-    // ── Meta ─────────────────────────────────────────────────────────────
 
     public function test_title_length_pass_warn_fail(): void
     {
@@ -145,8 +141,6 @@ class SeoAnalyzerTest extends TestCase
         ]);
         $this->assertSame('pass', $this->checkById($ideal, 'description-length')['status']);
     }
-
-    // ── Keyphrase ────────────────────────────────────────────────────────
 
     public function test_keyphrase_set_check(): void
     {
@@ -262,8 +256,6 @@ class SeoAnalyzerTest extends TestCase
         $this->assertSame('fail', $this->checkById($stuffed, 'density')['status']);
     }
 
-    // ── Content ──────────────────────────────────────────────────────────
-
     public function test_content_length_fail_warn_pass(): void
     {
         $short = $this->makePost();
@@ -332,8 +324,6 @@ class SeoAnalyzerTest extends TestCase
         $this->assertSame('warn', $this->checkById($long, 'paragraph-length')['status']);
     }
 
-    // ── Media & links ────────────────────────────────────────────────────
-
     public function test_image_alts_pass_warn_fail(): void
     {
         $noImages = $this->makePost();
@@ -382,8 +372,6 @@ class SeoAnalyzerTest extends TestCase
         $this->assertSame('pass', $this->checkById($result, 'internal-link')['status']);
         $this->assertSame('pass', $this->checkById($result, 'outbound-link')['status']);
     }
-
-    // ── Technical ────────────────────────────────────────────────────────
 
     public function test_slug_quality_pass_warn_fail(): void
     {
@@ -439,8 +427,6 @@ class SeoAnalyzerTest extends TestCase
         $this->assertSame('pass', $this->checkById($set, 'og-image')['status']);
     }
 
-    // ── Readability ──────────────────────────────────────────────────────
-
     public function test_readability_warns_when_there_is_no_content(): void
     {
         $post = $this->makePost();
@@ -473,8 +459,6 @@ class SeoAnalyzerTest extends TestCase
         $this->assertSame('pass', $frCheck['status']);
     }
 
-    // ── overrides win over stored ────────────────────────────────────────
-
     public function test_overrides_win_over_the_stored_seo_meta_row(): void
     {
         $post = $this->makePost();
@@ -489,8 +473,6 @@ class SeoAnalyzerTest extends TestCase
         $overridden = $this->analyzer()->analyze($post->fresh(), 'en', ['focus_keyphrase' => '']);
         $this->assertSame('warn', $this->checkById($overridden, 'keyphrase-set')['status']);
     }
-
-    // ── score bands ──────────────────────────────────────────────────────
 
     public function test_score_band_boundaries(): void
     {

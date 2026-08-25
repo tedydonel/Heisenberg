@@ -13,8 +13,6 @@
         <x-ui.disclosure-row icon="image" :label="__('heisenberg::editor.inspector.post_featured_image')" chevron="down" />
         <div class="hb-post-dropzone-wrap" data-hb-disclosure-body data-hb-featured-field
             @if ((string) $postFeaturedImageUrlTemplate !== '') data-hb-featured-image-update-url-template="{{ $postFeaturedImageUrlTemplate }}" @endif>
-            {{-- A real focusable control (native <button>, not a bare div) — opens the media
-                 dialog below. Hidden once an image is picked, swapping for the preview block. --}}
             <button type="button" class="hb-post-dropzone" data-hb-featured-trigger aria-haspopup="dialog" aria-label="{{ __('heisenberg::editor.inspector.post_featured_set') }}" @if ($postFeaturedImage !== null) hidden @endif>
                 <span class="hb-post-dropzone__icon" aria-hidden="true">
                     @include('heisenberg::components.ui.icon', ['name' => 'image', 'size' => 28])
@@ -33,12 +31,6 @@
                     </button>
                 </div>
             </div>
-            {{-- Hidden inputs are the documented client-side mirror of the post's featured image
-                 (the same Post::featuredImage BelongsTo that the preview page now reads). Seeded
-                 from EditorController::show() on first render so a reload shows the existing pick,
-                 not an empty dropzone. The script below PUTs every change to the post's
-                 featured-image endpoint, so the pick survives reloads — the same posture as the
-                 discussion/layout rows adjacent to this one. See featured-image script below. --}}
             <input type="hidden" data-hb-featured-image-id value="{{ $postFeaturedImage['id'] ?? '' }}">
             <input type="hidden" data-hb-featured-image-url value="{{ $postFeaturedImage['url'] ?? '' }}">
             @php
@@ -162,7 +154,6 @@
                     <x-ui.toggle :on="$postPendingReview" name="post-pending-review" />
                 </div>
                 @if ($documentType !== 'email')
-                {{-- "Stick to the top of the blog" is about a listing an email is never in. --}}
                 <div class="hb-post-toggle-row">
                     <span class="hb-post-toggle-row__label">{{ __('heisenberg::editor.inspector.post_stick_top') }}</span>
                     <x-ui.toggle :on="$postStickToTop" name="post-stick-top" />
@@ -170,27 +161,14 @@
                 @endif
             </div>
             <hr class="hb-post-divider">
-            {{-- Revisions — opens the history dialog (live/revisions-dialog.blade.php). Lives
-                 INSIDE the Summary body (2026-08-08), just above Move to trash. The row carries
-                 the URL template + current post id; hb:post-id updates it after a new document's
-                 first save, same contract as the taxonomy bodies below. --}}
             <x-ui.disclosure-row icon="arrow-counter-clockwise" :label="__('heisenberg::editor.revisions.title')" chevron="right"
                 data-hb-revisions-open
                 :data-hb-post-id="$postId ?? ''"
                 :data-hb-revisions-url-template="$postRevisionsUrlTemplate" />
-            {{-- Move to trash — two-step inline confirm (same "arm on first click, fire on
-                 second, Cancel disarms" pattern as ai-history-dialog's delete button; never
-                 window.confirm). Wiring in post-trash-script.blade.php: it DELETEs
-                 postTrashUrlTemplate, and on success navigates to a blank /editor (the document
-                 no longer exists, so there is nothing left here to stay on). Disabled before the
-                 first save, like every other post-scoped control — hb:post-id lifts it. --}}
             <div class="hb-post-trash-row" data-hb-post-trash-row>
                 <button type="button" class="hb-post-trash" data-hb-post-trash
                     data-hb-post-id="{{ $postId ?? '' }}"
                     data-hb-trash-url-template="{{ $postTrashUrlTemplate }}"
-                    {{-- Where the author lands after trashing this document: a blank one of the
-                         SAME kind (docs/email-system.md §6.2). Dropping someone who just trashed
-                         an email onto a blank blog post is a surface switch they did not ask for. --}}
                     data-hb-editor-index-url="{{ $documentType === 'email' ? route('heisenberg.editor.email.new') : route('heisenberg.editor.index') }}"
                     data-hb-confirm-label="{{ __('heisenberg::editor.inspector.post_move_trash_confirm') }}"
                     data-hb-msg-network="{{ __('heisenberg::editor.topbar.save_network') }}"
@@ -205,15 +183,6 @@
         </div>
         <x-live.revisions-dialog />
 
-        {{-- Translations (docs/content-translation.md §0/Wave 2) — one row per configured
-             locale: its label, a completeness readout (TranslationStatusService::statuses()),
-             and the currently-EDITING locale marked. Clicking a row switches the editing locale
-             (window.hbEditor.setEditingLocale) — there is nothing to "create" or "open" on a
-             single-row document, so this is the section's only affordance now. Below Summary per
-             the design doc, its own disclosure. `postTranslations === null` is the /editor
-             blank-document + never-saved state: nothing saved to count yet, so rows render
-             without a completeness readout — still clickable, since switching which locale you're
-             ABOUT to author in needs no saved post. Wiring in wirePostTranslations below. --}}
         <x-ui.disclosure-row icon="translate" :label="__('heisenberg::editor.inspector.post_translations')" chevron="down" />
         <div class="hb-post-translations-body" data-hb-disclosure-body data-hb-post-translations-field>
             <div class="hb-post-translations-list" data-hb-post-translations-list>
@@ -253,11 +222,6 @@
             </div>
         </div>
 
-        {{-- Discussion (2026-08-03; moved up beside Summary 2026-08-08 — it is post-level
-             metadata like the rows above, not taxonomy) — a single Allow-comments toggle. A
-             plain per-post override, nullable in the DB (null = comments allowed), same
-             disabled-until-saved posture as Categories/Tags below. See
-             PostSettingsController::updateDiscussion(); wiring in wirePostDiscussion below. --}}
         @if ($documentType !== 'email')
         <x-ui.disclosure-row icon="chat-circle" :label="__('heisenberg::editor.inspector.post_discussion')" chevron="down" />
         <div class="hb-post-discussion-body" data-hb-disclosure-body data-hb-post-discussion-field
@@ -271,15 +235,6 @@
         </div>
         @endif
 
-        {{-- Table of contents (2026-08-10) — the AUTHORED counterpart to the tableOfContents
-             capability's `source: "headings"` render-time derivation (docs/post-template-schema.md,
-             `source: "entries"`). This row only shows a summary + Edit trigger; the whole editing
-             surface (add/reorder/remove entries, Load from headings, Save) lives in
-             live/toc-dialog.blade.php's modal, which the Edit button opens with the post's current
-             entries handed over as JSON (data-hb-toc-entries) — same "read off the opener" contract
-             live/revisions-dialog uses for its own url template + post id. The summary text is
-             rendered server-side from EditorController::show()'s postTocEntries and kept live by the
-             dialog's own script after every save (see toc-dialog's applySaved()). --}}
         @if ($documentType !== 'email')
         <x-ui.disclosure-row icon="list-numbers" :label="__('heisenberg::editor.toc.title')" chevron="down" />
         <div class="hb-post-toc-body" data-hb-disclosure-body data-hb-post-toc-field>

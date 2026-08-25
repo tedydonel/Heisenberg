@@ -54,8 +54,6 @@ class MediaAuthorizationTest extends TestCase
         $this->withoutMiddleware(\Illuminate\Foundation\Http\Middleware\ValidateCsrfToken::class);
     }
 
-    // ── helpers ──────────────────────────────────────────────────────────
-
     private function actingAsRole(int $id, string $role): FakeActor
     {
         $actor = new FakeActor($id, $role);
@@ -78,8 +76,6 @@ class MediaAuthorizationTest extends TestCase
         ]);
     }
 
-    // ── 1. Guest, testing env: denied everything ────────────────────────
-
     public function test_guest_in_testing_env_is_denied_everything(): void
     {
         $this->getJson(route('media.index'))->assertForbidden();
@@ -92,8 +88,6 @@ class MediaAuthorizationTest extends TestCase
 
         $this->assertSame(0, PublicFile::count());
     }
-
-    // ── 2. Guest, local env: allowed (fresh-local-install experience) ────
 
     public function test_guest_in_local_env_is_allowed(): void
     {
@@ -111,8 +105,6 @@ class MediaAuthorizationTest extends TestCase
         $this->assertNull($file->uploaded_by, 'an anonymous local-dev upload must not be attributed to any user id');
     }
 
-    // ── 3. Guest, local env, bypass config off: denied ───────────────────
-
     public function test_guest_in_local_env_with_bypass_disabled_is_denied(): void
     {
         $this->app['env'] = 'local';
@@ -126,8 +118,6 @@ class MediaAuthorizationTest extends TestCase
 
         $this->assertSame(0, PublicFile::count());
     }
-
-    // ── 4. viewer: read-only ──────────────────────────────────────────────
 
     public function test_viewer_can_view_but_cannot_write(): void
     {
@@ -148,8 +138,6 @@ class MediaAuthorizationTest extends TestCase
 
         $this->assertNotNull(PublicFile::find($file->id));
     }
-
-    // ── 5. author: create + own-file metadata edit, nothing more ──────────
 
     public function test_author_can_upload_and_edit_only_their_own_file_but_never_delete(): void
     {
@@ -177,8 +165,6 @@ class MediaAuthorizationTest extends TestCase
         $this->assertNotNull(PublicFile::find($own->id));
     }
 
-    // ── 6. editor: manages everyone's files ────────────────────────────────
-
     public function test_editor_can_update_and_delete_anyones_file(): void
     {
         $this->actingAsRole(20, 'editor');
@@ -192,8 +178,6 @@ class MediaAuthorizationTest extends TestCase
         $this->deleteJson(route('media.destroy', ['file' => $file->id]))->assertOk();
         $this->assertNull(PublicFile::find($file->id));
     }
-
-    // ── 7. admin: full access ──────────────────────────────────────────────
 
     public function test_admin_has_full_access(): void
     {
@@ -212,8 +196,6 @@ class MediaAuthorizationTest extends TestCase
         $this->deleteJson(route('media.destroy', ['file' => $file->id]))->assertOk();
         $this->assertNull(PublicFile::find($file->id));
     }
-
-    // ── 8. Ownership never matches a guest ────────────────────────────────
 
     public function test_ownership_never_matches_a_guest(): void
     {

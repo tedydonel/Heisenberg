@@ -46,7 +46,7 @@ usort($blocks, static fn (array $a, array $b): int => strcmp($a['name'], $b['nam
 $hash = $registry->computeHash($blocks);
 $categories = $registry->getCategories($blocks);
 
-// ── registry.json (app-free subset of the editor envelope) ────────────────
+// registry.json (app-free subset of the editor envelope).
 $envelope = [
     'schemaVersion' => BlockRegistryService::SCHEMA_VERSION,
     'registryHash'  => $hash,
@@ -61,7 +61,7 @@ file_put_contents(
     json_encode($envelope, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE) . "\n"
 );
 
-// ── blocks-preview.html (the visual palette) ──────────────────────────────
+// blocks-preview.html (the visual palette).
 $slugToTitle = static fn (string $slug): string => ucwords(str_replace('-', ' ', $slug));
 $e = static fn (string $s): string => htmlspecialchars($s, ENT_QUOTES, 'UTF-8');
 

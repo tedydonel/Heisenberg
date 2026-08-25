@@ -1,25 +1,4 @@
-/* Component chrome — extracted from @once <style> blocks in the
-   ui components (resources/views/components/ui/, .blade.php files) on
-   2026-08-15.
 
-   Why this file exists: each ui component declared its CSS inside
-   an @once <style> block. Blade's @once memoizes at the FIRST render
-   per request, and several first-render sites live inside <template>
-   elements (e.g. post-taxonomy-item-template uses <x-ui.checkbox>).
-   <style> inside <template> is parsed but NOT added to the document
-   stylesheet, so every later component instance in the document ended
-   up unstyled — native <input type="checkbox"> showed through, the
-   styled .hb-checkbox__box collapsed to display:inline, and the
-   .hb-checkbox__check glyph rendered next to it instead of inside it.
-
-   Loaded by EditorController::css() (concatenates tokens.css + all
-   files in resources/css/editor). Editing this file requires no publish
-   step on langesky because the editor.css is regenerated per-request.
-*/
-
-/* ============================================================
-   badge.blade.php
-   ============================================================ */
     .hb-badge {
 display: inline-flex;
 align-items: center;
@@ -32,9 +11,6 @@ font-weight: 500;
 .hb-badge--neutral { background: var(--hb-bg-inset); color: var(--hb-text-secondary); }
 .hb-badge--accent { background: var(--hb-accent); color: var(--hb-accent-fg); }
 
-/* ============================================================
-   button.blade.php
-   ============================================================ */
     .hb-btn {
 display: inline-flex;
 align-items: center;
@@ -76,9 +52,6 @@ color: var(--hb-text-secondary);
 }
 .hb-btn--ghost:hover:not(:disabled) { background: var(--hb-surface-hover); }
 
-/* ============================================================
-   category-head.blade.php
-   ============================================================ */
     .hb-categoryhead {
 display: flex;
 align-items: center;
@@ -104,9 +77,6 @@ color: var(--hb-text-muted);
 .hb-categoryhead[aria-expanded="false"] .hb-categoryhead__chevron--expanded { display: none; }
 .hb-categoryhead[aria-expanded="false"] .hb-categoryhead__chevron--collapsed { display: inline-flex; }
 
-/* ============================================================
-   checkbox.blade.php
-   ============================================================ */
     .hb-checkbox { display: inline-flex; align-items: center; gap: var(--hb-space-2, 8px); cursor: pointer; }
 .hb-checkbox--disabled { opacity: .5; cursor: not-allowed; }
 .hb-checkbox__input { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); }
@@ -132,9 +102,6 @@ border-color: var(--hb-accent);
 .hb-checkbox__input:focus-visible ~ .hb-checkbox__box { outline: 2px solid var(--hb-border-focus); outline-offset: 1px; }
 .hb-checkbox__label { font-family: var(--hb-font-sans, Rubik, sans-serif); font-size: 12.5px; color: var(--hb-text-secondary); }
 
-/* ============================================================
-   chip.blade.php
-   ============================================================ */
     .hb-chip {
 display: inline-flex;
 align-items: center;
@@ -164,9 +131,6 @@ cursor: pointer;
 .hb-chip__close:hover { background: rgba(0, 0, 0, .08); }
 .hb-chip__close:focus-visible { outline: 2px solid var(--hb-border-focus); outline-offset: 1px; }
 
-/* ============================================================
-   combobox.blade.php
-   ============================================================ */
     .hb-combobox { position: relative; display: inline-flex; width: 100%; font-family: var(--hb-font-sans, Rubik, sans-serif); }
 .hb-combobox__field {
 display: flex;
@@ -213,11 +177,6 @@ border-radius: var(--hb-radius-md, 5px);
 box-shadow: 3px 4px 4px rgba(0, 0, 0, .1);
 }
 .hb-combobox[data-open="false"] .hb-combobox__menu { display: none; }
-/* Two-layer scroll shell (see ui/custom-scrollbar's own consumers for why): -wrap is just the
-fixed-height slot + position:relative anchor the scrollbar bar sits in; -scroll is the actual
-JS-tracked scroll region. Collapsing these into one element (as this used to be — the bar's
-own container WAS its own direct parent) left the scrollbar bar and the tracked container as
-literally the same element, and the thumb never tracked real scroll position. */
 .hb-combobox__options-wrap { position: relative; height: 220px; }
 .hb-combobox__options-scroll { height: 100%; overflow: hidden; }
 .hb-combobox__options { display: flex; flex-direction: column; gap: 2px; padding-right: 8px; }
@@ -244,17 +203,11 @@ flex: none;
 .hb-combobox__check { display: inline-flex; width: 14px; height: 14px; visibility: hidden; flex: none; }
 .hb-combobox__option[aria-selected="true"] .hb-combobox__check { visibility: visible; }
 
-/* ============================================================
-   custom-scrollbar.blade.php
-   ============================================================ */
         html.hb-scrollbar-enabled::-webkit-scrollbar {
 width: 0;
 height: 0;
 background: transparent;
 }
-/* Belt-and-suspenders alongside the wheel handler's stopPropagation() below — this covers
-scroll paths the JS wheel listener doesn't see (touch momentum, keyboard-driven native
-scroll) so a nested scroll region never chains into whatever scrollable ancestor wraps it. */
 .hb-scroll-container { scrollbar-width: none; -ms-overflow-style: none; overscroll-behavior: contain; }
 .hb-scroll-container::-webkit-scrollbar { width: 0; height: 0; background: transparent; }
 
@@ -267,19 +220,7 @@ top: 0;
 transform-origin: center right;
 transition: transform .3s cubic-bezier(.165,.84,.44,1), opacity .3s cubic-bezier(.65,0,.35,1);
 width: 11px;
-/* No z-index on purpose. Every editor call site uses container mode (the
-data-hb-scroll-container variant below), which scopes the bar to the
-container's own stacking context. z-index: 1000 here was leaking the bar
-across every modal/sheet/popover in the editor. The window-mode (no container)
-case is rare (only the editor's gallery page), and a window-mode bar without
-a z-index still draws on top of body content, which is the gutter's job. */
 }
-/* Container mode (data-hb-scroll-container set): anchor to the scroll container instead of
-the viewport. The container needs position:relative for this to anchor correctly.
-`z-index: 1` puts the bar above the container's scrolled content (it overlays the
-thumb area on overflow): it's position:absolute'd to a position:relative parent, so it
-inherits the container's stacking context and can never escape into a sibling or
-ancestor panel. */
 .hb-custom-scrollbar[data-hb-scroll-container] {
 position: absolute;
 height: 100%;
@@ -293,7 +234,6 @@ opacity: .8;
 transform: scaleX(1.2);
 }
 
-/* Horizontal variant — same bar, rotated to the bottom edge. */
 .hb-custom-scrollbar[data-axis="x"] {
 width: 100vw; height: 11px;
 left: 0; right: auto; top: auto; bottom: 1px;
@@ -346,9 +286,6 @@ will-change: transform;
 .hb-custom-scrollbar { display: none !important; }
 }
 
-/* ============================================================
-   date-picker.blade.php
-   ============================================================ */
     .hb-dtp { width: 236px; box-sizing: border-box; padding: 12px; display: flex; flex-direction: column; gap: 10px; font-family: var(--hb-font-sans, Rubik, sans-serif); }
 .hb-dtp__head { display: flex; align-items: center; gap: 2px; }
 .hb-dtp__nav { display: inline-flex; align-items: center; justify-content: center; width: 22px; height: 22px; padding: 0; flex: none; border: 0; background: none; border-radius: var(--hb-radius-sm, 3px); color: var(--hb-text-muted); cursor: pointer; }
@@ -372,9 +309,6 @@ will-change: transform;
 .hb-dtp__btn:hover { background: var(--hb-surface-hover); }
 .hb-dtp__btn--muted { color: var(--hb-text-muted); }
 
-/* ============================================================
-   disclosure-row.blade.php
-   ============================================================ */
     .hb-disclosure {
 display: flex;
 align-items: center;
@@ -399,16 +333,10 @@ color: var(--hb-text-primary);
 .hb-disclosure:hover { background: var(--hb-surface-hover); }
 .hb-disclosure[aria-expanded="false"] .hb-disclosure__chevron { transform: rotate(-90deg); }
 
-/* ============================================================
-   divider.blade.php
-   ============================================================ */
     .hb-divider { background: var(--hb-border); border: 0; flex: none; }
 .hb-divider--horizontal { width: 180px; height: 1px; }
 .hb-divider--vertical { width: 1px; height: 180px; }
 
-/* ============================================================
-   field-label.blade.php
-   ============================================================ */
     .hb-field-label {
 display: block;
 font-family: var(--hb-font-sans, Rubik, sans-serif);
@@ -419,9 +347,6 @@ text-transform: uppercase;
 color: var(--hb-text-secondary);
 }
 
-/* ============================================================
-   field.blade.php
-   ============================================================ */
     .hb-field {
 display: inline-flex;
 width: 100%;
@@ -457,9 +382,6 @@ color: var(--hb-text-primary);
 .hb-field__unit { font-family: var(--hb-font-sans, Rubik, sans-serif); font-size: var(--hb-fs-xs, 11px); color: var(--hb-text-muted); }
 .hb-field__chevron { display: inline-flex; width: 11px; height: 11px; color: var(--hb-text-muted); cursor: pointer; }
 
-/* ============================================================
-   icon-button.blade.php
-   ============================================================ */
     .hb-iconbtn {
 display: inline-flex;
 align-items: center;
@@ -485,9 +407,6 @@ color: var(--hb-text-primary);
 .hb-iconbtn:focus-visible { outline: 2px solid var(--hb-border-focus); outline-offset: 1px; }
 .hb-iconbtn:disabled { opacity: .5; cursor: not-allowed; }
 
-/* ============================================================
-   input.blade.php
-   ============================================================ */
     .hb-input {
 width: 100%;
 display: inline-flex;
@@ -520,9 +439,6 @@ color: var(--hb-text-primary);
 .hb-input__value::placeholder { color: var(--hb-text-muted); }
 .hb-input__chevron { display: inline-flex; width: 12px; height: 12px; color: var(--hb-text-muted); flex: none; }
 
-/* ============================================================
-   nav-item.blade.php
-   ============================================================ */
     .hb-navitem {
 display: flex;
 align-items: center;
@@ -545,9 +461,6 @@ text-decoration: none;
 .hb-navitem--active .hb-navitem__icon { color: var(--hb-text-primary); }
 .hb-navitem:focus-visible { outline: 2px solid var(--hb-border-focus); outline-offset: -2px; }
 
-/* ============================================================
-   number-field.blade.php
-   ============================================================ */
     .hb-numfield {
 display: inline-flex;
 width: 72px;
@@ -574,9 +487,6 @@ color: var(--hb-text-primary);
 .hb-numfield__value::-webkit-outer-spin-button,
 .hb-numfield__value::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
 
-/* ============================================================
-   number-stepper.blade.php
-   ============================================================ */
     .hb-numstepper {
 display: inline-flex;
 align-items: stretch;
@@ -622,9 +532,6 @@ color: var(--hb-text-primary);
 .hb-numstepper__value::-webkit-outer-spin-button,
 .hb-numstepper__value::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
 
-/* ============================================================
-   panel-section.blade.php
-   ============================================================ */
     .hb-section { display: flex; flex-direction: column; gap: 10px; padding: var(--hb-space-3, 12px); border-top: 1px solid var(--hb-border); }
 .hb-section:first-child { border-top: 0; }
 .hb-section__head { display: flex; align-items: center; justify-content: space-between; gap: var(--hb-space-2, 8px); min-height: 20px; }
@@ -633,16 +540,8 @@ color: var(--hb-text-primary);
 .hb-section__caret { display: inline-flex; align-items: center; justify-content: center; width: 14px; height: 14px; padding: 0; border: 0; background: none; cursor: pointer; color: var(--hb-text-muted); }
 .hb-section__caret svg { transition: transform .12s ease; }
 .hb-section__body { display: flex; flex-direction: column; gap: 10px; }
-/* Author `display:flex` beats the UA stylesheet's `[hidden] { display: none }` at equal
-specificity (author always wins over user-agent origin) — Alpine's x-show used to hide this
-via an inline style instead, which always wins regardless. Now that it's a plain `hidden`
-attribute toggle, this needs the same explicit override already used elsewhere in the
-editor for the same reason (e.g. inspector.blade.php's .hb-inspector__block-content[hidden]). */
 .hb-section__body[hidden] { display: none; }
 
-/* ============================================================
-   panel-tabs.blade.php
-   ============================================================ */
     .hb-paneltabs { display: flex; width: 100%; height: 32px; flex: none; }
 .hb-paneltabs__tab {
 flex: 1 1 0;
@@ -668,9 +567,6 @@ font-weight: 500;
 }
 .hb-paneltabs__tab:focus-visible { outline: 2px solid var(--hb-border-focus); outline-offset: -2px; }
 
-/* ============================================================
-   radio.blade.php
-   ============================================================ */
     .hb-radio { display: inline-flex; align-items: center; gap: var(--hb-space-2, 8px); cursor: pointer; }
 .hb-radio--disabled { opacity: .5; cursor: not-allowed; }
 .hb-radio__input { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); }
@@ -690,9 +586,6 @@ border-radius: 999px;
 .hb-radio__input:focus-visible ~ .hb-radio__box { outline: 2px solid var(--hb-border-focus); outline-offset: 1px; }
 .hb-radio__label { font-family: var(--hb-font-sans, Rubik, sans-serif); font-size: 12.5px; color: var(--hb-text-secondary); }
 
-/* ============================================================
-   search-field.blade.php
-   ============================================================ */
     .hb-searchfield {
 display: flex;
 align-items: center;
@@ -717,13 +610,8 @@ color: var(--hb-text-primary);
 }
 .hb-searchfield__input::placeholder { color: var(--hb-text-muted); }
 .hb-searchfield:focus-within { border-bottom-color: var(--hb-border-focus); }
-/* !important because filtered items usually carry their own display rule
-(grid/flex cards), which would beat the UA's [hidden] styling. */
 .hb-filter-hidden { display: none !important; }
 
-/* ============================================================
-   segmented.blade.php
-   ============================================================ */
     .hb-segmented {
 display: flex;
 gap: 2px;
@@ -750,9 +638,6 @@ transition: background-color .12s ease, color .12s ease;
 .hb-segmented__icon { display: inline-flex; width: 16px; height: 16px; }
 .hb-segmented__tab:focus-visible { outline: 2px solid var(--hb-border-focus); outline-offset: -2px; }
 
-/* ============================================================
-   select.blade.php
-   ============================================================ */
     .hb-select { position: relative; display: inline-flex; width: 100%; font-family: var(--hb-font-sans, Rubik, sans-serif); }
 .hb-select__trigger {
 display: flex;
@@ -811,9 +696,6 @@ cursor: pointer;
 .hb-select__check { display: inline-flex; width: 14px; height: 14px; visibility: hidden; }
 .hb-select__option[aria-selected="true"] .hb-select__check { visibility: visible; }
 
-/* ============================================================
-   slider.blade.php
-   ============================================================ */
     .hb-slider { position: relative; display: inline-flex; align-items: center; width: 100%; min-width: 80px; height: 16px; }
 .hb-slider__input {
 -webkit-appearance: none;
@@ -854,9 +736,6 @@ cursor: grab;
 .hb-slider__input:focus-visible { outline: 2px solid var(--hb-border-focus); outline-offset: 2px; }
 .hb-slider__input:disabled { opacity: .5; cursor: not-allowed; }
 
-/* ============================================================
-   social-preview-row.blade.php
-   ============================================================ */
     .hb-socialpreviewrow {
 display: flex;
 align-items: center;
@@ -875,9 +754,6 @@ text-align: left;
 .hb-socialpreviewrow__label { font-family: var(--hb-font-sans, Rubik, sans-serif); font-size: var(--hb-fs-sm, 12px); font-weight: 500; color: var(--hb-text-primary); }
 .hb-socialpreviewrow__chevron { display: inline-flex; width: 13px; height: 13px; color: var(--hb-text-muted); flex: none; }
 
-/* ============================================================
-   status-check-row.blade.php
-   ============================================================ */
     .hb-statuscheckrow { display: flex; align-items: center; gap: var(--hb-space-2, 8px); width: 100%; }
 .hb-statuscheckrow__icon { display: inline-flex; width: 14px; height: 14px; flex: none; }
 .hb-statuscheckrow__icon--pass { color: var(--hb-success); }
@@ -892,9 +768,6 @@ line-height: 1.4;
 color: var(--hb-text-secondary);
 }
 
-/* ============================================================
-   status-tag.blade.php
-   ============================================================ */
     .hb-statustag {
 display: inline-flex;
 align-items: center;
@@ -914,14 +787,7 @@ color: var(--hb-text-primary);
 .hb-statustag--neutral { background: var(--hb-bg-muted); }
 .hb-statustag--neutral .hb-statustag__dot { background: var(--hb-text-muted); }
 
-/* ============================================================
-   sub-tabs.blade.php
-   ============================================================ */
-    /* flex: none matches ui/panel-tabs and is what keeps the 44px honest: as a flex item in a
-clamped column (.hb-inspector__populated), the default flex-shrink: 1 lets the strip be
-squeezed whenever the panel below it is tall — so the tab row changed height depending on
-which sub-tab was active. The panel below owns the leftover space; this row never gives any. */
-.hb-subtabs { display: flex; width: 100%; height: 44px; flex: none; }
+    .hb-subtabs { display: flex; width: 100%; height: 44px; flex: none; }
 .hb-subtabs__tab {
 flex: 1 1 0;
 display: inline-flex;
@@ -947,9 +813,6 @@ border-right-color: transparent;
 .hb-subtabs__icon { display: inline-flex; width: 18px; height: 18px; }
 .hb-subtabs__tab:focus-visible { outline: 2px solid var(--hb-border-focus); outline-offset: -2px; }
 
-/* ============================================================
-   suggestion-row.blade.php
-   ============================================================ */
     .hb-suggestionrow {
 display: flex;
 align-items: center;
@@ -971,9 +834,6 @@ color: var(--hb-text-secondary);
 }
 .hb-suggestionrow:hover { background: var(--hb-surface-hover); }
 
-/* ============================================================
-   swatch.blade.php
-   ============================================================ */
     .hb-swatch {
 position: relative;
 display: inline-block;
@@ -995,9 +855,6 @@ background-color: #fff;
 .hb-swatch__color { position: absolute; inset: 0; }
 .hb-swatch[aria-selected="true"] { outline: 2px solid var(--hb-border-focus); outline-offset: 1px; }
 
-/* ============================================================
-   tab-item.blade.php
-   ============================================================ */
     .hb-tabitem {
 display: inline-flex;
 align-items: center;
@@ -1014,9 +871,6 @@ cursor: pointer;
 .hb-tabitem[aria-selected="true"] { color: var(--hb-accent); border-color: var(--hb-border-strong); }
 .hb-tabitem:focus-visible { outline: 2px solid var(--hb-border-focus); outline-offset: 1px; }
 
-/* ============================================================
-   tabs.blade.php
-   ============================================================ */
     .hb-tabs {
 display: flex;
 gap: 2px;
@@ -1049,9 +903,6 @@ font-weight: 400;
 }
 .hb-tabs__tab:focus-visible { outline: 2px solid var(--hb-border-focus); outline-offset: -2px; }
 
-/* ============================================================
-   text-area.blade.php
-   ============================================================ */
     .hb-textarea {
 display: block;
 min-height: 80px;
@@ -1073,9 +924,6 @@ transition: border-color .12s ease;
 .hb-textarea:disabled { opacity: .5; }
 .hb-textarea--resizable { resize: vertical; }
 
-/* ============================================================
-   theme-preset-card.blade.php
-   ============================================================ */
     .hb-themepresetcard {
 display: flex;
 flex-direction: column;
@@ -1095,9 +943,6 @@ text-align: center;
 .hb-themepresetcard__swatch { width: 16px; height: 16px; border-radius: 999px; border: 1px solid var(--hb-border); }
 .hb-themepresetcard__label { font-family: var(--hb-font-sans, Rubik, sans-serif); font-size: var(--hb-fs-xs, 11px); color: var(--hb-text-secondary); }
 
-/* ============================================================
-   toggle.blade.php
-   ============================================================ */
     .hb-toggle { position: relative; display: inline-flex; width: 34px; height: 20px; flex: none; cursor: pointer; }
 .hb-toggle--disabled { opacity: .5; cursor: not-allowed; }
 .hb-toggle__input { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); }
@@ -1123,9 +968,6 @@ transition: transform .15s ease;
 .hb-toggle__input:checked ~ .hb-toggle__knob { transform: translateX(14px); }
 .hb-toggle__input:focus-visible ~ .hb-toggle__track { outline: 2px solid var(--hb-border-focus); outline-offset: 2px; }
 
-/* ============================================================
-   tool-card.blade.php
-   ============================================================ */
     .hb-toolcard {
 display: flex;
 flex-direction: column;

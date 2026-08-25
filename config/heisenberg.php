@@ -16,11 +16,9 @@ declare(strict_types=1);
 
 return [
 
-    // ── Identity ──────────────────────────────────────────────
     'user_model'  => env('HEISENBERG_USER_MODEL', \App\Models\User::class),
     'users_table' => 'users',
 
-    // ── Locales (docs/content-translation.md §3) ────────────────
     // Single source of truth for every locale-aware surface: the editor's footer switcher
     // (LocaleController/EditorLocaleMiddleware), the Translations section (TranslationStatusService),
     // and the MCP `locale` argument validation (McpToolRegistry). `editor.locales` below is now a
@@ -36,8 +34,7 @@ return [
     'locales' => ['en', 'fr'],
     'default_locale' => 'en',
 
-    // ── Models (host may swap any) ────────────────────────────
-    // post/block/public_file/category/tag/comment/seo_meta exist today; a Revision model +
+    // Models (host may swap any). post/block/public_file/category/tag/comment/seo_meta exist today; a Revision model +
     // migration also already ship (see src/Models/Revision.php) but that
     // config entry is a separate agent's concern and is left as it was. The
     // pattern domain model is still planned M3 work (docs/BLUEPRINT.md §2) and is
@@ -56,7 +53,6 @@ return [
         'pattern'  => \Heisenberg\Models\Pattern::class,
     ],
 
-    // ── Tables (default heisenberg_ prefix; set to GTC names to migrate in place) ──
     'tables' => [
         'posts'           => 'heisenberg_posts',
         'blocks'          => 'heisenberg_blocks',
@@ -77,7 +73,6 @@ return [
         'ai_messages'      => 'heisenberg_ai_messages',
     ],
 
-    // ── Block engine ──────────────────────────────────────────
     'block_prefix' => 'heisenberg',   // contract name namespace (gtc/… -> heisenberg/…)
     'block_root'   => null,           // null -> package resources/blocks
 
@@ -110,7 +105,7 @@ return [
         'seo_meta_provider'      => \Heisenberg\Adapters\NativeSeoMetaProvider::class,
     ],
 
-    // ── Comments (docs/post-template-schema.md "Comments/discussion") ─────────
+    // Comments (docs/post-template-schema.md "Comments/discussion")
     // Native comment storage config — read by NativeCommentProvider and (for
     // allow_guests) by a later HTTP-layer agent's submission endpoint.
     'comments' => [
@@ -120,7 +115,7 @@ return [
         'max_depth'    => 3,     // reply nesting cap; 1 = flat (no replies)
         'per_page'     => 50,    // moderation list page size
     ],
-    // ── Public translations API (docs/content-translation.md §7) ──────────────
+    // Public translations API (docs/content-translation.md §7)
     // A translation group presents as ONE post with ONE shared slug (locale comes from the
     // host's URL prefix, never the slug) — this endpoint (routes/translations.php,
     // PostTranslationsApiController) lets a host build its own language-switcher buttons: it
@@ -129,7 +124,7 @@ return [
     'translations' => [
         'routes' => true, // load routes/translations.php (GET /heisenberg/posts/{post}/translations)
     ],
-    // ── SEO (docs/seo-system.md §4/§5, Wave S2b) ──────────────────────────
+    // SEO (docs/seo-system.md §4/§5, Wave S2b)
     // 'sitemap': load routes/seo.php (GET /sitemap.xml) — see
     // HeisenbergServiceProvider::registerSeoRoutes(). 'url_template': a post's PUBLIC address,
     // either a STRING, e.g. 'https://example.com/{locale}/blog/{slug}' ({locale}/{slug}
@@ -149,7 +144,7 @@ return [
         'url_template' => null,
         'url_resolver' => \Heisenberg\Services\SeoUrlResolver::class,
     ],
-    // ── Public post show route (docs/post-template-schema.md, the bundled turnkey option) ──
+    // Public post show route (docs/post-template-schema.md, the bundled turnkey option)
     // A working blog out of the box: GET /posts/{locale}/{slug} serving published posts
     // through BlockRenderer + the same SEO/head/alternates/featured/comments pipeline the
     // editor preview produces. Opt-in (`false` by default) — the package's stated design is
@@ -163,7 +158,7 @@ return [
         // 'route_prefix' is reserved for a future mount-prefix change; the route is fixed
         // at /posts/{locale}/{slug} today and that matches the bundled resolver's output.
     ],
-    // ── Email documents (docs/email-system.md §6.1) ───────────────────────────
+    // Email documents (docs/email-system.md §6.1)
     // A built email is served at its OWN address — `/{prefix}/{slug}` — and nowhere else: the
     // post preview route 404s for `type = 'email'`, and the editor's id-scoped
     // `/editor/{post}/email-preview` only redirects here. 'routes' loads routes/email.php
@@ -182,7 +177,7 @@ return [
         // 'article_card' => ['blade' => 'heisenberg::components.article-card', 'props' => ['title', 'excerpt', 'url', 'image', 'date']],
     ],
 
-    // ── Design tokens (provisional defaults; a host overrides with its palette) ──
+    // Design tokens (provisional defaults; a host overrides with its palette)
     // The option sets the supports panels (color/typography/spacing/border) offer in
     // the inspector. Values are design-token custom-property references; hosts may
     // replace these maps with their own token values and human-readable labels.
@@ -223,7 +218,7 @@ return [
         ],
     ],
 
-    // ── User theme (Style panel design tokens) ────────────────
+    // User theme (Style panel design tokens)
     // JSON file path for the saved theme; null -> storage/app/heisenberg/theme.json
     'theme_path' => env('HEISENBERG_THEME_PATH'),
     // JSON file path for the user's named theme library (Themes tab "Save to Themes");
@@ -239,14 +234,7 @@ return [
             'locales' => ['en', 'fr'],
         ],
 
-    // The builder (a second, older editing surface at /builder) was removed 2026-08-02 —
-    // see TODO.md. The block contract set was pruned to heading + paragraph in the same
-    // pass; both were kept in step deliberately (the builder was the only reason a
-    // separate curated allow-list ever existed — see git history for `builder.blocks`/
-    // `editor.blocks` if that mechanism is ever needed again). The editor now ships
-    // whatever BlockRegistryService discovers under resources/blocks, full stop.
-
-    // ── Public media library (docs/media-library-backend-blueprint.md) ──
+    // Public media library (docs/media-library-backend-blueprint.md)
     // Package adaptation of the blueprint's app/-rooted subsystem: config-driven
     // table/model (like posts/blocks above), a guarded uploaded_by FK (only added
     // when the configured users_table already exists — a package must not
@@ -300,7 +288,7 @@ return [
         'virus_scanner' => \Heisenberg\Adapters\NullVirusScanner::class,
     ],
 
-    // ── AI assistant + MCP (docs/ai-mcp-plan.md) ──────────────
+    // AI assistant + MCP (docs/ai-mcp-plan.md)
     // Powers the editor's Ai/Tools panel, and — separately — lets Heisenberg act
     // as an MCP server so other AIs can author pages here.
     //
@@ -457,13 +445,13 @@ return [
         ],
     ],
 
-    // ── Contracts → adapters ──────────────────────────────────
+    // Contracts → adapters
     'media_resolver' => \Heisenberg\Adapters\NullMediaResolver::class,
     'role_gate'      => \Heisenberg\Adapters\ConfigRoleGate::class,
     'audit_sink'     => \Heisenberg\Adapters\NullAuditSink::class,
     'icon_provider'  => \Heisenberg\Adapters\PhosphorIconProvider::class,
 
-    // ── Local-dev-only authorization bypass ────────────────────
+    // Local-dev-only authorization bypass
     // See src/Adapters/LocalDevRoleGate.php. Consulted by the Livewire media
     // library (upload/delete, behind the unauthenticated-by-default
     // middleware.media) and by ThemeController::update() (currently
@@ -479,7 +467,7 @@ return [
     // even in local (e.g. to exercise real authorization on your own machine).
     'allow_anonymous_in_local' => env('HEISENBERG_ALLOW_ANONYMOUS_IN_LOCAL', true),
 
-    // ── Authorization role map (tiers, not literal roles) ─────
+    // Authorization role map (tiers, not literal roles)
     // The map is keyed by TIER, not literal role — a tier resolves to a list
     // of the host's own role strings, and a policy asks the RoleGate for a
     // tier ('authors', 'admins', …), never a literal role. `admin`, `editor`,
@@ -511,7 +499,7 @@ return [
         'comments.moderate' => ['admin', 'editor'],
     ],
 
-    // ── Publishing lifecycle ──────────────────────────────────
+    // Publishing lifecycle
     // Graph shape decided 2026-08-12 (owner bug: an admin had no way to publish a post —
     // `draft` had no edge to `published`/`scheduled` at all, so the Status control's
     // options — built by walking THIS map, see EditorController::postMeta() — could never
@@ -554,13 +542,13 @@ return [
         ],
     ],
 
-    // ── Queues / cache / sanitization ─────────────────────────
+    // Queues / cache / sanitization
     'queues'              => ['render' => 'default', 'audit' => 'default'],
     'cache_prefix'        => 'heisenberg',
     'purifier_cache_path' => storage_path('framework/cache/heisenberg-purifier'),
     'revisions'           => ['keep' => null], // null = unbounded (as-built)
 
-    // ── Host admin/staff HTTP surfaces (replaces route-name string-sniffing) ──
+    // Host admin/staff HTTP surfaces (replaces route-name string-sniffing)
     // Unrelated to Heisenberg's own /editor route group below — this names a HOST
     // app's own content-management surfaces (their admin/staff route prefixes) for
     // RoleGate to key off, e.g. when the host wraps Heisenberg's controllers in

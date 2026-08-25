@@ -1,16 +1,3 @@
-{{-- heisenberg::comments.index — the server-rendered comments moderation page `GET /editor/comments`
-     promises (CommentModerationController::page(), routes/comments.php's
-     `heisenberg.comments.moderation.page`). Same posture as media/index.blade.php: deliberately
-     thin and self-contained (its own small styles, no editor-asset dependency, vanilla JS, no
-     external assets) — the honest management surface for the JSON API index()/update()/destroy()/
-     reply() already expose. Every fetch this page makes carries the SAME `comments.moderate` gate
-     the controller re-checks server-side; the page never assumes its own render implies the JSON
-     calls will succeed.
-
-     URL templates are handed down from the controller via route() (see EditorController's own
-     `__ID__` placeholder convention) so this script never hardcodes a path — `$updateUrlTemplate`/
-     `$destroyUrlTemplate`/`$replyUrlTemplate` each carry a literal `__ID__` segment swapped for a
-     real comment id at call time, and `$postPreviewUrlTemplate` the same for a post id. --}}
 <!doctype html>
 <html lang="{{ str_replace('_', '-', app()->getLocale()) }}">
 <head>
@@ -145,8 +132,6 @@
         </div>
     </template>
 
-    {{-- Strings the vanilla-JS runtime below needs but can't reach with __() —
-         same posture as panel-navigator's `data-hb-nav-strings` blob. --}}
     @php
         $hbCommentsStrings = [
             'empty' => __('heisenberg::editor.comments.empty'),

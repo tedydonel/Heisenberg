@@ -1,22 +1,9 @@
-/* Color picker + popover editors (Pencil UluZm / Dcq6M / u1QGS1 / kTx59 / x1vp9y /
-   I42Ho / ejrry). Overlay shells share a shadowed, bordered card. All colour/type
-   from --hb-* tokens; the only literal colours are the picker's own gradient math
-   (hue wheel, checkerboard) which are not theme values. */
-
-/* --- shared popover shell --- */
 .hb-pop { background: var(--hb-bg); border: 1px solid var(--hb-border); border-radius: var(--hb-radius-lg, 8px);
     box-shadow: var(--hb-shadow-lg, 3px 4px 4px rgba(0, 0, 0, .1)); font-family: var(--hb-font-sans, Rubik, sans-serif); }
 
-/* [hidden] must win over the display:flex the picker bodies / menu rows set,
-   otherwise tab-switch and search-filter can't actually hide anything. The
-   `.hb-cp [hidden]` arm covers the pieces the picker toggles per gradient type
-   (angle field vs radial shape select) on surfaces outside .hb-editor — the
-   standalone components gallery renders the picker without that ancestor, so it
-   can't rely on the global reset in 01-reset.css. */
 .hb-cp__body[hidden], .hb-vmi[hidden] { display: none !important; }
 .hb-cp [hidden] { display: none !important; }
 
-/* --- color picker (UluZm / Dcq6M) --- */
 .hb-cp { width: 300px; max-width: 100%; display: flex; flex-direction: column; gap: var(--hb-space-3, 12px); padding: var(--hb-space-4, 16px); }
 .hb-cp__tabs { flex: none; }
 .hb-cp__body { display: flex; flex-direction: column; gap: var(--hb-space-3, 12px); }
@@ -40,10 +27,6 @@
 .hb-cp__eyedropper, .hb-cp__reverse { display: inline-flex; align-items: center; justify-content: center; width: 26px; height: 26px; padding: 0; border: 0; background: var(--hb-bg-inset); border-radius: var(--hb-radius-md, 5px); color: var(--hb-text-muted); cursor: pointer; flex: none; }
 .hb-cp__eyedropper:hover, .hb-cp__reverse:hover { color: var(--hb-text-primary); }
 
-/* The editor (SV + sliders + model inputs) edits the FLAT colour in Fill mode, so it sits
-   outside .hb-cp__body. Gradient mode hides it: a stop's colour is edited in its own
-   standalone picker popup (data-hb-style-popup="gradient-stop", opened from the stop's
-   swatch), never stacked underneath the gradient section of this same picker. */
 .hb-cp__editor { display: flex; flex-direction: column; gap: var(--hb-space-3, 12px); }
 .hb-cp[data-cp-mode="gradient"] .hb-cp__editor { display: none; }
 .hb-cp__editing { display: flex; align-items: center; gap: 8px; height: 22px; }
@@ -51,8 +34,6 @@
 .hb-cp__editing-l { font-size: var(--hb-fs-xs, 11px); color: var(--hb-text-muted); }
 .hb-cp__editing::after { content: ''; flex: 1 1 auto; height: 1px; background: var(--hb-border); }
 
-/* ui/select inside the picker: same component, picker-native chrome (inset fill, no
-   border, 26px to match the eyedropper/reverse buttons beside it). */
 .hb-cp .hb-select { width: auto; flex: 1 1 auto; min-width: 0; }
 .hb-cp .hb-select__trigger { height: 26px; padding: 0 8px; background: var(--hb-bg-inset); border-color: transparent; border-radius: var(--hb-radius-md, 5px); }
 .hb-cp .hb-select[data-open="true"] .hb-select__trigger { border-color: var(--hb-border-focus); }
@@ -67,14 +48,11 @@
 .hb-cp__box input { width: 100%; border: 0; outline: 0; background: none; text-align: center; font-family: inherit; font-size: var(--hb-fs-sm, 12px); color: var(--hb-text-primary); }
 .hb-cp__field-l { font-size: var(--hb-fs-xs, 11px); color: var(--hb-text-muted); }
 
-/* gradient mode */
 .hb-cp__type-row { display: flex; align-items: center; gap: var(--hb-space-2, 8px); }
 .hb-cp__angle { display: inline-flex; align-items: center; justify-content: center; gap: 4px; width: 60px; height: 26px; flex: none; box-sizing: border-box; padding: 0 8px; border: 0; background: var(--hb-bg-inset); border-radius: var(--hb-radius-md, 5px); color: var(--hb-text-primary); font-size: var(--hb-fs-sm, 12px); }
 .hb-cp__angle input { width: 24px; padding: 0; border: 0; outline: 0; background: none; text-align: right; font: inherit; color: inherit; }
 .hb-cp__angle svg { width: 13px; height: 13px; color: var(--hb-text-muted); }
 
-/* Checkerboard sits on the bar; the ramp paints over it so partly-transparent stops
-   read as transparent rather than as a lighter colour. */
 .hb-cp__gbar { position: relative; height: 24px; border-radius: var(--hb-radius-control, 6px); border: 1px solid var(--hb-border);
     background: repeating-conic-gradient(var(--hb-border-strong) 0% 25%, #fff 0% 50%) 0 / 12px 12px;
     cursor: copy; }
@@ -90,7 +68,6 @@
 .hb-cp__add:hover { color: var(--hb-text-primary); background: var(--hb-surface-hover); }
 .hb-cp__stops { display: flex; flex-direction: column; gap: var(--hb-space-2, 8px); }
 
-/* gradient stop row (u1QGS1) */
 .hb-gsr { display: flex; align-items: center; gap: 6px; width: 100%; }
 .hb-gsr__sel { display: inline-flex; align-items: center; justify-content: center; width: 26px; height: 30px; flex: none; padding: 0; border: 0; background: none; cursor: pointer; border-radius: var(--hb-radius-md, 5px); }
 .hb-gsr.is-active .hb-gsr__sel { background: var(--hb-bg-muted); box-shadow: inset 0 0 0 1px var(--hb-border-focus); }
@@ -102,13 +79,9 @@
 .hb-gsr__op span { color: var(--hb-text-muted); }
 .hb-gsr__rm { display: inline-flex; align-items: center; justify-content: center; width: 22px; height: 30px; flex: none; border: 0; background: none; cursor: pointer; color: var(--hb-text-muted); }
 .hb-gsr__rm:hover { color: var(--hb-text-primary); }
-/* Below two stops there is no gradient left to describe, so remove goes inert
-   rather than disappearing — a row that changes shape at the boundary is worse. */
 .hb-gsr__rm:disabled { opacity: .35; cursor: not-allowed; }
 .hb-gsr__rm:disabled:hover { color: var(--hb-text-muted); }
 
-/* The Style inspector is only 260px wide. Its anchored picker is intentionally
-   denser than the standalone picker surface, while retaining the same controls. */
 .hb-style-popup .hb-cp { width: 236px; box-sizing: border-box; gap: 8px; padding: 10px; }
 .hb-style-popup .hb-cp__body,
 .hb-style-popup .hb-cp__editor { gap: 8px; }
@@ -119,8 +92,6 @@
 .hb-style-popup .hb-cp__gbar { height: 20px; }
 .hb-style-popup .hb-cp__gstop { height: 26px; }
 .hb-style-popup .hb-cp__stops { gap: 6px; }
-/* At 236px the four-up RGBA row plus a stop row's five controls both run out of
-   width before they run out of fields — trim the fixed-width boxes, not the flex ones. */
 .hb-style-popup .hb-cp__inputs { gap: 6px; }
 .hb-style-popup .hb-cp__select--model { max-width: 84px; }
 .hb-style-popup .hb-gsr { gap: 4px; }
@@ -129,7 +100,6 @@
 .hb-style-popup .hb-gsr__op { width: 46px; height: 26px; padding: 0 5px; }
 .hb-style-popup .hb-gsr__rm { width: 18px; height: 26px; }
 
-/* --- padding values menu (kTx59) --- */
 .hb-padmenu { width: 236px; padding: var(--hb-space-3, 12px); display: flex; flex-direction: column; gap: var(--hb-space-3, 12px); }
 .hb-padmenu__title { font-size: 13px; font-weight: 600; color: var(--hb-text-primary); }
 .hb-padmenu__opts { display: flex; flex-direction: column; gap: 2px; }
@@ -137,7 +107,6 @@
 .hb-padmenu__opt span { font-size: var(--hb-fs-sm, 12px); color: var(--hb-text-secondary); }
 .hb-padmenu__opt--on span { color: var(--hb-text-primary); font-weight: 500; }
 
-/* --- drop shadow (x1vp9y) --- */
 .hb-shadow { width: 236px; padding: var(--hb-space-2, 8px); display: flex; flex-direction: column; gap: 12px; }
 .hb-shadow__head { display: flex; align-items: center; justify-content: space-between; height: 26px; padding: 0 10px; background: var(--hb-bg-muted); border-radius: var(--hb-radius-md, 5px); }
 .hb-shadow__head b { font-size: var(--hb-fs-base, 13px); font-weight: 500; color: var(--hb-text-primary); }
@@ -154,7 +123,6 @@
 .hb-shadow__box .u { color: var(--hb-text-muted); flex: none; }
 .hb-shadow__box .p { color: var(--hb-text-muted); flex: none; }
 
-/* --- variable menu (I42Ho / qWlAu) + var menu item (ejrry) --- */
 .hb-varmenu { width: 236px; display: flex; flex-direction: column; overflow: hidden; }
 .hb-varmenu__search { display: flex; align-items: center; gap: 8px; height: 34px; padding: 0 var(--hb-space-3, 12px); border-bottom: 1px solid var(--hb-border); }
 .hb-varmenu__search input { flex: 1 1 auto; min-width: 0; border: 0; outline: 0; background: none; font-family: inherit; font-size: var(--hb-fs-base, 13px); color: var(--hb-text-primary); }

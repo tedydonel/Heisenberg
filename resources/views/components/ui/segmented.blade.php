@@ -1,5 +1,3 @@
-{{-- ui/segmented — up to 6 icon segments, same bg-inset track as
-     ui/tabs (padding 2, gap 2, radius 5, height 26), active segment gets a bg pill (radius 4). --}}
 @once
 
 @endonce

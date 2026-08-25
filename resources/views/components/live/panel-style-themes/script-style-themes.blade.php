@@ -1,9 +1,3 @@
-{{-- Script extracted from components/live/panel-style-themes.blade.php when the file crossed
-     Livewire's 64KB morph-compile ceiling (see tests/Editor/BladeFileSizeGuardTest). The Style
-     tab is the biggest single piece of JS in the panel (token collect/save, var-menu rebuild,
-     theme apply, preset/saved-theme click delegation, font search); pulling it into its own
-     partial keeps the markup view under the ceiling. Kept as plain JS — the @once directive
-     still applies when the partial is @include'd from the parent. --}}
 @once
 <style>
     .hb-panel-style { display: flex; flex-direction: column; width: 240px; height: 100%; background: var(--hb-bg); border-right: 1px solid var(--hb-border); flex: none; }
@@ -33,10 +27,7 @@
     .hb-themepresetcard-wrap { position: relative; }
     .hb-saved-theme-delete { position: absolute; top: 4px; right: 4px; display: inline-flex; align-items: center; justify-content: center; width: 18px; height: 18px; padding: 0; border: 0; border-radius: 999px; background: var(--hb-bg); box-shadow: var(--hb-shadow-sm, 0 1px 3px rgba(0, 0, 0, .25)); color: var(--hb-text-muted); cursor: pointer; opacity: 0; transition: opacity .12s ease; }
     .hb-themepresetcard-wrap:hover .hb-saved-theme-delete, .hb-saved-theme-delete:focus-visible { opacity: 1; }
-    /* Saved theme that the Style tab is currently editing — mirrors the Preset card's
-       selected treatment so the user can tell at a glance which entry an "Update :name"
-       save would overwrite. */
-    .hb-themepresetcard-wrap.hb-saved-theme--active > .hb-themepresetcard { box-shadow: 0 0 0 2px var(--hb-tb-color, #3D68F5); border-color: var(--hb-tb-color, #3D68F5); }
+        .hb-themepresetcard-wrap.hb-saved-theme--active > .hb-themepresetcard { box-shadow: 0 0 0 2px var(--hb-tb-color, #3D68F5); border-color: var(--hb-tb-color, #3D68F5); }
 
 </style>
 <script>
@@ -44,11 +35,6 @@
         const boot = () => {
             document.querySelectorAll('[data-hb-panel-style]').forEach((root) => {
                 if (root.__hbPanelStyle) return;
-                // activeSavedTheme holds {name} when the in-DOM theme was loaded by clicking a
-                // saved-theme card — the save bar flips to "Update :name" in that case, and
-                // the card gets a visual marker. Stays sticky until the user picks a Preset
-                // or hand-edits a row to a state that no longer matches the snapshot (in which
-                // case the next save is a fresh intent: "create").
                 root.__hbPanelStyle = { booted: true, activeSavedTheme: null };
 
                 const tabs = root.querySelector('[data-hb-tablist]');
@@ -59,7 +45,6 @@
                     if (themes) themes.hidden = event.detail.index !== 1;
                 });
 
-                // ── Theme token editor (Style tab) ─────────────────────────────
                 const updateUrl = root.dataset.hbThemeUpdateUrl || '';
                 const fontsUrl = root.dataset.hbFontsSearchUrl || '';
                 const themesStoreUrl = root.dataset.hbThemesStoreUrl || '';
@@ -78,13 +63,9 @@
                             const label = inputOf(row.querySelector('[data-hb-token-field="label"]'))?.value || '';
                             theme.colors.push({ name, label, value: row.dataset.hbTokenColor || '#000000' });
                         } else if (section === 'fonts') {
-                            // No separate name/label field for fonts — the family name IS the
-                            // display label (it's already human-readable, e.g. "Rubik"), so a
-                            // second free-text nickname was pure redundancy. ui/combobox's value
-                            // lives in data-value on its own root, not an <input>.
                             const family = row.querySelector('[data-hb-token-field="family"]')?.dataset.value || '';
                             let weights = [400];
-                            try { weights = JSON.parse(row.dataset.hbTokenWeights || '[400]'); } catch (e) { /* keep default */ }
+                            try { weights = JSON.parse(row.dataset.hbTokenWeights || '[400]'); } catch (e) {  }
                             theme.fonts.push({ name, label: family, family, weights });
                         } else {
                             const label = inputOf(row.querySelector('[data-hb-token-field="label"]'))?.value || '';
@@ -113,9 +94,6 @@
                             console.error('[heisenberg] theme save failed:', detail);
                             return;
                         }
-                        // The PUT response carries the freshly-persisted theme (ThemeController::update
-                        // returns { saved, theme, css, tokens }). Drive the inspector off it so a hand
-                        // edit also refreshes data-hb-var-labels / the variable-menu rows without a reload.
                         if (body && body.theme) {
                             applyThemeVars();
                             applyThemeToInspector(body.theme);
@@ -125,15 +103,6 @@
                     });
                 };
 
-                // Repaint the page's `--hb-t-*` custom properties from the in-DOM theme. Mirrors
-                // ThemeRepository::css()'s CSS_PREFIX and its `family, sans-serif` quoting for
-                // fonts, so the live preview and the saved render agree.
-                //
-                // Without this the panel could edit and PUT a token that nothing on the page then
-                // used: the editor emits #hb-theme-vars once at render time, so a change was
-                // invisible until reload — and any block bound to that token appeared not to
-                // respond at all. Applied immediately, not on the debounce, so dragging a colour
-                // reads as live.
                 const applyThemeVars = () => {
                     const target = document.getElementById('hb-theme-vars');
                     if (!target) return;
@@ -158,10 +127,6 @@
                     saveTimer = setTimeout(saveNow, 600);
                 };
 
-                // Mirror the reverse-map computation in resources/views/components/live/block/
-                // style-panel.blade.php:90-103: every CSS reference (`var(--hb-t-…)`) maps to
-                // its display label and (for numeric tokens) to its bare integer value, so a
-                // bound field reads as "16" rather than "sp-3".
                 const buildVarMaps = (theme) => {
                     const labels = {};
                     const values = {};
@@ -174,7 +139,7 @@
                             if (kind === 'color') {
                                 values[ref] = token.value || '';
                             } else if (kind === 'font') {
-                                values[ref] = ''; // fonts have no resolvable number — callers fall back to the label
+                                values[ref] = '';
                             } else {
                                 values[ref] = String(token.value || '').replace(/px$/i, '');
                             }
@@ -188,10 +153,6 @@
                     return { labels, values };
                 };
 
-                // Rebuild the row contents of one variable-menu popup from a theme section.
-                // Clear and replace the .hb-varmenu__list children; the menu itself (and any
-                // search input) is left alone. variable-menu's boot() re-binds click handlers
-                // via the hb:refresh it listens for, so the new rows are interactive.
                 const rebuildVarmenuRows = (popupSel, items, kind) => {
                     const popup = document.querySelector(popupSel);
                     const menu = popup?.querySelector('[data-hb-varmenu]');
@@ -233,14 +194,9 @@
                         }
                         list.appendChild(btn);
                     });
-                    menu.__hbVm = false; // force variable-menu's boot() to rebind click handlers on the new rows
+                    menu.__hbVm = false;
                 };
 
-                // Reflect `theme` into the inspector: rewrite data-hb-var-labels / data-hb-var-values
-                // on every .hb-blockstyle, rebuild the three var-* popups' rows, and dispatch
-                // hb:theme-changed with the payload. Used both after applying a saved theme and
-                // after a successful PUT /editor/theme (hand edits), so the inspector never lags
-                // behind the active theme.
                 const applyThemeToInspector = (theme) => {
                     if (!theme) return;
                     const { labels, values } = buildVarMaps(theme);
@@ -251,12 +207,10 @@
                     rebuildVarmenuRows('[data-hb-style-popup="var-color"] [data-hb-varmenu]', theme.colors, 'color');
                     rebuildVarmenuRows('[data-hb-style-popup="var-number"] [data-hb-varmenu]', theme.spaces, 'number');
                     rebuildVarmenuRows('[data-hb-style-popup="var-font"] [data-hb-varmenu]', theme.fonts, 'font');
-                    // Re-bind click handlers for the freshly-rebuilt rows.
                     document.dispatchEvent(new CustomEvent('hb:refresh'));
                     document.dispatchEvent(new CustomEvent('hb:theme-changed', { detail: { theme, labels, values } }));
                 };
 
-                // Slugs only ever need to be unique + kebab-case; they're never shown to the user.
                 const slugFor = (section) => {
                     const prefix = { colors: 'color', fontSizes: 'size', spaces: 'space', radii: 'radius', fonts: 'font' }[section] || 'token';
                     return prefix + '-' + Math.random().toString(36).slice(2, 8);
@@ -268,8 +222,6 @@
                     if (sw) sw.style.background = hex;
                 };
 
-                // Builds one token row from {name,label,value|family/weights} — the counterpart to
-                // collectTheme()'s per-row reads. Used by applyTheme() (saved-theme apply) below.
                 const buildRow = (section, token) => {
                     const tpl = style?.querySelector(`template[data-hb-token-template="${section}"]`);
                     if (!tpl) return null;
@@ -280,11 +232,6 @@
                         if (label) label.value = token.label || '';
                         setSwatchColor(row, token.value || '#000000');
                     } else if (section === 'fonts') {
-                        // No label field to fill in for fonts — the family name is the label
-                        // (see collectTheme()). A real <input> (ui/combobox), so this works even
-                        // before hb:refresh boots the clone — applyTheme() below still dispatches
-                        // it once afterward, which is what makes the dropdown itself
-                        // openable/searchable again.
                         const familyRoot = row.querySelector('[data-hb-token-field="family"]');
                         if (familyRoot) {
                             const family = token.family || '';
@@ -302,8 +249,6 @@
                     return row;
                 };
 
-                // Fully replaces every section's rows with `theme`'s own — used when applying a
-                // saved theme (which, unlike a curated preset, has real data for all 5 sections).
                 const applyTheme = (theme) => {
                     ['colors', 'radii', 'spaces', 'fonts', 'fontSizes'].forEach((section) => {
                         const body = style?.querySelector(`[data-hb-token-section-body="${section}"]`);
@@ -315,14 +260,7 @@
                             if (row) body.insertBefore(row, addBtn);
                         });
                     });
-                    // Repaint the page's --hb-t-* custom properties from the in-DOM theme now
-                    // (applyTheme is paired with saveNow in the saved-card click handler, but
-                    // saveNow's PUT doesn't itself trigger applyThemeVars — so the canvas would
-                    // stay stale until the next Style-tab interaction).
                     applyThemeVars();
-                    // Newly-cloned rows carry markup for components with their own boot script (the
-                    // Fonts field's ui/select) that only runs on DOMContentLoaded/hb:refresh — without
-                    // this, a font row from an applied theme would show the right value but never open.
                     document.dispatchEvent(new CustomEvent('hb:refresh'));
                     applyThemeToInspector(theme);
                 };
@@ -333,9 +271,8 @@
                     if (!tpl || !sectionBody) return;
                     const row = tpl.content.firstElementChild.cloneNode(true);
                     row.dataset.hbTokenName = slugFor(section);
-                    sectionBody.insertBefore(row, sectionBody.lastElementChild); // keep the "+ Add" button last
-                    document.dispatchEvent(new CustomEvent('hb:refresh')); // boots a fresh Fonts ui/combobox, if this is one
-                    // Fonts has no label field — focus the one field there is to fill in.
+                    sectionBody.insertBefore(row, sectionBody.lastElementChild);
+                    document.dispatchEvent(new CustomEvent('hb:refresh'));
                     const firstField = section === 'fonts'
                         ? row.querySelector('[data-hb-token-field="family"] [data-hb-combobox-input]')
                         : inputOf(row.querySelector('[data-hb-token-field="label"]'));
@@ -343,8 +280,6 @@
                     scheduleSave();
                 };
 
-                // ── Colour popup (Colors section) — mounts the app's own live/pickers/color-picker,
-                // the same component the per-block Fill/Stroke panels use, instead of a native input.
                 const colorPopup = root.querySelector('[data-hb-token-colorpicker-popup]');
                 const colorPickerEl = colorPopup?.querySelector('[data-hb-colorpicker]');
                 let colorTarget = null;
@@ -372,7 +307,6 @@
                     scheduleSave();
                 });
 
-                // ── Save to Themes (Style tab footer) ───────────────────────────
                 const saveBtn = root.querySelector('[data-hb-theme-save-open]');
                 const saveForm = root.querySelector('[data-hb-theme-saveform]');
                 const saveError = root.querySelector('[data-hb-theme-save-error]');
@@ -384,10 +318,6 @@
                     saveError.hidden = !message;
                 };
 
-                // The save bar's trigger label and aria swap between "Save to Themes" (no active
-                // saved theme) and "Update :name" (activeSavedTheme set). Done via a hidden
-                // data-hb-panel-style-strings JSON blob (see the markup at the bottom of the file
-                // and style-panel's data-hb-nav-strings pattern for the convention).
                 const panelStrings = (() => {
                     try { return JSON.parse(root.dataset.hbPanelStyleStrings || '{}'); }
                     catch (e) { return {}; }
@@ -415,9 +345,6 @@
                     showSaveError('');
                     const active = root.__hbPanelStyle?.activeSavedTheme;
                     const field = saveNameField();
-                    // In update mode, prefill and lock the name to the active saved theme —
-                    // the backend upserts on case-insensitive name match, so the user can never
-                    // accidentally create a new entry under a different name.
                     if (field) {
                         if (active && active.name) {
                             field.value = active.name;
@@ -460,17 +387,10 @@
                             'X-Requested-With': 'XMLHttpRequest',
                         },
                         credentials: 'same-origin',
-                        // The CURRENT in-DOM theme, not whatever's last been written to disk by the
-                        // debounced autosave above — an in-flight, not-yet-saved edit must never be
-                        // silently dropped from the snapshot.
                         body: JSON.stringify({ name, theme: collectTheme() }),
                     }).then((res) => res.json().then((body) => ({ ok: res.ok, body })))
                         .then(({ ok, body }) => {
                             if (!ok) { showSaveError((body.errors || []).join(', ') || 'Could not save'); return; }
-                            // The server returns the full saved list, including any prior entry of the
-                            // same name that was upserted. Mark this name as the active saved theme so
-                            // the bar shows "Update :name" on the next open and the matching card gets
-                            // the active marker.
                             root.__hbPanelStyle.activeSavedTheme = { name };
                             renderSavedThemes(body.themes || []);
                             closeSaveForm();
@@ -478,7 +398,6 @@
                         }).catch(() => showSaveError('Could not save'));
                 };
 
-                // ── Saved themes grid (Themes tab) ──────────────────────────────
                 const savedGrid = themes?.querySelector('[data-hb-saved-themes-grid]');
                 const savedTpl = themes?.querySelector('template[data-hb-saved-theme-template]');
                 const savedEmpty = themes?.querySelector('[data-hb-saved-themes-empty]');
@@ -499,15 +418,9 @@
                         savedGrid.insertBefore(node, savedEmpty || null);
                     });
                     if (savedEmpty) savedEmpty.hidden = list.length > 0;
-                    // Re-apply the active marker for the card that matches root.__hbPanelStyle
-                    // .activeSavedTheme — the grid was just wiped, so without this the visual
-                    // marker would silently disappear after a save or delete.
                     syncActiveSavedTheme();
                 };
 
-                // Mark the saved-theme card whose name matches activeSavedTheme, clear the
-                // marker from every other card. Called after every grid render AND after a
-                // card click sets/changes activeSavedTheme.
                 const syncActiveSavedTheme = () => {
                     const activeName = root.__hbPanelStyle?.activeSavedTheme?.name || '';
                     savedGrid?.querySelectorAll('[data-hb-saved-theme]').forEach((card) => {
@@ -531,10 +444,9 @@
                         body: JSON.stringify({ name }),
                     }).then((res) => res.ok ? res.json() : null)
                         .then((body) => { if (body) renderSavedThemes(body.themes || []); })
-                        .catch(() => { /* the card simply stays put; nothing was silently lost */ });
+                        .catch(() => {  });
                 };
 
-                // ── Click delegation (Style tab: rows, add, swatch, save-to-themes) ─
                 style?.addEventListener('click', (event) => {
                     const add = event.target.closest('[data-hb-token-add]');
                     if (add) { addRow(add.dataset.hbTokenAdd); return; }
@@ -565,10 +477,7 @@
                 });
 
                 style?.addEventListener('input', (event) => {
-                    if (event.target.closest('[data-hb-theme-save-name]')) return; // not a token field
-                    // A hand edit means the in-DOM theme no longer matches the snapshot the active
-                    // saved theme was loaded from — the next save is a fresh "create" intent, so
-                    // clear activeSavedTheme and update the bar label.
+                    if (event.target.closest('[data-hb-theme-save-name]')) return;
                     if (root.__hbPanelStyle.activeSavedTheme) {
                         root.__hbPanelStyle.activeSavedTheme = null;
                         syncActiveSavedTheme();
@@ -577,15 +486,6 @@
                     if (!event.target.closest('[data-hb-token-field="family"]')) scheduleSave();
                 });
 
-                // ── Font family search (Fonts section only) — the field itself is ui/combobox; this
-                // just answers the `search` event it dispatches by fetching the vendored catalog and
-                // handing the results back via its own replaceOptions() API. No bespoke dropdown
-                // widget, no separate open/close/positioning logic to maintain. Pagination: the
-                // catalog has ~1942 entries but a page is only FONT_PAGE_LIMIT, so scrolling near the
-                // bottom (combobox's own `loadmore` event) fetches the next page via appendOptions()
-                // rather than the picker silently topping out at page 1 until the query changes.
-                // Page state lives on the comboboxRoot itself (not a shared var) since a style panel
-                // can have several font rows, each with its own independent combobox + scroll state.
                 const FONT_PAGE_LIMIT = 40;
                 let fontTimer = null;
                 const searchFonts = (comboboxRoot, query) => {
@@ -597,7 +497,7 @@
                         .then((body) => {
                             const list = (body.fonts || []).map((f) => ({ value: f.family, label: f.family }));
                             comboboxRoot.__hbCombobox?.replaceOptions(list);
-                            if (comboboxRoot.__hbFontPage !== page) return; // a newer search superseded this one
+                            if (comboboxRoot.__hbFontPage !== page) return;
                             page.offset = list.length;
                             page.hasMore = !!body.has_more;
                             page.loading = false;
@@ -640,7 +540,6 @@
                     closeColorPopup();
                 });
 
-                // ── Presets + saved themes (Themes tab) ─────────────────────────
                 themes?.addEventListener('click', (event) => {
                     const delBtn = event.target.closest('[data-hb-saved-theme-delete]');
                     if (delBtn) {
@@ -649,9 +548,6 @@
                         return;
                     }
 
-                    // A saved theme has real data for every section, so applying it replaces all 5 —
-                    // unlike a curated preset (colors only, see below) — then switches back to Style
-                    // so the result is immediately visible.
                     const savedCard = event.target.closest('[data-hb-saved-theme]');
                     if (savedCard) {
                         let payload = null;
@@ -659,9 +555,6 @@
                         if (!payload) return;
                         applyTheme(payload);
                         saveNow();
-                        // Mark this card as the active saved theme — the save bar flips to
-                        // "Update :name" and confirms POST under the same name (the backend
-                        // upserts in place via case-insensitive dedupe).
                         root.__hbPanelStyle.activeSavedTheme = { name: savedCard.dataset.hbSavedThemeName || '' };
                         syncActiveSavedTheme();
                         refreshSaveBarLabel();
@@ -680,9 +573,6 @@
                         c.classList.toggle('hb-themepresetcard--selected', c === card);
                         c.setAttribute('aria-pressed', c === card ? 'true' : 'false');
                     });
-                    // Picking a Preset is a fresh "create" intent — clear any active saved theme
-                    // so the save bar falls back to "Save to Themes" until the user reapplies a
-                    // saved theme or hand-edits a token.
                     if (root.__hbPanelStyle.activeSavedTheme) {
                         root.__hbPanelStyle.activeSavedTheme = null;
                         syncActiveSavedTheme();
@@ -691,8 +581,6 @@
                     scheduleSave();
                 });
 
-                // Initial label so the bar reads "Save to Themes" on first paint; flips to
-                // "Update :name" the moment a saved theme card is clicked.
                 refreshSaveBarLabel();
             });
         };

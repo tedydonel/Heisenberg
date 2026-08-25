@@ -1,14 +1,3 @@
-{{-- live/block/color-layer — Fill and Stroke layer row.
-
-     Markup: swatch, hex text, selection-all-fill icon, opacity value + percent icon, remove minus.
-
-     Two affordances, deliberately distinct:
-       - the SWATCH opens the colour picker (pick a literal colour, alpha included)
-       - the selection-all-fill icon opens the THEME VARIABLE popup (bind to a token)
-
-     Opacity stays a display span rather than becoming an editable field: the colour picker
-     already carries an alpha slider and emits it on colorchange, so the layer's alpha comes from
-     there. A second way to type the same number would be redundant. --}}
 @props(['color' => '#000000', 'opacity' => '100'])
 <div {{ $attributes->merge(['class' => 'hb-colorlayer']) }}>
     <div class="hb-colorlayer__fill">

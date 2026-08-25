@@ -16,6 +16,5 @@ class NullAuditSink implements AuditSink
 {
     public function record(?Authenticatable $actor, object $subject, array $properties, string $message): void
     {
-        // intentionally empty
     }
 }

@@ -214,8 +214,6 @@ class BlockContractValidatorTest extends TestCase
         $this->assertInvalid($contract, 'align');
     }
 
-    // ── Phase G: supports interior-shape validation ───────────
-
     public function test_unknown_support_feature_is_rejected(): void
     {
         $contract = $this->validContract();
@@ -350,8 +348,6 @@ class BlockContractValidatorTest extends TestCase
         $contract['attributes']['content']['control'] = ['type' => 'select', 'options' => 'nope'];
         $this->assertInvalid($contract, 'options');
     }
-
-    // ── Phase 0: contract-schema additions ────────────────────
 
     public function test_inner_blocks_allowed_blocks_accepts_wildcard_or_string_array(): void
     {

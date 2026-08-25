@@ -58,8 +58,6 @@ class CommentModerationControllerTest extends TestCase
         return $actor;
     }
 
-    // ── authorization ────────────────────────────────────────────────────
-
     public function test_a_non_moderator_actor_is_denied_every_action(): void
     {
         $post = $this->makePost();
@@ -74,8 +72,6 @@ class CommentModerationControllerTest extends TestCase
 
         $this->assertSame(Comment::STATUS_PENDING, $comment->fresh()->status);
     }
-
-    // ── index() ──────────────────────────────────────────────────────────
 
     public function test_index_defaults_to_pending_and_reports_counts(): void
     {
@@ -129,8 +125,6 @@ class CommentModerationControllerTest extends TestCase
         $this->assertSame($match->id, $data[0]['id']);
     }
 
-    // ── update() ─────────────────────────────────────────────────────────
-
     public function test_update_approves_a_pending_comment(): void
     {
         $post = $this->makePost();
@@ -156,8 +150,6 @@ class CommentModerationControllerTest extends TestCase
         $this->assertSame(Comment::STATUS_PENDING, $comment->fresh()->status);
     }
 
-    // ── destroy() ────────────────────────────────────────────────────────
-
     public function test_destroy_hard_deletes_and_cascades_replies(): void
     {
         $post = $this->makePost();
@@ -172,8 +164,6 @@ class CommentModerationControllerTest extends TestCase
         $this->assertNull(Comment::find($parent->id));
         $this->assertNull(Comment::find($reply->id));
     }
-
-    // ── reply() ──────────────────────────────────────────────────────────
 
     public function test_reply_approves_a_pending_parent_and_creates_an_approved_reply(): void
     {

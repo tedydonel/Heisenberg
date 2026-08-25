@@ -22,8 +22,6 @@ class PreviewHreflangTest extends TestCase
 {
     use RefreshDatabase;
 
-    // ── title() fallback fix ────────────────────────────────────────────
-
     public function test_an_fr_only_post_previews_with_its_fr_title_instead_of_untitled(): void
     {
         $post = Post::create([
@@ -38,8 +36,6 @@ class PreviewHreflangTest extends TestCase
         $this->assertStringContainsString('Un titre en français', $html);
         $this->assertStringNotContainsString('Untitled post', $html);
     }
-
-    // ── hreflang alternates ───────────────────────────────────────────────
 
     public function test_a_post_with_content_in_only_its_home_locale_emits_no_hreflang_links(): void
     {

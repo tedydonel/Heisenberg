@@ -2,7 +2,6 @@
     'smooth' => 0.06,
     'wheelMultiplier' => 1,
     'container' => null,
-    // 'y' (default) or 'x' — a horizontal bar tracks scrollLeft along the bottom edge.
     'axis' => 'y',
 ])
 
@@ -13,16 +12,9 @@
         (() => {
             const boot = () => {
                 document.querySelectorAll('[data-hb-custom-scrollbar]').forEach((bar) => {
-                    // A bar booted inside a [hidden] ancestor measures a 0-height track; the
-                    // ResizeObserver doesn't always fire in time when it becomes visible, so every
-                    // hb:refresh also forces an already-booted bar to re-measure.
                     if (bar.__hbScrollbar) { bar.__hbScrollbar.refresh(); return; }
 
                     const containerSelector = bar.dataset.hbScrollContainer || '';
-                    // No container = window-level scrolling (the gallery page). With one, the bar
-                    // drives ITS container only. Resolution order is load-bearing: the bar is
-                    // usually a SIBLING of its container, so check the parent subtree before the
-                    // document-wide lookup — otherwise every instance drives the FIRST match.
                     const container = containerSelector
                         ? (bar.closest(containerSelector)
                             || bar.parentElement?.querySelector(containerSelector)
@@ -38,8 +30,6 @@
                     }
 
                     const thumb = bar.querySelector('[data-hb-scrollbar-thumb]');
-                    // `:smooth="false"` reaches the DOM as data-smooth="" (Blade renders false
-                    // as an empty string) — so empty/'false'/'0'/NaN all mean "smoothing off".
                     const smoothRaw = bar.dataset.smooth;
                     const smooth = (smoothRaw === '' || smoothRaw === 'false') ? 0 : (Number(smoothRaw) || 0);
                     const wheelMultiplier = Number(bar.dataset.wheelMultiplier || 1);
@@ -47,7 +37,6 @@
                     const coarsePointer = window.matchMedia('(pointer: coarse)').matches;
                     const useSmooth = !reduceMotion && !coarsePointer && smooth > 0;
 
-                    // Axis-neutral accessors — every measurement below goes through these.
                     const getScrollPos = () => {
                         if (isWindow) return horizontal ? (window.scrollX || 0) : (window.scrollY || window.pageYOffset || 0);
                         return horizontal ? container.scrollLeft : container.scrollTop;
@@ -131,15 +120,7 @@
                     const wheel = (event) => {
                         if (!useSmooth || event.ctrlKey) return;
                         event.preventDefault();
-                        // A nested scroll region (e.g. a dropdown menu inside a scrollable panel) sits
-                        // inside this region's own DOM subtree, so a wheel event over it bubbles up
-                        // through here too — without this, scrolling the inner region ALSO scrolled
-                        // whatever scrollable ancestor wraps it, since preventDefault() alone only
-                        // stops the browser's native scroll, not this component's own ancestor
-                        // listener from independently reacting to the same event.
                         event.stopPropagation();
-                        // A horizontal bar consumes deltaX (trackpads) plus shift+wheel, the
-                        // browser's own horizontal-scroll convention.
                         let delta = horizontal ? (event.deltaX || (event.shiftKey ? event.deltaY : 0)) : event.deltaY;
                         if (event.deltaMode === 1) delta *= 16;
                         if (event.deltaMode === 2) delta *= viewportSize();
@@ -148,7 +129,7 @@
                     };
 
                     const keydown = (event) => {
-                        if (!useSmooth || horizontal) return; // key nav is a vertical concern
+                        if (!useSmooth || horizontal) return;
                         const element = event.target;
                         if (element?.isContentEditable || /^(input|textarea|select)$/i.test(element?.tagName || '')) return;
                         if (!isWindow && !container.contains(element) && element !== document.body) return;
@@ -176,12 +157,6 @@
                     };
 
                     const resize = () => {
-                        // Re-reads the container's REAL scrollTop, not just re-clamping the stale
-                        // `target`/`current` this instance booted with — a container that was
-                        // 0-height at boot time (inside a [hidden] tab/panel) reports scrollTop 0
-                        // then, and nothing else ever resyncs it once real dimensions exist, so the
-                        // thumb stayed frozen at whatever offset that stale pair produced even after
-                        // becoming scrollable.
                         target = current = clamp(getScrollPos());
                         render(current);
                     };
@@ -226,11 +201,6 @@
                     window.addEventListener('pointerup', pointerUp);
                     window.addEventListener('pointercancel', pointerUp);
 
-                    // A container that starts inside a [hidden] ancestor (e.g. a not-yet-active
-                    // panel/tab) measures 0x0 at boot, so render() below permanently marks the thumb
-                    // hidden — the window 'resize' listener above never fires just because a tab was
-                    // switched. ResizeObserver reports the container's real size once its ancestor
-                    // is un-hidden and it actually gets laid out, so this recovers correctly.
                     let ro = null;
                     if (!isWindow && 'ResizeObserver' in window) {
                         ro = new ResizeObserver(() => { target = clamp(target); render(current); });

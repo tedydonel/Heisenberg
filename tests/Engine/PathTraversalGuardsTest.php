@@ -62,8 +62,6 @@ class PathTraversalGuardsTest extends TestCase
         ];
     }
 
-    // ── LucideIconProvider ───────────────────────────────────────
-
     public function test_lucide_provider_serves_a_legitimate_slug(): void
     {
         $provider = new LucideIconProvider($this->iconRoot);
@@ -112,8 +110,6 @@ class PathTraversalGuardsTest extends TestCase
         $this->assertNull($provider->svg('plus'));
     }
 
-    // ── PhosphorIconProvider ─────────────────────────────────────
-
     public function test_phosphor_provider_serves_a_legitimate_slug(): void
     {
         $provider = new PhosphorIconProvider($this->iconRoot);
@@ -139,8 +135,6 @@ class PathTraversalGuardsTest extends TestCase
         $this->assertNotNull($provider->svg('plus'));
         $this->assertNull($provider->svg('../../../../etc/passwd'));
     }
-
-    // ── EditorController::font() ────────────────────────────────
 
     public function test_editor_controller_font_serves_an_allowlisted_vendored_file(): void
     {

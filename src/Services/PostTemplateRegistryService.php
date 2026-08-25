@@ -126,8 +126,7 @@ class PostTemplateRegistryService
         return $real === $root || str_starts_with($real, $root . DIRECTORY_SEPARATOR);
     }
 
-    // ── internals ─────────────────────────────────────────────
-
+    
     /**
      * @return array{contracts: array<string, array>, paths: array<string, array{abs: string, rel: string}>, errors: list<array{file: string, error: string}>}
      */

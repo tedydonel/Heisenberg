@@ -17,7 +17,6 @@ class NullPostViewsProvider implements PostViewsProvider
 {
     public function record(Post $post): void
     {
-        // intentionally empty
     }
 
     public function count(Post $post): int

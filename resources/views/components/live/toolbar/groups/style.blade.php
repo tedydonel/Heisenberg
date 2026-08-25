@@ -1,5 +1,3 @@
-{{-- live/toolbar/groups/style — text colour (supports.color), save-as-block (always), align
-     (supports.align). Colour + align gate independently; save is always available. --}}
 @props(['hasColor' => false, 'hasAlign' => false])
 <div class="hb-tb__group">
     @if ($hasColor)

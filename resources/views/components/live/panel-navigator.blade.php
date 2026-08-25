@@ -1,24 +1,3 @@
-{{-- live/panel-navigator — the Navigator. Two flush tabs: List View (a flat list of the canvas
-     blocks) and Outline (document stats + a heading tree). It lives in the left child panel and
-     is opened by the topbar Layers button (data-hb-layers), swapping whatever panel was shown.
-
-     List View rows come from window.hbEditor's doc model; the Outline reads the canvas DOM for
-     the rendered title/stats/heading text. Selection + scroll-to-block and List View
-     drag-to-reorder all work.
-
-     Drag-to-reorder: each row's `.grab` grip (Pointer Events + setPointerCapture, no HTML5 DnD) is
-     the handle — rows are plain buttons rebuilt wholesale by buildList() on every hb:blocks-changed
-     (host.innerHTML replaced), so per-row listeners can't survive and never get attached; the
-     pointerdown/keydown listeners below live on the panel root instead (delegation), which IS stable
-     across rebuilds. The gesture itself never touches that rebuild machinery mid-drag — pointer
-     capture lands on the grip, which stays alive for the whole gesture, and the model write
-     (window.hbEditor.moveBlock) only happens on pointerup, after which the resulting
-     hb:blocks-changed rebuild is exactly what should happen. The drop indicator (.is-drop-before /
-     .is-drop-after) matches the canvas's flat insertion-line language (see block-runtime.blade.php).
-
-     Keyboard reordering: with a row focused, Alt+ArrowUp / Alt+ArrowDown move it one position (same
-     moveBlock commit), refocus the row at its new position after the rebuild, and announce the move
-     via a visually-hidden aria-live region (.hb-nav__sr) — there is no mouse-only way to reorder. --}}
 @props(['registry' => []])
 @once
 <style>
@@ -27,14 +6,11 @@
     .hb-nav__content[hidden] { display: none; }
     .hb-nav__body { flex: 1 1 auto; min-height: 0; overflow: hidden; position: relative; }
 
-    /* List View — 28px rows: 10px caret slot, 13px block icon, 12px label, hover grip. */
     .hb-nav-list { display: flex; flex-direction: column; padding: 4px 0 18px; }
     .hb-nav-row { display: flex; align-items: center; gap: 4px; width: 100%; height: 28px; padding: 0 8px; text-align: left; color: var(--hb-text-secondary); background: none; border: 0; position: relative; cursor: pointer; font-family: var(--hb-font-sans, Rubik, sans-serif); }
     .hb-nav-row:hover { background: var(--hb-surface-hover); color: var(--hb-text-primary); }
     .hb-nav-row.is-on { background: var(--hb-bg-muted); color: var(--hb-text-primary); }
     .hb-nav-row .twist { width: 10px; height: 10px; flex: none; }
-    /* Container rows get a real caret in the twist slot; clicking it folds the
-       subtree (rotated closed like every other disclosure in the editor). */
     .hb-nav-row .twist.has-kids { display: inline-flex; align-items: center; justify-content: center; color: var(--hb-text-muted); cursor: pointer; transition: transform .12s ease; }
     .hb-nav-row .twist.has-kids svg { width: 10px; height: 10px; }
     .hb-nav-row .twist.has-kids.is-closed { transform: rotate(-90deg); }
@@ -42,14 +18,10 @@
     .hb-nav-row .ic svg { width: 13px; height: 13px; }
     .hb-nav-row .nm { flex: 1; min-width: 0; font-size: 12px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
     .hb-nav-row .grab { margin-left: auto; width: 16px; flex: none; display: inline-flex; align-items: center; justify-content: center; color: var(--hb-text-disabled); opacity: .4; transition: opacity .12s; cursor: grab; }
-    /* Fully visible on the row's hover/active state — the .4 baseline is the
-       discoverability floor so a user who never hovers still sees the handle exists. */
     .hb-nav-row .grab svg { width: 12px; height: 12px; }
     .hb-nav-row:hover .grab { opacity: 1; }
     .hb-nav-empty { padding: 40px 20px; text-align: center; color: var(--hb-text-disabled); font-size: 12px; line-height: 1.5; }
 
-    /* Drag-to-reorder — dim the dragged row in place; a flat 2px line (no rounded pill, matching the
-       canvas's own drop indicator) shows where it will land. */
     .hb-nav-row.is-dragging { opacity: .4; }
     .hb-nav-row.is-drop-before::before,
     .hb-nav-row.is-drop-after::after {
@@ -58,10 +30,8 @@
     }
     .hb-nav-row.is-drop-before::before { top: 0; }
     .hb-nav-row.is-drop-after::after { bottom: 0; }
-    /* Visually-hidden live region — announces keyboard reorders (Alt+ArrowUp/Down) to screen readers. */
     .hb-nav__sr { position: absolute; width: 1px; height: 1px; margin: -1px; overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; }
 
-    /* Outline — stat rows, hairline divider, then heading rows with mono tags (H1 primary, H2+ dashed). */
     .hb-nav-outline { display: flex; flex-direction: column; }
     .hb-nav-stats { display: flex; flex-direction: column; gap: 4px; padding: 12px; border-bottom: 1px solid var(--hb-border); }
     .hb-nav-stat { display: flex; align-items: center; gap: 12px; height: 20px; font-size: 12px; }
@@ -85,9 +55,6 @@
         const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
         const cssId = (id) => (window.CSS && CSS.escape ? CSS.escape(id) : String(id).replace(/"/g, '\\"'));
 
-        // Resolved translations for every JS-built string in this panel. The
-        // server pre-renders a <script type="application/json" data-hb-nav-strings>
-        // containing the keys below (see the pushed strings block at the end of this file).
         const hbNavStrings = (() => {
             const tag = document.querySelector('[data-hb-nav-strings]');
             if (!tag) return {};
@@ -107,14 +74,13 @@
             return slug ? slug.charAt(0).toUpperCase() + slug.slice(1).replace(/-/g, ' ') : t('block_fallback', 'Block');
         };
         const scrollToBlock = (id) => {
-            const el = document.querySelector('.hb-page__blocks [data-block="' + cssId(id) + '"]');
-            if (el) { try { el.scrollIntoView({ block: 'center' }); } catch (e) { /* older engines */ } }
+            const blk = document.querySelector('.hb-page__blocks .hb-blk[data-block="' + cssId(id) + '"]');
+            const el = blk ? (blk.querySelector(':scope > [data-block-id]') || blk) : null;
+            if (el) { try { el.scrollIntoView({ block: 'center' }); } catch (e) { } }
             return el;
         };
 
         const TWIST = '<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 6l4 4 4-4"/></svg>';
-        // Folded subtrees per panel root. Rows are rebuilt wholesale on every
-        // hb:blocks-changed, so the fold state must live OUTSIDE the DOM.
         const collapsedByRoot = new WeakMap();
         const foldSetFor = (root) => {
             let set = collapsedByRoot.get(root);
@@ -126,23 +92,20 @@
             const host = root.querySelector('[data-hb-nav-list-body]');
             if (!host) return;
             const collapsed = foldSetFor(root);
-            // Rows read the model (the runtime's source of truth); the Outline below reads the
-            // DOM instead because it needs each block's *rendered* text, not raw innerHTML.
-            // The walk recurses into innerBlocks — a group's children are part of the document
-            // and the list view must show them, indented under their parent, not hide them.
             const docBlocks = window.hbEditor ? window.hbEditor.getDoc().blocks : [];
             const iconFor = (name) => {
                 const t = document.querySelector('[data-hb-nav-icon="' + cssId(name) + '"]');
                 return t && t.innerHTML.trim() ? t.innerHTML : BLOCK;
             };
             const rows = [];
-            const walk = (list, depth) => {
-                list.forEach((b) => {
+            const walk = (list, depth, parentId) => {
+                list.forEach((b, indexInParent) => {
                     const name = b.name || '';
                     const id = b.id == null ? '' : String(b.id);
                     const kids = Array.isArray(b.innerBlocks) ? b.innerBlocks : [];
                     const folded = collapsed.has(id);
                     rows.push('<button type="button" class="hb-nav-row" data-nav-row="' + esc(id) + '" data-nav-depth="' + depth + '"'
+                        + ' data-nav-parent="' + esc(parentId || '') + '" data-nav-index="' + indexInParent + '"'
                         + (depth ? ' style="padding-left:' + (8 + depth * 14) + 'px"' : '')
                         + ' aria-keyshortcuts="Alt+ArrowUp Alt+ArrowDown">'
                         + (kids.length
@@ -150,11 +113,9 @@
                             : '<span class="twist"></span>')
                         + '<span class="ic">' + iconFor(name) + '</span>'
                         + '<span class="nm">' + esc(labelFor(name)) + '</span>'
-                        // Drag-to-reorder is top-level only (moveBlock addresses root
-                        // indexes) — nested rows get no grip rather than a dead one.
-                        + (depth === 0 ? '<span class="grab">' + GRIP + '</span>' : '')
+                        + '<span class="grab">' + GRIP + '</span>'
                         + '</button>');
-                    if (kids.length && !folded) walk(kids, depth + 1);
+                    if (kids.length && !folded) walk(kids, depth + 1, id);
                 });
             };
             walk(docBlocks, 0);
@@ -205,10 +166,6 @@
 
         const rebuildAll = (root) => { buildList(root); buildOutline(root); };
 
-        // ── List View drag-to-reorder + keyboard reordering ────────
-        // Rows are recreated wholesale on every rebuildAll (buildList replaces host.innerHTML), so
-        // all of this is delegated on `root` — a stable ancestor that survives the rebuild — rather
-        // than bound per-row.
         const rowsIn = (root) => {
             const host = root.querySelector('[data-hb-nav-list-body] .hb-nav-list');
             return host ? Array.prototype.filter.call(host.children, (c) => c.classList && c.classList.contains('hb-nav-row')) : [];
@@ -234,7 +191,7 @@
                 if (!row) return;
                 const id = row.getAttribute('data-nav-row');
                 e.preventDefault();
-                try { grip.setPointerCapture(e.pointerId); } catch (err) { /* older engines */ }
+                try { grip.setPointerCapture(e.pointerId); } catch (err) { }
                 const startY = e.clientY;
                 let active = false;
                 let hover = null;
@@ -253,48 +210,48 @@
                     found.el.classList.add(found.below ? 'is-drop-after' : 'is-drop-before');
                 }
                 function cleanup() {
-                    grip.removeEventListener('pointermove', onMove);
-                    grip.removeEventListener('pointerup', onUp);
-                    grip.removeEventListener('pointercancel', onCancel);
+                    window.removeEventListener('pointermove', onMove);
+                    window.removeEventListener('pointerup', onUp);
+                    window.removeEventListener('pointercancel', onCancel);
                     row.classList.remove('is-dragging');
                     clearRowMarks(root);
                 }
                 function onUp() {
                     if (active && hover && window.hbEditor) {
                         const fromIndex = window.hbEditor.indexOf(id);
-                        const hoverIndex = window.hbEditor.indexOf(hover.el.getAttribute('data-nav-row'));
-                        if (fromIndex !== -1 && hoverIndex !== -1) {
-                            const desired = hover.below ? hoverIndex + 1 : hoverIndex;
-                            const toIndex = desired > fromIndex ? desired - 1 : desired;
-                            if (toIndex !== fromIndex && window.hbEditor.moveBlock(fromIndex, toIndex)) {
-                                // moveBlock fires hb:blocks-changed and the list rebuilds
-                                // (the original row element is gone); the moved block lands
-                                // at its new index. Select it in the canvas + highlight the
-                                // rebuilt row so the reorder is visibly reflected (without
-                                // this, the canvas selection stayed on a different block and
-                                // the navigator row was un-highlighted — the user couldn't
-                                // tell the drag had taken effect).
-                                if (window.hbEditor.selectById) window.hbEditor.selectById(id);
-                                const rebuilt = root.querySelector('[data-nav-row="' + cssId(id) + '"]');
-                                if (rebuilt) {
-                                    root.querySelectorAll('.hb-nav-row').forEach((r) => r.classList.toggle('is-on', r === rebuilt));
-                                }
-                                announce(root, t('moved', 'Moved.'));
+                        const hoverRow = hover.el;
+                        const targetParent = hoverRow.getAttribute('data-nav-parent') || '';
+                        const targetIndex = parseInt(hoverRow.getAttribute('data-nav-index') || '0', 10);
+                        const desired = hover.below ? targetIndex + 1 : targetIndex;
+                        let moved = false;
+                        if (targetParent === '') {
+                            const fromIndex = window.hbEditor.indexOf(id);
+                            const hoverIndex = window.hbEditor.indexOf(hoverRow.getAttribute('data-nav-row'));
+                            if (fromIndex !== -1 && hoverIndex !== -1) {
+                                const toIndex = desired > fromIndex ? desired - 1 : desired;
+                                if (toIndex !== fromIndex) moved = window.hbEditor.moveBlock(fromIndex, toIndex);
                             }
+                        } else {
+                            moved = window.hbEditor.moveBlockTo(id, targetParent, desired);
+                        }
+                        if (moved) {
+                            if (window.hbEditor.selectById) window.hbEditor.selectById(id);
+                            const rebuilt = root.querySelector('[data-nav-row="' + cssId(id) + '"]');
+                            if (rebuilt) {
+                                root.querySelectorAll('.hb-nav-row').forEach((r) => r.classList.toggle('is-on', r === rebuilt));
+                            }
+                            announce(root, t('moved', 'Moved.'));
                         }
                     }
                     cleanup();
                 }
                 function onCancel() { cleanup(); }
-                grip.addEventListener('pointermove', onMove);
-                grip.addEventListener('pointerup', onUp);
-                grip.addEventListener('pointercancel', onCancel);
+                window.addEventListener('pointermove', onMove);
+                window.addEventListener('pointerup', onUp);
+                window.addEventListener('pointercancel', onCancel);
             });
         };
 
-        // Alt+ArrowUp / Alt+ArrowDown move the focused row one position — the only non-mouse path
-        // to reorder. Refocuses the row (rebuilt under the same data-nav-row id) after the move and
-        // announces it via the hidden live region.
         const wireRowKeys = (root) => {
             root.addEventListener('keydown', (e) => {
                 if (e.key !== 'ArrowUp' && e.key !== 'ArrowDown') return;
@@ -331,7 +288,6 @@
                 rebuildAll(root);
             });
             root.addEventListener('click', (e) => {
-                // The caret folds the subtree; it must not also select/scroll.
                 const twist = e.target.closest('[data-nav-twist]');
                 if (twist) {
                     const id = twist.getAttribute('data-nav-twist');
@@ -344,9 +300,6 @@
                 if (row) {
                     const id = row.getAttribute('data-nav-row');
                     scrollToBlock(id);
-                    // Select the block in the canvas (toolbar docks, inspector follows,
-                    // hb:block-selected fires for every other consumer) — scrollToBlock
-                    // alone only moves the viewport, it doesn't set the canvas selection.
                     if (window.hbEditor && window.hbEditor.selectById) window.hbEditor.selectById(id);
                     root.querySelectorAll('.hb-nav-row').forEach((r) => r.classList.toggle('is-on', r === row));
                     return;
@@ -367,29 +320,16 @@
         if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', boot, { once: true });
         else boot();
         document.addEventListener('hb:refresh', boot);
-        // Title edits and Layers-button opens both refresh the live outline/list.
         document.addEventListener('hb:doc-title', () => document.querySelectorAll('[data-hb-panel-nav]').forEach(buildOutline));
         document.addEventListener('hb:nav-open', () => document.querySelectorAll('[data-hb-panel-nav]').forEach(rebuildAll));
-        // The block model mutated (insert / edit) — relist the blocks and rebuild the outline.
         document.addEventListener('hb:blocks-changed', () => document.querySelectorAll('[data-hb-panel-nav]').forEach(rebuildAll));
     })();
 </script>
 @endonce
 
-{{-- Translator strings consumed by the navigator's vanilla-JS runtime below —
-     JS can't call __() / trans(), so we render the resolved strings into a
-     single hidden <script type="application/json"> and read them back as JSON.
-     Kept tiny on purpose: only the strings the JS templates actually need. --}}
 @once
 @push('hb-nav-strings')
 @php
-    // Built here, then emitted as a single variable below. A multi-line json directive taking an
-    // inline array literal makes Blade's argument parser mismatch the opening bracket against the
-    // array's closing paren, compiling to `json_encode([ ... )` — a hard ParseError that 500s the
-    // whole editor. Passing one already-built variable keeps the directive argument on one line.
-    // (Directive names are deliberately not written with a leading at-sign anywhere in this file's
-    // comments: Blade's compiler matches them inside comment text too, and a stray one reads as an
-    // unclosed block.)
     $hbNavStrings = [
         'empty_blocks' => __('heisenberg::editor.panel_navigator.empty_blocks'),
         'moved' => __('heisenberg::editor.panel_navigator.moved'),
@@ -414,8 +354,6 @@
 
     <div class="hb-nav__content" data-hb-nav-list>
         <div class="hb-nav__body hb-nav__body--list" data-hb-nav-list-body></div>
-        {{-- Per-block icons for the List View rows, pre-rendered from each contract's own icon
-             (same resolution as the Components palette) and cloned by buildList() per row. --}}
         <div hidden data-hb-nav-icon-templates>
             @foreach (($registry ?? []) as $name => $block)
                 @php $navIcon = \Heisenberg\Editor\EditorIcon::resolveSlug((string) ($block['icon'] ?? '')) !== null ? (string) $block['icon'] : 'cube'; @endphp
@@ -430,6 +368,5 @@
         <x-ui.custom-scrollbar container=".hb-nav__body--outline" />
     </div>
 
-    {{-- Keyboard-reorder announcements (Alt+ArrowUp/Down on a focused row) — see wireRowKeys. --}}
     <div class="hb-nav__sr" role="status" aria-live="polite"></div>
 </div>

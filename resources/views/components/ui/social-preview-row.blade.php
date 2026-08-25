@@ -1,6 +1,3 @@
-{{-- ui/social-preview-row — 36px row, cornerRadius radius-md,
-     border, logo+label left, chevron right. Logo/label are props so this shell works for Facebook/X/
-     LinkedIn alike (the source only instances the Facebook case for this particular reusable node). --}}
 @once
 
 @endonce

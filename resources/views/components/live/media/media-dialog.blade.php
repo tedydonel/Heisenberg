@@ -1,22 +1,3 @@
-{{-- live/media/media-dialog —
-     one 900x640 fixed-size modal (2026-08-04: height was previously unset, so the dialog visibly
-     resized itself switching Upload -> Library or as the library grid's item count changed —
-     .hb-mediadialog__body fills the fixed frame and scrolls internally instead, same as before),
-     shared top strip (title + Upload/Library tabs + close), both tab bodies always
-     render and JS toggles which is visible (was: server picks one via `tab` and only that renders —
-     that only worked for the static showcase page, not a real dialog you switch tabs inside).
-     Reuses ui/tabs (DUmaG) and the media sub-views. `scrim` renders the overlay (off by default so the
-     panel is previewable inline, as on editor/components.blade.php).
-
-     There is no Alpine/Livewire on the /editor page (see live/topbar.blade.php's script for the house
-     vanilla-JS idiom), so this dialog is wired with plain JS + fetch instead of the Livewire component
-     the file header used to say this would grow into. Every `:scrim="true"` instance is a real,
-     self-contained accessible modal: close button, Escape-to-close, a Tab focus trap, and focus
-     returned to whatever opened it — implemented once here so every caller gets it for free via the
-     `hbOpen(returnFocusEl)` / `hbClose()` methods exposed on the scrim element. `select-url` /
-     `upload-url` (route('media.select') / route('media.upload'), see routes/media.php) wire the
-     Library grid and Upload dropzone to the real MediaLibraryController; a caller that omits them (the
-     showcase page never sets them) keeps the original static/presentational behavior untouched. --}}
 @once
 <style>
     .hb-mediadialog {
@@ -48,10 +29,6 @@
     .hb-mediadialog__body--upload { display: flex; align-items: center; justify-content: center; padding: var(--hb-space-4, 16px); min-height: 420px; }
     .hb-mediadialog__body--library { padding: var(--hb-space-6, 24px); }
     .hb-mediadialog__body[hidden] { display: none; }
-    /* The library body grows longer than the 640px frame once enough items load, so the
-       actual scroll region is the inner div — sibling to the custom-scrollbar bar that drives
-       it. The bar's <script> adds hb-scroll-container + overflow:auto to data-hb-mediadialog-scroll
-       on boot, so this only needs to fill the body. */
     .hb-mediadialog__scroll { box-sizing: border-box; height: 100%; }
     .hb-mediadialog__scrim {
         position: fixed; inset: 0; z-index: 120; display: flex; align-items: center; justify-content: center;
@@ -63,8 +40,6 @@
 @once('hb-mediadialog-core')
 <script>
     (() => {
-        // The single currently-open scrimmed dialog (there is only ever one modal open at a
-        // time in this editor) — drives the document-level Escape/focus-trap listeners below.
         let hbOpenMediaScrim = null;
 
         const focusablesIn = (container) => Array.from(container.querySelectorAll(
@@ -98,8 +73,6 @@
         const wireUpload = (dialog) => {
             const uploadUrl = dialog.dataset.uploadUrl || '';
             const zone = dialog.querySelector('.hb-mediadialog__body--upload .hb-dropzone');
-            // No upload endpoint wired for this instance (e.g. the bare showcase-page demo) —
-            // leave the dropzone exactly as inert as it already was.
             if (!zone || !uploadUrl || zone.__hbUpload) return;
             zone.__hbUpload = true;
 
@@ -120,22 +93,12 @@
                 if (tablist?.__hbTablist && libTab) tablist.__hbTablist.activate(libTab, false);
             };
 
-            // Upload one file over XHR (fetch has no upload progress) into an
-            // optimistic uploading card — the extracted media-card's uploading
-            // state, driven live: progress ticks fill the track, success swaps
-            // in the real pickable card, failure swaps in the error card whose
-            // Retry re-runs exactly this function.
             const maxBytes = parseInt(dialog.dataset.maxBytes || '0', 10) || 0;
             const uploadOne = (file) => {
                 const root = lib();
                 const card = root && root.hbUploadCard ? root.hbUploadCard(file.name) : null;
                 if (!card) { showError(dialog.dataset.msgUploadFailed || ''); return; }
 
-                // Preflight: a file over the server's effective limit (the
-                // smaller of the app's media.max_kb and PHP's own
-                // upload_max_filesize/post_max_size) would only come back as a
-                // vague validation error after a wasted round trip — reject it
-                // here with the limit spelled out.
                 if (maxBytes > 0 && file.size > maxBytes) {
                     card.setProgress(0);
                     card.fail((dialog.dataset.msgTooLarge || '').replace(':max', dialog.dataset.maxHuman || ''), null);
@@ -153,15 +116,11 @@
                 xhr.upload.addEventListener('progress', (e) => {
                     if (e.lengthComputable) card.setProgress((e.loaded / e.total) * 100);
                 });
-                // A localhost upload lands in milliseconds — without a floor the
-                // uploading card exists for one frame and the whole extracted
-                // progress state reads as "gone". Failures swap immediately
-                // (never delay bad news); success waits out the remainder.
                 const startedAt = Date.now();
                 const MIN_VISIBLE_MS = 650;
                 xhr.addEventListener('load', () => {
                     let data = {};
-                    try { data = JSON.parse(xhr.responseText || '{}'); } catch (e) { /* non-JSON error page */ }
+                    try { data = JSON.parse(xhr.responseText || '{}'); } catch (e) { }
                     if (xhr.status >= 200 && xhr.status < 300 && data.files && data.files[0]) {
                         card.setProgress(100);
                         const rest = Math.max(0, MIN_VISIBLE_MS - (Date.now() - startedAt));
@@ -180,9 +139,6 @@
                 const list = Array.from(files || []);
                 if (!list.length) return;
                 showError('');
-                // The library tab is where the cards live — switch first, let the
-                // existing grid load (hbRefresh resolves even without a URL), THEN
-                // start the uploads so the refresh can't wipe in-flight cards.
                 goToLibrary();
                 const root = lib();
                 const start = () => list.forEach(uploadOne);
@@ -219,9 +175,6 @@
                 if (scrim) closeDialog(scrim);
             });
 
-            // A pick bubbles up from live/media/media-library's grid — close the modal and
-            // re-announce it as `hb:media-select` so whatever opened this dialog (e.g. the
-            // Post-tab featured-image field) can react without knowing about the grid at all.
             dialog.addEventListener('hb:media-pick', (event) => {
                 const scrim = dialog.closest('.hb-mediadialog__scrim');
                 if (scrim) closeDialog(scrim);
@@ -236,7 +189,6 @@
             scrim.__hbMediaScrim = true;
             scrim.hbOpen = (returnFocusEl) => openDialog(scrim, returnFocusEl);
             scrim.hbClose = () => closeDialog(scrim);
-            // Click on the backdrop itself (not the dialog card) closes, same as the Close button.
             scrim.addEventListener('mousedown', (e) => { if (e.target === scrim) closeDialog(scrim); });
         };
 
@@ -248,9 +200,6 @@
         else boot();
         document.addEventListener('hb:refresh', boot);
 
-        // Escape-to-close and the Tab focus trap are both scoped to "is a scrimmed dialog
-        // currently open" — a single document-level listener, guarded so re-running boot()
-        // (hb:refresh) never attaches it twice.
         if (!document.__hbMediaDialogKeys) {
             document.__hbMediaDialogKeys = true;
             document.addEventListener('keydown', (event) => {
@@ -264,10 +213,6 @@
                 const first = items[0];
                 const last = items[items.length - 1];
                 const current = document.activeElement;
-                // `current === dialog` covers the very first Tab press right after hbOpen()
-                // calls dialog.focus() — the dialog itself (tabindex="-1") is its own
-                // `.contains()` match but isn't in `items`, so without this it would fall
-                // through to native Tab handling and escape the trap on the first keystroke.
                 if (!dialog.contains(current)) { event.preventDefault(); first.focus(); }
                 else if (event.shiftKey && (current === first || current === dialog)) { event.preventDefault(); last.focus(); }
                 else if (!event.shiftKey && (current === last || current === dialog)) { event.preventDefault(); first.focus(); }
@@ -294,14 +239,9 @@
     ];
     $activeIndex = $tab === 'library' ? 1 : 0;
 
-    // The EFFECTIVE per-file upload ceiling: the app's media.max_kb AND PHP's
-    // own ini limits, whichever is smallest. PHP rejects an over-ini file before
-    // Laravel ever sees it properly ("The files.0 failed to upload." with zero
-    // explanation), so the client preflights against this and says the limit
-    // out loud instead of burning a doomed request.
     $hbIniBytes = static function (string $v): ?int {
         $v = trim($v);
-        if ($v === '' || $v === '0' || $v === '-1') { return null; } // unlimited
+        if ($v === '' || $v === '0' || $v === '-1') { return null; }
         $unit = strtolower(substr($v, -1));
         $n = (float) $v;
         return (int) match ($unit) {
@@ -322,9 +262,6 @@
         : round($hbMaxBytes / 1024) . ' KB';
 @endphp
 @if ($scrim)
-    {{-- Visibility is entirely caller-controlled: pass `hidden` on the component tag (as
-         inspector.blade.php's featured-image field does) to start closed, then call
-         `hbOpen()`/`hbClose()` (exposed on this element by the script above) to toggle it. --}}
     <div {{ $attributes->merge(['class' => 'hb-mediadialog__scrim']) }}>
         <div class="hb-mediadialog" role="dialog" aria-modal="true" aria-label="{{ $title }}" tabindex="-1"
             data-hb-mediadialog data-upload-url="{{ $uploadUrl }}" data-accept="{{ $accept }}"

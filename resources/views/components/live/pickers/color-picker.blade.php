@@ -1,36 +1,4 @@
-{{-- live/pickers/color-picker — Fill and Gradient picker.
-
-     Structure note: the colour editor (SV square, hue/alpha sliders, model inputs) is NOT
-     inside the Fill tab — it sits below both tabs, and edits the flat colour in Fill mode. It
-     is HIDDEN in Gradient mode (32-pickers.css, `.hb-cp[data-cp-mode="gradient"] .hb-cp__editor`)
-     rather than repurposed to edit the selected stop: a picker with its own gradient section
-     showing a full second colour editor underneath it reads as one picker nested inside
-     another. Clicking a stop's swatch instead opens a SEPARATE `standalone` instance of this
-     same component (Fill only, no tabs, no gradient section) anchored to that stop — see the
-     `standalone` prop below and script-fonts-and-style-events.blade.php's `gradientstopedit`
-     listener, which owns the open/seed/write-back around it.
-
-     Dropdowns are ui/select throughout (gradient type, radial shape, colour model) rather than
-     the click-to-cycle buttons the first pass used — a 2-state toggle can't express 3 gradient
-     types, and cycling hides the options from the user entirely.
-
-     Public API on the root element (window-facing, used by the inspector):
-       __hbCp.setHex(hex)          set the flat colour
-       __hbCp.setGradient(spec)    { type, angle, shape, stops:[{position,color,opacity}] }
-       __hbCp.setGradientCss(css)  seed from a stored `linear-gradient(...)` string; switches
-                                   to Gradient mode. Returns false if the string is unparseable.
-       __hbCp.getValue()           { mode, hex, rgba, gradient }
-       __hbCp.setMode('fill'|'gradient')
-     Events (bubbling): `colorchange` { r,g,b,a,hex,gradientStop }, `gradientchange`
-     { css,type,angle,shape,stops }. Both signatures are unchanged from the first pass — the
-     inspector's two listeners (inspector.blade.php:1082,1093) keep working as-is.
-
-     `standalone`: a Fill-only instance with no Fill/Gradient tabs and no gradient section at
-     all — the popup a gradient STOP opens (script-fonts-and-style-events.blade.php's
-     `gradientstopedit` listener). Editing a stop's colour must never re-offer the gradient UI
-     underneath it (that is the self-nesting this prop exists to avoid); the JS below already
-     null-guards every gradient element lookup, so omitting that markup needs no script changes,
-     only this one to skip rendering it. --}}
+@props(['mode' => 'fill', 'value' => '#E3E3E3', 'standalone' => false])
 @props(['mode' => 'fill', 'value' => '#E3E3E3', 'standalone' => false])
 @php
     $gradientTypes = [
@@ -42,8 +10,6 @@
         ['value' => 'circle', 'label' => __('heisenberg::editor.color_picker.shape_circle')],
         ['value' => 'ellipse', 'label' => __('heisenberg::editor.color_picker.shape_ellipse')],
     ];
-    // Model names are notation, not prose — deliberately untranslated, like the R/G/B field
-    // letters below them.
     $colorModels = [
         ['value' => 'hex', 'label' => 'HEX'],
         ['value' => 'rgb', 'label' => 'RGB'],
@@ -163,8 +129,6 @@
             const round = (x) => Math.round(x);
             const toHex = (value) => clamp(round(Number(value) || 0), 0, 255).toString(16).padStart(2, '0');
 
-            // Accepts 3, 4, 6 and 8 digit hex. Returns [r, g, b, a] with a in 0..1, or null when
-            // unparseable — callers decide the fallback rather than getting a silent black.
             const parseHex = (value) => {
                 const raw = String(value == null ? '' : value).trim().replace(/^#/, '');
                 const expand = (s) => s.split('').map((c) => c + c).join('');
@@ -217,7 +181,6 @@
                 return [round((r + m) * 255), round((g + m) * 255), round((b + m) * 255)];
             }
 
-            // Field sets per colour model. `k` is the parse key, `l` the printed letter.
             const MODELS = {
                 hex: [{ k: 'hex', l: 'HEX', wide: true }],
                 rgb: [{ k: 'r', l: 'R' }, { k: 'g', l: 'G' }, { k: 'b', l: 'B' }],
@@ -263,24 +226,18 @@
                 };
                 let mode = root.dataset.cpMode === 'gradient' ? 'gradient' : 'fill';
                 let model = 'rgba';
-                let fields = [];              // live input elements, keyed by MODELS entry
-                let suppressStopSync = false; // set while typing into a stop row's own inputs
-                let draggedStop = false;      // set by a handle drag, consumed by the click that follows
-                // Seeded, not null: a picker mounted straight into gradient mode never runs the
-                // fill→gradient park, so without this its first switch to Fill would inherit a
-                // stop colour instead of the value the component was given.
+                let fields = [];
+                let suppressStopSync = false;
+                let draggedStop = false;
                 let fillState = { h: st.h, s: st.s, v: st.v, a: st.a };
 
-                // The EyeDropper API is Chromium-only. Rather than ship a button that silently
-                // does nothing on Firefox/Safari, it stays hidden unless the API is present.
                 if (eyedropper && window.EyeDropper) eyedropper.hidden = false;
 
                 const rgb = () => hsvToRgb(st.h, st.s, st.v);
                 const hexOf = ([r, g, b]) => '#' + toHex(r) + toHex(g) + toHex(b);
                 const selectedStop = () => gradient.stops[gradient.selected] || null;
 
-                /* ── gradient model ─────────────────────────────────────── */
-
+                
                 const stopCss = (stop) => {
                     const parsed = parseHex(stop.color) || [0, 0, 0, 1];
                     return 'rgba(' + parsed[0] + ',' + parsed[1] + ',' + parsed[2] + ',' + (stop.opacity / 100).toFixed(3) + ') ' + stop.position + '%';
@@ -294,12 +251,8 @@
                     if (gradient.type === 'conic') return 'conic-gradient(from ' + gradient.angle + 'deg, ' + stops + ')';
                     return 'linear-gradient(' + gradient.angle + 'deg, ' + stops + ')';
                 }
-                // The preview bar is always a left-to-right ramp regardless of gradient type —
-                // it represents the stop sequence, not the final projection.
                 const rampCss = () => 'linear-gradient(90deg, ' + stopList() + ')';
 
-                // Colour of the ramp at `position`, used when clicking the bar to insert a stop
-                // so the new stop starts invisible rather than jumping to a hardcoded grey.
                 function sampleAt(position) {
                     const list = orderedStops();
                     if (!list.length) return { color: '#808080', opacity: 100 };
@@ -326,9 +279,6 @@
                     }));
                 }
 
-                // Keep `selected` pointing at the same stop object across a re-sort. Positions are
-                // the sort key and they change on drag, so index-based tracking loses the stop
-                // mid-drag; the per-stop `id` is what actually survives.
                 function sortStops(keepId) {
                     const id = keepId === undefined ? (selectedStop() || {}).id : keepId;
                     gradient.stops.sort((a, b) => a.position - b.position);
@@ -336,8 +286,7 @@
                     gradient.selected = index === -1 ? 0 : index;
                 }
 
-                /* ── gradient rendering ─────────────────────────────────── */
-
+                
                 function renderBar() {
                     if (!gradientBar || !gradientRamp) return;
                     gradientRamp.style.background = rampCss();
@@ -378,8 +327,6 @@
                         }
                         row.classList.toggle('is-active', gradient.selected === index);
                         row.querySelector('[data-cp-gradient-stop-swatch]').style.background = stop.color;
-                        // Skip the field the user is currently typing in — writing back to it
-                        // would fight the caret.
                         const hexInput = row.querySelector('[data-cp-gradient-stop-hex]');
                         const opacityInput = row.querySelector('[data-cp-gradient-stop-opacity]');
                         const positionInput = row.querySelector('[data-cp-gradient-stop-position]');
@@ -409,8 +356,7 @@
                     if (emit) emitGradient();
                 }
 
-                /* ── colour editor rendering ────────────────────────────── */
-
+                
                 function fieldValues() {
                     const [r, g, b] = rgb();
                     const [, sl, ll] = rgbToHsl(r, g, b);
@@ -418,9 +364,6 @@
                     return {
                         hex: a < 1 ? hexOf([r, g, b]) + toHex(a * 255) : hexOf([r, g, b]),
                         r, g, b, a,
-                        // HSL and HSB share a hue, and st.h is the continuous one the hue slider
-                        // actually holds — re-deriving it from the quantised 8-bit RGB makes the
-                        // printed H drift a degree off the slider it is supposed to mirror.
                         hh: round(((st.h % 360) + 360) % 360),
                         sl: round(sl * 100), ll: round(ll * 100),
                         sb: round(st.s * 100), vb: round(st.v * 100),
@@ -460,8 +403,6 @@
                     });
                 }
 
-                // Read every field of the active model at once — RGB and HSL are only meaningful
-                // as a triple, so committing one field has to re-read its siblings.
                 function commitInputs(changedKey) {
                     const read = (key) => {
                         const found = fields.find((field) => field.spec.k === key);
@@ -529,8 +470,7 @@
                     }));
                 }
 
-                /* ── mode + selection ───────────────────────────────────── */
-
+                
                 function loadSelectedStopIntoEditor() {
                     const stop = selectedStop();
                     if (!stop) return;
@@ -541,10 +481,6 @@
 
                 function setMode(next) {
                     const target = next === 'gradient' ? 'gradient' : 'fill';
-                    // The two tabs edit different things through one editor, so the flat colour
-                    // has to be parked on the way into gradient mode and restored on the way
-                    // back — otherwise a trip through the Gradient tab silently replaces the
-                    // user's fill with whichever stop they last touched.
                     if (mode === 'fill' && target === 'gradient') fillState = { h: st.h, s: st.s, v: st.v, a: st.a };
                     mode = target;
                     root.dataset.cpMode = mode;
@@ -564,8 +500,7 @@
                     render();
                 }
 
-                /* ── drag helpers ───────────────────────────────────────── */
-
+                
                 function track(el, fn) {
                     if (!el) return;
                     const move = (event) => fn(event.touches ? event.touches[0] : event, el.getBoundingClientRect());
@@ -583,8 +518,6 @@
                 track(hue, (event, rect) => { st.h = clamp((event.clientX - rect.left) / rect.width, 0, 1) * 360; render(); });
                 track(alpha, (event, rect) => { st.a = clamp((event.clientX - rect.left) / rect.width, 0, 1); render(); });
 
-                // Stop handles drag along the bar. Identity is the stop id, so the re-sort each
-                // frame can't swap which stop the pointer owns.
                 if (gradientBar) {
                     gradientBar.addEventListener('mousedown', (event) => {
                         const handle = event.target.closest('[data-cp-gradient-stop-handle]');
@@ -596,10 +529,6 @@
                         const move = (moveEvent) => {
                             const stop = gradient.stops.find((item) => item.id === id);
                             if (!stop) return;
-                            // Releasing a drag anywhere over the bar still fires a click, and the
-                            // click handler's job is "insert a stop here" — so a drag that ended
-                            // off the handle would add a phantom stop. Mark it and swallow the
-                            // click that follows.
                             draggedStop = true;
                             stop.position = round(clamp((moveEvent.clientX - rect.left) / rect.width, 0, 1) * 100);
                             sortStops(id);
@@ -609,7 +538,6 @@
                         document.addEventListener('mousemove', move);
                         document.addEventListener('mouseup', up);
                     });
-                    // Keyboard nudge, so stops are reachable without a pointer.
                     gradientBar.addEventListener('keydown', (event) => {
                         const handle = event.target.closest('[data-cp-gradient-stop-handle]');
                         if (!handle) return;
@@ -626,8 +554,7 @@
                     });
                 }
 
-                /* ── public API ─────────────────────────────────────────── */
-
+                
                 function setHex(hex) {
                     const parsed = parseHex(hex);
                     if (!parsed) return;
@@ -635,9 +562,6 @@
                     st.h = h; st.s = s; st.v = v; st.a = parsed[3];
                     render();
                 }
-                // Inverse of gradientCss(). Stops are emitted as rgba(), which parseHex() does not
-                // read — seeding through it turned every restored stop black, which is what
-                // reopening a saved gradient looked like.
                 function splitTopLevel(text) {
                     const parts = [];
                     let depth = 0;
@@ -721,10 +645,6 @@
                         },
                     };
                 }
-                // ui/select owns its trigger text (and, since it became searchable, a display
-                // path that can show a value no rendered option matches) — so push through its
-                // own setValue rather than writing the label from out here. The fallback covers
-                // the boot-order case where this picker initialises before the select does.
                 function syncSelectDisplay(select, value) {
                     const option = select?.querySelector('[data-hb-select-option="' + value + '"]');
                     if (!option) return;
@@ -738,12 +658,11 @@
 
                 root.__hbCp = { setHex, setGradient, setGradientCss, getValue, setMode };
 
-                /* ── events ─────────────────────────────────────────────── */
-
+                
                 root.addEventListener('click', async (event) => {
                     if (event.target.closest('[data-cp-eyedropper]')) {
                         if (!window.EyeDropper) return;
-                        try { const result = await new window.EyeDropper().open(); setHex(result.sRGBHex); } catch (_) { /* cancelled */ }
+                        try { const result = await new window.EyeDropper().open(); setHex(result.sRGBHex); } catch (_) { }
                         return;
                     }
                     if (event.target.closest('[data-cp-copy]')) {
@@ -754,7 +673,7 @@
                             : model === 'hsl' ? 'hsl(' + values.hh + ', ' + values.sl + '%, ' + values.ll + '%)'
                             : model === 'hsla' ? 'hsla(' + values.hh + ', ' + values.sl + '%, ' + values.ll + '%, ' + values.a + ')'
                             : 'hsb(' + values.hh + ', ' + values.sb + '%, ' + values.vb + '%)';
-                        navigator.clipboard?.writeText(text).catch(() => { /* clipboard blocked */ });
+                        navigator.clipboard?.writeText(text).catch(() => { });
                         return;
                     }
                     if (event.target.closest('[data-cp-gradient-reverse]')) {
@@ -801,7 +720,6 @@
                         selectStop(gradient.stops.findIndex((stop) => stop.id === id));
                         return;
                     }
-                    // Clicking bare bar inserts a stop sampled from the ramp at that point.
                     if (gradientBar && (event.target === gradientBar || event.target === gradientRamp)) {
                         if (draggedStop) { draggedStop = false; return; }
                         const rect = gradientBar.getBoundingClientRect();
@@ -832,11 +750,6 @@
                     const selectButton = event.target.closest('[data-cp-gradient-stop-select]');
                     if (selectButton) {
                         selectStop(index);
-                        // Fine colour adjustment for a stop happens in its OWN standalone picker
-                        // popup (no nested gradient section), never in this picker's own editor —
-                        // that editor is hidden in gradient mode (32-pickers.css). The listener
-                        // lives in script-fonts-and-style-events.blade.php, which has no reach
-                        // into this closure, so the write-back travels as a callback on the event.
                         const stop = gradient.stops[index];
                         root.dispatchEvent(new CustomEvent('gradientstopedit', {
                             bubbles: true,
@@ -857,9 +770,6 @@
                     }
                 });
 
-                // ui/select and ui/tabs both dispatch a bubbling `change` carrying detail — they
-                // land here alongside the native `change` from the text inputs, so each branch
-                // matches on its own hook before touching detail.
                 root.addEventListener('change', (event) => {
                     const tablist = event.target.closest('[data-hb-tablist]');
                     if (tablist) { setMode(event.detail?.value === 'gradient' ? 'gradient' : 'fill'); return; }
@@ -897,8 +807,6 @@
                     if (event.target.matches('[data-cp-gradient-stop-opacity]')) stop.opacity = clamp(parseFloat(event.target.value) || 0, 0, 100);
                     if (event.target.matches('[data-cp-gradient-stop-position]')) stop.position = clamp(parseFloat(event.target.value) || 0, 0, 100);
                     sortStops(stop.id);
-                    // The row's own fields are the source of truth for this keystroke; don't let
-                    // render() push the editor's colour back over what was just typed.
                     suppressStopSync = true;
                     if (gradient.stops[gradient.selected] === stop) loadSelectedStopIntoEditor();
                     renderGradient({ emit: true });

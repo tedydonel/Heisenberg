@@ -16,7 +16,6 @@ declare(strict_types=1);
 
 return [
 
-    // ── Common chrome (used by >1 surface) ────────────────────────
     'common' => [
         'save' => 'Save',
         'cancel' => 'Cancel',
@@ -37,7 +36,6 @@ return [
         'decrement' => 'Decrement',
     ],
 
-    // ── Topbar (live/topbar.blade.php) ────────────────────────────
     'topbar' => [
         'aria_home' => 'Home',
         'aria_menu' => 'Menu',
@@ -67,7 +65,6 @@ return [
         'export_eml' => 'Download .eml (self-contained)',
     ],
 
-    // ── Media dialog / library / dropzone (live/media/*) ──────────
     'icon_picker' => [
         'title' => 'Select Icon',
         'search_ph' => 'Search icons…',
@@ -94,7 +91,7 @@ return [
         'dropzone_desc' => 'Images are optimized automatically. Documents are stored as originals. Maximum size: 10 MB each.',
     ],
 
-    // ── Comments moderation page (comments/index.blade.php) — the vanilla-JS
+    // Comments moderation page (comments/index.blade.php) — the vanilla-JS
     // `GET /editor/comments` surface. JS can't call __() so the strings this
     // page's script needs (row templates, confirm/reply boxes, pager) are also
     // baked into a `data-hb-comments-strings` JSON blob (same posture as
@@ -133,8 +130,8 @@ return [
         'pager_next' => 'Next',
     ],
 
-    // ── Revisions dialog (live/revisions-dialog.blade.php) ────────
-    // ── AI settings modal (live/ai/ai-settings-dialog.blade.php) ──
+    // Revisions dialog (live/revisions-dialog.blade.php).
+    // AI settings modal (live/ai/ai-settings-dialog.blade.php).
     // Panel copy lives under `panel_ai_tools` below; this section is the modal
     // and the provider-level messages the backend emits.
     'ai' => [
@@ -245,9 +242,9 @@ return [
         'type_restore' => 'Restore point',
     ],
 
-    // ── Table of contents (live/toc-dialog.blade.php) — the Post tab's authored TOC,
+    // Table of contents (live/toc-dialog.blade.php) — the Post tab's authored TOC,
     // reusing 'title' for both the disclosure-row label and the dialog header (same
-    // convention as 'revisions' above). ─────────────────────────────────────────
+    // convention as 'revisions' above).
     'toc' => [
         'title' => 'Table of contents',
         'summary_empty' => 'No table of contents yet.',
@@ -269,7 +266,7 @@ return [
         'invalid_anchor' => 'Anchors must start with a letter and contain only letters, numbers, "-" or "_".',
     ],
 
-    // ── AI chat history (live/ai/ai-history-dialog.blade.php) ──────
+    // AI chat history (live/ai/ai-history-dialog.blade.php).
     'ai_history' => [
         'title' => 'Chat history',
         'empty' => 'No conversations yet — they appear here as you chat.',
@@ -285,7 +282,7 @@ return [
         'cancel' => 'Cancel',
     ],
 
-    // ── Code view (live/code-editor.blade.php) ────────────────────
+    // Code view (live/code-editor.blade.php).
     'code' => [
         'aria_input' => 'Shortcode source',
         'placeholder' => '[h2]Your title[/h2]',
@@ -303,7 +300,7 @@ return [
         'apply_failed' => 'Could not apply the code changes.',
     ],
 
-    // ── Effect editor (live/pickers/effect-editor.blade.php) ──────
+    // Effect editor (live/pickers/effect-editor.blade.php).
     'effects' => [
         'drop_shadow' => 'Drop Shadow',
         'color' => 'Color',
@@ -311,7 +308,7 @@ return [
         'offset' => 'Offset',
     ],
 
-    // ── Sidebar (live/sidebar.blade.php) ──────────────────────────
+    // Sidebar (live/sidebar.blade.php).
     'sidebar' => [
         'nav_components' => 'Components',
         'nav_blocks' => 'Blocks',
@@ -323,7 +320,7 @@ return [
         'nav_tools' => 'Tools',
     ],
 
-    // ── Inspector tabs / sub-tabs (live/inspector.blade.php) ──────
+    // Inspector tabs / sub-tabs (live/inspector.blade.php).
     'inspector' => [
         'tab_post' => 'Post',
         'tab_block' => 'Block',
@@ -401,7 +398,7 @@ return [
         'block_empty' => 'Select a block on the canvas to edit its settings.',
     ],
 
-    // ── Block Advanced tab (live/block/advanced.blade.php) ────────
+    // Block Advanced tab (live/block/advanced.blade.php).
     'advanced' => [
         'section_visibility' => 'Hide based on device screen width',
         'hide_xs' => 'Extra small devices',
@@ -419,7 +416,7 @@ return [
         'play_animation' => 'Play animation',
     ],
 
-    // ── Footer (live/footer.blade.php) ────────────────────────────
+    // Footer (live/footer.blade.php).
     'footer' => [
         'aria_status' => 'Document status',
         'aria_lang' => 'Content language',
@@ -441,7 +438,7 @@ return [
         'email_size_warning' => 'Over 100 KB — Gmail may clip this email.',
     ],
 
-    // ── Components/Blocks panel (live/panel-components-blocks.blade.php)
+    // Components/Blocks panel (live/panel-components-blocks.blade.php).
     'panel_components_blocks' => [
         'tab_components' => 'Components',
         'tab_blocks' => 'Blocks',
@@ -455,8 +452,8 @@ return [
         'empty_blocks' => 'No saved blocks yet. Pick a container on the canvas and use the toolbar’s save icon to save its composition here.',
     ],
 
-    // ── User-saved reusable blocks ("patterns", live/panel-components-blocks.blade.php,
-    //    HeisenbergPatternController, toolbar save-as-block popover)
+    // User-saved reusable blocks ("patterns", live/panel-components-blocks.blade.php,
+    //    HeisenbergPatternController, toolbar save-as-block popover).
     'patterns' => [
         'name_required' => 'Give the block a name.',
         'name_too_long' => 'Name must be 120 characters or fewer.',
@@ -474,7 +471,7 @@ return [
         'delete_confirm' => 'Delete this saved block?',
     ],
 
-    // ── SEO/Social panel (live/panel-seo-social.blade.php + builder inserter)
+    // SEO/Social panel (live/panel-seo-social.blade.php + builder inserter).
     'panel_seo_social' => [
         'tab_seo' => 'SEO',
         'tab_social' => 'Social',
@@ -509,7 +506,7 @@ return [
         'checklist_meta_missing' => "Meta description doesn't contain the keyphrase",
         'checklist_density_low' => 'Keyphrase density is too low',
         'checklist_empty' => 'Nothing to check yet.',
-        // ── Score rating (docs/seo-system.md §4, Wave S2b — SeoAnalysisController's live payload) ──
+        // Score rating (docs/seo-system.md §4, Wave S2b — SeoAnalysisController's live payload).
         'score_rating_poor' => 'Poor',
         'score_rating_needs_work' => 'Needs work',
         'score_rating_good' => 'Good',
@@ -529,7 +526,7 @@ return [
         'social_linkedin' => 'LinkedIn',
     ],
 
-    // ── Style/Themes panel (live/panel-style-themes.blade.php) ────
+    // Style/Themes panel (live/panel-style-themes.blade.php).
     'panel_style_themes' => [
         'tab_style' => 'Style',
         'tab_themes' => 'Themes',
@@ -561,7 +558,7 @@ return [
         'category_presets' => 'Presets',
     ],
 
-    // ── AI/Tools panel (live/panel-ai-tools.blade.php) ────────────
+    // AI/Tools panel (live/panel-ai-tools.blade.php).
     'panel_ai_tools' => [
         'tab_ai' => 'Ai',
         'tab_tools' => 'Tools',
@@ -615,11 +612,10 @@ return [
         'category_writing' => 'Writing',
     ],
 
-    // ── Navigator panel (live/panel-navigator.blade.php) ──────────
+    // Navigator panel (live/panel-navigator.blade.php).
     'panel_navigator' => [
         'tab_list' => 'List View',
         'tab_outline' => 'Outline',
-        'moved' => 'Moved.',
         'empty_blocks' => 'No blocks yet.',
         'empty_headings' => 'No headings yet. Add Heading blocks to build an outline.',
         'stat_characters' => 'Characters:',
@@ -633,7 +629,7 @@ return [
         'moved_announcement' => ':label moved to position :pos of :total.',
     ],
 
-    // ── Block toolbar (live/toolbar/block-toolbar.blade.php + groups)
+    // Block toolbar (live/toolbar/block-toolbar.blade.php + groups).
     'block_toolbar' => [
         'type_text' => 'Text',
         'save_block' => 'Save',
@@ -655,12 +651,12 @@ return [
         'transform_text' => 'Transform text',
     ],
 
-    // ── Canvas (live/canvas.blade.php) ────────────────────────────
+    // Canvas (live/canvas.blade.php).
     'canvas' => [
         'ph_untitled_post' => 'Untitled post',
     ],
 
-    // ── Colour picker (live/pickers/color-picker.blade.php) ───────
+    // Colour picker (live/pickers/color-picker.blade.php).
     // Colour-model names (HEX/RGB/RGBA/HSL/HSLA/HSB) and the R/G/B/A/H/S/L/B field
     // letters are notation, not prose — they stay untranslated in every locale and so
     // are not keyed here.
@@ -691,7 +687,7 @@ return [
         'aria_stops' => 'Gradient stops',
     ],
 
-    // ── Date picker (ui/date-picker.blade.php) ─────────────────────
+    // Date picker (ui/date-picker.blade.php).
     'date_picker' => [
         'weekdays' => ['Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa', 'Su'],
         'prev_year' => 'Previous year',
@@ -704,7 +700,7 @@ return [
         'clear' => 'Clear',
     ],
 
-    // ── Locale switcher (built into the footer chip) ──────────────
+    // Locale switcher (built into the footer chip).
     'switcher' => [
         'aria_locale' => 'Interface language',
         'option_en' => 'English',
@@ -712,13 +708,13 @@ return [
         'switched_to' => 'Language switched to :locale.',
     ],
 
-    // ── Locales shipped with the package (used by the switcher UI) ──
+    // Locales shipped with the package (used by the switcher UI).
     'locales' => [
         'en' => 'English',
         'fr' => 'Français',
     ],
 
-    // ── Quick inserter (the appender popup) ───────────────────────
+    // Quick inserter (the appender popup).
     'quick_inserter' => [
         'aria_label' => 'Insert a block',
         'search' => 'Search blocks…',

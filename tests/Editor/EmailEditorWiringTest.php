@@ -33,8 +33,6 @@ class EmailEditorWiringTest extends TestCase
         return app(BlockRegistryService::class);
     }
 
-    // ── creating an email document ──────────────────────────────────────────
-
     public function test_a_plain_editor_load_defaults_to_a_post_document(): void
     {
         $html = $this->get('/editor')->assertOk()->getContent();
@@ -143,8 +141,6 @@ class EmailEditorWiringTest extends TestCase
         $this->assertStringNotContainsString('data-hb-qi-block="heisenberg/embed"', $html);
     }
 
-    // ── chrome hidden for emails (server-side, not rendered) ────────────────
-
     public function test_email_document_hides_seo_social_discussion_toc_and_featured_image(): void
     {
         $html = $this->get('/editor/email')->getContent();
@@ -216,8 +212,6 @@ class EmailEditorWiringTest extends TestCase
         $this->assertStringContainsString('data-hb-post-toc-field', $html);
         $this->assertStringContainsString('data-hb-featured-field', $html);
     }
-
-    // ── `type` is create-only ────────────────────────────────────────────────
 
     /** @param array<int, array<string, mixed>> $blocks */
     private function envelope(array $blocks, array $overrides = []): array

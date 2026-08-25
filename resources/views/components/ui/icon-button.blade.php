@@ -1,7 +1,3 @@
-{{-- ui/icon-button — 40x26, cornerRadius 4 (source uses a literal
-     4px here, not bound to any $radius-* variable — preserved as-is rather than substituting a token).
-     Hover/active use --hb-surface-hover/--hb-surface-active by name-match; the source shows only the
-     resting frame, no hover/active swatch. --}}
 @once
 
 @endonce

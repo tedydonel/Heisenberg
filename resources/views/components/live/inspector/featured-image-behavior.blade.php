@@ -1,7 +1,3 @@
-        {{-- Featured-image field behavior: swap trigger/preview, open/close the media dialog via
-             the hbOpen()/hbClose() it exposes on itself (see live/media/media-dialog.blade.php),
-             and mirror a pick into the hidden id/url inputs above. Scoped to [data-hb-featured-field]
-             so this never touches the Block-tab region below. --}}
         @once
         <style>
             .hb-post-dropzone { cursor: pointer; padding: 0; font: inherit; appearance: none; -webkit-appearance: none; }
@@ -34,10 +30,6 @@
                         if (!trigger || !preview || !img) return;
 
                         const updateUrlTemplate = field.dataset.hbFeaturedImageUpdateUrlTemplate || '';
-                        // The post id is tracked at the page level (every save echo updates it via
-                        // hb:post-id — see topbar.blade.php's own docblock). When the broadcast
-                        // arrives and we don't have a saved id yet, queuing a single retry is the
-                        // simplest way to cover the "save, then pick" sequence without polling.
                         let postId = document.querySelector('[data-hb-post-id]')?.dataset?.hbPostId || '';
                         let pending = null;
                         const consume = () => {
@@ -62,7 +54,7 @@
                             const token = csrf();
                             if (token) headers['X-CSRF-TOKEN'] = token;
                             fetch(url, { method: 'PUT', headers, body: payload, credentials: 'same-origin' })
-                                .catch(() => { /* silent — the in-memory pick still works, just won't persist */ });
+                                .catch(() => { });
                         };
 
                         const applySelection = (file, opts) => {
@@ -83,17 +75,8 @@
                                 if (urlInput) urlInput.value = '';
                                 if (opts.focusTrigger) trigger.focus();
                             }
-                            // Persist via PostSettingsController::updateFeaturedImage — the same
-                            // direct-property write path layout/discussion use (Post::$fillable
-                            // excludes featured_image_id, so this endpoint is the only legal write).
-                            // The PUT is fire-and-forget: the in-memory hidden inputs + preview
-                            // state stay the source of truth for the rest of the session, and a
-                            // reload picks up the seeded value from EditorController::show().
                             requestSave(file && url ? file : null);
 
-                            // Rest-of-app hook: hb:featured-image-change is the documented
-                            // event for whatever else wants to react to a pick (the preview
-                            // listener, future SEO meta sync, etc.). Detail is null when cleared.
                             field.dispatchEvent(new CustomEvent('hb:featured-image-change', {
                                 bubbles: true,
                                 detail: file && url ? { id: file.id, url } : null,
@@ -107,10 +90,6 @@
                         removeBtn?.addEventListener('click', () => applySelection(null, { focusTrigger: true }));
                         dialog?.addEventListener('hb:media-select', (event) => applySelection(event.detail));
 
-                        // The hidden inputs are server-seeded from EditorController::show() on first
-                        // render so a reload shows the existing pick. DON'T re-apply a null here or
-                        // the seed would be wiped before the user can see it — only clear when the
-                        // user explicitly hits the remove button (the handler above).
                     });
                 };
                 if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', boot, { once: true });

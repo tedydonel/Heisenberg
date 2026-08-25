@@ -68,8 +68,6 @@ class SeoSaveTest extends TestCase
             ->first();
     }
 
-    // ── create + own-locale routing ─────────────────────────────────────────
-
     public function test_seo_riding_the_first_save_creates_a_seo_meta_row_on_the_own_locale_columns(): void
     {
         $response = $this->postJson('/editor/posts', $this->envelope(
@@ -120,8 +118,6 @@ class SeoSaveTest extends TestCase
         $this->assertNull($row->meta_title_en);
     }
 
-    // ── robots composition ───────────────────────────────────────────────────
-
     public function test_robots_booleans_compose_into_the_robots_column(): void
     {
         $store = $this->postJson('/editor/posts', $this->envelope(
@@ -171,8 +167,6 @@ class SeoSaveTest extends TestCase
         $this->assertSame('noindex, follow', $this->seoRowFor(Post::find($postId))->robots);
     }
 
-    // ── update path (no duplicate row) + partial payload doesn't clobber ────
-
     public function test_a_second_save_updates_the_same_row_and_never_duplicates_it(): void
     {
         $store = $this->postJson('/editor/posts', $this->envelope(
@@ -195,8 +189,6 @@ class SeoSaveTest extends TestCase
         // meta_description wasn't sent on the second save — it must survive untouched.
         $this->assertSame('First description', $row->meta_description_en);
     }
-
-    // ── og_image / canonical_url / in_sitemap round trip ─────────────────────
 
     public function test_og_image_canonical_and_in_sitemap_round_trip(): void
     {
@@ -254,8 +246,6 @@ class SeoSaveTest extends TestCase
         $this->assertSame(0, Post::count());
     }
 
-    // ── autosave never touches SEO ───────────────────────────────────────────
-
     public function test_autosave_ignores_the_seo_payload(): void
     {
         $store = $this->postJson('/editor/posts', $this->envelope(
@@ -274,8 +264,6 @@ class SeoSaveTest extends TestCase
         $response->assertOk();
         $this->assertNull($this->seoRowFor(Post::find($postId)));
     }
-
-    // ── response always echoes a seo shape, even with no SeoMeta row yet ────
 
     public function test_the_save_response_echoes_default_seo_state_when_nothing_was_sent(): void
     {

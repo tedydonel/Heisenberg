@@ -65,8 +65,6 @@ class EditingLocaleTest extends TestCase
         ], $overrides);
     }
 
-    // ── the topbar dropdown is a locale switch, never navigation ───────────
-
     public function test_topbar_language_dropdown_switches_locale_in_place_never_navigates(): void
     {
         $html = $this->get('/editor')->assertOk()->getContent();
@@ -99,8 +97,6 @@ class EditingLocaleTest extends TestCase
             ->assertNotFound();
     }
 
-    // ── the editing-locale seed ─────────────────────────────────────────────
-
     public function test_editor_show_seeds_the_home_locale_and_per_locale_titles(): void
     {
         $post = Post::create(['title_en' => 'English Title', 'title_fr' => 'French Title', 'locale' => 'en', 'status' => 'draft']);
@@ -130,8 +126,6 @@ class EditingLocaleTest extends TestCase
             $html,
         );
     }
-
-    // ── Translations section → completeness ─────────────────────────────────
 
     public function test_translations_section_renders_plain_locale_rows_before_the_first_save(): void
     {
@@ -191,8 +185,6 @@ class EditingLocaleTest extends TestCase
         $this->assertStringNotContainsString('data-hb-translation-update', $html);
     }
 
-    // ── save while editing a non-home locale ────────────────────────────────
-
     public function test_saving_while_editing_a_non_home_locale_writes_suffixed_variants_leaving_english_untouched(): void
     {
         // First save: authored in the post's own (home) locale, en — the bare keys every
@@ -224,7 +216,6 @@ class EditingLocaleTest extends TestCase
         $this->assertSame('French Heading', $attributes['content_fr']);
     }
 
-    // ── one shared client-side write helper, with the home-locale exemption ──
     // The write logic itself is client-side JS (block-runtime.blade.php) — there is no server
     // decision to exercise via HTTP, so these pin the SOURCE: one resolver, and every translatable
     // write path (inspector controls, canvas rich-text/contenteditable, Code view) routed through
@@ -279,7 +270,6 @@ class EditingLocaleTest extends TestCase
         $this->assertStringContainsString('window.hbEditor.readAttr(model, key)', $inspectorHtml);
     }
 
-    // ── the AI panel's write_canvas apply path folds instead of replacing ─────────────────────
     // The data-loss bug: switching to French and asking the assistant to translate wiped the
     // English text, because applyCanvasTool's only move was window.hbEditor.replaceDoc() — a
     // whole-document swap that writes BARE keys, oblivious to the editing locale. The fix adds a

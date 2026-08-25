@@ -1,10 +1,3 @@
-{{-- heisenberg::media.index — the server-rendered grid `GET /media` promises
-     (media blueprint §10). This page never existed: the controller referenced
-     it since day one and any non-JSON GET /media was a 500 (found by the
-     2026-08-10 blueprint audit). Deliberately thin and self-contained — its
-     own small styles, no editor-asset dependency — because the REAL media UIs
-     are the editor's dialog and a host's own admin page; this is the honest
-     minimal fallback the route contract says exists. --}}
 <!doctype html>
 <html lang="{{ str_replace('_', '-', app()->getLocale()) }}">
 <head>

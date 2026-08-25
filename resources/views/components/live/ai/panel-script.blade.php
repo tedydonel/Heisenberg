@@ -1,19 +1,7 @@
 <script>
-    {{-- The assistant. SSE contract: text_delta / tool_use / done / error frames. The content
-         path is the write_canvas tool: its tool_use frame carries the shortcode as arguments
-         (validated server-side), applyCanvasTool lands it in the editor. Bare shortcode in the
-         reply text still builds live as a fallback, standing down once a tool build happens.
-         Reasoning feeds the thinking block, other tool_use frames feed the applied card,
-         finished turns persist to the conversations API, and prior turns ride along as
-         `history` so a reopened conversation is remembered. --}}
     (() => {
         const csrf = () => document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '';
 
-        // ── markdown ─────────────────────────────────────────────────────
-        // Assistant prose arrives as markdown; showing it raw (**bold**, - lists)
-        // reads like a diff, not a reply. Tiny renderer, escape-first so model
-        // output can never inject markup: bold/italic/code/links inline, plus
-        // headings and lists at line level. Links only ever http(s), new tab.
         const mdInline = (s) => s
             .replace(/`([^`]+)`/g, '<code>$1</code>')
             .replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>')
@@ -70,8 +58,6 @@
                 let lastPrompt = '';
                 let controller = null;
                 let lastRun = null;
-                // Conversation state. `history` is the model's memory: the prior
-                // user/assistant turns, resent verbatim with every request.
                 let conversationId = null;
                 let history = [];
 
@@ -81,14 +67,8 @@
                     if (id) root.dataset.postId = id;
                 });
 
-                // The real ui/select, rendered with the operator's configured models; sent as
-                // `model` per request — only configured models exist there, so this widens nothing.
                 const selectedModel = () => (modelSel ? modelSel.dataset.value || '' : '');
 
-                // ── reasoning split ──────────────────────────────────────────
-                // <think> blocks come from serving templates, not the model's
-                // choice. The old panel stripped them to the void; the thinking
-                // block needs them, so split rather than strip.
                 const TAGS = '(think|thinking|reasoning|reflection)';
                 const splitReasoning = (raw) => {
                     let reasoning = '';
@@ -117,8 +97,6 @@
                     return text.slice(first, last + 1).trim();
                 };
 
-                // Prose around the markup — what the bubble shows. The markup
-                // itself lives on the canvas, never in the chat.
                 const proseOf = (visible) => {
                     const fence = visible.search(/```/);
                     const tag = visible.search(/\[[a-z][a-z0-9-]*(\s|\]|\/|=)/i);
@@ -130,9 +108,6 @@
                     || scroller.scrollHeight - scroller.scrollTop - scroller.clientHeight < 40;
                 const scrollToEnd = () => { if (scroller) scroller.scrollTop = scroller.scrollHeight; };
 
-                // ── canvas follow ────────────────────────────────────────────
-                // The building side of work item "watchable builds": pulse the
-                // newest landed block and keep it in view while the run lasts.
                 const canvasFollow = (final) => {
                     const canvas = document.querySelector('.hb-canvas');
                     if (!canvas) return;
@@ -142,10 +117,9 @@
                     const tail = blocks[blocks.length - 1];
                     if (!tail) return;
                     tail.classList.add('hb-ai-writing');
-                    try { tail.scrollIntoView({ block: 'nearest', behavior: 'smooth' }); } catch (e) { /* older engines */ }
+                    try { tail.scrollIntoView({ block: 'nearest', behavior: 'smooth' }); } catch (e) { }
                 };
 
-                // ── transcript nodes ─────────────────────────────────────────
                 const addUser = (text) => {
                     emptyEl.hidden = true;
                     const node = userTpl.content.firstElementChild.cloneNode(true);
@@ -209,10 +183,6 @@
                     return item.querySelector('[data-hb-ai-applied-text]');
                 };
 
-                // Fill a finished turn's quick-insert chips from the model's own
-                // conversation-aware, language-matched suggestions. Each chip
-                // sends its text as the next prompt. Best-effort: no suggestions,
-                // no row.
                 const renderSuggestions = (refs, suggestions) => {
                     const row = refs.suggest.querySelector('[data-hb-ai-suggest-row]');
                     if (!row) return;
@@ -242,9 +212,6 @@
                         .catch(() => {});
                 };
 
-                // ── persistence ──────────────────────────────────────────────
-                // Fire-and-forget: history is a convenience, never a reason to
-                // block or fail a turn.
                 const api = (path, options) => window.fetch(path, Object.assign({
                     headers: {
                         'Accept': 'application/json',
@@ -275,7 +242,6 @@
                     });
                 };
 
-                // ── restoring a conversation (history dialog → here) ─────────
                 const renderStored = (m) => {
                     if (m.role === 'user') { addUser(m.content); return; }
                     const refs = addAssistant();
@@ -289,7 +255,7 @@
                     }
                     (meta.applied || []).forEach((line) => appliedItem(refs, line));
                     renderMarkdown(refs.textEl, proseOf(m.content) || m.content);
-                    refs.actions.hidden = true; // regenerating a historic turn would rebuild against a stale baseline
+                    refs.actions.hidden = true;
                 };
 
                 const resetThread = () => {
@@ -311,8 +277,6 @@
                             resetThread();
                             conversationId = data.id;
                             const messages = data.messages || [];
-                            // A regenerated reply stored both versions; the model
-                            // and the transcript only want the final one.
                             const collapsed = messages.filter((m, i) =>
                                 !(m.role === 'assistant' && messages[i + 1] && messages[i + 1].role === 'assistant'));
                             collapsed.forEach(renderStored);
@@ -332,12 +296,8 @@
                 };
 
                 const autoGrow = () => {
-                    // Clamp between the CSS min-height (so a short/empty prompt never shrinks
-                    // back to a sliver — see .hb-ai-composer__input min-height in panel-ai.blade)
-                    // and the max-height cap (160px). scrollHeight drives growth; the min keeps
-                    // the click target + placeholder legible on a fresh tab and after clearing.
                     input.style.height = 'auto';
-                    const minHeight = 60;
+                    const minHeight = 28;
                     input.style.height = Math.min(160, Math.max(minHeight, input.scrollHeight)) + 'px';
                 };
 
@@ -362,12 +322,10 @@
                 const documentContext = () => {
                     const base = selectionContext();
                     if (window.hbCodeView && window.hbCodeView.serialize) {
-                        try { base.document = window.hbCodeView.serialize(); } catch (e) { /* empty doc */ }
+                        try { base.document = window.hbCodeView.serialize(); } catch (e) { }
                     }
                     const title = document.querySelector('[data-hb-title]');
                     if (title) base.title = (title.value || title.textContent || '').trim();
-                    // docs/content-translation.md §0/Wave 2 — lets EditorPrompt::user() state the
-                    // TRANSLATING rule against the concrete locale pair.
                     if (window.hbEditor && window.hbEditor.getEditingLocale) base.editingLocale = window.hbEditor.getEditingLocale();
                     if (window.hbEditor && window.hbEditor.getHomeLocale) base.homeLocale = window.hbEditor.getHomeLocale();
                     return base;
@@ -388,8 +346,6 @@
                     reply.textEl.textContent = msg('msgThinking');
                     reply.actions.hidden = true;
                     reply.suggest.hidden = true;
-                    // Regenerate reuses the node — clear last run's chips so they
-                    // can't linger under a fresh reply.
                     const suggestRow = reply.suggest.querySelector('[data-hb-ai-suggest-row]');
                     if (suggestRow) suggestRow.innerHTML = '';
                     setBusy(true);
@@ -397,13 +353,11 @@
                     let sawDone = false;
                     let stopReason = '';
                     const stick = atBottom();
-                    // Thinking-block timing: reasoning starts the clock, the
-                    // first visible character stops it.
                     let tReasonStart = 0;
                     let thoughtSecs = 0;
                     let appliedLines = [];
-                    let builtEl = null; // the applied card's live "built N blocks" row
-                    let toolBuilt = false; // a write_canvas call landed — text extraction stands down
+                    let builtEl = null;
+                    let toolBuilt = false;
 
                     if (replace && lastRun && lastRun.applied && window.hbEditor) {
                         window.hbEditor.replaceDoc(lastRun.baseline);
@@ -415,14 +369,6 @@
                     let lastAppliedStamp = '';
                     let lastApplyAt = 0;
                     let builtCount = 0;
-                    // ── the direct write path ────────────────────────────
-                    // write_canvas is the assistant's real write access to the
-                    // editor: the tool_use frame arrives with the shortcode as
-                    // `arguments.code`, already validated server-side (`ok`).
-                    // Parsing through the same hbCodeView parser the code view
-                    // uses keeps this the one dialect, one grammar. The locale
-                    // decision (replace/append vs. fold-a-translation) lives in
-                    // hbEditor.applyCanvasWrite (docs/content-translation.md §0).
                     const applyCanvasTool = (data) => {
                         if (data.ok === false || !window.hbCodeView || !window.hbEditor) return;
                         const args = data.arguments || {};
@@ -448,9 +394,6 @@
                         if (stick) scrollToEnd();
                     };
 
-                    // set_page_title, same split: validated server-side, landed
-                    // in the editor's title field here. Events fire so the
-                    // runtime's own title wiring picks the change up.
                     const applyTitleTool = (data) => {
                         if (data.ok === false) return;
                         const title = String(((data.arguments || {}).title || '')).trim();
@@ -464,22 +407,17 @@
                             field.textContent = title;
                         }
                         const line = msg('msgSetTitle').replace(':title', title);
-                        appliedLines.push(line); // rides into the stored turn's meta
+                        appliedLines.push(line);
                         appliedItem(reply, line);
                         if (stick) scrollToEnd();
                     };
 
-                    // Legacy fallback: a model that ignores the tool and streams
-                    // bare shortcode in its reply still lands on the canvas —
-                    // but never on top of a tool build (double-application), and
-                    // never while translating: this path has no fold, so it would
-                    // replaceDoc away the home locale's text same as the tool bug above.
                     const liveApply = (final) => {
                         if (toolBuilt) return;
                         if (!window.hbCodeView || !window.hbEditor) return;
                         if (window.hbEditor.getEditingLocale() !== window.hbEditor.getHomeLocale()) return;
                         const now = Date.now();
-                        if (!final && now - lastApplyAt < 250) return; // replaceDoc rerenders the whole doc — pace it
+                        if (!final && now - lastApplyAt < 250) return;
                         const markup = extractMarkup(splitReasoning(acc).visible);
                         if (!markup) return;
                         const parsed = window.hbCodeView.parse(markup);
@@ -498,9 +436,6 @@
 
                     const paint = (finished) => {
                         const parts = splitReasoning(acc);
-                        // Reasoning streams into its own block, expanded while it
-                        // is the only thing happening, folded away once real
-                        // output starts (unless the user opened it themselves).
                         if (parts.reasoning) {
                             if (!tReasonStart) tReasonStart = Date.now();
                             reply.think.hidden = false;
@@ -516,8 +451,6 @@
                         }
                         const prose = proseOf(parts.visible);
                         if (!parts.visible) {
-                            // A turn that built blocks through write_canvas but
-                            // said nothing is a finished build, not an empty reply.
                             reply.textEl.textContent = finished ? (builtCount > 0 ? '' : msg('msgEmptyReply')) : msg('msgThinking');
                         } else {
                             renderMarkdown(reply.textEl, prose || (builtCount > 0 ? '' : parts.visible));
@@ -538,7 +471,6 @@
                         body: JSON.stringify({
                             prompt: prompt,
                             context: documentContext(),
-                            // Prior turns (not this prompt — the server appends it)
                             history: history.slice(0, replace ? history.length : -1),
                             conversation_id: conversationId,
                             model: selectedModel() || null,
@@ -563,8 +495,6 @@
                                 } else if (event.type === 'tool_use') {
                                     const data = event.data || {};
                                     if (String(data.name || '') === 'heisenberg__write_canvas') {
-                                        // The write itself — apply, don't narrate:
-                                        // the "built N blocks" row IS its line.
                                         applyCanvasTool(data);
                                     } else if (String(data.name || '') === 'heisenberg__set_page_title') {
                                         applyTitleTool(data);
@@ -579,10 +509,7 @@
                                     sawDone = true;
                                     stopReason = (event.data && event.data.stopReason) || '';
                                 } else if (event.type === 'error') {
-                                    sawDone = true; // an error IS an ending — don't also cry truncation
-                                    // Keep whatever streamed: the error arrives as
-                                    // a note under the preserved work, not as a
-                                    // replacement for it.
+                                    sawDone = true;
                                     if (splitReasoning(acc).visible || lastRun.applied) {
                                         addNote(event.text || msg('msgNetwork'), true);
                                     } else {
@@ -627,11 +554,6 @@
                             if (!sawDone) addNote(msg('msgTruncated'), true);
                             else if (stopReason === 'max_tokens' || stopReason === 'length') addNote(msg('msgLengthLimit'));
                             if (stick) scrollToEnd();
-                            // Remember and persist the finished turn. A turn that
-                            // only built blocks (no prose) still happened — both
-                            // the model's memory and the stored thread get a
-                            // "built N blocks" line for it, or the next request
-                            // would replay a user turn with no answer.
                             const turnText = parts.visible
                                 || (builtCount > 0 ? msg('msgBuilt').replace(':count', String(builtCount)) : '');
                             if (turnText) {
@@ -647,8 +569,6 @@
                                     regenerated: !!replace,
                                 });
                             }
-                            // Ask the model what the user might want next — only
-                            // once there's a real turn to build on.
                             if ((parts.visible || lastRun.applied) && !reply.node.classList.contains('hb-ai-msg--error')) {
                                 loadSuggestions(reply);
                             }
@@ -664,7 +584,6 @@
                                 if (partial) { history.push({ role: 'assistant', content: partial }); saveTurn('assistant', partial, { stopped: true }); }
                                 return;
                             }
-                            // Same preservation contract as the error frame.
                             if (splitReasoning(acc).visible || (lastRun && lastRun.applied)) {
                                 paint(true);
                                 addNote(msg('msgNetwork'), true);
@@ -717,7 +636,6 @@
                     trigger.addEventListener('click', () => run(trigger.dataset.hbAiSuggestCanned || ''));
                 });
 
-                // A tool card is just a canned prompt.
                 root.querySelectorAll('[data-hb-ai-suggest]').forEach((trigger) => {
                     trigger.addEventListener('click', () => run(trigger.dataset.hbAiSuggest || ''));
                 });

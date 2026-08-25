@@ -11,44 +11,23 @@
     font-family: var(--hb-font-sans, Rubik, sans-serif);
     transition: grid-template-columns .15s ease;
 }
-/* Collapse depth is responsive: desktop/tablet fully hide the sidebar when toggled closed; mobile
-   only shrinks it to an icon-only rail ("half way"), matching what desktop/tablet used to do
-   unconditionally before this became breakpoint-aware. Breakpoints: mobile <768px, tablet
-   768-1023px, desktop >=1024px (shared with the JS exclusivity logic in live/topbar). */
 .hb-editor--sidebar-collapsed { --hb-editor-sidebar-w: 0px; }
 @media (max-width: 767px) {
     .hb-editor--sidebar-collapsed { --hb-editor-sidebar-w: 52px; }
 }
 .hb-editor--panel-collapsed { --hb-editor-panel-w: 0px; }
 .hb-editor--panel-collapsed .hb-sidepanel { display: none; }
-/* The AI panel keeps the shared panel width. It briefly had its own wider track; that broke the
-   rule that every middle panel is the same size, so the width was given back and the room was
-   found inside the panel instead (full-bleed messages, no nested card padding). */
 .hb-editor--inspector-collapsed { --hb-editor-inspector-w: 0px; }
 .hb-editor--inspector-collapsed .hb-inspector { display: none; }
 
-/* Boot gate: added synchronously before first paint (editor/layouts/app.blade.php), removed by the
-   release script once the DOMContentLoaded restores (active panel, block hydration, unsaved draft)
-   have applied — so a refresh never flashes the fresh-boot layout before "readjusting" into the
-   restored one. visibility (not display) so the grid still lays out at its real size underneath,
-   and a scripting failure degrades to a paused-looking editor, not a reflowing one. The release
-   script carries a hard timeout failsafe: this class can never stick. */
 .hb-editor--booting, .hb-editor--booting * { transition: none !important; }
 .hb-editor--booting { visibility: hidden; }
 
 .hb-editor__topbar { grid-column: 1 / -1; grid-row: 1; }
 .hb-editor__sidebar { grid-column: 1; grid-row: 2; }
 .hb-editor__panel { grid-column: 2; grid-row: 2; overflow: hidden; }
-/* Each panel-pair root sets its own `display: flex` at equal specificity to the UA [hidden] rule,
-   so cascade order (author stylesheet after UA sheet) would otherwise win over [hidden] and leave
-   every panel rendered regardless of the attribute — this raises specificity to force it off. */
 .hb-editor__panel > [hidden] { display: none; }
 .hb-editor__canvas { grid-column: 3; grid-row: 2; position: relative; background: var(--hb-bg-subtle); overflow: hidden; }
-/* overflow/min-height match .hb-editor__panel and .hb-editor__canvas above, and are load-bearing,
-   not cosmetic: a grid item defaults to `min-height: auto`, so without them this column grows to
-   its content height instead of being clamped to the `1fr` row. Everything inside the inspector
-   then measures as "fits", scrollHeight === clientHeight all the way down, and its scroll regions
-   can never overflow — which reads as "the sidebar doesn't scroll and its scrollbar never shows". */
 .hb-editor__inspector { grid-column: 4; grid-row: 2; overflow: hidden; min-height: 0; }
 .hb-editor__footer { grid-column: 1 / -1; grid-row: 3; }
 body { margin: 0; }

@@ -54,8 +54,6 @@ class PostTrashToolsTest extends TestCase
         $this->app['env'] = 'local';
     }
 
-    // ── registration ──────────────────────────────────────────────────────
-
     public function test_trash_post_and_restore_post_are_offered_on_both_surfaces(): void
     {
         $registry = app(McpToolRegistry::class);
@@ -75,8 +73,6 @@ class PostTrashToolsTest extends TestCase
         $this->assertTrue($result['isError']);
         $this->assertStringContainsString('authors', $result['content'][0]['text']);
     }
-
-    // ── trash_post ───────────────────────────────────────────────────────
 
     public function test_trash_post_soft_deletes_and_cascades_blocks_and_revisions(): void
     {
@@ -116,8 +112,6 @@ class PostTrashToolsTest extends TestCase
         $this->assertNotContains($trashed->id, $ids);
     }
 
-    // ── restore_post ─────────────────────────────────────────────────────
-
     public function test_restore_post_undoes_trash_post_and_brings_back_blocks_and_revisions(): void
     {
         $post = Post::create(['title_en' => 'X', 'status' => 'draft']);
@@ -150,8 +144,6 @@ class PostTrashToolsTest extends TestCase
         $this->assertTrue($call['isError']);
         $this->assertStringContainsString('not trashed', $call['text']);
     }
-
-    // ── authorization: the acting user, not just the tool tier ──────────
 
     public function test_trash_post_and_restore_post_are_refused_for_a_non_admin_actor_even_though_the_tool_tier_allows_it(): void
     {

@@ -1,17 +1,5 @@
-    // ── Fill / Stroke colour layers, composited (2026-08-05) ─────────────────────────
-    // A section holds an ordered STACK of {color, opacity} layers, painted bottom-up in DOM
-    // order — the newest sits on top, matching how the add button reads. CSS `color` takes one
-    // value, so the stack is flattened here with source-over alpha compositing and the result is
-    // what the block's style variable receives.
-    //
-    // Both shapes are stored: `layers` is the editable stack (so reopening a block restores every
-    // layer, not just the flattened result) and the scalar path is the composited colour the
-    // renderer already knows how to sanitize. Nothing in the engine had to change for this.
     function hbParseColour(value) {
         let str = String(value || '').trim();
-        // A theme-token binding (var(--hb-t-…)) resolves to its computed value so it can
-        // participate in compositing; resolve against the canvas page so the block-content
-        // palette's own scope (--accent-*, --ink) is visible too.
         const ref = /^var\((--[a-z0-9-]+)\)$/i.exec(str);
         if (ref) {
             const scope = document.querySelector('.hb-page') || document.documentElement;
@@ -26,22 +14,15 @@
         return [parseInt(full.slice(0, 2), 16), parseInt(full.slice(2, 4), 16), parseInt(full.slice(4, 6), 16)];
     }
 
-    // A gradient layer's value (BlockRenderer::isSafeGradientValue() validates it server-side;
-    // this only needs to RECOGNISE the shape, not re-validate it).
     function hbIsGradientColour(value) {
         return /^(linear|radial)-gradient\(/i.test(String(value || '').trim());
     }
 
     function hbCompositeLayers(layers) {
-        // One fully-opaque token binding passes through verbatim — preserving the var()
-        // reference keeps the colour live with the theme instead of a flattened snapshot.
         if (layers.length === 1 && /^var\(--[a-z0-9-]+\)$/i.test(layers[0].color)
             && (!layers[0].opacity || Number(layers[0].opacity) >= 100)) {
             return layers[0].color;
         }
-        // A gradient paints its own whole box — there is no CSS syntax to alpha-blend it against
-        // the layers beneath in this flattened-scalar model, so the TOPMOST (last) gradient layer
-        // wins outright, the same way an opaque solid on top already hides what's under it.
         for (let i = layers.length - 1; i >= 0; i--) {
             if (hbIsGradientColour(layers[i].color)) return layers[i].color;
         }
@@ -52,7 +33,6 @@
             let a = Number(layer.opacity);
             a = Number.isFinite(a) ? Math.max(0, Math.min(100, a)) / 100 : 1;
             if (!out) { out = { r: rgb[0], g: rgb[1], b: rgb[2], a }; return; }
-            // source-over: this layer paints ON TOP of everything beneath it.
             const outA = a + out.a * (1 - a);
             if (outA === 0) { out = { r: 0, g: 0, b: 0, a: 0 }; return; }
             out = {
@@ -64,33 +44,20 @@
         });
         if (!out) return '';
         const hex = (n) => n.toString(16).padStart(2, '0');
-        // Opaque results stay hex — shorter, and what a user expects to see round-tripped.
         return out.a >= 1 ? `#${hex(out.r)}${hex(out.g)}${hex(out.b)}`
             : `rgba(${out.r}, ${out.g}, ${out.b}, ${Math.round(out.a * 1000) / 1000})`;
     }
 
     function hbReadLayers(list) {
         return Array.from(list?.querySelectorAll('.hb-colorlayer') || []).map((row) => ({
-            // A gradient row carries its CSS on its own dataset (the hex field is for a flat
-            // colour only); a row bound to a theme token displays the token's NAME, its value
-            // the reference.
             color: row.dataset.hbStyleGradient || row.dataset.hbVarBound || row.querySelector('.hb-colorlayer__hex')?.value || '',
-            // Opacity is a display span fed by the colour picker's alpha, not a typed field.
             opacity: (row.querySelector('[data-hb-style-layer-opacity]')?.textContent || '100').trim(),
         })).filter((layer) => layer.color !== '');
     }
 
-    // Default layer targets: `fill` -> the block's own colour, `stroke` -> its border colour.
-    // A panel may OVERRIDE fill's path via data-hb-layer-path on the list (a container's fill
-    // is its background, not text colour — see live/block/style/fill.blade.php), so always
-    // resolve through hbLayerPathOf() rather than reading this map directly.
     const HB_LAYER_PATHS = { fill: 'color.text', stroke: 'border.color' };
     const hbLayerPathOf = (list, group) => (list && list.dataset.hbLayerPath) || HB_LAYER_PATHS[group];
 
-    // Rebuild the Fill/Stroke stacks from the model. Skipped when the rows already match
-    // (covers the echo from hbCommitLayers' own hb:block-updated) and while the user is
-    // editing inside the list. A scalar written with no stack (the toolbar colour path)
-    // synthesizes one layer so the UI reflects it.
     function hbRebuildLayerLists(root, model) {
         const sroot = root.matches?.('.hb-blockstyle') ? root : root.querySelector('.hb-blockstyle');
         if (!sroot) return;
@@ -119,8 +86,6 @@
                 if (label) row.dataset.hbVarBound = value; else delete row.dataset.hbVarBound;
                 if (isGradient) row.dataset.hbStyleGradient = value; else delete row.dataset.hbStyleGradient;
                 const hex = row.querySelector('.hb-colorlayer__hex');
-                // The hex field is for a flat colour only — a gradient shows its translated
-                // tab label there instead of dumping the raw `linear-gradient(...)` text into it.
                 if (hex) hex.value = label || (isGradient ? @json(__('heisenberg::editor.color_picker.tab_gradient')) : value);
                 const swatch = row.querySelector('.hb-colorlayer__swatch');
                 if (swatch) swatch.style.background = value || 'transparent';
@@ -141,8 +106,6 @@
         if (!id || !path) return;
         const layers = hbReadLayers(list);
         window.hbEditor.setSupport(id, hbStatePath(root, path), hbCompositeLayers(layers));
-        // Sibling of the scalar, so the stack survives a reload while the renderer keeps reading
-        // the flattened value it already understands.
         window.hbEditor.setSupport(id, hbStatePath(root, path.split('.')[0] + '.layers'), layers);
     }
 
@@ -151,8 +114,6 @@
         return list ? list.getAttribute('data-hb-style-layer-list') : null;
     }
 
-    // Any edit inside a layer row re-flattens its whole stack: a colour, an opacity, a removal,
-    // or a token binding all change the composite, not just their own row.
     ['input', 'change'].forEach((type) => document.addEventListener(type, (event) => {
         const row = event.target.closest('.hb-colorlayer');
         if (!row) return;
@@ -161,11 +122,6 @@
         if (root && group) hbCommitLayers(root, group);
     }));
 
-    // ── Effects: compose one box-shadow from the editor's five fields ──────
-    // The model holds the composed CSS string, not five separate paths — that is the shape
-    // BlockRenderer's `shadow` sanitizer validates (optional inset, 2-4 signed lengths, exactly
-    // one colour) and the only thing box-shadow can consume. Opacity folds into the colour as
-    // rgba() rather than being its own declaration, since CSS has no shadow-opacity.
     function hbShadowRgba(hex, opacityPercent) {
         const raw = String(hex || '').trim().replace(/^#/, '');
         const full = raw.length === 3 ? raw.split('').map((c) => c + c).join('') : raw;
@@ -200,28 +156,14 @@
         const id = window.hbEditor.getSelectedId();
         if (!id) return;
         const css = hbComposeShadow(editor);
-        if (css === null) return; // mid-edit hex like "#0" — leave the model alone
+        if (css === null) return;
         const swatch = editor.querySelector('[data-hb-fx-swatch]');
         if (swatch) swatch.style.background = editor.querySelector('[data-hb-fx-color]')?.value || '#000000';
         window.hbEditor.setSupport(id, hbStatePath(root, 'effects.shadow'), css);
     });
 
-    // ── Block.style theme-variable binding (TODO 7.6 / 7.7) ──────────────────────────
-    // Every text-ish Style control gets a trailing selection-all-fill trigger that opens the
-    // matching variable-menu. Scoped to .hb-blockstyle deliberately: the requirement is
-    // "only for the Block.style sub-tab", and decorating from here expresses that exactly,
-    // where a prop on ui/field would put the affordance on every field in the editor.
-    //
-    // Three states, driven off the field's current value:
-    //   bound  — value is a var(--…) reference  -> accent colour, always visible
-    //   unset  — value is empty                 -> muted, always visible
-    //   manual — value is a literal             -> muted, revealed on hover/focus of the field
     const HB_VAR_TYPES = ['text', 'number'];
 
-    // `var(--hb-t-accent-1)` -> "Accent". A bound field shows the name the user gave the token;
-    // the model still holds the reference. The pair is kept apart by data-hb-var-bound on the
-    // control: the input carries the LABEL, that attribute carries the VALUE, and the write path
-    // prefers it. Typing over the field clears it, so a literal is written literally.
     function hbVarLabelOf(root, ref) {
         if (!root || !ref) return null;
         try {
@@ -231,10 +173,6 @@
         }
     }
 
-    // `var(--hb-t-sp-3)` -> "16". The integer the user typed in the Style/Themes panel, with
-    // the unit stripped — the field shows this when bound (not the label) so a bound field
-    // reads as its VALUE rather than its NAME. Empty when the token has no resolvable
-    // number (a hex colour, a font family); callers fall back to the label in that case.
     function hbVarResolvedValue(root, ref) {
         if (!root || !ref) return null;
         try {
@@ -250,8 +188,6 @@
         return /^var\(\s*--/.test(v) ? 'bound' : 'manual';
     }
 
-    // Colour-ish paths get the swatch menu, font families their own (routing them to var-number
-    // would offer spacing tokens), everything else the value menu.
     function hbVarMenuFor(path) {
         if (/fontFamily$/i.test(path)) return 'var-font';
         return /(^|\.)color(\.|$)|color$/i.test(path) ? 'var-color' : 'var-number';
@@ -260,8 +196,6 @@
     function hbSyncVarTrigger(control) {
         const button = control.querySelector('[data-hb-style-var-trigger]');
         if (!button) return;
-        // A bound field DISPLAYS the token's name, so the visible text reads as a literal.
-        // The binding is authoritative; only fall back to inspecting the text without one.
         if (control.dataset.hbVarBound) {
             button.dataset.hbVarState = 'bound';
             return;
@@ -272,12 +206,8 @@
 
     const HB_AGGREGATE_FIELDS = '[data-hb-style-all-value], [data-hb-style-padding-axis], [data-hb-style-margin-axis]';
 
-    // Assembled, not a literal — the wiring tests count `data-hb-control="…"` occurrences in
-    // the page source to assert each control renders once per block type.
     const hbControlSelector = (path) => '[data-hb-control=' + JSON.stringify(path) + ']';
 
-    // The side controls a spacing aggregate covers: all four for the One-value field, a pair
-    // for an H/V axis field. Null when the element is not an aggregate at all.
     function hbAggregateSideControls(root, field) {
         if (!field || !field.matches?.(HB_AGGREGATE_FIELDS)) return null;
         const group = field.getAttribute('data-hb-style-all-value')
@@ -289,9 +219,6 @@
             .filter(Boolean);
     }
 
-    // Returns 'padding' / 'margin' when the field is a spacing aggregate, else null. The
-    // sibling-clearing branch in the typing guard needs only the group to look up its sides —
-    // the axis split (left/right vs top/bottom) doesn't matter there, every side gets cleared.
     function hbAggregateGroupOf(field) {
         if (!field || !field.matches?.(HB_AGGREGATE_FIELDS)) return null;
         return field.getAttribute('data-hb-style-all-value')
@@ -314,9 +241,6 @@
             if (!HB_VAR_TYPES.includes(control.getAttribute('data-hb-control-type'))) return;
             decorate(control);
         });
-        // The One-value and H/V spacing fields carry no data-hb-control (they fan into the
-        // side inputs), so they need decorating explicitly or the trigger vanishes the
-        // moment the user leaves four-sides mode.
         root.querySelectorAll(HB_AGGREGATE_FIELDS).forEach(decorate);
     }
 
@@ -326,13 +250,6 @@
         const root = mountedStyleRoot(trigger);
         if (!root) return;
 
-        // Three ways a trigger names its target, because it sits differently in each case:
-        //   - injected INTO a field  -> it is a descendant of the control
-        //   - beside a combobox      -> a sibling, so it names the control explicitly
-        //   - inside a colour LAYER  -> the row carries no data-hb-control at all (the stack owns
-        //     the write, see hbCommitLayers), so the row itself is the target
-        // The layer case is why this button appeared dead: closest('[data-hb-control]') returned
-        // null and the handler bailed before opening anything.
         const named = trigger.getAttribute('data-hb-style-var-for');
         const layer = trigger.closest('.hb-colorlayer');
         const aggregate = trigger.closest(HB_AGGREGATE_FIELDS);
@@ -341,37 +258,21 @@
         if (!control) return;
         event.stopPropagation();
         root.__hbVarTarget = control;
-        // A layer always binds a colour, whatever section it belongs to; a spacing
-        // aggregate always binds a length token.
         const menu = layer ? 'var-color'
             : (aggregate && !named ? 'var-number' : hbVarMenuFor(control.getAttribute('data-hb-control') || ''));
         showStylePopup(root, menu, trigger);
     });
 
-    // variable-menu reports the token KEY, which ThemeRepository::tokens() already builds as the
-    // CSS value itself (`var(--hb-t-accent-1) => Accent`) — so the selection is written straight
-    // through, no name-to-value lookup that could drift from the theme.
     document.addEventListener('varselect', (event) => {
         const popup = event.target.closest('[data-hb-style-popup^="var-"]');
         const root = popup ? mountedStyleRoot(popup) : null;
         const control = root?.__hbVarTarget;
         if (!root || !control) return;
-        // `value` is the CSS reference (var(--hb-t-…)); `name` is only the label shown on the row.
         const value = event.detail?.value ?? event.detail?.name ?? '';
 
-        // A combobox owns its display state and only commits through its own API — writing its
-        // inner <input> directly would be reverted on its next render, and the delegated write
-        // handler ignores events whose target is not the combobox root, so the model would never
-        // see the change either.
         const label = hbVarLabelOf(root, value);
-        // Bound field shows the token's VALUE (the integer), not its name (the label) — and
-        // falls back to the label when the token carries no resolvable number (a hex colour,
-        // a font family).
         const resolved = hbVarResolvedValue(root, value) ?? label ?? value;
 
-        // A spacing aggregate fans the token into its covered side controls — they carry the
-        // real data-hb-control write paths — then mirrors the binding on itself so the field
-        // shows the token value (not "Mixed") and its trigger reads bound.
         const aggregateSides = hbAggregateSideControls(root, control);
         if (aggregateSides) {
             aggregateSides.forEach((side) => {
@@ -379,9 +280,6 @@
                 if (!input) return;
                 if (label) side.dataset.hbVarBound = value; else delete side.dataset.hbVarBound;
                 input.value = resolved;
-                // Stamp the guard flag on the side so the typing-guard listener (capture phase,
-                // registered last in this script) recognises this as a programmatic value-set
-                // and doesn't drop the binding before the delegated write path runs.
                 side.__hbVarJustBound = true;
                 input.dispatchEvent(new Event('input', { bubbles: true }));
                 input.dispatchEvent(new Event('change', { bubbles: true }));
@@ -400,18 +298,11 @@
             return;
         }
 
-        // A colour layer holds its value in its own hex field and commits through its stack, so
-        // the write goes there rather than to a control path. The hex field is a TEXT input, so
-        // the resolved (label / reference) goes there unchanged — for a colour token this is the
-        // label "Accent", since colours have no integer to show.
         if (control.classList.contains('hb-colorlayer')) {
             const hex = control.querySelector('.hb-colorlayer__hex');
             if (!hex) return;
             hex.value = resolved;
             if (label) control.dataset.hbVarBound = value; else delete control.dataset.hbVarBound;
-            // Paint the swatch with the reference itself, not a resolved hex: the theme's
-            // --hb-t-* properties are on the page, so the browser resolves it — and the swatch
-            // then tracks the token if its value is later edited in the Style tab.
             const swatch = control.querySelector('.hb-colorlayer__swatch');
             if (swatch) swatch.style.background = value || 'transparent';
             control.__hbVarJustBound = true;
@@ -423,25 +314,14 @@
         }
 
         if (control.getAttribute('data-hb-control-type') === 'combobox') {
-            // ui/combobox already separates the two: dataset.value is what the model gets, the
-            // input text is what the user sees.
             control.__hbCombobox?.setValue(value, resolved);
         } else {
             const input = control.matches('input') ? control : control.querySelector('input');
             if (!input) return;
-            // Show the token's value (integer for lengths, label otherwise), remember the
-            // reference for the write path.
             if (label) control.dataset.hbVarBound = value;
             else delete control.dataset.hbVarBound;
             input.value = resolved;
-            // Stamp the guard flag on the control for the same reason as the aggregate branches
-            // above: the captured typing-guard listener below would otherwise drop this binding
-            // on the synthesized input event because the resolved integer (e.g. "16") does not
-            // match the token's label (e.g. "Large"). Clearing it on the next line restores
-            // user-typing detection for anything that fires after this dispatch.
             control.__hbVarJustBound = true;
-            // Re-use the one delegated write path rather than calling setSupport here, so the
-            // linked-value/aggregate handlers (spacing, corners) still see the edit.
             input.dispatchEvent(new Event('input', { bubbles: true }));
             input.dispatchEvent(new Event('change', { bubbles: true }));
             control.__hbVarJustBound = false;
@@ -450,20 +330,6 @@
         closeStylePopups(root);
     });
 
-    // Typing over a bound field breaks the binding: the text is no longer the token's value, so
-    // keeping the reference would silently discard what was typed. Cleared BEFORE the delegated
-    // write handler reads it — both listeners are on document and this one is registered first,
-    // but the guard does not rely on that: it compares the text to the resolved value (the
-    // integer the field actually displays) and falls back to the label, so a stale attribute
-    // can never outlive the value it described.
-    //
-    // Spacing's aggregate fields (data-hb-style-all-value / padding-axis / margin-axis) lack
-    // data-hb-control on purpose (see spacing-controls comment), yet still carry the binding
-    // when a token is picked — extend the selector to cover them. They live together with
-    // per-side controls that hold their OWN data-hb-control and inherited the binding when the
-    // token was selected, so clear those siblings too: the typed literal the aggregate fans out
-    // does not match the token, and stale side bindings would resurrect the reference on the
-    // next syncControls walk.
     document.addEventListener('input', (event) => {
         const control = event.target.closest(
             '[data-hb-control], [data-hb-style-all-value], [data-hb-style-padding-axis], [data-hb-style-margin-axis]'
@@ -474,17 +340,6 @@
         const bound = control.dataset.hbVarBound;
         if (bound && !control.__hbVarJustBound) {
             const input = control.matches('input') ? control : control.querySelector('input');
-            // Any user input that doesn't reproduce the token's LABEL drops the binding.
-            // The previous predicate compared the typed value to the token's RESOLVED VALUE
-            // (the integer the field actually displays) — that meant typing back the same hex
-            // that the token happened to resolve to silently kept the binding, and a later
-            // theme change overwrote a value the user thought they had typed literally. The
-            // label is the visible token identity in the menu, so re-typing it is the only
-            // case where the user could plausibly want to preserve the binding.
-            //
-            // __hbVarJustBound is the transient flag varselect sets/unsets around its own
-            // synthetic input events; without it the guard would drop a freshly-set binding
-            // before the delegated write handler reads it (capture phase runs before bubble).
             const label = hbVarLabelOf(root, bound);
             if (input && input.value !== '' && input.value !== label) {
                 delete control.dataset.hbVarBound;

@@ -1,4 +1,3 @@
-{{-- live/pickers/effect-editor — local Drop Shadow editor popover. --}}
 @props([
     'title' => null,
     'type' => 'drop-shadow',
@@ -16,11 +15,6 @@
     </button>
     <div class="hb-shadow__body">
         @if ($type === 'drop-shadow' || $type === 'inner-shadow')
-            {{-- Hooks added 2026-08-05: these five fields compose ONE box-shadow
-                 string written to supports.effects.shadow, which SupportsStyle reads as
-                 --hb-shadow. They are not five model paths — the model holds the composed value,
-                 because that is the shape BlockRenderer's `shadow` sanitizer validates and the
-                 only thing CSS can consume. See inspector.blade.php's hbComposeShadow(). --}}
             <div class="hb-shadow__row">
                 <span class="hb-shadow__lbl">{{ __('heisenberg::editor.effects.color') }}</span>
                 <div class="hb-shadow__color">

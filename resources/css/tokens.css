@@ -1,5 +1,4 @@
 :root {
-    /* color */
     --hb-accent: #000000;
     --hb-accent-fg: #FFFFFF;
     --hb-accent-hover: #1A1A1A;
@@ -22,14 +21,11 @@
     --hb-danger-subtle: #FEF2F2;
     --hb-success: #3BD186;
     --hb-success-soft: #E0FFF0;
-    /* Warn (docs/email-system.md §7-E3 — the email size chip past ~100KB, Gmail clipping) —
-       amber, distinct from danger/success. */
     --hb-warning: #B45309;
     --hb-warning-soft: #FEF3C7;
     --hb-editing: #3D68F5;
     --hb-editing-soft: #607EE0;
 
-    /* radius (swatch/control are off-scale .pen steps, kept 1:1 with the design source) */
     --hb-radius-xs: 2px;
     --hb-radius-sm: 3px;
     --hb-radius-swatch: 4px;
@@ -37,12 +33,10 @@
     --hb-radius-control: 6px;
     --hb-radius-lg: 8px;
 
-    /* elevation */
     --hb-shadow-sm: 0 1px 3px rgba(0, 0, 0, .25);
     --hb-shadow-md: 3px 4px 4px rgba(0, 0, 0, .1);
     --hb-shadow-lg: 3px 4px 4px rgba(0, 0, 0, .1);
 
-    /* spacing */
     --hb-space-1: 4px;
     --hb-space-2: 8px;
     --hb-space-3: 12px;
@@ -51,7 +45,6 @@
     --hb-space-6: 24px;
     --hb-space-8: 32px;
 
-    /* type */
     --hb-font-sans: Rubik, sans-serif;
     --hb-font-mono: 'JetBrains Mono', monospace;
     --hb-font-serif: Georgia, serif;
@@ -62,19 +55,13 @@
     --hb-fs-lg: 16px;
     --hb-fs-xl: 20px;
 
-    /* editor shell layout (not component tokens, kept here since they're shared document variables) */
     --hb-sidebar-w: 240px;
     --hb-inspector-w: 272px;
     --hb-toolbar-h: 44px;
     --hb-block-gutter: 64px;
-    /* Floating block-toolbar height. Shared so 33-toolbar.css (the bar's own
-       height) and 35-blocks.css (its negative top offset) can never drift apart
-       — when they did, the bar floated 6px above the block instead of sitting
-       on its top edge. */
     --hb-block-toolbar-h: 32px;
 }
 
-/* editor preview page chrome — uses shared tokens */
 .hb-preview {
     min-height: 100vh;
     margin: 0;

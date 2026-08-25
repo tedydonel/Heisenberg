@@ -1,8 +1,3 @@
-/* Border/radius intentionally absent from this file: SupportsStyle's capability sheet
-   (src/Support/SupportsStyle.php) owns every border-side and border-radius longhand for a
-   block carrying the hb-supports marker — the contract feeds them through style.variables,
-   this file never repeats them. (NB: never write a literal star-slash sequence inside this
-   comment — it terminates it early and the CSS parser then swallows the rule below.) */
 .hb-block-image {
     display: block;
     box-sizing: border-box;
@@ -18,8 +13,6 @@
     padding: var(--hb-image-pt, 0) var(--hb-image-pr, 0) var(--hb-image-pb, 0) var(--hb-image-pl, 0);
 }
 
-/* The link wrapper is purely structural (href/target only render when set) — it never
-   carries its own box styling, so an unlinked image lays out identically to a linked one. */
 .hb-block-image > a {
     display: block;
 }
@@ -41,14 +34,10 @@
     text-align: center;
 }
 
-/* An untouched/caption-less image shows no caption row at all — same idea as
-   .hb-block-embed__note-text:empty, but here the whole element collapses. */
 .hb-block-image__caption:empty {
     display: none;
 }
 
-/* Device visibility — six breakpoint bands (Bootstrap-style ranges).
-   Published output hides the block for every enabled band. */
 @media (max-width: 575.98px) { .hb-block-image.hb-hide-xs { display: none; } }
 @media (min-width: 576px) and (max-width: 767.98px) { .hb-block-image.hb-hide-sm { display: none; } }
 @media (min-width: 768px) and (max-width: 991.98px) { .hb-block-image.hb-hide-md { display: none; } }

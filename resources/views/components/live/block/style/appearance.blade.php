@@ -1,14 +1,3 @@
-{{-- live/block/style/appearance — opacity + linked corner-radius controls.
-
-     This section straddles two supports groups: opacity writes `appearance.opacity`, the four
-     corner fields write `border.radius.*`. style-panel shows the section when EITHER group is
-     supported and passes both flags, so each half gates on its own key. Text blocks are exactly
-     the case that needs it: they declare `appearance` (opacity) but not `border`,
-     so this renders as an opacity-only section. See docs/inspector-composition.md §4.2.
-
-     The "all corners" field and its expand toggle belong to the corner group, not to opacity —
-     they are presentation controls over the same four paths, so they go when the corners do,
-     otherwise the row would keep a linked-value field driving nothing. --}}
 @props(['showOpacity' => true, 'showCorners' => true])
 <x-ui.panel-section title="Appearance">
     <div class="hb-irow hb-style-appearance__top">

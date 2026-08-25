@@ -1,6 +1,3 @@
-{{-- ui/field — compound field, 120x26. L-group (optional leading icon +
-     optional prefix + value) justified against an R-group (optional unit + optional chevron).
-     cornerRadius 4 in the source is a literal, not bound to any $radius-* variable — kept as-is. --}}
 @once
 
 @endonce
@@ -12,9 +9,6 @@
     'unit' => null,
     'chevron' => false,
     'disabled' => false,
-    // No default width: a fixed inline width beat every stylesheet rule that tries to make
-    // a field fill its row (.hb-irow .hb-field { width: 100% }), so fields were pinned at
-    // 120px inside panels far wider than that. Pass one only where a fixed size is meant.
     'width' => null,
 ])
 <div {{ $attributes->merge(array_filter(['class' => 'hb-field' . ($disabled ? ' hb-field--disabled' : ''), 'style' => $width ? "width:{$width};" : null])) }}>

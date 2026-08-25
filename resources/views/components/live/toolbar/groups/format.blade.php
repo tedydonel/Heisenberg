@@ -1,5 +1,3 @@
-{{-- live/toolbar/groups/format — inline formatting (rich-text blocks only): bold / italic /
-     underline / strikethrough / link / code. Each toggles its active state on click. --}}
 @props(['active' => []])
 @php $fmts = [['bold', 'text-bolder-light', 'Bold'], ['italic', 'text-italic', 'Italic'], ['underline', 'text-underline', 'Underline'], ['strikethrough', 'text-strikethrough', 'Strikethrough']]; @endphp
 <div class="hb-tb__group" data-tb-group="format">

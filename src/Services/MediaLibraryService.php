@@ -196,8 +196,6 @@ class MediaLibraryService
         $file->delete();
     }
 
-    // ── Upload pipeline internals (§5, §6) ────────────────────────────────
-
     /**
      * The single source of truth for "which file types are allowed", enforced
      * regardless of which caller reached storeOne() (HTTP FormRequest,

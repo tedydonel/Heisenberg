@@ -68,8 +68,6 @@ class EditorAssistantTest extends TestCase
         ])]);
     }
 
-    // ── reasoning tags ──────────────────────────────────────────────────────
-
     public function test_a_closed_think_block_is_stripped(): void
     {
         $this->assertSame(
@@ -106,8 +104,6 @@ class EditorAssistantTest extends TestCase
             ->assertOk()
             ->assertJsonPath('text', '[h2]Hello[/h2]');
     }
-
-    // ── document context ────────────────────────────────────────────────────
 
     /**
      * The document is sent on every turn, so the assistant never has to ask for
@@ -159,8 +155,6 @@ class EditorAssistantTest extends TestCase
             return true;
         });
     }
-
-    // ── conversation memory ─────────────────────────────────────────────────
 
     /**
      * Continuing a conversation must restore its context to the MODEL, not just
@@ -220,8 +214,6 @@ class EditorAssistantTest extends TestCase
         });
     }
 
-    // ── conversation-aware suggestions ───────────────────────────────────────
-
     public function test_suggest_returns_the_models_json_array(): void
     {
         $this->app['env'] = 'local';
@@ -260,8 +252,6 @@ class EditorAssistantTest extends TestCase
             'history' => [['role' => 'user', 'content' => 'hi']],
         ])->assertOk()->assertExactJson(['suggestions' => []]);
     }
-
-    // ── platform tools ──────────────────────────────────────────────────────
 
     /**
      * The assistant inside the editor was the one client that could not reach

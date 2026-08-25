@@ -1,4 +1,3 @@
-{{-- ui/field-label — uppercase eyebrow label used above inputs. --}}
 @once
 
 @endonce

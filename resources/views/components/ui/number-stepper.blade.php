@@ -1,13 +1,3 @@
-{{-- ui/number-stepper — three-cell row of (–)(field)(+) at the same 26px height as ui/input /
-     ui/number-field. Two icon-buttons flank a real <input type="number">; the native input
-     gives keyboard stepping (arrow up/down, scrubbing) for free, the buttons handle the
-     pointer path. The buttons emit a regular 'change' event on the input via the
-     dispatchEvent in the script below, which means the existing data-hb-control sync path
-     (handleControlEvent etc.) fires without a separate handler.
-
-     min/max honored both by the input attributes (browser arrow-key clamping) and by the
-     buttons (clamped at the script boundary so a user mashing – at 0 with min=1 stops at 1,
-     not -1). --}}
 @once
 
 @endonce
@@ -50,9 +40,6 @@
 <script>
     (() => {
         const STEP_BY = (key) => {
-            // The input could be inside a wrapper that captures the click — the closest input
-            // is the only authoritative target for the value read/write. Buttons live as siblings,
-            // not as labelable controls.
             document.querySelectorAll('[data-hb-numstepper-' + key + ']').forEach((btn) => {
                 if (btn.__hbNumStepperBound) return;
                 btn.__hbNumStepperBound = true;
@@ -69,8 +56,6 @@
                     if (min !== null && next < min) next = min;
                     if (max !== null && next > max) next = max;
                     input.value = String(next);
-                    // Native input fires 'input' on user typing and 'change' on commit. Button
-                    // clicks bypass both — re-dispatch so any data-hb-control listener picks it up.
                     input.dispatchEvent(new Event('input', { bubbles: true }));
                     input.dispatchEvent(new Event('change', { bubbles: true }));
                 });

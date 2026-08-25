@@ -1,9 +1,3 @@
-/* Dark theme — scoped to .hb-editor--dark, re-declaring every token :root defines in tokens.css.
-   Not a blind invert: surfaces step up in lightness for elevation (bg < bg-subtle < bg-muted <
-   bg-inset, same relative order as light mode, just dark-anchored), status/brand colors are
-   brightened rather than reused as-is since the light-mode values were tuned for contrast against
-   white and read as muddy/low-contrast on a dark surface, and accent flips to a light neutral
-   because black-on-black (the light theme's accent) has no contrast in dark mode. */
 .hb-editor--dark {
     --hb-accent: #F2F2F2;
     --hb-accent-fg: #0A0A0A;

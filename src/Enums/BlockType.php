@@ -38,7 +38,6 @@ enum BlockType: string
     case TAKEAWAY = 'takeaway';
     case DATA_ROW = 'data_row';
     case COMPONENT = 'component';
-    // Containers + embed (2026-08-06 — the first contracts beyond the blueprint's 20).
     case GROUP = 'group';
     case COLUMN = 'column';
     case EMBED = 'embed';

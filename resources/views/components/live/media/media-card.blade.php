@@ -1,7 +1,3 @@
-{{-- live/media/media-card — one component; the `state` prop selects the variant
-     (default/hover/selected/uploading/error). 200px vertical card: thumbnail (190px) + name +
-     (meta | progress | status row). Styles in 30-media.css (shared with the Livewire library's
-     optimistic uploading cards). --}}
 @props([
     'state' => 'default',
     'name' => 'Filename.png',

@@ -48,33 +48,28 @@ final class AnimationCatalog
      * @var array<string, array{0: string, 1: string, 2: bool, 3: string}>
      */
     private const PRESETS = [
-        // ── Fade ────────────────────────────────────────────────
-        'fade' => ['Fade', 'Fade in', true, 'from { opacity: 0; } to { opacity: 1; }'],
+                'fade' => ['Fade', 'Fade in', true, 'from { opacity: 0; } to { opacity: 1; }'],
         'fade-up' => ['Fade', 'Fade up', true, 'from { opacity: 0; transform: translateY(28px); } to { opacity: 1; transform: none; }'],
         'fade-down' => ['Fade', 'Fade down', true, 'from { opacity: 0; transform: translateY(-28px); } to { opacity: 1; transform: none; }'],
         'fade-left' => ['Fade', 'Fade left', true, 'from { opacity: 0; transform: translateX(32px); } to { opacity: 1; transform: none; }'],
         'fade-right' => ['Fade', 'Fade right', true, 'from { opacity: 0; transform: translateX(-32px); } to { opacity: 1; transform: none; }'],
 
-        // ── Slide ───────────────────────────────────────────────
-        'slide-up' => ['Slide', 'Slide up', true, 'from { opacity: 0; transform: translateY(64px); } to { opacity: 1; transform: none; }'],
+                'slide-up' => ['Slide', 'Slide up', true, 'from { opacity: 0; transform: translateY(64px); } to { opacity: 1; transform: none; }'],
         'slide-down' => ['Slide', 'Slide down', true, 'from { opacity: 0; transform: translateY(-64px); } to { opacity: 1; transform: none; }'],
         'slide-left' => ['Slide', 'Slide left', true, 'from { opacity: 0; transform: translateX(72px); } to { opacity: 1; transform: none; }'],
         'slide-right' => ['Slide', 'Slide right', true, 'from { opacity: 0; transform: translateX(-72px); } to { opacity: 1; transform: none; }'],
 
-        // ── Zoom ────────────────────────────────────────────────
-        'zoom' => ['Zoom', 'Zoom in', true, 'from { opacity: 0; transform: scale(0.82); } to { opacity: 1; transform: none; }'],
+                'zoom' => ['Zoom', 'Zoom in', true, 'from { opacity: 0; transform: scale(0.82); } to { opacity: 1; transform: none; }'],
         'zoom-out' => ['Zoom', 'Zoom out', true, 'from { opacity: 0; transform: scale(1.16); } to { opacity: 1; transform: none; }'],
         'zoom-up' => ['Zoom', 'Zoom in up', true, 'from { opacity: 0; transform: scale(0.86) translateY(36px); } to { opacity: 1; transform: none; }'],
         'zoom-down' => ['Zoom', 'Zoom in down', true, 'from { opacity: 0; transform: scale(0.86) translateY(-36px); } to { opacity: 1; transform: none; }'],
 
-        // ── Flip & Rotate (2D) ─────────────────────────────────
-        'rotate-in' => ['Flip & Rotate', 'Rotate in', true, 'from { opacity: 0; transform: rotate(-8deg) scale(0.92); } to { opacity: 1; transform: none; }'],
+                'rotate-in' => ['Flip & Rotate', 'Rotate in', true, 'from { opacity: 0; transform: rotate(-8deg) scale(0.92); } to { opacity: 1; transform: none; }'],
         'rotate-in-left' => ['Flip & Rotate', 'Rotate in left', true, 'from { opacity: 0; transform: rotate(6deg) translateX(-40px); } to { opacity: 1; transform: none; }'],
         'swing-in' => ['Flip & Rotate', 'Swing in', true, '0% { opacity: 0; transform: rotate(-6deg); } 60% { opacity: 1; transform: rotate(3deg); } 80% { transform: rotate(-1.5deg); } 100% { opacity: 1; transform: none; }'],
         'skew-in' => ['Flip & Rotate', 'Skew in', true, 'from { opacity: 0; transform: skewX(-12deg) translateX(-48px); } to { opacity: 1; transform: none; }'],
 
-        // ── 3D (the fourth dimension: depth over time) ─────────
-        'flip-3d-x' => ['3D', 'Flip 3D — X axis', true, 'from { opacity: 0; transform: perspective(900px) rotateX(-72deg); } to { opacity: 1; transform: perspective(900px) rotateX(0); }'],
+                'flip-3d-x' => ['3D', 'Flip 3D — X axis', true, 'from { opacity: 0; transform: perspective(900px) rotateX(-72deg); } to { opacity: 1; transform: perspective(900px) rotateX(0); }'],
         'flip-3d-y' => ['3D', 'Flip 3D — Y axis', true, 'from { opacity: 0; transform: perspective(900px) rotateY(64deg); } to { opacity: 1; transform: perspective(900px) rotateY(0); }'],
         'door-3d' => ['3D', 'Door swing 3D', true, 'from { opacity: 0; transform: perspective(1000px) rotateY(-88deg); transform-origin: left center; } to { opacity: 1; transform: perspective(1000px) rotateY(0); transform-origin: left center; }'],
         'tilt-3d' => ['3D', 'Tilt in 3D', true, 'from { opacity: 0; transform: perspective(800px) rotateX(24deg) translateY(48px) scale(0.94); } to { opacity: 1; transform: perspective(800px) none; }'],
@@ -82,21 +77,18 @@ final class AnimationCatalog
         'unfold-3d' => ['3D', 'Unfold 3D', true, '0% { opacity: 0; transform: perspective(1000px) rotateX(-84deg); transform-origin: top center; } 60% { opacity: 1; transform: perspective(1000px) rotateX(6deg); transform-origin: top center; } 100% { opacity: 1; transform: perspective(1000px) rotateX(0); transform-origin: top center; }'],
         'orbit-3d' => ['3D', 'Orbit in 3D', true, 'from { opacity: 0; transform: perspective(900px) rotateY(96deg) translateX(64px) scale(0.9); } to { opacity: 1; transform: perspective(900px) none; }'],
 
-        // ── Reveal & Blur ───────────────────────────────────────
-        'blur-in' => ['Reveal', 'Blur in', true, 'from { opacity: 0; filter: blur(14px); } to { opacity: 1; filter: blur(0); }'],
+                'blur-in' => ['Reveal', 'Blur in', true, 'from { opacity: 0; filter: blur(14px); } to { opacity: 1; filter: blur(0); }'],
         'reveal-up' => ['Reveal', 'Reveal up', true, 'from { opacity: 0; clip-path: inset(100% 0 0 0); transform: translateY(14px); } to { opacity: 1; clip-path: inset(0 0 0 0); transform: none; }'],
         'reveal-left' => ['Reveal', 'Reveal left', true, 'from { opacity: 0; clip-path: inset(0 0 0 100%); } to { opacity: 1; clip-path: inset(0 0 0 0); }'],
         'wipe-in' => ['Reveal', 'Wipe in', true, 'from { opacity: 0; clip-path: inset(0 100% 0 0); } to { opacity: 1; clip-path: inset(0 0 0 0); }'],
         'letter-space' => ['Reveal', 'Letter spread', true, 'from { opacity: 0; letter-spacing: 0.5em; } to { opacity: 1; letter-spacing: normal; }'],
 
-        // ── Bounce & Elastic ────────────────────────────────────
-        'bounce-in' => ['Bounce', 'Bounce in', true, '0% { opacity: 0; transform: scale(0.3); } 50% { opacity: 1; transform: scale(1.05); } 70% { transform: scale(0.96); } 100% { opacity: 1; transform: none; }'],
+                'bounce-in' => ['Bounce', 'Bounce in', true, '0% { opacity: 0; transform: scale(0.3); } 50% { opacity: 1; transform: scale(1.05); } 70% { transform: scale(0.96); } 100% { opacity: 1; transform: none; }'],
         'bounce-up' => ['Bounce', 'Bounce up', true, '0% { opacity: 0; transform: translateY(72px); } 55% { opacity: 1; transform: translateY(-10px); } 75% { transform: translateY(4px); } 100% { opacity: 1; transform: none; }'],
         'elastic-in' => ['Bounce', 'Elastic in', true, '0% { opacity: 0; transform: scaleX(0.6); } 55% { opacity: 1; transform: scaleX(1.06); } 75% { transform: scaleX(0.97); } 100% { opacity: 1; transform: none; }'],
         'drop-in' => ['Bounce', 'Drop in', true, '0% { opacity: 0; transform: translateY(-90px) scaleY(1.08); } 60% { opacity: 1; transform: translateY(6px) scaleY(0.98); } 80% { transform: translateY(-2px); } 100% { opacity: 1; transform: none; }'],
 
-        // ── Attention (loops while visible) ─────────────────────
-        'pulse' => ['Attention', 'Pulse', false, '0% { transform: scale(1); } 50% { transform: scale(1.04); } 100% { transform: scale(1); }'],
+                'pulse' => ['Attention', 'Pulse', false, '0% { transform: scale(1); } 50% { transform: scale(1.04); } 100% { transform: scale(1); }'],
         'float' => ['Attention', 'Float', false, '0% { transform: translateY(0); } 50% { transform: translateY(-8px); } 100% { transform: translateY(0); }'],
         'wobble' => ['Attention', 'Wobble', false, '0% { transform: rotate(0); } 25% { transform: rotate(1.6deg); } 75% { transform: rotate(-1.6deg); } 100% { transform: rotate(0); }'],
         'shake' => ['Attention', 'Shake', false, '0%, 100% { transform: translateX(0); } 20% { transform: translateX(-5px); } 40% { transform: translateX(5px); } 60% { transform: translateX(-3px); } 80% { transform: translateX(3px); }'],

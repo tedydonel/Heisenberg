@@ -37,8 +37,6 @@ class InspectorWiringTest extends TestCase
         return app(BlockRegistryService::class)->getBlock($name) ?? [];
     }
 
-    // ── Spacing ───────────────────────────────────────────────────────────────
-
     public function test_every_per_side_spacing_field_carries_a_supports_control_hook(): void
     {
         $html = $this->editorHtml();
@@ -128,8 +126,6 @@ class InspectorWiringTest extends TestCase
         $this->assertStringContainsString('syncSpacingAggregates(root);', $body);
         $this->assertStringContainsString('refreshConditionals(root, model);', $body);
     }
-
-    // ── Content → General ─────────────────────────────────────────────────────
 
     public function test_general_section_wires_the_three_contract_attributes_it_renders(): void
     {
@@ -295,7 +291,6 @@ class InspectorWiringTest extends TestCase
         );
     }
 
-    // ── Post → Summary status popup (2026-08-11 — plain text row + anchored popup) ──
     // The Status row is a plain-text value that opens a popup of legal transitions — see
     // EditorController::postMeta()/statusLabels() and topbar.blade.php's
     // hb:post-status-change wiring. These pins cover the seam most at risk of silently
@@ -360,8 +355,6 @@ class InspectorWiringTest extends TestCase
         $this->assertStringContainsString("document.addEventListener('hb:post-id', () => {", $html);
     }
 
-    // ── Post → Summary Blocks row removed / slug + publish-date rows added (2026-08-11) ────
-
     public function test_the_blocks_row_no_longer_renders_in_the_summary(): void
     {
         $html = $this->editorHtml();
@@ -406,8 +399,6 @@ class InspectorWiringTest extends TestCase
         $this->assertStringNotContainsString('hidden', $publishRow);
     }
 
-    // ── Post → Summary rows are plain text + anchored popups (2026-08-11) ────────────
-
     public function test_summary_rows_render_as_plain_text_with_popup_triggers(): void
     {
         $html = $this->editorHtml();
@@ -443,7 +434,6 @@ class InspectorWiringTest extends TestCase
         );
     }
 
-    // ── Post → Featured image placeholder/preview are mutually exclusive (2026-08-12) ──
     // The empty-state trigger only ever hid itself client-side, on a pick/replace/remove — the
     // initial server render never checked postFeaturedImage, so a post that already had one
     // rendered BOTH the "Set featured image" placeholder and the real preview card stacked on
@@ -502,7 +492,6 @@ class InspectorWiringTest extends TestCase
         $this->assertStringContainsString('hidden', $previewTag, 'a post with no featured image must not also render the preview card');
     }
 
-    // ── Post → Summary value styling (2026-08-12) ────────────────────────────────
     // Smaller font (owner-reported: the Publish date truncated mid-string), no underline on
     // hover, and hover recolors to the SAME --hb-editing token every other interactive/active
     // surface in the editor already uses (block selection outline, toolbar chrome, empty-state
@@ -532,7 +521,6 @@ class InspectorWiringTest extends TestCase
         $this->assertDoesNotMatchRegularExpression('/\.hb-post-meta__value--btn \{[^}]*font: inherit;/s', $html);
     }
 
-    // ── Post → Move to trash (2026-08-14) ─────────────────────────────────────────
     // The button used to be pure decoration: no data attribute, no listener, no endpoint. This
     // pins that it now actually carries its endpoint/confirm hooks and the same
     // disabled-before-first-save posture as every other post-scoped control.

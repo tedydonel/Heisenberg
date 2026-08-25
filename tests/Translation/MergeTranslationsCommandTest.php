@@ -56,8 +56,6 @@ class MergeTranslationsCommandTest extends TestCase
         return [$en->fresh(), $fr->fresh()];
     }
 
-    // ── clean merge ───────────────────────────────────────────────────────
-
     public function test_a_clean_merge_folds_title_excerpt_and_block_content_into_the_survivor(): void
     {
         [$en, $fr] = $this->group();
@@ -121,8 +119,6 @@ class MergeTranslationsCommandTest extends TestCase
         $this->assertSame(0, SeoMeta::query()->where('able_id', $fr->id)->where('able_type', $fr->getMorphClass())->count());
     }
 
-    // ── --dry-run ─────────────────────────────────────────────────────────
-
     public function test_dry_run_reports_the_plan_but_writes_nothing(): void
     {
         [$en, $fr] = $this->group();
@@ -136,8 +132,6 @@ class MergeTranslationsCommandTest extends TestCase
         $this->assertNull($en->fresh()->title_fr, 'the survivor must be untouched');
         $this->assertNotNull(Post::query()->find($fr->id), 'the sibling row must still exist');
     }
-
-    // ── skipped: divergent block trees ──────────────────────────────────
 
     public function test_a_group_with_differently_shaped_block_trees_is_skipped_entirely(): void
     {
@@ -181,8 +175,6 @@ class MergeTranslationsCommandTest extends TestCase
         $this->assertStringContainsString('block name mismatch', $text);
         $this->assertNotNull(Post::query()->find($fr->id));
     }
-
-    // ── skipped: survivor already has conflicting content ────────────────
 
     public function test_a_survivor_with_conflicting_title_is_skipped_entirely(): void
     {
@@ -238,8 +230,6 @@ class MergeTranslationsCommandTest extends TestCase
         $this->assertStringContainsString('1 group(s) merged, 0 group(s) skipped.', $text);
         $this->assertNull(Post::query()->find($fr->id));
     }
-
-    // ── no groups ─────────────────────────────────────────────────────────
 
     public function test_reports_nothing_to_do_when_there_are_no_split_row_groups(): void
     {

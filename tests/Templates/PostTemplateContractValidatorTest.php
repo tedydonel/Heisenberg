@@ -140,8 +140,6 @@ class PostTemplateContractValidatorTest extends TestCase
         $this->assertInvalid($contract, 'keywords');
     }
 
-    // ── render ──────────────────────────────────────────────
-
     public function test_render_view_rejects_unsafe_or_missing_names(): void
     {
         foreach ([null, '', '../evil', '/abs.view', 'has space', 'trailing.', '.leading', 'a//b'] as $bad) {
@@ -173,8 +171,6 @@ class PostTemplateContractValidatorTest extends TestCase
         $this->assertValid($contract, 'a safe relative .js path is accepted');
     }
 
-    // ── capabilities: general ──────────────────────────────────
-
     public function test_unknown_capability_is_rejected(): void
     {
         $contract = $this->validContract();
@@ -195,8 +191,6 @@ class PostTemplateContractValidatorTest extends TestCase
         $contract['capabilities']['comments'] = true;
         $this->assertInvalid($contract, "capability 'comments'");
     }
-
-    // ── capabilities: per-option rules ─────────────────────────
 
     public function test_table_of_contents_min_level_must_not_exceed_max_level(): void
     {

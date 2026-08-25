@@ -78,8 +78,6 @@ class EmailExportControllerTest extends TestCase
         return $post;
     }
 
-    // ── format=html ──────────────────────────────────────────────────────────
-
     public function test_html_export_is_ok_with_attachment_disposition_and_expected_filename(): void
     {
         $post = $this->makeEmailWithImage('a-newsletter');
@@ -115,8 +113,6 @@ class EmailExportControllerTest extends TestCase
         $this->assertSame($html, $default);
         $this->assertSame($html, $bogus);
     }
-
-    // ── format=eml ───────────────────────────────────────────────────────────
 
     public function test_eml_export_is_ok_with_attachment_disposition_and_expected_filename(): void
     {
@@ -230,8 +226,6 @@ class EmailExportControllerTest extends TestCase
         $response->assertStatus(422);
     }
 
-    // ── gating ───────────────────────────────────────────────────────────────
-
     public function test_a_non_email_post_404s_on_both_routes(): void
     {
         $post = Post::create(['title_en' => 'A Blog Post', 'locale' => 'en', 'status' => 'published']);
@@ -266,8 +260,6 @@ class EmailExportControllerTest extends TestCase
         $this->get("/editor/{$post->id}/email-export")
             ->assertRedirect('/emails/a-newsletter/export?format=html');
     }
-
-    // ── topbar wiring (server-rendered, not a script-execution test) ───────────
 
     public function test_the_topbar_renders_the_export_control_for_an_email_document(): void
     {

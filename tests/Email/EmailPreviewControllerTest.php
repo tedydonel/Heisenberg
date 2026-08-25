@@ -83,8 +83,6 @@ class EmailPreviewControllerTest extends TestCase
         return $post;
     }
 
-    // ── the slug the email is served at ──────────────────────────────────────
-
     public function test_the_slug_route_swaps_cid_references_for_real_urls(): void
     {
         $post = $this->makeEmailWithImage();
@@ -252,8 +250,6 @@ class EmailPreviewControllerTest extends TestCase
         $this->get("/editor/{$post->id}/email-export?format=eml&locale=fr")
             ->assertRedirect("/emails/{$post->slug}/export?format=eml&locale=fr");
     }
-
-    // ── the editor's id-scoped routes ────────────────────────────────────────
 
     public function test_the_editor_preview_route_redirects_to_the_slug(): void
     {

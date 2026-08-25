@@ -1,59 +1,14 @@
-{{-- live/panel-style-themes — Middle panel, 240px (same
-     240-vs-260 note as live/panel-components-blocks).
-     Style tab: 5 token-editor sections (Colors/Radius/Spacing/Fonts/Font sizes), each a real repeated
-     row pattern from the source — Colors uses ui/swatch + ui/input (name only); Radius/Spacing/Font
-     sizes use two ui/input fields (name+value) + a remove icon. Fonts is the one exception to that
-     name+value shape (2026-08-04): a font's family (e.g. "Rubik") is already a human-readable name,
-     so a second free-text nickname field was pure redundancy — it's just ui/combobox (family) alone,
-     and the family value doubles as the token's label (see collectTheme()/buildRow() below). Widths
-     differ per section in the source itself (not my choice) — Radius/Fonts/Font-sizes: name=70,
-     value=fill; Spacing: name=fill, value=80. Font sizes is the last section and has no border-bottom
-     + a wider padding (space-4 not space-3) in the source — kept as-is, not treated as a copy-paste
-     oversight. A "Save to Themes" bar follows it (our own addition, not in the design).
-     Rows are real ThemeRepository data — every field reads from and writes back to
-     GET/PUT /editor/theme (ThemeController). The single visible text field
-     per row (Fonts excepted) edits the token's human `label`; its machine `name` (the `--hb-t-*` CSS
-     variable, kebab-case, must stay stable so nothing referencing it silently breaks) rides along in
-     data-hb-token-name and is generated once, at Add time. Colors' swatch opens the app's OWN color
-     picker (live/pickers/color-picker, the same component the per-block Fill/Stroke panels use) in a
-     floating popup — not a native <input type=color> — so editing a theme colour looks and behaves
-     like editing any other colour in the editor; the token's current hex rides in data-hb-token-color
-     on the row (the picker only ever hands back a flat hex via its `colorchange` event, even if its
-     Gradient tab is poked, so a theme token can never accidentally become an actual gradient string).
-     Fonts' family field is ui/combobox (2026-08-03, a search-first sibling of ui/select — see its own
-     docblock for why it's a separate component): typing dispatches a `search` event this file listens
-     for, fetches GET /editor/fonts (FontController::search, the vendored Google Fonts catalog, not a
-     static list), and calls the combobox's own replaceOptions() — no bespoke dropdown widget. Any edit
-     (typing, add, remove, swatch, font pick, preset/saved-theme apply) schedules one debounced PUT of
-     the whole theme; ThemeRepository re-validates everything server-side regardless of client-side
-     care. "Save to Themes" snapshots the CURRENT in-DOM theme (not the last-saved-to-disk one, so an
-     unsaved edit is never silently dropped) under a user-typed name via POST /editor/themes
-     (SavedThemeController) — distinct from the single active theme PUT above.
-     Themes tab: search field pinned above one shared scroll region holding two card grids — "Your
-     themes" (live, user-saved, 2026-08-03: server-seeded from SavedThemeRepository, refreshed
-     client-side after every save/delete, each card deletable) above the original "Presets" (search +
-     "Presets" category head + a 6-card grid, the source's actual named palettes: Default/Midnight/
-     Sunset/Ocean/Forest/Blush). Clicking a PRESET overwrites the first 3 color rows' values (a preset
-     only ever ships 3 colors) — it doesn't invent extra semantic roles the source palettes don't
-     define. Clicking a SAVED theme fully replaces all 5 token sections (it has real data for all of
-     them) and switches back to the Style tab so the result is visible, then saves as the active theme. --}}
 @once
 @include('heisenberg::components.live.panel-style-themes.script-style-themes')
 @endonce
 
 @props([
-    // ThemeRepository::load()'s shape — colors/fontSizes/spaces/radii/fonts, each a list of
-    // {name,label,value} (fonts also carry family/weights). Real saved data, not fixtures
-    // (2026-08-03) — see EditorController::sharedViewData().
     'theme' => [],
-    // SavedThemeRepository::all()'s shape — list of {name, theme} (2026-08-03).
     'savedThemes' => [],
     'themeUpdateUrl' => '',
     'fontsSearchUrl' => '',
     'themesStoreUrl' => '',
     'themesDestroyUrl' => '',
-    // FontCatalogService's popular-head, as [{value,label}] — seeds the Fonts field's ui/select so
-    // it never opens empty before a keystroke (2026-08-03).
     'fontOptions' => [],
 ])
 
@@ -71,10 +26,6 @@
         ['label' => 'Forest', 'colors' => ['#F1F5EE', '#5B8C3E', '#23331F']],
         ['label' => 'Blush', 'colors' => ['#FDF1F4', '#D65F86', '#401A2B']],
     ];
-    // Vanilla JS in this panel reads these via JSON.parse(root.dataset.hbPanelStyleStrings)
-    // to render the "Update :name" / "Save to Themes" labels on the save bar without needing
-    // a locale-aware runtime. The same pattern is used by the navigator and comments panels
-    // (see data-hb-nav-strings / data-hb-comments-strings).
     $hbPanelStyleStrings = [
         'save_to_themes' => __('heisenberg::editor.panel_style_themes.save_to_themes'),
         'update_theme' => __('heisenberg::editor.panel_style_themes.update_theme'),
@@ -91,12 +42,6 @@
     <x-ui.panel-tabs :items="[['label' => __('heisenberg::editor.panel_style_themes.tab_style')], ['label' => __('heisenberg::editor.panel_style_themes.tab_themes')]]" :active-index="0" />
 
     <div class="hb-panel-style__content" data-hb-panel-style-style>
-        {{-- Two-layer scroll shell (same reasoning as the Themes tab's own [data-hb-themes-scroll]
-             below, and live/panel-components-blocks.blade.php's [data-hb-panel-cb-scroll]): the
-             scrollbar's `container` must be an element that is NOT also the scrollbar bar's own
-             direct parent-for-positioning-purposes conflated with content — this inner wrapper is
-             purely the JS-tracked scroll region; the outer [data-hb-panel-style-style] is just the
-             flex slot + position:relative anchor the scrollbar bar itself sits in. --}}
         <div class="hb-panel-style__scroll" data-hb-style-scroll>
         <div class="hb-token-section" data-hb-token-section-body="colors">
             <span class="hb-token-section__title">{{ __('heisenberg::editor.panel_style_themes.token_colors') }}</span>
@@ -256,14 +201,6 @@
                 @endforeach
             </div>
 
-            {{-- Deliberately AFTER the unconditional Presets loop above, not before it: content
-                 inside <template> is inert (browsers never apply styles/scripts from it), so if
-                 ui/theme-preset-card's own @once <style> block fired for the FIRST time in here —
-                 which it would, whenever $savedThemes is empty, since this would otherwise be the
-                 first instance of the component on the page — that stylesheet would never actually
-                 reach the live document and every real card (Presets included) would render
-                 unstyled. Presets is never empty, so putting it first guarantees @once always fires
-                 from a real, rendered card. --}}
             <template data-hb-saved-theme-template>
                 <div class="hb-themepresetcard-wrap" data-hb-saved-theme data-hb-saved-theme-name="" data-hb-saved-theme-payload="">
                     <x-ui.theme-preset-card :colors="['#FFFFFF', '#FFFFFF', '#FFFFFF']" label="" />

@@ -1,41 +1,4 @@
-{{-- live/inspector — the right sidebar, 260px, border-left. Structure:
-     Insp Tabs (Post|Block, reuses ui/panel-tabs — verified its existing active/inactive CSS already
-     handles either tab being active, no changes needed), a block-preview header row (icon+name+
-     description, synced from the selected block's contract — see the script below), then
-     Content|Style|Advanced sub-tabs (reuses ui/sub-tabs as-is, same icon set already extracted).
-
-     The Block-tab body renders from the selected block's contract (no longer an empty shell — see
-     `hb:block-selected` below). Since Blade can't re-run from client JS, the trick is: this component
-     receives the full `$registry` (the same clientBlocks()-shaped map block-runtime.blade.php gets,
-     now also threaded onto <x-live.inspector> in editor/index.blade.php) and pre-renders EVERY
-     registered block's Content/Style/Advanced panels once, up front, each wrapped in
-     [data-hb-block-panel="<name>"] and hidden. Selecting a block is then just: show that one block's
-     three panels (per the active sub-tab) and sync the real current attribute/supports values into
-     their already-Blade-rendered inputs — no HTML is ever built from a JS string. `live/block/content`,
-     `live/block/style-panel`, `live/block/advanced` (and the `live/block/style/*` sub-panels, plus the
-     shared `live/block/control-row` + `live/block/control-list`) are what actually turn a control's
-     derived shape (BlockRegistryService::deriveControls/deriveSupportControls/derivePanels) into a
-     labelled ui/* primitive; this file only wires selection -> visibility + value sync, and the single
-     delegated input/change listener that writes an edit back through window.hbEditor.
-
-     Two write paths, one per branch, both owned by the runtime: Content/Advanced controls are
-     attribute-keyed and go through `window.hbEditor.setAttribute(id, key, value)`; Style controls
-     are supports-keyed (e.g. `supports.color.text`) and go through its counterpart
-     `window.hbEditor.setSupport(id, path, value)`, which walks the dotted path. Both own their own
-     re-render and fire `hb:block-updated` + `hb:blocks-changed`, so nothing here mutates a model
-     directly and the two branches cannot drift. Style writes paint via the contract's
-     `style.variables` plus the SupportsStyle capability stylesheet (gated on the `hb-supports`
-     class from `style.className`, which the runtime applies to the block root).
-
-     Post tab — title field, Featured image (collapsible, reuses
-     ui/disclosure-row), Summary (collapsible: 6 label/value meta rows), Pending-review + Stick-to-top
-     toggles (reuse ui/toggle — the source instances these in their OFF state, with a real fill/knob-x
-     override that corrects/confirms ui/toggle's previously-inferred off-state styling), Move to trash,
-     Categories/Tags (a shared multi-select ui/checkbox list — see wirePostTaxonomy() below), Discussion
-     (an Allow-comments ui/toggle) and Page layout (X/Y page padding via two ui/slider controls). The
-     Excerpt row from the original fixture-driven pass was removed 2026-08-03 — panel-seo-social's own
-     meta-description field already covers the same "short summary" need, and keeping both was pure
-     redundancy. Both Post and Block content toggle on the same panel-tabs 'change' event. --}}
+@once
 @once
 <style>
     .hb-inspector {
@@ -56,9 +19,6 @@
     }
     .hb-inspector__title-row { display: flex; align-items: center; gap: 8px; }
     .hb-inspector__icon { display: inline-flex; width: 22px; height: 22px; color: var(--hb-text-primary); flex: none; }
-    /* Author `display:inline-flex` beats the UA stylesheet's `[hidden]` at equal specificity —
-       same fix as .hb-section__body[hidden] in ui/panel-section.blade.php; several per-block
-       icons share this class and only one is ever unhidden at a time (see the script below). */
     .hb-inspector__icon[hidden] { display: none; }
     .hb-inspector__name {
         font-family: var(--hb-font-sans, Rubik, sans-serif);
@@ -74,30 +34,14 @@
     }
     .hb-inspector__block-content,
     .hb-inspector__post-content { display: flex; flex-direction: column; flex: 1 1 auto; min-height: 0; overflow: hidden; }
-    /* The Post tab's own scroll region. It was `overflow: hidden` with no inner scroller, so
-       everything past the fold (the meta rows, toggles, Move to trash, and all five navigation
-       rows) was clipped and unreachable at normal viewport heights. position: relative anchors
-       the custom scrollbar to it, matching the pattern every left panel uses. */
     .hb-inspector__post-content { position: relative; }
     .hb-inspector__post-body { display: flex; flex-direction: column; flex: 1 1 auto; min-height: 0; overflow: hidden; }
-    /* Disclosure headers and navigation rows have an authored fixed height. They are direct flex
-       children here, so they must not shrink when an opened Post disclosure changes the body height:
-       the custom scrollbar should receive overflow instead. */
     .hb-inspector__post-body > * { flex: none; }
     .hb-inspector__block-content[hidden],
     .hb-inspector__post-content[hidden] { display: none; }
-    /* The populated (sub-tabs + body) group continues the same flex column the block-content
-       wrapper starts, so .hb-inspector__body's own flex/overflow below still works for scrolling
-       one level deeper than before the empty-state placeholder was added. */
     .hb-inspector__populated { display: flex; flex-direction: column; flex: 1 1 auto; min-height: 0; }
     .hb-inspector__populated[hidden] { display: none; }
-    /* The body itself does NOT scroll — it's just the flex column the three sub-panels live in.
-       Each sub-panel is its own scroll region (below) so Content/Style/Advanced keep independent
-       scroll offsets; one shared scroller would carry the Style tab's offset over to Content. */
     .hb-inspector__body { flex: 1 1 auto; min-height: 0; display: flex; flex-direction: column; overflow: hidden; position: relative; }
-    /* Per-sub-tab scroll region. `overflow: hidden` + `position: relative` is the shape every
-       other panel uses (.hb-panel-seo__content, .hb-panel-cb__body): ui/custom-scrollbar sets
-       overflowY itself on boot and needs a positioned container to anchor its absolute track to. */
     .hb-inspector__body > [data-hb-subpanel] { flex: 1 1 auto; min-height: 0; overflow: hidden; position: relative; }
     .hb-inspector__empty {
         display: flex;
@@ -171,13 +115,6 @@
     }
     .hb-post-meta__value--btn:not(:disabled):hover { color: var(--hb-editing); }
     .hb-post-meta__value--btn:disabled { opacity: .5; cursor: not-allowed; }
-    /* A picked-but-not-yet-saved value — the Status, Slug and Publish-date controls all
-       share this (see post-meta-live-script.blade.php's data-hb-pending / setStatusPending /
-       setRowPending). None of the three ride autosave (PostController skips all of them
-       outright for autosave:true), so this stays visible across autosave ticks; it only
-       clears once the server actually confirms the new value (an explicit Save) or the
-       pick is rejected/reverted. Without this, a row looked identical to an already-applied
-       change — the owner-reported "picked Published, post stayed draft" bug. */
     .hb-post-meta__value--btn[data-hb-pending="true"] { color: var(--hb-warning); }
     .hb-post-meta__value--btn[data-hb-pending="true"]::before { content: '\2022'; margin-right: 4px; }
 
@@ -225,8 +162,6 @@
     .hb-post-trash:disabled:hover { background: transparent; }
     .hb-post-trash__icon { display: inline-flex; width: 15px; height: 15px; color: var(--hb-danger); flex: none; }
     .hb-post-trash__label { font-family: var(--hb-font-sans, Rubik, sans-serif); font-size: var(--hb-fs-sm, 12px); font-weight: 500; color: var(--hb-danger); }
-    {{-- Armed (two-step confirm, same posture as ai-history-dialog's delete button): the label
-         text swaps client-side, this just gives the arm its own visual weight. --}}
     .hb-post-trash.is-armed .hb-post-trash__label { text-decoration: underline; }
     .hb-post-trash-cancel {
         flex: none;
@@ -255,9 +190,6 @@
                     if (blockContent) blockContent.hidden = event.detail.index !== 1;
                 });
 
-                // Content|Style|Advanced sub-tabs — same toggle pattern as Post|Block above.
-                // Scoped to blockContent's own tablist (the sub-tabs), not the Post|Block one,
-                // since blockContent only contains the former.
                 const subTabs = blockContent ? blockContent.querySelector('[data-hb-tablist]') : null;
                 const subPanels = blockContent ? blockContent.querySelectorAll('[data-hb-subpanel]') : [];
                 const subNames = ['content', 'style', 'advanced'];
@@ -282,30 +214,15 @@
         ['label' => __('heisenberg::editor.inspector.tab_block')],
     ],
     'panelActiveIndex' => 0,
-    // The full client registry (BlockViewData::clientBlocks() — same shape block-runtime.blade.php
-    // gets as `$registry`), keyed by block name. Used only to pre-render every block type's
-    // Content/Style/Advanced panels once (see the Block-tab body below); nothing here talks to it
-    // beyond that loop.
     'registry' => [],
     'postTitle' => '',
-    // Real rows come from EditorController::postMeta() (status/publish/url/blocks, each with
-    // a `key` the live-update script below refreshes on save). This default only covers test
-    // fixtures that mount the component bare.
     'postMeta' => [],
-    // The FULL config('heisenberg.lifecycle.transitions') map + a translated status-name
-    // lookup (EditorController::sharedViewData()) — the status select's client-side option
-    // rebuild reads these after every save; never hardcoded here. postScheduledAt seeds the
-    // schedule <input type="datetime-local"> ("Y-m-d\TH:i", already formatted server-side).
     'postStatusTransitions' => [],
     'postStatusLabels' => [],
     'postScheduledAt' => null,
-    // Seeds the Summary's always-editable publish-date <input type="datetime-local">
-    // (postPublishedAt) — see postScheduledAt's own docblock above for the format.
     'postPublishedAt' => null,
     'postPendingReview' => false,
     'postStickToTop' => false,
-    // Post tab Categories/Tags (shared multi-select checklist; attach/detach URLs use the
-    // __ID__/__ITEM_ID__ placeholder convention) plus Page layout/Discussion.
     'postId' => null,
     'postCategoryIds' => [],
     'postTagIds' => [],
@@ -321,27 +238,12 @@
     'postAllowComments' => true,
     'postDiscussionUrlTemplate' => '',
     'postRevisionsUrlTemplate' => '',
-    // "Move to trash" (Post tab, below Revisions) — DELETE __ID__ url template.
     'postTrashUrlTemplate' => '',
-    // The Post tab's Featured image (set on Post::featuredImage BelongsTo). Seeded from
-    // EditorController::show() for an existing post; null for /editor (blank document). The
-    // inspector's script calls updateFeaturedImage() on every pick/remove so the change
-    // persists across reloads.
     'postFeaturedImage' => null,
     'postFeaturedImageUrlTemplate' => '',
-    // The Post tab's authored table of contents (Post::tocEntries(), {label, anchor} pairs only —
-    // see EditorController::show()). Empty for /editor's blank document. The disclosure row below
-    // just renders a summary + Edit trigger; live/toc-dialog.blade.php owns the whole editing
-    // surface (add/reorder/remove/load-from-headings/save).
     'postTocEntries' => [],
     'postTocUrlTemplate' => '',
-    // The Post tab's Translations section (docs/content-translation.md §0/Wave 2) — one row per
-    // configured locale, {locale, is_default, title, excerpt, blocks_translated, blocks_total,
-    // complete} (TranslationStatusService::statuses()). Null for /editor's blank document —
-    // nothing saved yet to count, so the section renders plain locale-switch rows instead.
     'postTranslations' => null,
-    // Every locale this install supports (LocaleConfig::locales()) — used for the blank-document
-    // row list above, and to render each row's label via 'heisenberg::editor.locales.<code>'.
     'contentLocales' => ['en', 'fr'],
     'blockIcon' => '',
     'blockName' => __('heisenberg::editor.common.no_block_selected_title'),
@@ -352,18 +254,8 @@
         ['value' => 'advanced', 'icon' => 'gear-fill', 'label' => __('heisenberg::editor.inspector.subtab_advanced')],
     ],
     'subActiveIndex' => 0,
-    // GET /editor/fonts (FontController::search) — the Style tab's Typography font field is a
-    // ui/combobox against the vendored Google Fonts catalog, same endpoint and paging contract
-    // the left sidebar's Style tab uses. Empty string disables the search rather than 404ing.
     'fontsSearchUrl' => '',
-    // The raw user theme (ThemeRepository::load()), feeding the Block.style theme-variable
-    // pickers. Deliberately NOT tokens(): that map is keyed by CSS reference, which made every
-    // menu row read as "var(--hb-t-accent-1)" rather than the name the user gave the token.
     'theme' => [],
-    // docs/email-system.md §3/§7-E3: Featured image, Discussion and Table of contents are
-    // meaningless for an email document and are not rendered at all when this is 'email' — see
-    // the conditional guards around each below. Summary (status/schedule/slug) and Translations stay;
-    // slug is still the document's identifier and emails translate like posts.
     'documentType' => 'post',
 ])
 <aside data-hb-inspector data-hb-fonts-search-url="{{ $fontsSearchUrl }}" {{ $attributes->merge(['class' => 'hb-inspector']) }}>
@@ -381,10 +273,6 @@
     @include('heisenberg::components.live.inspector.block-tab')
 </aside>
 
-{{-- Block-tab selection -> visibility + value sync, and the single delegated input/change
-     listener that writes an edit back through window.hbEditor. See this file's docblock for
-     the overall design (pre-rendered-per-block-type panels, synced not rebuilt) and the
-     documented setAttribute gap this works around for Style (supports-keyed) controls. --}}
 @once
 <script>
 (() => {

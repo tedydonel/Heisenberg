@@ -1,20 +1,8 @@
-{{-- Public-style preview of the editor's current document. Everything on
-     this page went through BlockRenderer's sanitization; the head carries
-     the doc's SEO meta so what you ship is what you see. --}}
 @php
     $seo = $seo ?? [];
     $featured = $featured ?? null;
-    // AUTHORED table of contents (Post::tocEntries()) — renders ONLY when the post has rows;
-    // never derived from headings here (that's the tableOfContents capability's own render-time
-    // job inside a template's `view`, not this generic preview page — see
-    // docs/post-template-schema.md's tableOfContents section).
     $toc = $toc ?? [];
-    // Native comments section (PostCommentProvider, PreviewController::commentsPayload) —
-    // null entirely for the session-flow show() page (no post to attach comments to) or
-    // when the post opted out via allow_comments === false; present only for showPost().
     $comments = $comments ?? null;
-    // Backwards-compat: the controller used to inline `'image-id'` etc. in $seo; normalize a
-    // legacy $seo['featured_image'] into the same flat array the controller now passes directly.
     if ($featured === null && isset($seo['featured_image']) && is_array($seo['featured_image'])) {
         $featured = $seo['featured_image'];
     }
@@ -27,12 +15,7 @@
     $ogTitle = trim((string) ($seo['ogTitle'] ?? '')) ?: $metaTitle;
     $ogDescription = trim((string) ($seo['ogDescription'] ?? '')) ?: $metaDescription;
     $ogImage = trim((string) ($seo['ogImage'] ?? ''));
-    // Schema.org JSON-LD (SeoMeta::getJsonLd(), docs/seo-system.md Wave S1) — an array, not a
-    // pre-encoded string; empty/absent means the provider had nothing to emit.
     $jsonLd = is_array($seo['jsonLd'] ?? null) ? $seo['jsonLd'] : [];
-    // hreflang alternates (PreviewController::alternatesPayload(), docs/seo-system.md §5) —
-    // list<{locale, url}>, already including an 'x-default' entry when one applies; empty for the
-    // session-flow show() page (no post) or a post with content in only its own home locale.
     $alternates = $alternates ?? [];
 @endphp
 <!DOCTYPE html>
@@ -52,17 +35,6 @@
     @if ($ogImage !== '')<meta property="og:image" content="{{ $ogImage }}" />@elseif (! empty($featured['url']))<meta property="og:image" content="{{ $featured['url'] }}" />@endif
     <meta name="twitter:card" content="{{ $ogImage !== '' ? 'summary_large_image' : 'summary' }}" />
     @if ($jsonLd !== [])
-        {{-- {!! !!} (no Blade HTML-escaping) is deliberate: Blade's default `{{ }}` runs
-             `htmlspecialchars()`, which would corrupt valid JSON (turning `"` into `&quot;`)
-             without providing any protection a `<script type="application/ld+json">` block
-             actually needs — HTML entities aren't decoded inside script content. The values
-             going into `$jsonLd` (meta title/description/canonical/og_image, `schema_data`)
-             are SeoMeta columns written exclusively through a validated author-tier save path
-             (Wave S2a's `applySeo`, length-capped fields), the same trust boundary every other
-             piece of server-rendered head content on this page already relies on — not
-             arbitrary request-time input. JSON_UNESCAPED_SLASHES keeps URLs readable instead of
-             `json_encode`'s default `http:\/\/…` escaping; JSON_UNESCAPED_UNICODE does the same
-             for non-ASCII text (French titles/descriptions). --}}
         <script type="application/ld+json">{!! json_encode($jsonLd, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE) !!}</script>
     @endif
     <link rel="icon" type="image/svg+xml" href="{{ route('heisenberg.editor.asset.logo') }}" />
@@ -71,8 +43,6 @@
         <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
         <link href="{{ $fontsHref }}" rel="stylesheet" />
     @endif
-    {{-- Base content tokens the block CSS defaults reference (chrome-side
-         these live in the editor's own CSS; the public page defines them here). --}}
     <style>
         :root {
             --ink: #0a0a0a; --accent-1: #0a0a0a; --faint: #9a9a9a; --paper: #ffffff;
@@ -99,9 +69,6 @@
         .hb-preview-page { max-width: 760px; margin: 0 auto; padding: 56px 24px 96px; position: relative; z-index: 1; }
         .hb-preview-title { font-size: 40px; font-weight: 700; letter-spacing: -0.02em; line-height: 1.15; margin: 0 0 10px; }
     .hb-preview-featured { display: block; margin: 0 0 28px; }
-    /* Fixed-height hero: width fills the .hb-preview-page column; height:300px is the
-       design standard; object-fit:cover (default is fill) so non-16:9 sources crop into the
-       gutter instead of squishing. */
     .hb-preview-featured img { display: block; width: 100%; height: 300px; object-fit: cover; border-radius: var(--r-md, 5px); }
     .hb-preview-toc {
         margin: 0 0 28px; padding: var(--sp-3, 1rem) var(--sp-4, 1.5rem);
@@ -154,13 +121,8 @@
         .hb-preview-bar span { opacity: 0.6; }
     </style>
     <style>{!! $blocksCss !!}</style>
-    {{-- Per-instance interaction-state overrides (hover/active/focus),
-         compiled + sanitized by BlockRenderer::stateStylesCss. --}}
     <style>{!! $stateCss ?? '' !!}</style>
-    {{-- Shared animation catalog (keyframes + trigger classes). --}}
     <link rel="stylesheet" href="{{ route('heisenberg.editor.asset.animations') }}" />
-    {{-- Full-kit overhaul (Phase 1) — the generated supports-capabilities
-         stylesheet. Additive-only: a no-op until a block root carries hb-supports. --}}
     <link rel="stylesheet" href="{{ route('heisenberg.editor.asset.supports') }}" />
 </head>
 <body>
@@ -193,11 +155,6 @@
             @if ($comments !== null)
                 @php
                     $maxDepth = (int) ($comments['max_depth'] ?? 3);
-                    // Recursive comment renderer: a plain PHP closure (not a nested @include)
-                    // so any nesting depth the data carries renders in one pass, with the same
-                    // e()-escaping discipline Blade's {{ }} applies. Reply buttons stop
-                    // appearing at depth >= max_depth - 1, since a reply to that comment would
-                    // land at/past the cap (NativeCommentProvider::submit()'s own rule).
                     $renderComment = function (array $item, int $depth) use (&$renderComment, $maxDepth) {
                         $canReply = $depth < ($maxDepth - 1);
                         $replies = $item['replies'] ?? [];
@@ -277,9 +234,6 @@
             @endif
         @endif
     </main>
-    {{-- Scroll-animation runtime: JS-only hiding (no-JS readers always see
-         content), IntersectionObserver plays entrances once (or re-arms
-         when the block opts out of play-once), respects reduced motion. --}}
     <script>
     (function () {
         'use strict';
@@ -310,9 +264,6 @@
         });
     })();
     </script>
-    {{-- Comments: threaded list + live submit (fetch, JSON, CSRF via the meta tag above).
-         A no-op when the .hb-preview-comments section isn't on the page (allow_comments
-         false, or the session-flow show() page, which never passes $comments). --}}
     <script>
     (function () {
         'use strict';
@@ -327,7 +278,7 @@
 
         var list = root.querySelector('[data-hb-comments-list]');
         var countEl = root.querySelector('[data-hb-comments-count]');
-        var openReply = null; // { slot, form } -- only one inline reply form open at a time
+        var openReply = null;
 
         var MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
 
@@ -340,9 +291,6 @@
             return MONTHS[d.getMonth()] + ' ' + d.getDate() + ', ' + d.getFullYear() + ' ' + hh + ':' + mm;
         }
 
-        // Mirrors the server-rendered comment markup (preview.blade.php's $renderComment) so a
-        // just-approved comment slots in indistinguishably from one rendered on load. All
-        // user-derived text goes through textContent -- never innerHTML.
         function buildCommentElement(item, depth) {
             var el = document.createElement('div');
             el.className = 'hb-preview-comment';
@@ -568,7 +516,7 @@
                 var wasSameSlot = openReply.slot === slot;
                 openReply.form.remove();
                 openReply = null;
-                if (wasSameSlot) return; // clicking the same Reply button again just closes it
+                if (wasSameSlot) return;
             }
 
             var form = buildForm({ cancellable: true, parentCommentEl: commentEl });

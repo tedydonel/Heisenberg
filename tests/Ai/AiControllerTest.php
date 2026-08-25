@@ -124,8 +124,6 @@ class AiControllerTest extends TestCase
         $this->putJson('/editor/ai/settings', ['settings' => $this->oneProvider()])->assertStatus(403);
     }
 
-    // ── credentials ─────────────────────────────────────────────────────────
-
     public function test_a_key_can_be_written_and_reported_but_never_read_back(): void
     {
         $this->asAdmin();
@@ -256,8 +254,6 @@ class AiControllerTest extends TestCase
 
         Http::assertSent(fn ($request) => $request->url() === 'https://api.minimax.io/v1/models');
     }
-
-    // ── discovery ───────────────────────────────────────────────────────────
 
     /**
      * Models come from the vendor's own endpoint. A catalogue shipped in this

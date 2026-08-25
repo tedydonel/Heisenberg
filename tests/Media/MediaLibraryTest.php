@@ -65,8 +65,6 @@ class MediaLibraryTest extends TestCase
         $this->actingAs($this->user);
     }
 
-    // ── Upload pipeline ────────────────────────────────────────────────────
-
     public function test_image_upload_creates_row_physical_file_and_variants(): void
     {
         $response = $this->postJson(route('media.upload'), [
@@ -191,8 +189,6 @@ class MediaLibraryTest extends TestCase
         $this->assertSame([], Storage::disk('uploads')->allFiles());
     }
 
-    // ── Extension allow-list enforced at the SERVICE layer ──────────────────
-    //
     // The allow-list used to live ONLY in UploadPublicFileRequest's `mimes:`
     // rule, so any caller reaching MediaLibraryService::storeOne() directly
     // (or through a path with no FormRequest, e.g. the Livewire upload
@@ -356,8 +352,6 @@ class MediaLibraryTest extends TestCase
         }
     }
 
-    // ── Decompression-bomb guard (max_megapixels) ───────────────────────────
-
     public function test_image_over_the_megapixel_cap_is_stored_with_no_variants(): void
     {
         // 0.05 megapixels = 50,000px. A 300x300 fake image is 90,000px — over
@@ -396,8 +390,6 @@ class MediaLibraryTest extends TestCase
         Storage::disk('uploads')->assertExists($file->variants['small']['path']);
     }
 
-    // ── Filename sanitization robustness ────────────────────────────────────
-
     public function test_windows_illegal_and_control_characters_are_sanitized_out_of_the_stored_name(): void
     {
         $response = $this->postJson(route('media.upload'), [
@@ -432,8 +424,6 @@ class MediaLibraryTest extends TestCase
         Storage::disk('uploads')->assertExists($file->stored_path);
     }
 
-    // ── Path separator validation ────────────────────────────────────────────
-    //
     // Symfony\Component\HttpFoundation\File\File::getName() unconditionally
     // reduces getClientOriginalName() to a basename (everything after the
     // last '/' or '\\') INSIDE UploadedFile's own constructor — for both a
@@ -501,8 +491,6 @@ class MediaLibraryTest extends TestCase
         $this->assertStringNotContainsString('/', $file->stored_name);
     }
 
-    // ── Security / audit logging ─────────────────────────────────────────────
-
     public function test_infected_scan_result_logs_a_security_warning(): void
     {
         Log::spy();
@@ -534,8 +522,6 @@ class MediaLibraryTest extends TestCase
                 && ($context['result'] ?? null) === 'unavailable');
     }
 
-    // ── Users / soft delete ────────────────────────────────────────────────
-
     public function test_deleting_a_user_nulls_uploaded_by_without_deleting_the_media_row(): void
     {
         $this->postJson(route('media.upload'), [
@@ -551,8 +537,6 @@ class MediaLibraryTest extends TestCase
         $this->assertNull($file->uploaded_by);
         $this->assertNotNull(PublicFile::find($file->id), 'the media row itself must survive the user deletion');
     }
-
-    // ── Authorization ───────────────────────────────────────────────────────
 
     public function test_index_requires_view_any_ability(): void
     {
@@ -656,8 +640,6 @@ class MediaLibraryTest extends TestCase
         $this->assertNotSame('Should not apply', $file->fresh()->alt_text_en);
     }
 
-    // ── Delete pipeline ─────────────────────────────────────────────────────
-
     public function test_delete_removes_original_and_variant_bytes_and_soft_deletes_the_row(): void
     {
         $this->postJson(route('media.upload'), [
@@ -684,8 +666,6 @@ class MediaLibraryTest extends TestCase
         $this->assertNull(PublicFile::find($file->id), 'soft-deleted rows are excluded by the default scope');
         $this->assertNotNull(PublicFile::withTrashed()->find($file->id), 'the record itself is retained for audit/relink safety');
     }
-
-    // ── select / update payload shape ───────────────────────────────────────
 
     public function test_select_returns_the_full_picker_payload(): void
     {
@@ -746,8 +726,6 @@ class MediaLibraryTest extends TestCase
         $this->assertSame($originalMime, $file->mime_type);
         $this->assertSame($originalVariants, $file->variants);
     }
-
-    // ── Model API (§7) ──────────────────────────────────────────────────────
 
     public function test_model_url_thumbnail_medium_large_and_srcset(): void
     {

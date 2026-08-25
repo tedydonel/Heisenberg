@@ -1,48 +1,17 @@
-{{-- live/icon-picker-dialog — the icon block's library picker, in the media-dialog's modal
-     shell (same scrim classes on purpose: live/media/media-dialog's @once script wires every
-     `.hb-mediadialog__scrim` with hbOpen()/hbClose(), Escape, backdrop-close and the focus
-     trap, so this dialog inherits all of that for free — same idiom as live/revisions-dialog).
-
-     Opened by the runtime's cancelable hb:pick-icon (an empty icon block's placeholder —
-     decorateIconBlock in block-runtime — or the inspector's icon-preview field this file
-     decorates onto the Content tab). A pick writes the "<set>/<slug>" reference through
-     hbEditor.setAttribute, the one write path every other control uses. Fed by GET
-     /editor/icons (EditorController::iconsSearch over IconLibraryService's manifest); the
-     grid shows each icon as an <img> onto the same per-icon asset route the canvas
-     fetch-injects, so nothing here ships 29k inline SVGs into the page.
-
-     The grid scrolls via the app's own ui/custom-scrollbar (never a native bar): the bar is
-     mounted as a SIBLING of [data-hb-icon-scroll] inside the positioned __body — the same
-     two-layer arrangement the inspector's sub-panels use — and every open/render dispatches
-     hb:refresh so a bar that booted while the dialog was [hidden] re-measures. The set
-     filter is a STATIC ui/combobox (the sets are known server-side via IconLibraryService),
-     not a native select. --}}
 @props(['searchUrl' => null, 'sets' => []])
 @once
 <style>
     .hb-icondialog { width: 720px; height: 560px; }
     .hb-icondialog__bar { display: flex; gap: 8px; padding: var(--hb-space-3, 12px) var(--hb-space-4, 16px) 0; flex: none; }
-    /* ui/search-field sits inside .hb-icondialog__bar; the dialog overrides the default
-       height to 30px (instead of the field's 26px) to match the combobox row. */
     .hb-icondialog__bar > .hb-searchfield { flex: 1 1 auto; min-width: 0; height: 30px; }
     .hb-icondialog__bar > .hb-searchfield .hb-searchfield__input { height: 100%; font-size: var(--hb-fs-base, 13px); }
     .hb-icondialog__set { flex: none; width: 200px; }
-    /* Two-layer scroll shell: __body is the positioned, non-scrolling parent the absolute
-       custom-scrollbar anchors to; __scroll is the region the bar drives (the bar itself adds
-       hb-scroll-container + overflow to it on boot). */
     .hb-icondialog__body { position: relative; flex: 1 1 auto; min-height: 0; }
     .hb-icondialog__scroll { height: 100%; box-sizing: border-box; padding: var(--hb-space-4, 16px); }
     .hb-icondialog__grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(72px, 1fr)); gap: 8px; }
     .hb-icondialog__item { display: flex; flex-direction: column; align-items: center; gap: 4px; padding: 8px 4px; border: 1px solid transparent; border-radius: var(--hb-radius-md, 5px); background: none; cursor: pointer; font-family: var(--hb-font-sans, Rubik, sans-serif); }
     .hb-icondialog__item:hover { border-color: var(--hb-border); background: var(--hb-surface-hover); }
     .hb-icondialog__item img { width: 28px; height: 28px; display: block; }
-    /* The Phosphor SVGs ship with fill="currentColor" but the picker renders them via
-       <img> — the SVG is in its own browsing context, currentColor resolves to canvastext
-       (black in both themes), so the icons render as hard black on every theme.
-       Invert the channel under .hb-editor--dark so they track the chrome text colour
-       (--hb-text-primary: #FFF in dark, #0A0A0A in light — filter:invert(1) gives white
-       against black, black against white). Scope is the picker dialog + the Content tab
-       preview field below, both of which sit on the editor chrome (never the canvas paper). */
     .hb-editor--dark .hb-icondialog__item img,
     .hb-editor--dark .hb-iconfield img { filter: invert(1); }
     .hb-icondialog__item span { max-width: 100%; font-size: 10px; color: var(--hb-text-muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
@@ -52,9 +21,6 @@
     .hb-icondialog__more:hover { background: var(--hb-surface-hover); }
     .hb-icondialog__more[hidden] { display: none; }
 
-    /* The Content tab's icon field decoration (decorateIconField below): a live preview of the
-       picked icon that reopens this dialog. Sits above the raw reference input, which stays for
-       power users typing "set/slug" directly. */
     .hb-iconfield { display: flex; align-items: center; gap: 10px; width: 100%; margin-bottom: 6px; padding: 8px 10px; border: 1px solid var(--hb-border); border-radius: var(--hb-radius-md, 5px); background: var(--hb-bg); cursor: pointer; font-family: var(--hb-font-sans, Rubik, sans-serif); }
     .hb-iconfield:hover { border-color: var(--hb-border-focus); }
     .hb-iconfield img { width: 24px; height: 24px; display: block; flex: none; }
@@ -72,10 +38,6 @@
             return template.replace('__SET__', parts[0]).replace('__SLUG__', parts[1]);
         };
 
-        // ── the Content tab's icon-preview field ──────────────────────────────
-        // Decorates the icon block's generic `icon` text control with a clickable preview that
-        // reopens the picker. Lives here (not in inspector.blade.php) because it is icon-feature
-        // wiring end to end: same event, same URL template, same dialog.
         function decorateIconField() {
             document.querySelectorAll('[data-hb-block-panel="heisenberg/icon"] [data-hb-control="icon"]').forEach((control) => {
                 if (control.__hbIconField) return;
@@ -120,7 +82,6 @@
             if (event.detail && event.detail.key === 'icon') syncIconFields();
         });
 
-        // ── the dialog itself ─────────────────────────────────────────────────
         const boot = () => {
             decorateIconField();
             document.querySelectorAll('[data-hb-icon-picker]').forEach((scrim) => {
@@ -131,8 +92,6 @@
                 const grid = scrim.querySelector('[data-hb-icon-grid]');
                 const empty = scrim.querySelector('[data-hb-icon-empty-msg]');
                 const more = scrim.querySelector('[data-hb-icon-more]');
-                // ui/search-field wraps the real <input>; data-hb-icon-search sits on the
-                // wrapper, and the input is .hb-searchfield__input inside it.
                 const searchWrap = scrim.querySelector('[data-hb-icon-search]');
                 const search = searchWrap ? searchWrap.querySelector('.hb-searchfield__input') : null;
                 const setCombo = scrim.querySelector('[data-hb-icon-set] [data-hb-combobox]');
@@ -165,8 +124,6 @@
                     });
                     empty.hidden = grid.children.length > 0;
                     more.hidden = grid.children.length >= total;
-                    // The custom scrollbar tracks content height — a fresh page of icons (or a
-                    // cleared grid) changes it, so ask every bar to re-measure.
                     document.dispatchEvent(new CustomEvent('hb:refresh'));
                 }
 
@@ -178,7 +135,7 @@
                     window.fetch(searchUrl + '?' + params.toString(), { headers: { Accept: 'application/json' }, credentials: 'same-origin' })
                         .then((r) => (r.ok ? r.json() : { icons: [], total: 0 }))
                         .then((data) => {
-                            if (mySeq !== seq) return; // a newer search superseded this response
+                            if (mySeq !== seq) return;
                             total = data.total || 0;
                             offset += (data.icons || []).length;
                             render(data.icons || [], !!append);
@@ -187,7 +144,6 @@
                 }
 
                 search?.addEventListener('input', () => { clearTimeout(debounce); debounce = setTimeout(() => load(false), 200); });
-                // ui/combobox dispatches its committed value as a bubbling `change` on its root.
                 setCombo?.addEventListener('change', (event) => {
                     if (event.target !== setCombo) return;
                     load(false);
@@ -207,8 +163,6 @@
                     if (scrim.hbClose) scrim.hbClose(); else scrim.hidden = true;
                 });
 
-                // The runtime's cancelable intent event — same seam as the image block's
-                // hb:pick-image. preventDefault claims it so no fallback ever competes.
                 if (!document.__hbIconPickerOpen) {
                     document.__hbIconPickerOpen = true;
                     document.addEventListener('hb:pick-icon', (event) => {
@@ -217,8 +171,6 @@
                         const blk = targetId ? document.querySelector('.hb-blk[data-block="' + targetId + '"]') : null;
                         if (scrim.hbOpen) scrim.hbOpen(blk ? blk.querySelector('.hb-icon-empty') : null); else scrim.hidden = false;
                         if (!grid.children.length) load(false);
-                        // The bar booted while the dialog was [hidden] and measured a 0-height
-                        // track — now that it's visible, re-measure.
                         document.dispatchEvent(new CustomEvent('hb:refresh'));
                         if (search) { search.focus(); search.select(); }
                     });

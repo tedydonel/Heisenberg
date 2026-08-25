@@ -1,12 +1,3 @@
-    // ── Typography font family: paged search against the vendored catalog ──
-    // The field is ui/combobox; this only answers the `search`/`loadmore` events it dispatches
-    // and hands results back through its own replaceOptions()/appendOptions(). Deliberately the
-    // same contract panel-style-themes.blade.php uses for the left sidebar's Fonts rows — one
-    // endpoint, one paging shape, no second dropdown implementation to keep in step.
-    //
-    // Page state lives on the combobox element itself, not a shared variable: the Style panel is
-    // pre-rendered once per registered block type, so several font comboboxes exist at once and
-    // each needs its own offset/hasMore.
     const HB_FONT_PAGE_LIMIT = 40;
     let hbFontTimer = null;
 
@@ -31,7 +22,7 @@
         hbFetchFonts(url + '?q=' + encodeURIComponent(query) + '&limit=' + HB_FONT_PAGE_LIMIT)
             .then(({ list, hasMore }) => {
                 combobox.__hbCombobox?.replaceOptions(list);
-                if (combobox.__hbFontPage !== page) return; // a newer search superseded this one
+                if (combobox.__hbFontPage !== page) return;
                 page.offset = list.length;
                 page.hasMore = hasMore;
                 page.loading = false;
@@ -65,10 +56,6 @@
         hbLoadMoreFonts(combobox, event.detail?.query || '');
     });
 
-    // ── Canvas font loading + real per-family weights ─────────────────────────────────
-    // The editor page ships no content fonts of its own (only preview does, via css2Url),
-    // so a picked family must be fetched here or the canvas silently keeps the fallback.
-    // The same catalog lookup also yields the family's REAL weights for the Weight select.
     const hbFontMetaCache = new Map();
 
     function hbFontMeta(family) {
@@ -104,8 +91,6 @@
 
     function hbSyncCanvasFonts() {
         Promise.all(hbDocFontFamilies().map(hbFontMeta)).then((metas) => {
-            // Same URL shape FontCatalogService::css2Url() builds for the published page,
-            // with each family's real catalog weights so every pickable weight renders.
             const parts = metas.filter(Boolean).map((meta) => {
                 const weights = (meta.weights || []).map(Number).filter(Boolean).sort((a, b) => a - b);
                 let spec = 'family=' + String(meta.family).replace(/ /g, '+');
@@ -152,7 +137,6 @@
                 option.removeAttribute('data-highlighted');
                 const span = option.querySelector('span');
                 if (span) span.textContent = value === '' ? 'Default' : (HB_WEIGHT_NAMES[value] || value);
-                // ui/select binds option clicks at boot only — rebuilt options wire themselves.
                 option.addEventListener('click', () => select.__hbSelect?.select(option));
                 menu.appendChild(option);
             });
@@ -170,16 +154,11 @@
         hbSyncWeightOptions(root, model);
     }
 
-    // Hydration and structural changes can carry font families without a selection sync.
     document.addEventListener('hb:blocks-changed', () => {
         clearTimeout(hbSyncFonts.__timer);
         hbSyncFonts.__timer = setTimeout(hbSyncCanvasFonts, 200);
     });
 
-    // ── extraClasses chips (Content → General, 2026-08-04) ────────────────────────────
-    // The model holds ONE space-separated string (contract type "string"); the panel presents it
-    // as chips plus an add-input (contract control type "chips"). Read from the DOM rather than a
-    // cached string so a server-rendered chip and a cloned one are treated identically.
     function chipValues(host) {
         return Array.from(host.querySelectorAll('[data-hb-chip]'))
             .map((chip) => chip.dataset.hbChipValue || chip.querySelector('span')?.textContent.trim() || '')
@@ -188,9 +167,6 @@
 
     function renderChips(host, classes) {
         const list = host.querySelector('[data-hb-chip-list]');
-        // A hidden real ui/chip rather than a <template> — see content.blade.php for why.
-        // Scoped to the host's own parent, since the Content panel is pre-rendered once per
-        // registered block type and each copy carries its own prototype.
         const prototype = host.parentElement?.querySelector('[data-hb-chip-prototype] [data-hb-chip]');
         if (!list || !prototype) return;
         list.textContent = '';
@@ -219,7 +195,6 @@
         const swatch = layer.querySelector('.hb-colorlayer__swatch');
         if (input) input.value = normalised;
         if (swatch) swatch.style.background = normalised;
-        // A flat colour replaces whatever gradient the layer used to hold.
         delete layer.dataset.hbStyleGradient;
     }
 
@@ -238,9 +213,6 @@
     const HB_STYLE_CHROME = '[data-hb-style-popup], [data-hb-style-color-trigger], [data-hb-style-popup-trigger], [data-hb-style-effect-trigger], [data-hb-style-var-trigger]';
 
     document.addEventListener('click', (event) => {
-        // Popups are position:fixed over the whole editor, so a click on the canvas is
-        // "outside" them even though it never reaches a Style panel — which the root lookup
-        // below returns early on.
         if (!event.target.closest(HB_STYLE_CHROME)) {
             document.querySelectorAll('.hb-blockstyle').forEach((panel) => closeStylePopups(panel));
         }
@@ -248,10 +220,6 @@
         const root = mountedStyleRoot(event.target);
         if (!root) return;
 
-        // The stop editor is stacked ON TOP of the gradient popup that owns it, so clicking
-        // back onto that popup is "outside" for it — but matches the chrome selector above and
-        // would otherwise leave it open forever. Its own trigger is exempt, since the picker's
-        // click handler opens it during this very event.
         const stopPopup = root.querySelector('[data-hb-style-popup="gradient-stop"]');
         if (stopPopup && !stopPopup.hidden
             && !event.target.closest('[data-hb-style-popup="gradient-stop"]')
@@ -259,10 +227,6 @@
             stopPopup.hidden = true;
         }
 
-        // Any trigger omitted from HB_STYLE_CHROME gets its popup closed the instant it opens:
-        // this listener and each trigger's own are BOTH on document, so stopPropagation cannot
-        // keep them apart (that needs stopImmediatePropagation, and listener order is not
-        // guaranteed).
         if (!event.target.closest(HB_STYLE_CHROME)) {
             closeStylePopups(root);
         }
@@ -304,9 +268,6 @@
             const layer = colorTrigger.closest('.hb-colorlayer');
             root.__hbStyleActiveColorLayer = layer;
             const picker = root.querySelector('[data-hb-style-popup="color"] [data-hb-colorpicker]');
-            // A gradient layer keeps its CSS on the row's dataset; the hex field holds the
-            // Gradient tab's LABEL for it, so seeding from that field reopened a saved
-            // gradient as a flat colour on the Fill tab.
             const stored = layer?.dataset.hbStyleGradient || '';
             if (!stored || !picker?.__hbCp?.setGradientCss?.(stored)) {
                 picker?.__hbCp?.setMode('fill');
@@ -352,9 +313,6 @@
                 item.classList.toggle('is-active', active);
                 item.setAttribute('aria-pressed', active ? 'true' : 'false');
             });
-            // Flex wiring: a dot carries its justify×align pair and writes BOTH paths in one
-            // gesture (re-clicking the active dot clears them). While a spacing radio owns
-            // justify (space-between/around), the grid only writes align.
             if (alignment.dataset.hbFlexJustify && window.hbEditor) {
                 const id = window.hbEditor.getSelectedId();
                 if (id) {
@@ -372,8 +330,6 @@
         const radio = event.target.closest('[data-hb-style-radio]');
         if (radio) {
             activateStyleRadio(radio);
-            // Flex wiring: the radio column is justify's spacing mode. Space Between/Around
-            // write themselves; the Gap (packed) row hands justify back to the grid's column.
             const spacing = radio.dataset.hbFlexSpacing;
             if (spacing && window.hbEditor) {
                 const id = window.hbEditor.getSelectedId();
@@ -417,7 +373,6 @@
                 root.__hbStyleActiveColorLayer = null;
                 closeStylePopups(root);
             }
-            // Read the group BEFORE detaching — afterwards the row has no list to belong to.
             const group = removed ? hbLayerGroupOf(removed) : null;
             removed?.remove();
             if (group) hbCommitLayers(root, group);
@@ -432,18 +387,13 @@
             if (list && template?.content) {
                 list.append(template.content.cloneNode(true));
                 document.dispatchEvent(new Event('hb:refresh'));
-                // A new layer changes the composite immediately, not only once it is edited, and
-                // its trigger needs an initial state or it renders with no styling at all.
                 hbCommitLayers(root, add.dataset.hbStyleAdd);
                 list.querySelectorAll('.hb-colorlayer').forEach(hbSyncVarTrigger);
             }
             return;
         }
 
-        // The clear-font `x` button was replaced by the theme-variable trigger; its
-        // handler is gone with it. Clearing now happens by picking the font menu's empty
-        // "Default" row, which writes '' exactly as the x did.
-    });
+        });
 
     document.addEventListener('input', (event) => {
         const root = mountedStyleRoot(event.target);
@@ -467,8 +417,6 @@
         if (all) {
             const group = all.dataset.hbStyleAllValue;
             setStyleLinkedValue(root, group, event.target.value);
-            // Spacing commits its four sides as one object; stroke-sides/appearance-corners
-            // commit through each side's own control hook.
             if (group === 'padding') { syncPaddingControls(root); commitSpacingGroup(root, 'padding'); }
             else if (group === 'margin') { syncMarginControls(root); commitSpacingGroup(root, 'margin'); }
             else if (HB_LINKED_GROUPS.indexOf(group) !== -1) commitLinkedSides(root, group);
@@ -485,17 +433,12 @@
         if (event.target.matches('.hb-colorlayer__hex')) updateColorLayer(event.target.closest('.hb-colorlayer'), event.target.value);
     });
 
-    // extraClasses chips — Enter appends, a chip's close button removes. Both commit through
-    // writeChips(); nothing else in the inspector writes this attribute (the generic
-    // [data-hb-control] handler bails out on type="chips", see its own comment).
     document.addEventListener('keydown', (event) => {
         if (event.key !== 'Enter') return;
         const input = event.target.closest('[data-hb-chip-input]');
         const host = input?.closest('[data-hb-control-type="chips"]');
         if (!host) return;
         event.preventDefault();
-        // Space is the model's separator, so one paste of "a b c" becomes three chips rather
-        // than one chip whose label would silently re-split on the next read.
         const added = input.value.trim().split(/\s+/).filter(Boolean);
         if (added.length === 0) return;
         const classes = chipValues(host);
@@ -530,9 +473,6 @@
         if ([r, g, b].some((value) => !Number.isFinite(value))) return;
         const layer = root.__hbStyleActiveColorLayer;
         updateColorLayer(layer, `#${toHex(r)}${toHex(g)}${toHex(b)}`);
-        // The picker's alpha IS the layer's opacity — that is why the row needs no separate
-        // opacity field. Picking a colour also un-binds any theme token the row was on, since a
-        // literal colour is what was just chosen.
         const op = layer?.querySelector('[data-hb-style-layer-opacity]');
         if (op && Number.isFinite(a)) op.textContent = String(Math.round(Math.max(0, Math.min(1, a)) * 100));
         if (layer) delete layer.dataset.hbVarBound;
@@ -540,9 +480,6 @@
         if (group) { hbCommitLayers(root, group); hbSyncVarTrigger(layer); }
     });
 
-    // The gradient the picker's Gradient tab is currently editing — like a flat colour edit,
-    // this commits into the layer stack immediately (hbCompositeLayers gives it right-of-way
-    // over whatever solid layers sit beneath it) rather than waiting for a separate "done".
     document.addEventListener('gradientchange', (event) => {
         const popup = event.target.closest('[data-hb-style-popup="color"]');
         const root = popup ? mountedStyleRoot(popup) : null;
@@ -559,10 +496,6 @@
         if (group) { hbCommitLayers(root, group); hbSyncVarTrigger(layer); }
     });
 
-    // A gradient stop's swatch was clicked: open the STANDALONE picker (Fill only, no gradient
-    // section of its own — color-picker.blade.php's `standalone` prop) anchored to that swatch,
-    // seeded with the stop's current colour+opacity. This is the popup Bug B asked for: editing
-    // a stop's colour never shows a nested gradient UI underneath it.
     document.addEventListener('gradientstopedit', (event) => {
         const root = mountedStyleRoot(event.target);
         const { button, color, opacity, setColor } = event.detail || {};
@@ -573,14 +506,9 @@
         const alpha = Number.isFinite(opacity) ? Math.max(0, Math.min(100, opacity)) : 100;
         const alphaHex = Math.round(alpha / 100 * 255).toString(16).padStart(2, '0');
         picker.__hbCp?.setHex(`${color}${alphaHex}`);
-        // NOT showStylePopup(): that closes every other popup, and the gradient popup this
-        // stop belongs to must stay open underneath its own colour editor.
         showNestedStylePopup(root, 'gradient-stop', button);
     });
 
-    // The standalone picker's own colour edit writes back through the callback the triggering
-    // stop handed over — never through the layer-stack path the main "color" popup uses, since
-    // a gradient stop is not a Fill/Stroke layer.
     document.addEventListener('colorchange', (event) => {
         const popup = event.target.closest('[data-hb-style-popup="gradient-stop"]');
         const root = popup ? mountedStyleRoot(popup) : null;

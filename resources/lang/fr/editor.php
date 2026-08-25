@@ -17,7 +17,6 @@ declare(strict_types=1);
 
 return [
 
-    // ── Chrome commun (partagé par plusieurs surfaces) ───────────
     'common' => [
         'save' => 'Enregistrer',
         'cancel' => 'Annuler',
@@ -38,7 +37,6 @@ return [
         'decrement' => 'Décrémenter',
     ],
 
-    // ── Barre supérieure (live/topbar.blade.php) ──────────────────
     'topbar' => [
         'aria_home' => 'Accueil',
         'aria_menu' => 'Menu',
@@ -68,7 +66,6 @@ return [
         'export_eml' => 'Télécharger le .eml (autonome)',
     ],
 
-    // ── Médias : dialogue / bibliothèque / zone de dépôt (live/media/*) ──
     'icon_picker' => [
         'title' => 'Choisir une icône',
         'search_ph' => 'Rechercher des icônes…',
@@ -95,7 +92,7 @@ return [
         'dropzone_desc' => 'Les images sont optimisées automatiquement. Les documents sont conservés tels quels. Taille maximale : 10 Mo chacun.',
     ],
 
-    // ── Réglages IA (live/ai/ai-settings-dialog.blade.php) ────────
+    // Réglages IA (live/ai/ai-settings-dialog.blade.php).
     // Les libellés du panneau sont sous `panel_ai_tools` plus bas ; cette
     // section couvre la fenêtre de réglages et les messages du backend.
     'ai' => [
@@ -191,7 +188,7 @@ return [
         'coming_soon' => 'Disponible dans une phase ultérieure.',
     ],
 
-    // ── Page de modération des commentaires (comments/index.blade.php) — la
+    // Page de modération des commentaires (comments/index.blade.php) — la
     // surface `GET /editor/comments` en JS natif. Le JS ne peut pas appeler
     // __() : les chaînes dont le script a besoin (gabarit de ligne, boîtes de
     // confirmation/réponse, pagination) sont aussi injectées dans un bloc JSON
@@ -231,7 +228,7 @@ return [
         'pager_next' => 'Suivant',
     ],
 
-    // ── Dialogue des révisions (live/revisions-dialog.blade.php) ──
+    // Dialogue des révisions (live/revisions-dialog.blade.php).
     'revisions' => [
         'title' => 'Révisions',
         'empty' => 'Aucune révision — elles apparaissent au fil des enregistrements.',
@@ -245,9 +242,9 @@ return [
         'type_restore' => 'Point de restauration',
     ],
 
-    // ── Table des matières (live/toc-dialog.blade.php) — la TOC rédigée de l'onglet Post,
+    // Table des matières (live/toc-dialog.blade.php) — la TOC rédigée de l'onglet Post,
     // réutilise 'title' pour le libellé du disclosure-row ET le titre du dialogue (même
-    // convention que 'revisions' ci-dessus). ───────────────────────────────────────────
+    // convention que 'revisions' ci-dessus).
     'toc' => [
         'title' => 'Table des matières',
         'summary_empty' => 'Pas encore de table des matières.',
@@ -269,7 +266,7 @@ return [
         'invalid_anchor' => 'Les ancres doivent commencer par une lettre et ne contenir que des lettres, chiffres, « - » ou « _ ».',
     ],
 
-    // ── Historique des conversations IA (live/ai/ai-history-dialog.blade.php) ──
+    // Historique des conversations IA (live/ai/ai-history-dialog.blade.php).
     'ai_history' => [
         'title' => 'Historique des conversations',
         'empty' => 'Aucune conversation pour l\'instant — elles apparaissent ici au fil des échanges.',
@@ -285,7 +282,7 @@ return [
         'cancel' => 'Annuler',
     ],
 
-    // ── Vue code (live/code-editor.blade.php) ─────────────────────
+    // Vue code (live/code-editor.blade.php).
     'code' => [
         'aria_input' => 'Source en shortcodes',
         'placeholder' => '[h2]Votre titre[/h2]',
@@ -303,7 +300,7 @@ return [
         'apply_failed' => 'Impossible d\'appliquer les modifications du code.',
     ],
 
-    // ── Éditeur d'effets (live/pickers/effect-editor.blade.php) ───
+    // Éditeur d'effets (live/pickers/effect-editor.blade.php).
     'effects' => [
         'drop_shadow' => 'Ombre portée',
         'color' => 'Couleur',
@@ -311,7 +308,7 @@ return [
         'offset' => 'Décalage',
     ],
 
-    // ── Barre latérale (live/sidebar.blade.php) ───────────────────
+    // Barre latérale (live/sidebar.blade.php).
     'sidebar' => [
         'nav_components' => 'Composants',
         'nav_blocks' => 'Blocs',
@@ -323,7 +320,7 @@ return [
         'nav_tools' => 'Outils',
     ],
 
-    // ── Inspecteur (live/inspector.blade.php) ─────────────────────
+    // Inspecteur (live/inspector.blade.php).
     'inspector' => [
         'tab_post' => 'Article',
         'tab_block' => 'Bloc',
@@ -397,7 +394,7 @@ return [
         'block_empty' => 'Sélectionnez un bloc dans la zone de dessin pour modifier ses paramètres.',
     ],
 
-    // ── Onglet Avancé du bloc (live/block/advanced.blade.php) ─────
+    // Onglet Avancé du bloc (live/block/advanced.blade.php).
     'advanced' => [
         'section_visibility' => 'Masquer selon la largeur d\'écran',
         'hide_xs' => 'Très petits écrans',
@@ -415,7 +412,7 @@ return [
         'play_animation' => 'Jouer l\'animation',
     ],
 
-    // ── Pied de page (live/footer.blade.php) ───────────────────────
+    // Pied de page (live/footer.blade.php).
     'footer' => [
         'aria_status' => 'État du document',
         'aria_lang' => 'Langue du contenu',
@@ -438,7 +435,7 @@ return [
         'email_size_warning' => 'Plus de 100 Ko — Gmail pourrait tronquer cet e-mail.',
     ],
 
-    // ── Panneau Composants / Blocs (live/panel-components-blocks.blade.php)
+    // Panneau Composants / Blocs (live/panel-components-blocks.blade.php).
     'panel_components_blocks' => [
         'tab_components' => 'Composants',
         'tab_blocks' => 'Blocs',
@@ -452,7 +449,7 @@ return [
         'empty_blocks' => 'Aucun bloc enregistré. Sélectionnez un conteneur sur le canvas et utilisez l’icône Enregistrer de la barre d’outils pour sauvegarder sa composition ici.',
     ],
 
-    // ── Blocs réutilisables sauvegardés (« patterns », panneau Blocs, popover d'enregistrement)
+    // Blocs réutilisables sauvegardés (« patterns », panneau Blocs, popover d'enregistrement).
     'patterns' => [
         'name_required' => 'Donnez un nom au bloc.',
         'name_too_long' => 'Le nom doit faire 120 caractères ou moins.',
@@ -470,7 +467,7 @@ return [
         'delete_confirm' => 'Supprimer ce bloc enregistré ?',
     ],
 
-    // ── Panneau SEO / Social (live/panel-seo-social.blade.php) ────
+    // Panneau SEO / Social (live/panel-seo-social.blade.php).
     'panel_seo_social' => [
         'tab_seo' => 'SEO',
         'tab_social' => 'Réseaux sociaux',
@@ -505,7 +502,7 @@ return [
         'checklist_meta_missing' => 'La méta-description ne contient pas l’expression cible',
         'checklist_density_low' => 'La densité de l’expression cible est trop faible',
         'checklist_empty' => 'Rien à vérifier pour l’instant.',
-        // ── Note de qualité (docs/seo-system.md §4, Wave S2b) ─────────
+        // Note de qualité (docs/seo-system.md §4, Wave S2b).
         'score_rating_poor' => 'Faible',
         'score_rating_needs_work' => 'À améliorer',
         'score_rating_good' => 'Bon',
@@ -525,7 +522,7 @@ return [
         'social_linkedin' => 'LinkedIn',
     ],
 
-    // ── Panneau Style / Thèmes (live/panel-style-themes.blade.php) ─
+    // Panneau Style / Thèmes (live/panel-style-themes.blade.php).
     'panel_style_themes' => [
         'tab_style' => 'Style',
         'tab_themes' => 'Thèmes',
@@ -557,7 +554,7 @@ return [
         'category_presets' => 'Préréglages',
     ],
 
-    // ── Panneau IA / Outils (live/panel-ai-tools.blade.php) ───────
+    // Panneau IA / Outils (live/panel-ai-tools.blade.php).
     'panel_ai_tools' => [
         'tab_ai' => 'IA',
         'tab_tools' => 'Outils',
@@ -611,12 +608,11 @@ return [
         'category_writing' => 'Rédaction',
     ],
 
-    // ── Panneau Navigateur (live/panel-navigator.blade.php) ───────
+    // Panneau Navigateur (live/panel-navigator.blade.php).
     'panel_navigator' => [
         'tab_list' => 'Vue en liste',
         'tab_outline' => 'Plan',
         'empty_blocks' => 'Aucun bloc pour l’instant.',
-        'moved' => 'Déplacé.',
         'empty_headings' => 'Aucun titre pour l’instant. Ajoutez des blocs de titre pour bâtir un plan.',
         'stat_characters' => 'Caractères :',
         'stat_words' => 'Mots :',
@@ -629,7 +625,7 @@ return [
         'moved_announcement' => ':label déplacé à la position :pos sur :total.',
     ],
 
-    // ── Barre d’outils des blocs (live/toolbar/*) ─────────────────
+    // Barre d’outils des blocs (live/toolbar/*).
     'block_toolbar' => [
         'type_text' => 'Texte',
         'save_block' => 'Enregistrer',
@@ -651,12 +647,12 @@ return [
         'transform_text' => 'Transformer le texte',
     ],
 
-    // ── Zone de dessin (live/canvas.blade.php) ────────────────────
+    // Zone de dessin (live/canvas.blade.php).
     'canvas' => [
         'ph_untitled_post' => 'Article sans titre',
     ],
 
-    // ── Sélecteur de couleur (live/pickers/color-picker.blade.php) ─
+    // Sélecteur de couleur (live/pickers/color-picker.blade.php).
     // Les noms de modèles colorimétriques (HEX/RGB/RGBA/HSL/HSLA/HSB) et les lettres
     // des champs (R/G/B/A/H/S/L/B) relèvent de la notation, pas de la prose : ils
     // restent identiques dans toutes les langues et ne sont donc pas traduits ici.
@@ -687,7 +683,7 @@ return [
         'aria_stops' => 'Étapes du dégradé',
     ],
 
-    // ── Sélecteur de date (ui/date-picker.blade.php) ──────────────
+    // Sélecteur de date (ui/date-picker.blade.php).
     'date_picker' => [
         'weekdays' => ['Lu', 'Ma', 'Me', 'Je', 'Ve', 'Sa', 'Di'],
         'prev_year' => 'Année précédente',
@@ -700,7 +696,7 @@ return [
         'clear' => 'Effacer',
     ],
 
-    // ── Sélecteur de langue (puce du pied de page) ────────────────
+    // Sélecteur de langue (puce du pied de page).
     'switcher' => [
         'aria_locale' => 'Langue de l’interface',
         'option_en' => 'English',
@@ -708,13 +704,13 @@ return [
         'switched_to' => 'Langue changée : :locale.',
     ],
 
-    // ── Langues livrées avec le paquet (utilisées par le sélecteur) ─
+    // Langues livrées avec le paquet (utilisées par le sélecteur).
     'locales' => [
         'en' => 'English',
         'fr' => 'Français',
     ],
 
-    // ── Insertion rapide (fenêtre du bouton d’ajout) ──────────────
+    // Insertion rapide (fenêtre du bouton d’ajout).
     'quick_inserter' => [
         'aria_label' => 'Insérer un bloc',
         'search' => 'Rechercher des blocs…',

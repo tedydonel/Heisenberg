@@ -30,8 +30,6 @@ class PostSettingsControllerTest extends TestCase
         $this->withoutMiddleware(\Illuminate\Foundation\Http\Middleware\ValidateCsrfToken::class);
     }
 
-    // ── layout ────────────────────────────────────────────────────────────
-
     public function test_page_padding_can_be_saved_and_read_back(): void
     {
         $post = Post::create(['title_en' => 'X', 'status' => 'draft']);
@@ -68,8 +66,6 @@ class PostSettingsControllerTest extends TestCase
         $this->assertNull($post->fresh()->page_padding_x);
     }
 
-    // ── discussion ────────────────────────────────────────────────────────
-
     public function test_allow_comments_can_be_toggled_off_then_back_on(): void
     {
         $post = Post::create(['title_en' => 'X', 'status' => 'draft']);
@@ -84,8 +80,6 @@ class PostSettingsControllerTest extends TestCase
         $this->assertTrue($on->json('allow_comments'));
         $this->assertTrue((bool) $post->fresh()->allow_comments);
     }
-
-    // ── featured image ────────────────────────────────────────────────────
 
     /** @return \Heisenberg\Models\PublicFile */
     private function imageRow()
@@ -159,8 +153,6 @@ class PostSettingsControllerTest extends TestCase
         $this->assertNull($post->fresh()->featured_image_id);
         $this->assertNotNull(Post::find($post->id), 'the post itself must survive');
     }
-
-    // ── table of contents ────────────────────────────────────────────────
 
     public function test_toc_entries_can_be_set_and_read_back_in_order(): void
     {
@@ -279,8 +271,6 @@ class PostSettingsControllerTest extends TestCase
 
         $this->assertSame(0, \Illuminate\Support\Facades\DB::table($tocTable)->where('post_id', $post->id)->count());
     }
-
-    // ── authorization denied for an unauthorized actor ──────────────────
 
     public function test_layout_and_discussion_are_denied_for_an_actor_who_cannot_update_the_post(): void
     {

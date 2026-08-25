@@ -1,10 +1,3 @@
-{{-- Wiring for the "Move to trash" row in post-title-summary.blade.php (data-hb-post-trash).
-     Two-step confirm — first click arms (label swaps, a Cancel button appears), second click
-     fires the DELETE — same pattern live/ai/ai-history-dialog.blade.php uses for its own delete
-     button, never window.confirm(). On success the post no longer exists, so the browser is sent
-     to a blank /editor rather than left showing a dead document; on failure the error goes
-     through the SAME hb:save-state channel every other save/tool failure uses (the footer's
-     save-status pill renders it — see footer.blade.php's own docblock). --}}
 @once('hb-post-trash')
 <script>
     (() => {
@@ -87,8 +80,6 @@
         else boot();
         document.addEventListener('hb:refresh', boot);
 
-        // A new document adopts a real id on its first save (topbar.blade.php's hb:post-id) —
-        // same enable-and-learn-the-id posture as revisions-dialog.blade.php's own row.
         if (!document.__hbPostTrashPostId) {
             document.__hbPostTrashPostId = true;
             document.addEventListener('hb:post-id', (event) => {

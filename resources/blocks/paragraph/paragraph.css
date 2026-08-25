@@ -1,7 +1,3 @@
-/* Border/radius intentionally absent: text blocks declare no `border` support, so no
-   border-side or radius variables exist and no rule here reads them. (NB: never write a
-   literal star-slash sequence inside this comment — it terminates it early and the CSS
-   parser then swallows the entire base rule below.) */
 .hb-block-paragraph {
     transition: color 140ms ease, background-color 140ms ease, box-shadow 140ms ease, transform 140ms ease;
     color: var(--hb-paragraph-color);
@@ -26,8 +22,6 @@
     padding: 0.1em 0.12em 0 0;
 }
 
-/* Device visibility — six breakpoint bands (Bootstrap-style ranges).
-   Published output hides the block for every enabled band. */
 @media (max-width: 575.98px) { .hb-block-paragraph.hb-hide-xs { display: none; } }
 @media (min-width: 576px) and (max-width: 767.98px) { .hb-block-paragraph.hb-hide-sm { display: none; } }
 @media (min-width: 768px) and (max-width: 991.98px) { .hb-block-paragraph.hb-hide-md { display: none; } }
@@ -35,8 +29,6 @@
 @media (min-width: 1200px) and (max-width: 1399.98px) { .hb-block-paragraph.hb-hide-xl { display: none; } }
 @media (min-width: 1400px) { .hb-block-paragraph.hb-hide-xxl { display: none; } }
 
-/* Shared rich-text inline formats (toolbar: code / highlight). Scoped to
-   .hb-block so every text block picks them up; ships with the text CSS. */
 .hb-block code {
     font-family: var(--font-mono, ui-monospace, monospace);
     font-size: 0.88em;

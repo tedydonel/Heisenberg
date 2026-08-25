@@ -93,8 +93,6 @@ class BlockRendererInnerBlocksTest extends TestCase
         $this->assertStringNotContainsString('BottomMarker', $html);         // content past the cap is dropped
     }
 
-    // ── fixtures ──────────────────────────────────────────────
-
     /** A container block instance wrapping the given child block instances. */
     private function container(string $id, array $children): array
     {

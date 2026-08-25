@@ -1,16 +1,3 @@
-{{-- live/block/style/flex-layout -- the EXTRACTED Pencil composition, wired (2026-08-06).
-     Restored from its pre-wiring markup after a rework wrongly replaced the extracted UI
-     with generic selects (house rule: wire the extracted composition, never substitute it):
-       - the segmented (wrap / column / row) is the flex MODE -- wrap means direction=row +
-         flex-wrap=wrap; column/row set that direction with wrap off. Two model paths from
-         one control, so it commits through inspector.blade.php's [data-hb-style-flexmode]
-         handler rather than data-hb-control.
-       - the 3x3 dot grid picks justify (columns) x align (rows) in ONE gesture and writes
-         both paths; clicking the active dot clears them. Rows/columns are start/center/end
-         (align "stretch" is the unset default, exactly as CSS has it).
-       - the radio column is justify's spacing mode: the Gap row (packed -- justify comes
-         from the grid) and Space Between / Space Around.
-     Per-feature gating on the contract's supports.layout map (absent/empty = render all). --}}
 @props(['layout' => null])
 @php
     $hbFlexOn = fn (string $key): bool => $layout === null || $layout === [] || (($layout[$key] ?? false) === true);

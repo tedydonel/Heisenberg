@@ -38,8 +38,6 @@ class PostTaxonomyAttachDetachTest extends TestCase
         $this->withoutMiddleware(\Illuminate\Foundation\Http\Middleware\ValidateCsrfToken::class);
     }
 
-    // ── category attach/detach ───────────────────────────────────────────
-
     public function test_a_category_can_be_attached_then_detached_from_a_post(): void
     {
         $post = Post::create(['title_en' => 'X', 'status' => 'draft']);
@@ -79,8 +77,6 @@ class PostTaxonomyAttachDetachTest extends TestCase
         $this->postJson("/editor/posts/{$post->id}/categories/999999")->assertNotFound();
     }
 
-    // ── tag attach/detach ─────────────────────────────────────────────────
-
     public function test_a_tag_can_be_attached_then_detached_from_a_post(): void
     {
         $post = Post::create(['title_en' => 'X', 'status' => 'draft']);
@@ -107,8 +103,6 @@ class PostTaxonomyAttachDetachTest extends TestCase
 
         $this->postJson("/editor/posts/{$post->id}/tags/999999")->assertNotFound();
     }
-
-    // ── authorization denied for an unauthorized actor ──────────────────
 
     public function test_attach_and_detach_are_denied_for_an_actor_who_cannot_update_the_post(): void
     {

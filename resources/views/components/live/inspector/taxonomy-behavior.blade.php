@@ -1,7 +1,3 @@
-        {{-- Categories/Tags/Discussion/Page-layout field behavior — backed by the taxonomy and
-             PostSettings controllers. Scoped to [data-hb-post-taxonomy-field]/
-             [data-hb-post-discussion-field]/[data-hb-post-layout-field] so this never touches the
-             Block-tab region below, same convention as the featured-image block above. --}}
         @once
         <style>
             .hb-post-taxonomy-body,
@@ -24,29 +20,14 @@
             }
             .hb-post-toc-edit:hover { background: var(--hb-surface-hover); }
 
-            {{-- Two-layer scroll shell (the scrollbar's `container` can't double as the bar's own
-                 direct parent). Shared by BOTH Categories and Tags. `max-height`
-                 (not a fixed `height`) on -scroll, and no explicit height at all on -wrap: a list
-                 shorter than the cap shrink-wraps to its real content height (no dead space when a
-                 post only has 2-3 categories) — the wrap simply matches whatever height -scroll
-                 actually renders at, since it's -scroll's only child. custom-scrollbar's own
-                 `bar.hidden = bounds <= 0` already auto-hides the bar when nothing needs scrolling. --}}
             .hb-post-taxonomy-list-wrap { position: relative; }
             .hb-post-taxonomy-list-scroll { max-height: 140px; overflow: hidden; }
             .hb-post-taxonomy-list { display: flex; flex-direction: column; gap: 2px; padding-right: 8px; }
             .hb-post-taxonomy-item { width: 100%; box-sizing: border-box; padding: 6px 8px; border-radius: var(--hb-radius-sm, 3px); flex: none; }
             .hb-post-taxonomy-item:hover { background: var(--hb-bg-muted); }
-            {{-- [hidden] override: ui/checkbox's own .hb-checkbox rule sets display:inline-flex,
-                 which otherwise beats the UA stylesheet's [hidden] at equal specificity — same fix
-                 already applied elsewhere in this file (see .hb-inspector__icon[hidden] above). --}}
             .hb-post-taxonomy-item[hidden] { display: none; }
             .hb-post-taxonomy-empty { padding: 6px 8px; font-family: var(--hb-font-sans, Rubik, sans-serif); font-size: var(--hb-fs-xs, 11px); color: var(--hb-text-muted); }
             .hb-post-taxonomy-empty[hidden] { display: none; }
-            {{-- outline:0 + a border-color shift on :focus, not a native browser focus ring — same
-                 treatment ui/input gives its own text input (there via :focus-within on a wrapping
-                 div, since that input has no border of its own; this one has no wrapper, so :focus
-                 lands directly on it). Leaving the UA default outline in would show a much heavier
-                 ring than every other text field in this app. --}}
             .hb-post-taxonomy-add-input { width: 100%; height: 30px; box-sizing: border-box; padding: 0 10px; border: 1px solid var(--hb-border); border-radius: var(--hb-radius-md, 5px); background: var(--hb-bg); font-family: var(--hb-font-sans, Rubik, sans-serif); font-size: var(--hb-fs-sm, 12px); color: var(--hb-text-primary); transition: border-color .12s ease; }
             .hb-post-taxonomy-add-input:hover { border-color: var(--hb-border-strong); }
             .hb-post-taxonomy-add-input:focus { outline: 0; border-color: var(--hb-border-focus); }
@@ -57,8 +38,6 @@
             .hb-post-layout-row__label { flex: 1 1 auto; min-width: 0; font-family: var(--hb-font-sans, Rubik, sans-serif); font-size: var(--hb-fs-sm, 12px); color: var(--hb-text-secondary); }
             .hb-post-layout-row__readout { flex: none; width: 34px; text-align: right; font-family: var(--hb-font-sans, Rubik, sans-serif); font-size: var(--hb-fs-xs, 11px); color: var(--hb-text-muted); }
 
-            {{-- Translations (docs/content-translation.md §0/Wave 2) — one row per configured
-                 locale; clicking a row switches the editing locale (no navigation, no request). --}}
             .hb-post-translations-body { display: flex; flex-direction: column; gap: 6px; padding: 0 var(--hb-space-3, 12px) var(--hb-space-3, 12px); }
             .hb-post-translations-body[hidden] { display: none; }
             .hb-post-translations-list { display: flex; flex-direction: column; gap: 4px; }
@@ -89,13 +68,6 @@
                     credentials: 'same-origin',
                 }, options)).then((res) => res.json().catch(() => ({})).then((body) => ({ ok: res.ok, body })));
 
-                // ── Categories/Tags: ONE shared multi-select checklist ──
-                // Both now attach via a real pivot (Category::posts()/Tag::posts() are both
-                // BelongsToMany as of 2026-08-03 — see Post::categories()/tags()), so a single
-                // generic widget serves both fields, differentiated only by their own data-*
-                // attributes (attach URL template, the "create new" index URL + its response
-                // envelope key) and whichever options Blade already rendered as real ui/checkbox
-                // rows. Checking a box POSTs an attach; unchecking DELETEs.
                 const wirePostTaxonomy = (field) => {
                     if (field.__hbPostTaxonomy) return;
                     field.__hbPostTaxonomy = true;
@@ -145,9 +117,6 @@
                         if (labelEl) labelEl.textContent = record.name_en || record.name || '';
                         list.insertBefore(node, empty || null);
                         if (empty) empty.hidden = true;
-                        // The scrollbar's own ResizeObserver watches the FIXED-height wrap, not
-                        // this list's scrollHeight growing inside it — nudge it directly so a
-                        // freshly-added row is immediately reflected in the track/thumb math.
                         document.dispatchEvent(new CustomEvent('hb:refresh'));
                         return node;
                     };
@@ -159,9 +128,6 @@
                         attach(input.value, input.checked);
                     });
 
-                    // The add-input doubles as a filter over the already-loaded list (every
-                    // category/tag is server-rendered up front — nothing to fetch to search it,
-                    // unlike the Fonts catalog) — Enter with no exact match creates a new one.
                     addInput.addEventListener('input', () => {
                         const query = addInput.value.trim().toLowerCase();
                         items().forEach((item) => { item.hidden = query !== '' && !labelOf(item).toLowerCase().includes(query); });
@@ -203,7 +169,6 @@
                     if (postId !== null) setEnabled(true);
                 };
 
-                // ── Discussion: a single Allow-comments toggle ──
                 const wirePostDiscussion = (field) => {
                     if (field.__hbPostDiscussion) return;
                     field.__hbPostDiscussion = true;
@@ -237,12 +202,6 @@
                     if (postId !== null) setEnabled(true);
                 };
 
-                // ── Page layout: X/Y page padding sliders ──
-                // Reaches past this component into the canvas (document.querySelector('.hb-page'))
-                // the same direct way the featured-image field above reaches into the media dialog
-                // — there's only ever one .hb-page on screen, and every other cross-component
-                // channel in this app (hb:refresh, hb:post-id) is a broadcast, not a fit for "paint
-                // this CSS var live as the slider moves."
                 const wirePostLayout = (field) => {
                     if (field.__hbPostLayout) return;
                     field.__hbPostLayout = true;
@@ -301,11 +260,6 @@
                     if (postId !== null) setEnabled(true);
                 };
 
-                // ── Translations: click a row to switch the editing locale ──
-                // docs/content-translation.md §0/Wave 2 — a pure client-side switch
-                // (window.hbEditor.setEditingLocale), so this wires against EVERY render of the
-                // field, saved post or not (unlike wirePostTaxonomy/wirePostDiscussion/
-                // wirePostLayout above, there is no hb:post-id-gated enable step to wait for).
                 const wirePostTranslations = (field) => {
                     if (field.__hbPostTranslations) return;
                     field.__hbPostTranslations = true;

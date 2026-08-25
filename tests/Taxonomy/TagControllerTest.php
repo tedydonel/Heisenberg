@@ -35,8 +35,6 @@ class TagControllerTest extends TestCase
         $this->withoutMiddleware(\Illuminate\Foundation\Http\Middleware\ValidateCsrfToken::class);
     }
 
-    // ── CRUD round trip ──────────────────────────────────────────────────
-
     public function test_store_then_index_then_update_then_destroy_round_trips(): void
     {
         $store = $this->postJson('/editor/tags', ['name_en' => 'Interviews']);
@@ -65,8 +63,6 @@ class TagControllerTest extends TestCase
         $this->assertArrayHasKey('name_en', $response->json('errors'));
     }
 
-    // ── slug collision handling through the API ─────────────────────────
-
     public function test_a_colliding_name_gets_a_deduplicated_slug_through_the_api(): void
     {
         $first = $this->postJson('/editor/tags', ['name_en' => 'Craft']);
@@ -78,8 +74,6 @@ class TagControllerTest extends TestCase
         $this->assertSame('craft-2', $second->json('tag.slug'));
     }
 
-    // ── destroy detaches from posts first ───────────────────────────────
-
     public function test_destroying_a_tag_detaches_it_from_every_post(): void
     {
         $post = Post::create(['title_en' => 'X', 'status' => 'draft']);
@@ -90,8 +84,6 @@ class TagControllerTest extends TestCase
 
         $this->assertCount(0, $post->fresh()->tags);
     }
-
-    // ── authorization denied for an unauthorized actor ──────────────────
 
     public function test_update_and_delete_are_denied_for_an_authors_tier_actor(): void
     {

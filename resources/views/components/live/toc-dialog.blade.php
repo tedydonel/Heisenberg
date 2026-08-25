@@ -1,31 +1,3 @@
-{{-- live/toc-dialog — the Post tab's AUTHORED table of contents, in the media-dialog's modal
-     shell (same scrim classes on purpose: live/media/media-dialog's @once script wires every
-     `.hb-mediadialog__scrim` with hbOpen()/hbClose(), Escape, backdrop-close and the focus trap,
-     so this dialog inherits all of that for free — exactly like live/revisions-dialog and
-     live/ai/ai-history-dialog do).
-
-     Opened by the Post tab's [data-hb-toc-open] Edit button (inspector.blade.php), which also
-     carries the current post id, the toc URL template, and the post's CURRENT entries as JSON
-     (data-hb-toc-entries) — the dialog is stateless between opens, seeded fresh from the opener's
-     dataset every time (same "read off the opener" posture as live/revisions-dialog, just with a
-     bigger payload since this dialog edits rather than just lists). A post with no id yet can
-     still compose entries in-memory (including Load from headings, which needs no server round
-     trip); only Save is gated on a real post id.
-
-     Save PUTs the full {entries} list with replace-all semantics (PostSettingsController::
-     updateToc()) and writes the server's canonical response back onto the opener's dataset AND
-     the Post tab's summary line, so a reload-free re-open sees exactly what was persisted.
-
-     Load from headings walks window.hbEditor.getDoc().blocks for heisenberg/heading instances,
-     derives {label, anchor} from each, and — when a heading has no anchor of its own yet — writes
-     the generated slug BACK onto the block via window.hbEditor.setAttribute(id, 'anchor', ...) so
-     the heading's rendered `id` actually matches the TOC link BlockRenderer emits for it (see
-     heading.json's render.template.attributes.id). Matching is by anchor, so re-running it never
-     duplicates a heading already in the list and never touches hand-added rows.
-
-     Rows are built by cloning a Blade-rendered `<template>` (same trick as inspector.blade.php's
-     Categories/Tags "add item" template) rather than assembling icon SVGs from JS strings — every
-     icon in this dialog is server-rendered once, up front. --}}
 @once
 <style>
     .hb-tocdialog { width: 600px; height: 560px; }
@@ -79,11 +51,6 @@
         font-family: inherit; font-size: var(--hb-fs-sm, 12px); font-weight: 600;
     }
     .hb-tocdialog__add:hover, .hb-tocdialog__loadheadings:hover { background: var(--hb-surface-hover); }
-    {{-- ONE flexible message slot between the buttons. The note and the status
-         used to be two separate flex items — the transient status (flex:none)
-         claimed its full text width and crushed the note (flex:1, min-width:0)
-         into a one-word-per-line sliver, with both visible at once. Now they
-         share this container and the script guarantees only one shows. --}}
     .hb-tocdialog__msgs { flex: 1 1 auto; min-width: 0; overflow: hidden; text-align: right; }
     .hb-tocdialog__note, .hb-tocdialog__status {
         font-size: var(--hb-fs-xs, 11px); line-height: 1.35; color: var(--hb-text-muted);
@@ -116,8 +83,6 @@
             return (div.textContent || div.innerText || '').replace(/\s+/g, ' ').trim();
         };
 
-        // The anchor a fresh slug must satisfy — the same shape the server enforces
-        // (PostSettingsController::updateToc()'s `regex:/^[A-Za-z][\w-]*$/`).
         const slugify = (text) => {
             let s = String(text || '').toLowerCase().trim()
                 .replace(/[^a-z0-9]+/g, '-')
@@ -150,16 +115,12 @@
                 const msg = (key) => scrim.dataset[key] || '';
                 if (!list || !rowTemplate) return;
 
-                let entries = []; // [{label, anchor}]
+                let entries = [];
                 let postId = '';
                 let urlTemplate = '';
                 let opener = null;
                 let saveEnabled = false;
 
-                // One message at a time: a fresh status ALWAYS wins the slot;
-                // the save-the-post-first note only shows while save is gated
-                // AND nothing transient is being said. Two messages at once is
-                // exactly the crushed-footer bug this replaces.
                 const paintMessages = (statusText) => {
                     if (status) {
                         status.textContent = statusText || '';
@@ -208,8 +169,6 @@
                         anchorInput.value = entry.anchor || '';
                         labelInput.addEventListener('input', () => { entries[index].label = labelInput.value; });
                         anchorInput.addEventListener('input', () => { entries[index].anchor = anchorInput.value; });
-                        // Auto-suggest an anchor once the label has real content and the anchor
-                        // is still untouched — never overwrites a value the user typed themselves.
                         labelInput.addEventListener('blur', () => {
                             if (anchorInput.value.trim() !== '') return;
                             const used = new Set(entries.map((e, i) => (i !== index ? e.anchor : null)).filter(Boolean));
@@ -221,8 +180,6 @@
 
                         list.appendChild(node);
                     });
-                    // The custom scrollbar tracks content height — a fresh row set changes it
-                    // (and the bar booted while the dialog was [hidden]), so re-measure.
                     document.dispatchEvent(new CustomEvent('hb:refresh'));
                 };
 
@@ -233,8 +190,6 @@
                     inputs[inputs.length - 1]?.focus();
                 });
 
-                // Walk the live document for heisenberg/heading instances, recursing into
-                // innerBlocks — headings can live inside a group/columns/column.
                 const collectHeadings = () => {
                     const out = [];
                     const walk = (blocks) => {
@@ -255,7 +210,7 @@
 
                     const used = new Set(entries.map((e) => e.anchor).filter(Boolean));
                     let added = 0;
-                    let usable = 0; // headings with real text — an empty heading can't be an entry
+                    let usable = 0;
                     headings.forEach((block) => {
                         const label = stripTags(block.attributes && block.attributes.content);
                         if (!label) return;
@@ -267,15 +222,12 @@
                                 window.hbEditor.setAttribute(block.id, 'anchor', anchor);
                             }
                         }
-                        if (used.has(anchor)) return; // already represented — never duplicate
+                        if (used.has(anchor)) return;
                         used.add(anchor);
                         entries.push({ label: label, anchor: anchor });
                         added++;
                     });
                     render();
-                    // Say what actually happened: "already in the table" is only
-                    // true when usable headings were all matched — text-less
-                    // headings mean there was nothing to load in the first place.
                     setStatus(added ? '' : (usable ? msg('msgNoNewHeadings') : msg('msgNoHeadings')));
                 });
 
@@ -343,10 +295,6 @@
                         render();
                         if (scrim.hbOpen) scrim.hbOpen(trigger); else scrim.hidden = false;
                     });
-                    // A never-saved document's first save mints a post id — the (single) TOC
-                    // trigger picks it up, same contract as live/revisions-dialog's own
-                    // hb:post-id listener; if the dialog happens to be open already, the live
-                    // state is updated too so Save enables without a re-open.
                     document.addEventListener('hb:post-id', (event) => {
                         const id = event.detail && event.detail.id != null ? String(event.detail.id) : '';
                         if (!id) return;
@@ -390,9 +338,6 @@
                 </div>
                 <x-ui.custom-scrollbar container="[data-hb-toc-scroll]" />
             </div>
-            {{-- Clone target for each entry row — icons are server-rendered once here, never
-                 assembled from a JS string (same convention as inspector.blade.php's Categories/
-                 Tags item template). --}}
             <template data-hb-toc-row-template>
                 <div class="hb-tocdialog__row">
                     <div class="hb-tocdialog__reorder">

@@ -1,31 +1,3 @@
-/* heisenberg/group — a generic flex container.
-
-   `display: flex` is NOT declared here on purpose: it comes from the shared capability
-   sheet's `[data-block-id].hb-supports.hb-flex-layout` rule (SupportsStyle::flexLayoutRule),
-   which the contract opts into by carrying `hb-flex-layout` in style.className. Duplicating
-   it would mean two owners for one property.
-
-   SPECIFICITY, and why the container rule below is written the long way: that capability
-   rule is (0,3,0) — one attribute selector plus two classes — and it pins flex-direction,
-   gap AND padding from generic vars. A plain `.hb-block-group` rule is (0,1,0), so anything
-   it said about those three properties would lose and read as a dead control. The container
-   rule therefore adds this block's own root class to the same selector, making it (0,4,0),
-   which wins by specificity alone — never by stylesheet order.
-
-   Border/radius are SUPPORTED (Stroke + Appearance's corner fields) and are declared nowhere
-   in this file on purpose. The capability sheet already owns every one of those properties —
-   `border-<side>-<width|style|color>` and the four `border-<corner>-radius` longhands, each
-   read from a generic var with an inert fallback (SupportsStyle::baseCapabilitiesRule) — and
-   the contract feeds them through style.variables. Repeating any of them here would be a
-   second owner for one property, and would additionally have to be written the long way: that
-   rule is (0,2,0), so a plain `.hb-block-group` border declaration (0,1,0) would lose and read
-   as a dead control. (NB: never write a literal star-slash sequence inside a comment — it
-   terminates it early and the CSS parser then swallows the rule that follows.) */
-/* Inheritance guard: custom properties inherit, and a group may contain another
-   block that reads the same names — without re-declaring them here a NESTED
-   container would paint its parent's background, padding and size. `initial` makes
-   each var unset on this element, so the var() fallbacks below apply; this block's
-   own inline style (set by the renderer) still wins for the element that has one. */
 .hb-block-group {
     --hb-group-bg: initial;
     --hb-group-w: initial;
@@ -55,14 +27,6 @@
     margin: var(--hb-group-mt, 0) var(--hb-group-mr, 0) var(--hb-group-mb, 0) var(--hb-group-ml, 0);
 }
 
-/* Flex-container overrides. Direction defaults to `column` (innerBlocks.orientation is
-   vertical) rather than the capability sheet's `row`; an inspector Direction pick sets
-   --hb-flex-direction and wins through the var's first slot.
-
-   Padding composes the two affordances that both target it: a per-side Padding value
-   (spacing.padding.<side>) wins, falling back to the Flex Layout padding (layout.padding),
-   falling back to none. Without this composition the capability rule's flat
-   `padding: var(--hb-flex-padding, 0)` would silently overwrite every per-side value. */
 [data-block-id].hb-supports.hb-flex-layout.hb-block-group {
     flex-direction: var(--hb-flex-direction, column);
     gap: var(--hb-flex-gap, 8px);
@@ -73,10 +37,6 @@
         var(--hb-group-pl, var(--hb-flex-padding, 0));
 }
 
-/* Device visibility — six breakpoint bands (Bootstrap-style ranges). Published output hides
-   the block for every enabled band. Written at (0,4,0) for the same reason as the container
-   rule: the capability sheet sets `display: flex` at (0,3,0), and a plain
-   `.hb-block-group.hb-hide-xs` (0,2,0) would lose to it, leaving the block visible. */
 @media (max-width: 575.98px) { [data-block-id].hb-supports.hb-block-group.hb-hide-xs { display: none; } }
 @media (min-width: 576px) and (max-width: 767.98px) { [data-block-id].hb-supports.hb-block-group.hb-hide-sm { display: none; } }
 @media (min-width: 768px) and (max-width: 991.98px) { [data-block-id].hb-supports.hb-block-group.hb-hide-md { display: none; } }

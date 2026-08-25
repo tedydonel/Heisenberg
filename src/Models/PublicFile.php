@@ -76,8 +76,7 @@ class PublicFile extends Model
         return config('heisenberg.tables.public_files', 'heisenberg_public_files');
     }
 
-    // ── URL / variant rendering (§7) ──────────────────────────────────────
-
+    
     public function getUrlAttribute(): string
     {
         return $this->urlFor(null);
@@ -200,8 +199,7 @@ class PublicFile extends Model
         return in_array(strtolower((string) $this->type), self::IMAGE_EXTENSIONS, true);
     }
 
-    // ── Metadata helpers (§7, §12 bilingual) ──────────────────────────────
-
+    
     /** Locale alt text with fallback to the other locale, never null. */
     public function getAlt(string $locale = 'en'): string
     {
@@ -232,8 +230,7 @@ class PublicFile extends Model
         return number_format($value, 1) . ' ' . $units[$power];
     }
 
-    // ── Reverse lookup (§7) ────────────────────────────────────────────────
-
+    
     /**
      * Resolve a `/uploads/...` URL back to its relative stored path (the
      * inverse of {@see uploadsUrl()}). Returns null for anything that isn't

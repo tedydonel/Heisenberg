@@ -65,8 +65,6 @@ class EditorSaveWiringTest extends TestCase
         return $response->json();
     }
 
-    // ── the blank editor is untouched ───────────────────────────────────
-
     public function test_blank_editor_still_renders_with_no_post(): void
     {
         $html = $this->get('/editor')->assertOk()->getContent();
@@ -76,8 +74,6 @@ class EditorSaveWiringTest extends TestCase
         // when EditorController::show() seeds at least one saved block.
         $this->assertStringNotContainsString('hydrate()', $html);
     }
-
-    // ── the save button + post endpoint URLs are actually shipped ───────
 
     public function test_editor_ships_the_save_button_and_post_endpoint_urls(): void
     {
@@ -100,8 +96,6 @@ class EditorSaveWiringTest extends TestCase
         $this->assertStringContainsString("document.addEventListener('hb:blocks-changed', hbMarkDirty)", $html);
     }
 
-    // ── the footer's status pill ships real states, not a permanent danger pill ─
-
     public function test_footer_ships_the_real_save_status_states(): void
     {
         $html = $this->get('/editor')->assertOk()->getContent();
@@ -114,8 +108,6 @@ class EditorSaveWiringTest extends TestCase
         $this->assertStringNotContainsString(__('heisenberg::editor.common.connecting'), $html);
         $this->assertStringContainsString("window.addEventListener('offline'", $html);
     }
-
-    // ── /editor/{post} loads a real, existing post ──────────────────────
 
     public function test_show_route_renders_an_existing_posts_title_and_hydrates_its_blocks(): void
     {

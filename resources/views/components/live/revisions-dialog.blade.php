@@ -1,15 +1,6 @@
-{{-- live/revisions-dialog — the post's revision history, in the media-dialog's modal shell
-     (same scrim classes on purpose: live/media/media-dialog's @once script wires every
-     `.hb-mediadialog__scrim` with hbOpen()/hbClose(), Escape, backdrop-close and the focus
-     trap, so this dialog inherits all of that for free). Opened by the Post tab's
-     [data-hb-revisions-open] row; each row Restores through hbEditor.replaceDoc(), which
-     also makes a restore UNDOABLE (Ctrl+Z) and dirties the doc so autosave persists it. --}}
 @once
 <style>
     .hb-revdialog { width: 560px; height: 520px; }
-    /* Two-layer scroll shell (2026-08-08): __body is the positioned, non-scrolling parent the
-       absolute ui/custom-scrollbar anchors to; __scroll is the region the bar drives (the bar
-       itself adds hb-scroll-container + overflow on boot) — no native scrollbar. */
     .hb-revdialog__body { position: relative; flex: 1 1 auto; min-height: 0; }
     .hb-revdialog__scroll { height: 100%; box-sizing: border-box; padding: var(--hb-space-4, 16px); }
     .hb-revdialog__empty { padding: 48px 0; text-align: center; color: var(--hb-text-muted); font-size: var(--hb-fs-base, 13px); }
@@ -50,7 +41,7 @@
                 const list = scrim.querySelector('[data-hb-rev-list]');
                 const empty = scrim.querySelector('[data-hb-rev-empty]');
                 const msg = (key) => scrim.dataset[key] || '';
-                let urls = null; // { index } — captured from the opener row per open
+                let urls = null;
 
                 const showEmpty = (text) => {
                     list.innerHTML = '';
@@ -98,8 +89,6 @@
                         row.append(meta, type, restore);
                         list.appendChild(row);
                     });
-                    // The custom scrollbar tracks content height — a fresh row set changes it
-                    // (and the bar booted while the dialog was [hidden]), so re-measure.
                     document.dispatchEvent(new CustomEvent('hb:refresh'));
                 };
 
@@ -112,7 +101,6 @@
                         .catch(() => showEmpty(msg('msgError')));
                 };
 
-                // The Post-tab row opens the dialog; a post with no id yet has no history.
                 if (!document.__hbRevisionsOpen) {
                     document.__hbRevisionsOpen = true;
                     document.addEventListener('click', (event) => {
@@ -124,7 +112,6 @@
                         if (scrim.hbOpen) scrim.hbOpen(opener); else scrim.hidden = false;
                         load();
                     });
-                    // After a new document's first save the row learns its post id.
                     document.addEventListener('hb:post-id', (event) => {
                         const id = event.detail && event.detail.id != null ? String(event.detail.id) : '';
                         if (!id) return;

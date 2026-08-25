@@ -1,5 +1,3 @@
-{{-- ui/tool-card — vertical card, padding 12/6, centered 22px icon +
-     centered wrapping fs-xs label. --}}
 @once
 
 @endonce

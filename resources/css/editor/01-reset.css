@@ -1,10 +1,3 @@
-/* box-sizing: border-box was applied on the gallery page (.hb-preview, from
-   before this shell existed) but never on the actual /editor shell — every
-   fixed-size component with padding or a border was rendering 1-2px larger
-   than declared as a result (content-box adds border/padding on top of the
-   declared width/height instead of including it). That's why borders on
-   fixed-size grid tracks (topbar bottom border, sidebar right border) were
-   being clipped off entirely, and why spacing throughout felt slightly off. */
 .hb-editor,
 .hb-editor *,
 .hb-editor *::before,
@@ -12,13 +5,6 @@
     box-sizing: border-box;
 }
 
-/* [hidden] must actually hide. The UA stylesheet's `[hidden] { display: none }` is a plain
-   element-level rule, so ANY author rule setting display (and this editor sets display:flex /
-   inline-flex on most components) beats it at equal-or-higher specificity — the element stays
-   visible while the attribute claims otherwise. That bit several components independently, each
-   of which patched it locally (20-shell, 32-pickers, 33-toolbar, 35-blocks, 31-block-inspector),
-   so the same bug kept being rediscovered. One global rule ends the class of bug; the local
-   overrides are now redundant but harmless. Matches the builder's own 03-base-reset.css. */
 .hb-editor [hidden] {
     display: none !important;
 }

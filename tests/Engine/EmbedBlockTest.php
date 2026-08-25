@@ -45,8 +45,6 @@ class EmbedBlockTest extends TestCase
         );
     }
 
-    // ── embedSrcFor: accepted forms ───────────────────────────
-
     #[DataProvider('acceptedUrls')]
     public function test_accepted_url_forms_normalize_to_the_privacy_enhanced_player(string $input, string $expected): void
     {
@@ -118,8 +116,6 @@ class EmbedBlockTest extends TestCase
         );
     }
 
-    // ── embedSrcFor: rejections (fail closed) ─────────────────
-
     #[DataProvider('rejectedUrls')]
     public function test_rejected_urls_yield_no_src(string $input): void
     {
@@ -185,8 +181,6 @@ class EmbedBlockTest extends TestCase
             'angle brackets' => ['https://www.youtube.com/watch?v=<script>'],
         ];
     }
-
-    // ── render through the shipped contract ───────────────────
 
     public function test_a_watch_url_renders_the_privacy_enhanced_iframe(): void
     {

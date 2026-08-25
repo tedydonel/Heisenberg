@@ -1,17 +1,3 @@
-{{-- live/topbar — 32px bar, bottom border, 3 zones (TL fixed / TC centered,
-     grows / TR fixed). All icon buttons here are 28x28 (26x26 in the right cluster), cornerRadius 3,
-     transparent by default — a header-specific treatment, deliberately NOT the same shape as ui/icon-button
-     (which is 40x26 with an always-visible bg-muted fill), so it isn't force-reused here.
-     Undo/redo are live: thin shells over window.hbEditor.undo()/redo(), enabled state from hb:history.
-     Fullscreen, Layers and Preview (the eye button) ARE wired — see the script below. Width is
-     100% here, not the source's 1440 artboard width.
-
-     The Save button (.hb-topbar__save, bottom of the markup) IS wired — see the script below.
-     postId/contentVersion come from EditorController::index() (null/0, blank document) or
-     ::show() (an existing post) via props (declared below, after the style/script blocks —
-     matching this file tree's own convention, e.g. live/media/media-dialog.blade.php), read
-     back out of this component's own data-hb-post-id/data-hb-content-version attributes at
-     boot so the save script never needs a second way to reach them. --}}
 @once
 <style>
     .hb-topbar {
@@ -26,12 +12,6 @@
     }
     .hb-topbar__zone { display: flex; align-items: center; gap: 2px; height: 100%; }
     .hb-topbar__zone--left { padding: 0 10px; }
-    /* Absolutely centered on the bar itself, not stretched via flex — a flex:1+justify-content:center
-       zone spreads across the FULL remaining width between the left/right zones, which looks fine at
-       the design's 1440px reference but leaves the cluster floating in a large empty gap on realistic,
-       wider browser windows (confirmed at 1920px — this is what was actually being reported as "icons
-       not in the middle"). Absolute-centering keeps it pinned to the true midpoint at its natural
-       (compact) size regardless of viewport width or left/right zone width asymmetry. */
     .hb-topbar__zone--center {
         position: absolute;
         left: 50%;
@@ -73,8 +53,6 @@
     }
     .hb-topbar__save:hover { background: var(--hb-accent-hover); }
     .hb-topbar__save[aria-busy="true"] { opacity: .6; cursor: default; }
-    /* device preview — a dropdown (Desktop / Tablet / Mobile). The trigger shows only the
-       current device's icon; labels live in the menu. */
     .hb-topbar__devsel { position: relative; display: inline-flex; align-items: center; }
     .hb-topbar__device .hb-dev { display: none; }
     .hb-topbar__device[data-device="desktop"] .hb-dev--desktop,
@@ -100,16 +78,7 @@
     .hb-topbar__devsel-opt svg { width: 15px; height: 15px; flex: none; }
     .hb-topbar__devsel-opt:hover { background: var(--hb-surface-hover); color: var(--hb-text-primary); }
     .hb-topbar__devsel-opt.is-on { background: var(--hb-surface-hover); color: var(--hb-text-primary); font-weight: 500; }
-    /* Email export (docs/email-system.md §6) — devsel-menu shape, own wrapper class only. */
     .hb-topbar__exportsel { position: relative; display: inline-flex; align-items: center; }
-    /* Editing-locale dropdown (docs/content-translation.md §0/Wave 2) — a visual sibling of the
-       device dropdown above, same trigger/menu shape, placed just to its left. Unlike the device
-       trigger (icon-only; the icon itself swaps per selection) this one has no per-locale icon,
-       so the trigger grows to fit the CURRENT editing locale's name next to a static translate
-       glyph — the one deliberate width exception in this otherwise fixed-size icon-button row.
-       Picking a locale here does not navigate anywhere — it switches which locale's text every
-       translatable attribute reads/writes (window.hbEditor.setEditingLocale), in the SAME
-       document. */
     .hb-topbar__langsel { position: relative; display: inline-flex; align-items: center; }
     .hb-topbar__lang { width: auto; padding: 0 6px; gap: 5px; }
     .hb-topbar__lang-label {
@@ -136,27 +105,16 @@
     .hb-topbar__langsel-opt__check { width: 12px; height: 12px; flex: none; color: var(--hb-accent); display: inline-flex; visibility: hidden; }
     .hb-topbar__langsel-opt.is-on .hb-topbar__langsel-opt__check { visibility: visible; }
 </style>
-{{-- The topbar's whole behaviour script (save/autosave, preview, export, device + locale
-     dropdowns, undo/redo, fullscreen) lives in a sibling partial rather than inline. It is ONE
-     IIFE and moves as one — every handler shares that closure, so splitting it further would mean
-     inventing a way for the pieces to reach each other. Extracted because this file crossed the
-     64KB ceiling Livewire's morph compiler imposes (tests/Editor/BladeFileSizeGuardTest.php);
-     a big inline <script> is what gets a Blade view there. --}}
 @include('heisenberg::components.live.topbar.script')
 @endonce
 
 @props([
     'postId' => null,
     'contentVersion' => 0,
-    // The editing-locale dropdown's data (docs/content-translation.md §0/Wave 2). `homeLocale` is
-    // this document's own `locale` column (the bare-key rule's home locale — see
-    // block-runtime.blade.php); the dropdown's INITIAL editing locale is corrected client-side
-    // from a persisted per-post choice (hbApplyEditingLocale, called once at boot).
     'homeLocale' => 'en',
     'contentLocales' => ['en', 'fr'],
     'contentLocaleLabels' => [],
     'postTitleByLocale' => [],
-    // docs/email-system.md §7-E3 — 'post' or 'email'; drives the preview button's target.
     'documentType' => 'post',
     'emailPreviewUrlTemplate' => '',
     'emailExportUrlTemplate' => '',
@@ -177,22 +135,15 @@
     ];
     $rightButtons = [
         ['icon' => 'moon', 'label' => __('heisenberg::editor.topbar.aria_theme'), 'theme' => true],
-        // Preview lives here now, not on a separate eye icon in the centre group: "open in a new
         ['icon' => 'arrow-square-out', 'label' => __('heisenberg::editor.topbar.aria_preview'), 'theme' => false, 'preview' => true],
-        // Post-language dropdown — placed immediately left of the device dropdown it mirrors.
         ['icon' => 'translate', 'label' => __('heisenberg::editor.topbar.aria_post_language'), 'lang' => true],
         ['icon' => 'device-mobile', 'label' => __('heisenberg::editor.topbar.aria_device'), 'device' => true],
     ];
-    // Email export (docs/email-system.md §6) — beside Preview, email documents only.
     if ($documentType === 'email') {
         array_splice($rightButtons, 2, 0, [[
             'icon' => 'download-simple', 'label' => __('heisenberg::editor.topbar.aria_email_export'), 'export' => true,
         ]]);
     }
-    // SSR best-effort: the editing locale defaults to the document's own home locale (JS
-    // corrects this once at boot for a returning session that had switched away — see
-    // hbApplyEditingLocale). Never disabled — switching locale is a pure client-side edit target,
-    // it needs no saved post to be meaningful.
     $hbCurrentLocale = $homeLocale;
     $hbCurrentLocaleLabel = $contentLocaleLabels[$hbCurrentLocale] ?? __('heisenberg::editor.locales.' . $hbCurrentLocale);
     $deviceLabels = [
@@ -220,17 +171,8 @@
     data-hb-document-type="{{ $documentType }}"
     data-hb-email-preview-url-template="{{ $emailPreviewUrlTemplate }}"
     data-hb-email-export-url-template="{{ $emailExportUrlTemplate }}"
-    {{-- docs/content-translation.md §0/Wave 2 — the editing-locale dropdown's label lookup and
-         the title-per-locale cache the save payload is built from (see hbTitleSaveExtra above). --}}
     data-hb-locale-labels="{{ json_encode($contentLocaleLabels) }}"
     data-hb-title-by-locale="{{ json_encode($postTitleByLocale) }}"
-    {{-- Where this document lives once it has an id. A save from the blank /editor creates the
-         post but leaves the browser on /editor, so refreshing re-opened an empty editor and the
-         work looked lost (it was in the DB the whole time). After a create we rewrite the URL to
-         this, so refresh/bookmark/back all land on the saved post. Per document type
-         (docs/email-system.md §6.2): a new email's first save lands on /editor/email/{id}, its own
-         authoring address — pointing it at /editor/{id} would rewrite to a URL that only
-         redirects back here. --}}
     data-hb-editor-url-template="{{ $documentType === 'email'
         ? route('heisenberg.editor.email.show', ['post' => '__ID__'])
         : route('heisenberg.editor.show', ['post' => '__ID__']) }}"
@@ -292,7 +234,6 @@
                     </div>
                 </div>
             @elseif ($btn['export'] ?? false)
-                {{-- Email export (docs/email-system.md §6) — Download HTML / .eml, wired above. --}}
                 <div class="hb-topbar__exportsel">
                     <button type="button" class="hb-topbar__btn hb-topbar__btn--sm" data-hb-export-toggle
                         aria-haspopup="true" aria-expanded="false" aria-label="{{ $btn['label'] }}"
@@ -307,12 +248,6 @@
                     </div>
                 </div>
             @elseif ($btn['lang'] ?? false)
-                {{-- Editing-locale dropdown (docs/content-translation.md §0/Wave 2) — switches
-                     which locale the WHOLE document is being edited in, wired in the script
-                     above. Trigger shows the CURRENT editing locale's name (not just an icon,
-                     unlike the device trigger — there is no per-locale glyph to swap). Never
-                     disabled: this is a pure client-side edit target, meaningful even on a
-                     never-saved document. --}}
                 <div class="hb-topbar__langsel">
                     <button type="button" class="hb-topbar__btn hb-topbar__btn--sm hb-topbar__lang" data-hb-lang-toggle
                         aria-haspopup="listbox" aria-expanded="false" aria-label="{{ $btn['label'] }}">
@@ -350,7 +285,6 @@
         @endforeach
         <x-ui.divider orientation="vertical" style="width:1px;height:14px;" />
         <button type="button" class="hb-topbar__save">{{ __('heisenberg::editor.common.save') }}</button>
-        {{-- source rotates this icon instance -540deg (≡ 180deg) rather than mirroring it --}}
         <button type="button" class="hb-topbar__btn" aria-label="{{ __('heisenberg::editor.topbar.aria_panel_right') }}" data-hb-toggle="inspector">
             <span class="hb-topbar__icon" aria-hidden="true" style="transform:rotate(180deg);">
                 @include('heisenberg::components.ui.icon', ['name' => 'sidebar-simple', 'size' => 14])

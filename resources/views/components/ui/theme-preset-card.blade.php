@@ -1,6 +1,3 @@
-{{-- ui/theme-preset-card — vertical card, 3 stacked 16px round
-     swatches + centered label. "selected" isn't in the source (only one instance exists) — inferred as
-     a border-focus outline, the same highlight convention used when ui/select is open. --}}
 @once
 
 @endonce

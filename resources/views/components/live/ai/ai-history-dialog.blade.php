@@ -1,18 +1,3 @@
-{{-- live/ai/ai-history-dialog — previous AI conversations, in the media-dialog
-     modal shell (same scrim classes on purpose: live/media/media-dialog's @once
-     script wires every `.hb-mediadialog__scrim` with hbOpen()/hbClose(), Escape,
-     backdrop-close and the focus trap — this dialog inherits all of it for free,
-     exactly like live/revisions-dialog does).
-
-     Opened by the AI panel header's [data-hb-ai-history-open]. URLs and the
-     current post id are read off the panel root's own dataset at open time
-     rather than plumbed through as props — the panel is the single source of
-     truth for both. "Open" hands the chosen id back to the panel via a
-     document-level hb:ai-open-conversation event; the panel does the restoring
-     (transcript AND model context).
-
-     Deletion is two-step by design: the Delete button arms into a danger
-     "Confirm" state instead of firing — nothing here is silently destructive. --}}
 @once
 <style>
     .hb-aihistdialog { width: 480px; height: 520px; }
@@ -44,7 +29,6 @@
     }
     .hb-aihistdialog__open:hover { opacity: .85; }
 
-    {{-- Selection footer: appears only when something is checked. --}}
     .hb-aihistdialog__foot {
         flex: none; display: flex; align-items: center; gap: var(--hb-space-3, 12px);
         padding: 10px var(--hb-space-4, 16px);
@@ -144,8 +128,6 @@
                             scrim.hbClose ? scrim.hbClose() : (scrim.hidden = true);
                         };
                         open.addEventListener('click', (event) => { event.stopPropagation(); openIt(); });
-                        // Row click toggles the checkbox — selection is the
-                        // dialog's primary gesture; opening is the button's.
                         row.addEventListener('click', () => { check.checked = !check.checked; check.dispatchEvent(new Event('change')); });
 
                         row.append(check, meta, open);
@@ -167,7 +149,6 @@
                         .catch(() => showEmpty(msg('msgError')));
                 };
 
-                // Two-step delete: first click arms, second click fires.
                 del.addEventListener('click', () => {
                     if (!selected.size) return;
                     if (!del.classList.contains('is-armed')) {

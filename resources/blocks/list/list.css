@@ -1,8 +1,3 @@
-/* No border/effects here: list declares neither supports.border nor supports.effects, so
-   SupportsStyle's `[data-block-id].hb-supports` rule reads those vars as unset and leaves
-   `border-*`/`box-shadow` at their inert fallbacks — nothing in this file needs to account
-   for them. (NB: never write a literal star-slash sequence inside this comment — it
-   terminates it early and the CSS parser then swallows the entire base rule below.) */
 .hb-block-list {
     display: block;
     transition: color 140ms ease, background-color 140ms ease;
@@ -29,16 +24,8 @@
 }
 
 .hb-block-list__item {
-    /* One REAL <li> per line since 2026-08-08: the `text-lines` template node splits the
-       newline-delimited content attribute into per-item markup (server and canvas in
-       lockstep), so markers/numbering come from the list itself — no white-space tricks. */
 }
 
-/* Exactly one of the ul/ol siblings is shown at a time — the `ordered` toggle drives which
-   via the root's `hb-list--ordered` class. `display: none` (never `visibility: hidden`) on
-   the inactive one: it must not reserve layout space, and its content must not be
-   focusable/selectable — visibility:hidden would still occupy a text-flow box and could
-   still be tabbed into. */
 .hb-block-list__ol {
     display: none;
 }
@@ -51,16 +38,10 @@
     display: block;
 }
 
-/* Checkmark style overrides the unordered marker only (per the `style` control's intent —
-   a checklist reads as unordered). `::marker` content override has solid support in current
-   evergreen engines (Chrome/Edge 86+, Firefox 68+, Safari 15+); engines that don't support a
-   custom `content` on `::marker` simply keep the default disc bullet, a harmless fallback. */
 .hb-block-list.hb-list--check .hb-block-list__ul .hb-block-list__item::marker {
     content: "\2713  ";
 }
 
-/* Device visibility — six breakpoint bands (Bootstrap-style ranges).
-   Published output hides the block for every enabled band. */
 @media (max-width: 575.98px) { .hb-block-list.hb-hide-xs { display: none; } }
 @media (min-width: 576px) and (max-width: 767.98px) { .hb-block-list.hb-hide-sm { display: none; } }
 @media (min-width: 768px) and (max-width: 991.98px) { .hb-block-list.hb-hide-md { display: none; } }

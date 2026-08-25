@@ -40,8 +40,6 @@ class CategoryControllerTest extends TestCase
         $this->withoutMiddleware(\Illuminate\Foundation\Http\Middleware\ValidateCsrfToken::class);
     }
 
-    // ── CRUD round trip ──────────────────────────────────────────────────
-
     public function test_store_then_index_then_update_then_destroy_round_trips(): void
     {
         $store = $this->postJson('/editor/categories', ['name_en' => 'Essays']);
@@ -70,8 +68,6 @@ class CategoryControllerTest extends TestCase
         $this->assertArrayHasKey('name_en', $response->json('errors'));
     }
 
-    // ── slug collision handling through the API ─────────────────────────
-
     public function test_a_colliding_name_gets_a_deduplicated_slug_through_the_api(): void
     {
         $first = $this->postJson('/editor/categories', ['name_en' => 'Design']);
@@ -82,8 +78,6 @@ class CategoryControllerTest extends TestCase
         $this->assertSame('design', $first->json('category.slug'));
         $this->assertSame('design-2', $second->json('category.slug'));
     }
-
-    // ── cycle prevention ─────────────────────────────────────────────────
 
     public function test_a_category_cannot_be_assigned_as_its_own_parent(): void
     {
@@ -115,8 +109,6 @@ class CategoryControllerTest extends TestCase
 
         $this->assertNull($child->fresh()->parent_id);
     }
-
-    // ── authorization denied for an unauthorized actor ──────────────────
 
     public function test_update_and_delete_are_denied_for_an_authors_tier_actor(): void
     {

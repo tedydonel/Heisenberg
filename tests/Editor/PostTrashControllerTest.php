@@ -30,8 +30,6 @@ class PostTrashControllerTest extends TestCase
         $this->withoutMiddleware(\Illuminate\Foundation\Http\Middleware\ValidateCsrfToken::class);
     }
 
-    // ── trash ─────────────────────────────────────────────────────────────
-
     public function test_trashing_a_post_soft_deletes_it_and_returns_the_deleted_at_timestamp(): void
     {
         $post = Post::create(['title_en' => 'X', 'status' => 'draft']);
@@ -74,8 +72,6 @@ class PostTrashControllerTest extends TestCase
         $this->deleteJson("/editor/posts/{$post->id}")->assertNotFound();
     }
 
-    // ── restore ───────────────────────────────────────────────────────────
-
     public function test_restoring_a_trashed_post_brings_it_and_its_blocks_and_revisions_back(): void
     {
         $post = Post::create(['title_en' => 'X', 'status' => 'draft']);
@@ -108,8 +104,6 @@ class PostTrashControllerTest extends TestCase
         $this->assertFalse($post->fresh()->trashed());
     }
 
-    // ── trashed listing ──────────────────────────────────────────────────
-
     public function test_trashed_listing_returns_only_trashed_posts_with_the_documented_fields(): void
     {
         $active = Post::create(['title_en' => 'Active', 'status' => 'draft']);
@@ -139,8 +133,6 @@ class PostTrashControllerTest extends TestCase
         $response->assertOk();
         $this->assertSame([], $response->json('posts'));
     }
-
-    // ── authorization denied for a non-admin actor ───────────────────────
 
     public function test_trash_restore_and_trashed_listing_are_denied_for_a_non_admin_actor(): void
     {

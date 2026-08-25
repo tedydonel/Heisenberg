@@ -1,37 +1,3 @@
-/* heisenberg/column — one vertical cell inside heisenberg/columns.
-
-   `flex: 1 1 var(--hb-column-w, 0)` + `min-width: 0` is the flex-ITEM half of the contract:
-   equal shares of the row by default, an explicit Width via the basis/cap composition (see
-   the rule's own comment), and a min-width that lets long content shrink instead of forcing
-   the row wider (the flex default `min-width: auto` is what makes columns overflow). Those
-   are item properties, so no capability rule competes for them and the base rule is enough.
-
-   `display: flex` comes from the shared capability sheet
-   (SupportsStyle::flexLayoutRule, `[data-block-id].hb-supports.hb-flex-layout`), which this
-   contract opts into via `hb-flex-layout` in style.className.
-
-   SPECIFICITY: that capability rule is (0,3,0) and pins flex-direction, gap and padding from
-   generic vars — including a `flex-direction` that defaults to `row`, which is exactly wrong
-   for a column. A plain `.hb-block-column` rule is (0,1,0) and would lose. The container rule
-   therefore repeats the capability selector plus this block's own root class, making it
-   (0,4,0) — it wins by specificity, never by stylesheet order.
-
-   Border/radius are SUPPORTED (Stroke + Appearance's corner fields) and are declared nowhere
-   in this file on purpose. The capability sheet already owns every one of those properties —
-   `border-<side>-<width|style|color>` and the four `border-<corner>-radius` longhands, each
-   read from a generic var with an inert fallback (SupportsStyle::baseCapabilitiesRule) — and
-   the contract feeds them through style.variables. Repeating any of them here would be a
-   second owner for one property, and would additionally have to be written the long way: that
-   rule is (0,2,0), so a plain `.hb-block-column` border declaration (0,1,0) would lose and
-   read as a dead control. `box-sizing: border-box` below is what keeps a stroke from growing
-   the cell — a column is a flex item sharing a row. (NB: never write a literal star-slash
-   sequence inside a comment — it terminates it early and the CSS parser then swallows the
-   rule that follows.) */
-/* Inheritance guard: custom properties inherit, and a column may contain another
-   block that reads the same names — without re-declaring them here a NESTED
-   container would paint its parent's background, padding and size. `initial` makes
-   each var unset on this element, so the var() fallbacks below apply; this block's
-   own inline style (set by the renderer) still wins for the element that has one. */
 .hb-block-column {
     --hb-column-bg: initial;
     --hb-column-w: initial;
@@ -45,17 +11,6 @@
     --hb-column-pb: initial;
     --hb-column-pl: initial;
     box-sizing: border-box;
-    /* A column is a flex ITEM sharing a row, so an explicit Width must be expressed in flex
-       terms, not a bare `width` (flex-grow would redistribute right past it). The set width
-       becomes the flex-basis AND the max-width cap: with spare row space the cell sits at
-       exactly that width (grow is capped), and when the row overflows it shrinks like any
-       other cell instead of forcing the row wider. Unset, the basis falls back to 0 and the
-       cap to `none` — the original equal-shares behavior, untouched. An explicit Max Width
-       still wins over the width-derived cap. */
-    /* flex-basis: auto (not 0) so columns in column-direction flex containers collapse
-       correctly when only one column has content — flex: 1 1 0 made the empty column
-       0px tall because the container has auto height and flex-grow can't distribute
-       extra space when there isn't any. */
     flex: 1 1 var(--hb-column-w, auto);
     height: var(--hb-column-h, auto);
     transition: color 140ms ease, background-color 140ms ease, box-shadow 140ms ease, transform 140ms ease;
@@ -67,15 +22,6 @@
     max-height: var(--hb-column-maxh, none);
 }
 
-/* Direction comes from --hb-flex-direction (the variable SupportsStyle writes from the
-   inspector's Flex Layout segmented — wrap/column/row). The capability rule would default
-   it to row; we override here so the contract wins. A column's children can now stack
-   vertically (column) or lay out side-by-side (row) per the inspector choice.
-
-   Padding composes the two affordances that both target it: a per-side Padding value
-   (spacing.padding.<side>) wins, falling back to the Flex Layout padding
-   (layout.padding), falling back to none. Without this composition the capability rule's flat
-   `padding: var(--hb-flex-padding, 0)` would silently overwrite every per-side value. */
 [data-block-id].hb-supports.hb-flex-layout.hb-block-column {
     flex-direction: var(--hb-flex-direction, column);
     gap: var(--hb-flex-gap, 8px);
@@ -86,10 +32,6 @@
         var(--hb-column-pl, var(--hb-flex-padding, 0));
 }
 
-/* Device visibility — six breakpoint bands (Bootstrap-style ranges). Published output hides
-   the block for every enabled band. Written at (0,4,0) for the same reason as the container
-   rule: the capability sheet sets `display: flex` at (0,3,0), and a plain
-   `.hb-block-column.hb-hide-xs` (0,2,0) would lose to it, leaving the column visible. */
 @media (max-width: 575.98px) { [data-block-id].hb-supports.hb-block-column.hb-hide-xs { display: none; } }
 @media (min-width: 576px) and (max-width: 767.98px) { [data-block-id].hb-supports.hb-block-column.hb-hide-sm { display: none; } }
 @media (min-width: 768px) and (max-width: 991.98px) { [data-block-id].hb-supports.hb-block-column.hb-hide-md { display: none; } }

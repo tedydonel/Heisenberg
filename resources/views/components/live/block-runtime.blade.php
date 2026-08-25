@@ -1,70 +1,19 @@
-{{-- live/block-runtime — the editor's block model. Feeds on the live registry (client block
-     contracts) the controller passes in, and brings the canvas to life: insert → render → select →
-     edit, plus a public runtime API other editor components build against.
 
-     A tiny document model + a render.template walk that mirrors the PHP BlockRenderer
-     (element / text / rich-text nodes, {{token}} substitution, dynamic-tag allow-list,
-     style-variable resolution, the same cssValueValid grammars). Each block renders into a `.hb-blk`
-     wrapper carrying data-block / data-block-name (so the Navigator lists it) and, for headings,
-     data-level (so the Outline nests it). Selecting a block docks the floating toolbar above it,
-     gated by the block's own `supports`, and points the inspector's Block tab at it. Every block
-     model carries a `schemaVersion` (copied from the contract's `version`), matching what
-     BlocksPayloadService will require of a save payload.
 
-     Insertion: the Components panel cards (data-hb-insert-block) add structured blocks; the canvas
-     + appender adds a paragraph, the default text block. Both call one insertBlock().
-
-     Public API — `window.hbEditor` (see the object literal at the bottom of the IIFE for the
-     authoritative shape): getDoc/getSelectedId/getModel/getContract/indexOf, insertBlock (now
-     index-aware), setAttribute (writes an attribute, re-renders that block in place, fires
-     hb:block-updated), moveBlock, removeBlock, selectById, reRenderBlock. Integration events on
-     `document`: hb:block-selected / hb:block-deselected (detail carries the model + contract),
-     hb:block-updated (setAttribute), hb:blocks-changed (insert/remove/move/rich-text edit — the
-     Navigator listens for it), and hb:pick-image (cancelable, fired by the image block's empty-state
-     placeholder — no consumer is wired yet; the media dialog will own it). setAttribute/
-     reRenderBlock preserve rich-text caret position across the re-render (capture the offset within
-     the focused `.hb-ce`, rebuild, restore by walking text nodes).
-
-     Drag & drop (Pointer Events + setPointerCapture — no HTML5 DnD, which fights contenteditable):
-     two gestures here, both committed through moveBlock/insertBlock so the model stays authoritative.
-     (1) Canvas reorder starts ONLY from the docked block toolbar's drag handle (.hb-tb__btn--drag) —
-     never from a mousedown on the block or its .hb-ce regions — so normal text selection and caret
-     placement inside rich text are never at risk. The dragged block dims in place (.is-dragging);
-     .is-drop-before/.is-drop-after render the flat insertion line (see 35-blocks.css); the canvas
-     auto-scrolls near its top/bottom edge while a drag is active. (2) Palette → canvas: a
-     [data-hb-insert-block] card can be dragged onto the canvas (a small ghost chip follows the
-     pointer) to insertBlock(name, atIndex) at the drop position; a plain click still appends via the
-     existing click handler, unchanged (a `__hbDragSuppressClick` flag only guards the rare case where
-     a real drag is released back over the source card, since pointer capture retargets the paired
-     mouseup — and so the click — there). See wireCanvasBlockDrag/wirePaletteDrag below. The
-     Navigator's own List View drag (its `.grab` grip) is self-contained in panel-navigator.blade.php
-     and commits through this same moveBlock, so canvas and Navigator can never disagree about order.
-
-     Nesting (2026-08-06): container children render inside display:contents .hb-blk--nested
-     wrappers — selectable, editable, movable via moveById, inserted via the in-container
-     appender or by inserting while a container is selected. Undo/redo history lives here too
-     (snapshot-based; see the history block). --}}
 @props(['registry' => [], 'blocksCss' => '', 'registryHash' => '', 'postId' => null, 'postLocale' => 'en', 'contentLocales' => ['en', 'fr']])
 
-{{-- Each block is styled by its own contract stylesheet (resources/blocks/<slug>/<slug>.css),
-     concatenated server-side and embedded here so a block stays self-contained. --}}
+
+
 <style id="hb-blocks-css">{!! $blocksCss !!}</style>
 
 <script>
     window.__hbEditor = Object.assign(window.__hbEditor || {}, {
         registry: @json($registry),
-        // Required on every save payload — BlocksPayloadService rejects a payload whose hash
-        // no longer matches the live contracts (stale-schema detection), so the client must
-        // send back the hash the page was rendered against.
+
         registryHash: @json($registryHash),
-        // Where the canvas fetches a block-library icon's sanitized SVG from (the same asset
-        // the published page inlines server-side) — see the runtime's `icon` node branch.
+
         iconUrlTemplate: @json(\Illuminate\Support\Facades\Route::has('heisenberg.editor.asset.icon') ? route('heisenberg.editor.asset.icon', ['set' => '__SET__', 'slug' => '__SLUG__']) : ''),
-        // The single-row translation model (docs/content-translation.md §0/Wave 2): which locale
-        // this document's bare/unsuffixed block attributes belong to (never changes for this
-        // document's lifetime), the locales this install supports, and the saved post's own id
-        // (null for a never-saved document) — the key a persisted editing-locale choice is
-        // remembered under. See the editingLocale block below.
+
         postId: @json($postId),
         postLocale: @json($postLocale),
         contentLocales: @json($contentLocales),
@@ -77,50 +26,35 @@
     const DATA = window.__hbEditor || {};
     const REGISTRY = DATA.registry || {};
 
-    // ── editing locale (docs/content-translation.md §0/Wave 2) ──
-    // The locale a save without an explicit switch reads/writes BARE keys for — the post's own
-    // `locale` column, fixed for this document's lifetime (switching editingLocale never moves
-    // this). `editingLocale` is the locale every translatable read/write currently targets;
-    // it starts at homeLocale and is corrected from a persisted per-post choice below, all
-    // BEFORE the initial hydrate/render further down this file, so the first paint is already
-    // correct — no locale-flash to fix up afterwards.
     const homeLocale = DATA.postLocale || 'en';
     const CONTENT_LOCALES = Array.isArray(DATA.contentLocales) && DATA.contentLocales.length ? DATA.contentLocales : [homeLocale];
     let editingLocale = homeLocale;
     let currentPostId = DATA.postId != null ? DATA.postId : null;
     const localeStorageKey = () => 'hb-editor:editing-locale:' + (currentPostId != null ? currentPostId : 'new');
-    const persistEditingLocale = (locale) => { try { localStorage.setItem(localeStorageKey(), locale); } catch (e) { /* private mode */ } };
+    const persistEditingLocale = (locale) => { try { localStorage.setItem(localeStorageKey(), locale); } catch (e) {  } };
     (function initEditingLocale() {
         try {
             const stored = localStorage.getItem(localeStorageKey());
             if (stored && CONTENT_LOCALES.indexOf(stored) !== -1) editingLocale = stored;
-        } catch (e) { /* private mode */ }
+        } catch (e) {  }
     })();
-    // A never-saved document adopts a real id on its first save (topbar.blade.php's hb:post-id) —
-    // re-key so a later reload of THIS post restores the choice just made.
+
     document.addEventListener('hb:post-id', function (event) {
         currentPostId = event && event.detail ? event.detail.id : currentPostId;
         persistEditingLocale(editingLocale);
     });
 
-    // Which of a block's own attributes carry human-language text — BlockRegistryService::
-    // translatableAttributes(), riding along on each contract (BlockViewData::clientBlocks()).
+
     function translatableKeys(name) {
         const c = REGISTRY[name];
         return c && Array.isArray(c.translatableAttributes) ? c.translatableAttributes : [];
     }
     function isTranslatableAttr(name, key) { return translatableKeys(name).indexOf(key) !== -1; }
-    // The key a WRITE to `key` on a block named `name` lands on, for the CURRENT editingLocale.
-    // Mirrors Heisenberg\Support\LocalizedAttributes::write() with one addition: editing the
-    // post's own HOME locale keeps writing the bare key — that is what a read() falls back to
-    // and what every existing (pre-translation) post already stores, so authoring in a post's
-    // native language never forks its content into a `_<homeLocale>` variant nothing else reads.
+
     function resolveAttrKey(name, key) {
         return (isTranslatableAttr(name, key) && editingLocale !== homeLocale) ? key + '_' + editingLocale : key;
     }
-    // The key a READ of `key` on `model` resolves to, for the CURRENT editingLocale — mirrors
-    // LocalizedAttributes::read() exactly: `key_<editingLocale>` when the block actually carries
-    // that variant, else the bare key (which IS the home locale's own content).
+
     function readAttrKey(model, key) {
         if (isTranslatableAttr(model.name, key)) {
             const suffixed = key + '_' + editingLocale;
@@ -130,10 +64,9 @@
     }
     function readAttr(model, key) { return (model.attributes || {})[readAttrKey(model, key)]; }
 
-    // ── document model ─────────────────────────────────────────
     const doc = { blocks: [] };
     let blockSeq = 0;
-    let selected = null; // the selected .hb-blk element (not the model)
+    let selected = null;
 
     const wrapEl = () => document.querySelector('.hb-page__blocks');
     const appenderEl = () => document.querySelector('.hb-appender');
@@ -151,8 +84,7 @@
     }
     function findModel(id) { return findModelIn(doc.blocks, id); }
 
-    // Where a block lives: its siblings array, its index there, and the owning parent
-    // model (null at top level). The nesting-aware counterpart of indexOf().
+
     function locateBlock(id, list, parent) {
         const blocks = list || doc.blocks;
         for (let i = 0; i < blocks.length; i++) {
@@ -175,8 +107,7 @@
             id: 'hb' + (++blockSeq), name: name, schemaVersion: c.version == null ? null : c.version,
             attributes: attrs, supports: {}, innerBlocks: [],
         };
-        // Seed the contract's innerBlocks.template ([name, attributes?] entries) — how a
-        // fresh `columns` arrives already holding its two columns.
+
         const seed = c.innerBlocks && Array.isArray(c.innerBlocks.template) ? c.innerBlocks.template : [];
         if ((depth || 0) < MAX_NESTING_DEPTH) {
             seed.forEach(function (entry) {
@@ -192,7 +123,6 @@
         return model;
     }
 
-    // ── pure helpers (ported 1:1 from the builder render engine) ─
     function truthy(v) { return v !== '' && v !== 'false' && v !== '0'; }
     function dataGet(value, path) {
         const parts = String(path || '').split('.');
@@ -228,8 +158,7 @@
         if (dynamic && !DYN_TAGS[tag]) return 'div';
         return tag;
     }
-    // Lockstep with BlockRenderer::ALPHA_VALUE — the picker emits three-decimal alpha
-    // (rgba(208,64,64,1.000)), so anything narrower rejects this editor's own output.
+
     const HB_ALPHA = '(?:0|1|0?\\.\\d+|1\\.0+|(?:100|\\d{1,2})(?:\\.\\d+)?%)';
     function isSafeColorToken(value) {
         return /^var\(--(?:accent-[a-z0-9-]+|ink|faint|paper)\)$/.test(value)
@@ -238,8 +167,7 @@
             || new RegExp('^hsla?\\(\\s*(360|3[0-5]\\d|[12]?\\d?\\d)\\s*,\\s*(100|\\d?\\d)%\\s*,\\s*(100|\\d?\\d)%(\\s*,\\s*' + HB_ALPHA + ')?\\s*\\)$', 'i').test(value);
     }
     function isSafeLengthSignedValue(value) { return /^(0|-?\d+(\.\d+)?(px|rem|em|%|vw|vh))$/i.test(value); }
-    // Lockstep with BlockRenderer::isSafeGradientValue() — same grammar, same rejections
-    // (no repeating- forms, every stop colour re-validated through isSafeColorToken()).
+
     const GRADIENT_POSITION = '-?\\d+(?:\\.\\d+)?(?:%|px|rem|em|vw|vh)';
     function isSafeLinearPreamble(part) {
         part = part.trim();
@@ -273,7 +201,7 @@
         if (parts.length < 2) return false;
         return parts.every(isSafeGradientStop);
     }
-    // Split on a delimiter only at paren-depth 0, keeping rgba(0, 0, 0, .2) etc. intact.
+
     function splitTopLevel(value, delimiter) {
         const parts = []; let current = ''; let depth = 0;
         const s = String(value);
@@ -308,9 +236,7 @@
         if (!layers.length) return false;
         return layers.every(isSafeShadowLayer);
     }
-    // A bare number carries no CSS unit and would fail its sanitizer; resolve the implied
-    // unit (px for lengths, deg for angles, % for 0-100 opacity). Lockstep with
-    // BlockRenderer::normalizeCssNumber().
+
     function normalizeCssNumber(value, sanitizer) {
         if (!/^-?\d+(\.\d+)?$/.test(value)) return value;
         if (sanitizer === 'size-value' || sanitizer === 'length-signed') return value + 'px';
@@ -318,8 +244,7 @@
         if (sanitizer === 'opacity' && Number(value) > 1) return value + '%';
         return value;
     }
-    // Lockstep with BlockRenderer::cssValueValid() — every sanitizer kind gets its own explicit
-    // branch; the permissive fallback is only for legacy free-text kinds.
+
     function cssValueValid(value, sanitizer) {
         if (!value) return false;
         if (sanitizer === 'color-token') return isSafeColorToken(value);
@@ -353,15 +278,10 @@
         if (sanitizer === 'overflow') return ['visible', 'hidden', 'clip'].indexOf(value) >= 0;
         return /^[a-z0-9\s().,%_\/-]+$/i.test(value);
     }
-    // Which interaction state the canvas is forcing, per block id. Set by previewState() when the
-    // inspector's State tab changes; `default` (or absent) means the base values. This mirrors
-    // BlockRenderer::stateStylesCss()'s `.hb-state-preview-<state>` hook, which exists precisely
-    // so an editor can force a state's look while it is being edited.
+
     const previewStates = {};
 
-    // Library-icon SVGs by "<set>/<slug>" — '' means fetched-and-rejected (or 404), a string is
-    // the markup, absence means never requested. One in-flight fetch per reference; on arrival
-    // EVERY span carrying the reference fills in, so duplicated icons cost one request.
+
     const iconCache = {};
     const iconPending = {};
     function injectLibraryIcon(el, reference) {
@@ -369,7 +289,7 @@
             if (iconCache[reference]) el.innerHTML = iconCache[reference];
             return;
         }
-        if (iconPending[reference]) return; // the resolve pass below fills this span too
+        if (iconPending[reference]) return;
         const template = DATA.iconUrlTemplate || '';
         if (!template) return;
         iconPending[reference] = true;
@@ -377,8 +297,8 @@
         window.fetch(template.replace('__SET__', parts[0]).replace('__SLUG__', parts[1]), { credentials: 'same-origin' })
             .then((r) => (r.ok ? r.text() : ''))
             .then((svg) => {
-                // The asset is same-origin and sanitized at import — reject anything scripty
-                // anyway so a misconfigured route can never execute in the canvas.
+
+
                 iconCache[reference] = (svg && svg.indexOf('<script') === -1) ? svg : '';
                 delete iconPending[reference];
                 if (!iconCache[reference]) return;
@@ -393,9 +313,7 @@
         const variables = contract && contract.style && contract.style.variables;
         if (!variables || typeof variables !== 'object') return '';
         const state = previewStates[model.id];
-        // Only supports-sourced variables can be overridden per state — the same rule
-        // stateDeclarations() enforces server-side, so the canvas cannot preview something the
-        // renderer would refuse to emit.
+
         const overrides = state && state !== 'default'
             ? dataGet(model.supports || {}, 'states.' + state)
             : null;
@@ -417,13 +335,8 @@
             const fallback = normalizeCssNumber(definition.default == null ? '' : String(definition.default).trim(), sanitizer);
             const safe = cssValueValid(value, sanitizer) ? value : (cssValueValid(fallback, sanitizer) ? fallback : '');
             if (safe) {
-                // font-family values are token streams — an unquoted multi-word family like
-                // "Press Start 2P" parses as a sequence of idents, but the font-family parser
-                // only treats the first one as the family and discards the rest, so the font
-                // silently falls back. Wrap any value with whitespace that isn't already quoted
-                // so the font-family parser sees a single string token. Same fix as
-                // BlockRenderer::blockStyleDeclarations — both emission paths must agree, since
-                // the editor canvas uses the JS one and the published page uses the PHP one.
+
+
                 let finalSafe = safe;
                 if (sanitizer === 'font-family' && finalSafe.length > 0
                     && finalSafe[0] !== '"' && finalSafe[0] !== "'"
@@ -455,14 +368,12 @@
         return !scheme || /^(https?|mailto|tel)$/i.test(scheme[1]) ? url : '';
     }
 
-    // LOCKSTEP with BlockRenderer::embedSrcFor()/embedFileSrcFor() — same rules in the same
-    // order, same normalization, same fail-closed ''. The canvas must preview exactly what
-    // the published page renders; a divergence means the editor lies about what embeds.
-    // The two final gates below mirror EMBED_SRC_PATTERN / EMBED_FILE_SRC_PATTERN.
+
     const EMBED_SRC_PATTERN = /^https:\/\/(?:www\.youtube(?:-nocookie)?\.com\/embed\/|player\.vimeo\.com\/video\/|www\.dailymotion\.com\/embed\/video\/|www\.loom\.com\/embed\/|fast\.wistia\.net\/embed\/iframe\/|streamable\.com\/e\/|www\.tiktok\.com\/embed\/v2\/|customer-[a-z0-9]{1,40}\.cloudflarestream\.com\/)[A-Za-z0-9_/?=&.-]+$/;
     const EMBED_FILE_SRC_PATTERN = /^https:\/\/[A-Za-z0-9](?:[A-Za-z0-9.-]{0,251}[A-Za-z0-9])?(?::[0-9]{1,5})?\/[A-Za-z0-9._~%!$&()*+,;=:/-]*\.(?:mp4|webm|ogg|ogv|mov)(?:\?[A-Za-z0-9._~%!$&()*+,;=:/?-]*)?(?:#[A-Za-z0-9._~%!$&()*+,;=:/?-]*)?$/i;
     const EMBED_RULES = [
-        // YouTube — watch / shorts / live / v / embed / youtu.be, on www, m and music.
+
+
         { re: /^(?:(?:https?:)?\/\/)?(?:www\.|m\.|music\.)?youtube\.com\/watch\?(?:[^#]*&)?v=([A-Za-z0-9_-]{5,20})(?:[&#].*)?$/i, out: 'yt' },
         { re: /^(?:(?:https?:)?\/\/)?(?:www\.|m\.|music\.)?youtube\.com\/shorts\/([A-Za-z0-9_-]{5,20})(?:[/?#].*)?$/i, out: 'yt' },
         { re: /^(?:(?:https?:)?\/\/)?(?:www\.|m\.|music\.)?youtube\.com\/live\/([A-Za-z0-9_-]{5,20})(?:[/?#].*)?$/i, out: 'yt' },
@@ -470,39 +381,45 @@
         { re: /^(?:(?:https?:)?\/\/)?(?:www\.|m\.|music\.)?youtube(?:-nocookie)?\.com\/embed\/([A-Za-z0-9_-]{5,20})(?:[/?#].*)?$/i, out: 'yt' },
         { re: /^(?:(?:https?:)?\/\/)?(?:www\.)?youtu\.be\/([A-Za-z0-9_-]{5,20})(?:[/?#].*)?$/i, out: 'yt' },
 
-        // Vimeo — group 2 is the optional privacy hash of an unlisted video.
+
+
         { re: /^(?:(?:https?:)?\/\/)?(?:www\.)?vimeo\.com\/([0-9]{1,15})(?:\/([A-Za-z0-9]{6,32}))?(?:[/?#].*)?$/i, out: 'vimeo' },
         { re: /^(?:(?:https?:)?\/\/)?player\.vimeo\.com\/video\/([0-9]{1,15})(?:[/?#].*)?$/i, out: 'vimeo' },
         { re: /^(?:(?:https?:)?\/\/)?(?:www\.)?vimeo\.com\/channels\/[A-Za-z0-9_-]{1,64}\/([0-9]{1,15})(?:[/?#].*)?$/i, out: 'vimeo' },
         { re: /^(?:(?:https?:)?\/\/)?(?:www\.)?vimeo\.com\/groups\/[A-Za-z0-9_-]{1,64}\/videos\/([0-9]{1,15})(?:[/?#].*)?$/i, out: 'vimeo' },
         { re: /^(?:(?:https?:)?\/\/)?(?:www\.)?vimeo\.com\/showcase\/[0-9]{1,15}\/video\/([0-9]{1,15})(?:[/?#].*)?$/i, out: 'vimeo' },
 
-        // Dailymotion — the id runs to the first `_` of the SEO slug.
+
+
         { re: /^(?:(?:https?:)?\/\/)?(?:www\.)?dailymotion\.com\/video\/([A-Za-z0-9]{5,20})(?:[_/?#].*)?$/i, out: 'dm' },
         { re: /^(?:(?:https?:)?\/\/)?(?:www\.)?dailymotion\.com\/embed\/video\/([A-Za-z0-9]{5,20})(?:[_/?#].*)?$/i, out: 'dm' },
         { re: /^(?:(?:https?:)?\/\/)?dai\.ly\/([A-Za-z0-9]{5,20})(?:[_/?#].*)?$/i, out: 'dm' },
 
-        // Loom.
+
+
         { re: /^(?:(?:https?:)?\/\/)?(?:www\.)?loom\.com\/share\/([A-Za-z0-9]{16,64})(?:[/?#].*)?$/i, out: 'loom' },
         { re: /^(?:(?:https?:)?\/\/)?(?:www\.)?loom\.com\/embed\/([A-Za-z0-9]{16,64})(?:[/?#].*)?$/i, out: 'loom' },
 
-        // Wistia — one bounded subdomain label only (no dot in the class).
+
+
         { re: /^(?:(?:https?:)?\/\/)?(?:[A-Za-z0-9-]{1,63}\.)?wistia\.com\/medias\/([A-Za-z0-9]{6,20})(?:[/?#].*)?$/i, out: 'wistia' },
         { re: /^(?:(?:https?:)?\/\/)?(?:[A-Za-z0-9-]{1,63}\.)?wistia\.net\/(?:medias|embed\/iframe)\/([A-Za-z0-9]{6,20})(?:[/?#].*)?$/i, out: 'wistia' },
         { re: /^(?:(?:https?:)?\/\/)?wi\.st\/medias\/([A-Za-z0-9]{6,20})(?:[/?#].*)?$/i, out: 'wistia' },
 
-        // Streamable.
+
+
         { re: /^(?:(?:https?:)?\/\/)?(?:www\.)?streamable\.com\/(?:e\/)?([A-Za-z0-9]{3,12})(?:[/?#].*)?$/i, out: 'streamable' },
 
-        // TikTok — the numeric video id, never the @handle.
+
+
         { re: /^(?:(?:https?:)?\/\/)?(?:www\.|m\.)?tiktok\.com\/@[A-Za-z0-9._-]{1,30}\/video\/([0-9]{5,25})(?:[/?#].*)?$/i, out: 'tiktok' },
         { re: /^(?:(?:https?:)?\/\/)?(?:www\.)?tiktok\.com\/embed\/v2\/([0-9]{5,25})(?:[/?#].*)?$/i, out: 'tiktok' },
 
-        // Cloudflare Stream — group 1 the customer subdomain, group 2 the video uid.
+
+
         { re: /^(?:(?:https?:)?\/\/)?customer-([A-Za-z0-9]{1,40})\.cloudflarestream\.com\/([A-Za-z0-9]{8,64})\/(?:watch|iframe)(?:[/?#].*)?$/i, out: 'cfstream' },
     ];
-    // A pasted start offset in whole seconds (`t=`/`start=`, as 90 | 90s | 1m30s | 1h2m3s).
-    // Captured loosely, validated strictly: only an int ever reaches the built src.
+
     function embedStartSeconds(url) {
         const m = /[?&#](?:t|start)=([A-Za-z0-9]{1,16})/i.exec(url);
         if (!m) return 0;
@@ -516,14 +433,14 @@
         }
         return (seconds > 0 && seconds <= 86400) ? seconds : 0;
     }
-    // The Vimeo privacy hash carried in the query rather than the path.
+
+
     function vimeoQueryHash(url) {
         const m = /[?&]h=([A-Za-z0-9]{6,32})(?:[&#]|$)/i.exec(url);
         return m ? m[1] : '';
     }
     function embedClean(url) {
-        // Browsers strip C0 controls + DEL while resolving URLs — match that, or a URL the
-        // browser happily loads would be rejected here.
+
         return String(url == null ? '' : url).trim().replace(/[\x00-\x1F\x7F]+/g, '').trim();
     }
     function embedSrcFor(url) {
@@ -548,9 +465,7 @@
         }
         return EMBED_SRC_PATTERN.test(src) ? src : '';
     }
-    // A SELF-HOSTED video file is a media element, not an iframe. Nothing is normalized:
-    // a media URL is opaque (signed CDN links carry required query params), so this is a
-    // pure allow-list decision.
+
     function embedFileSrcFor(url) {
         const clean = embedClean(url);
         return clean !== '' && EMBED_FILE_SRC_PATTERN.test(clean) ? clean : '';
@@ -561,9 +476,6 @@
         return values.filter((value, index) => ['left', 'center', 'right'].indexOf(value) >= 0 && values.indexOf(value) === index);
     }
 
-    // ── the template walk ──────────────────────────────────────
-    // Depth cap in LOCKSTEP with BlockRenderer::MAX_NESTING_DEPTH — the canvas and the
-    // published page must drop the same over-deep subtrees.
     const MAX_NESTING_DEPTH = 20;
     function renderNode(node, model, contract, isRoot, depth) {
         depth = depth || 0;
@@ -578,8 +490,7 @@
             const span = document.createElement('span');
             if (node.class) span.className = subst(node.class, model);
             const val = readAttr(model, node.attribute);
-            // Editable at EVERY depth: a nested child renders inside its own .hb-blk--nested
-            // wrapper, so closest('.hb-blk[data-block]') resolves to the CHILD's model.
+
             span.classList.add('hb-ce');
             span.setAttribute('contenteditable', 'true');
             span.spellcheck = true;
@@ -589,11 +500,7 @@
             return span;
         }
 
-        // icon: LOCKSTEP with BlockRenderer's branch of the same name — a "<set>/<slug>"
-        // reference from a plain attribute becomes the library SVG. The canvas fetch-injects
-        // the SAME sanitized asset the published page inlines server-side (cached per
-        // reference); an empty/invalid reference renders nothing and the icon block's own
-        // decorator shows a click-to-pick placeholder instead.
+
         if (type === 'icon') {
             const reference = String(model.attributes[node.attribute] == null ? '' : model.attributes[node.attribute]).trim();
             if (!/^[a-z0-9-]+\/[a-z0-9-]+$/.test(reference)) return null;
@@ -604,8 +511,7 @@
             return span;
         }
 
-        // text-lines: LOCKSTEP with BlockRenderer's branch of the same name — one element
-        // per non-empty line of a plain attribute, escaped (textContent), static tag only.
+
         if (type === 'text-lines') {
             const frag = document.createDocumentFragment();
             const raw = readAttr(model, node.attribute);
@@ -623,10 +529,7 @@
             return frag;
         }
 
-        // inner-blocks: each child renders through its OWN contract (same recursion as
-        // BlockRenderer::renderInnerBlocks() on the published page), wrapped in a
-        // display:contents .hb-blk--nested shell so it is selectable/editable while the
-        // container's flex layout still sees the real child root as its item.
+
         if (type === 'inner-blocks') {
             const frag = document.createDocumentFragment();
             const inner = Array.isArray(model.innerBlocks) ? model.innerBlocks : [];
@@ -635,8 +538,8 @@
                 const el = renderBlockEl(inner[i], depth + 1);
                 if (el) frag.appendChild(el);
             }
-            // Editor-only affordance — an empty container shows a click-to-add target.
-            // The published page renders nothing here (canvas chrome, like .hb-appender).
+
+
             if (!inner.length && depth < MAX_NESTING_DEPTH) {
                 const add = document.createElement('button');
                 add.type = 'button';
@@ -652,8 +555,7 @@
         const el = document.createElement(resolveTag(node.tag || 'div', model, contract));
         if (node.class) { const c = subst(node.class, model); if (c) el.className = c; }
         if (isRoot && contract && contract.style) {
-            // style.className carries the capability markers (e.g. hb-supports) that gate the
-            // SupportsStyle stylesheet; BlockRenderer::resolveClass() applies it server-side.
+
             String(contract.style.className || '').split(/\s+/).forEach(function (t) { if (t) el.classList.add(t); });
             const conditional = contract.style.classNames || [];
             for (let ci = 0; ci < conditional.length; ci++) {
@@ -670,15 +572,14 @@
             let raw = attrs[an];
             if (raw && typeof raw === 'object') {
                 if ('boolean' in raw) { if (truthy(subst(raw.boolean, model))) el.setAttribute(an, ''); continue; }
-                // The `embed` attribute-object key (its value is a template expression for
-                // the pasted URL) — normalize to the privacy-enhanced embed form; fail
-                // closed by omitting the attribute entirely.
+
                 if ('embed' in raw) {
                     const src = embedSrcFor(subst(raw.embed, model));
                     if (src !== '') el.setAttribute(an, src);
                     continue;
                 }
-                // Self-hosted media: the same shape for the <video> element's src.
+
+
                 if ('embedFile' in raw) {
                     const file = embedFileSrcFor(subst(raw.embedFile, model));
                     if (file !== '') el.setAttribute(an, file);
@@ -713,9 +614,7 @@
         return wrap;
     }
 
-    // An icon block with no icon picked yet shows a click-to-pick placeholder — the same
-    // affordance (and the same cancelable-event seam) as the image block's: the placeholder
-    // dispatches hb:pick-icon and the icon-picker dialog claims it.
+
     function decorateIconBlock(container, model) {
         if (!container || !model || model.name.indexOf('/icon') === -1) return;
         const reference = model.attributes && model.attributes.icon;
@@ -731,8 +630,7 @@
         (container.querySelector('[data-block-id]') || container).appendChild(ph);
     }
 
-    // Empty image blocks show a click-to-pick placeholder instead of a broken <img>.
-    // (Wiring the media dialog to it is a follow-up — for now it's a visible slot.)
+
     function decorateImageBlock(container, model) {
         if (!container || !model || model.name.indexOf('image') === -1) return;
         const url = model.attributes && model.attributes.url;
@@ -751,7 +649,7 @@
         try {
             const r = document.createRange(); r.selectNodeContents(el); r.collapse(false);
             const s = window.getSelection(); s.removeAllRanges(); s.addRange(r);
-        } catch (e) { /* noop */ }
+        } catch (e) {  }
     }
 
     function findBlockEl(id) {
@@ -759,10 +657,7 @@
         return wrap ? wrap.querySelector('.hb-blk[data-block="' + id + '"]') : null;
     }
 
-    // Save/restore caret position across a full re-render (setAttribute / reRenderBlock rebuild the
-    // block's DOM from scratch, which would otherwise drop focus and reset the cursor to the start).
-    // Captured as a character offset within the focused .hb-ce, keyed by its rich-text attribute name
-    // so it can be relocated after the block is rebuilt.
+
     function captureCaret(blk) {
         const active = document.activeElement;
         if (!active || !blk.contains(active) || !active.classList || !active.classList.contains('hb-ce')) return null;
@@ -797,11 +692,9 @@
             range.collapse(true);
             sel.removeAllRanges();
             sel.addRange(range);
-        } catch (e) { /* noop */ }
+        } catch (e) {  }
     }
 
-    // ── insert ─────────────────────────────────────────────────
-    /** True when `container`'s contract accepts a child of `name`. */
     function containerAllows(containerModel, name) {
         const c = containerModel ? REGISTRY[containerModel.name] : null;
         if (!c || !c.innerBlocks || !c.innerBlocks.enabled) return false;
@@ -809,9 +702,6 @@
         return allowed === '*' || (Array.isArray(allowed) && allowed.indexOf(name) !== -1);
     }
 
-    // atIndex is optional — omitted (or out of range) appends, exactly like before it existed.
-    // With a CONTAINER selected and no explicit index, the new block lands INSIDE it — the
-    // palette and appender read as "add here" while a group/column is active.
     function insertBlock(name, atIndex) {
         const model = newBlockModel(name);
         if (!model) return null;
@@ -855,7 +745,6 @@
         return el;
     }
 
-    // ── selection → toolbar + inspector ────────────────────────
     function templateHasRichText(node) {
         if (!node || typeof node !== 'object') return false;
         if (node.type === 'rich-text') return true;
@@ -864,11 +753,6 @@
         return false;
     }
 
-    // The id of whichever block holds `id` in its innerBlocks, or null when it sits at the top
-    // level. Walks the tree rather than assuming the document is flat: it IS flat today (nothing
-    // nests yet), so this returns null for every block and the select-parent button stays hidden —
-    // which is the correct answer now and stays correct once containers exist, instead of a
-    // hardcoded false that would have to be found and changed later.
     function parentIdOf(id, list, parent) {
         const blocks = list || doc.blocks;
         for (let i = 0; i < blocks.length; i++) {
@@ -890,38 +774,16 @@
         const color = supports.color || {};
         show(tb.querySelector('[data-tb-popover="color"]'), !!(color.text || color.background));
         show(tb.querySelector('[data-tb-popover="align"]'), Array.isArray(supports.align) && supports.align.length > 0);
-        // Select-parent is only meaningful for a block that HAS a parent; save-as-reusable-block
-        // only for a container. Both were rendered unconditionally and inert.
         show(tb.querySelector('[data-tb-action="select-parent"]'), parentIdOf(model.id) !== null);
         show(tb.querySelector('[data-tb-action="save"]'), !!(c.innerBlocks && c.innerBlocks.enabled));
     }
 
-    // The toolbar FOLLOWS the selected block, at whatever depth it sits.
-    //
-    // It used to dock in the DOM, inside the selected block — which a nested child cannot do: its
-    // wrapper is display:contents (flex containers must see the real child root as their item) and
-    // so anchors no absolute at all. The workaround was to dock a nested selection in its TOP-LEVEL
-    // ancestor, which is why the bar appeared to be stuck on the parent container while the author
-    // was editing a child: it was gated for the child, but sitting somewhere else entirely.
-    //
-    // So it does not dock anywhere now. It lives in a canvas-level layer and is placed with
-    // position:fixed from the selected block's own measured box, which every block has regardless
-    // of depth or display mode. That also drops the reasons docking was avoided: being outside the
-    // container's content box, it can neither push sibling content around nor be clipped by an
-    // ancestor's overflow.
     const TB_GAP = 2;
 
-    // A nested wrapper is display:contents and has NO box of its own — measure the block's real
-    // rendered root instead. Same resolution the drop-line math uses (see resolveDropIndex).
     function blockBox(blk) {
         return (blk.querySelector(':scope > [data-block-id]') || blk).getBoundingClientRect();
     }
 
-    // Above the block, left-aligned with it, kept inside the canvas viewport: flipped below when
-    // there is no room above (a first block scrolled to the top of the stage), pulled left when
-    // the bar would otherwise run past the canvas edge, and hidden outright while the block it
-    // belongs to is scrolled out of sight — a bar pinned to a block nobody can see is just chrome
-    // floating over someone else's content.
     function positionToolbar() {
         const tb = document.querySelector('[data-hb-block-toolbar]');
         if (!tb || tb.hidden || !selected || !selected.isConnected) return;
@@ -942,9 +804,6 @@
         tb.style.visibility = (box.bottom < view.top || box.top > view.bottom) ? 'hidden' : '';
     }
 
-    // Re-place on anything that can move the block under the bar: the canvas scrolling (capture —
-    // a scroll event does not bubble), the window resizing, and the block's own box changing as
-    // its text is typed or an image finishes loading.
     let tbFollow = null;
     function followSelected(blk) {
         if (tbFollow) tbFollow.disconnect();
@@ -965,8 +824,6 @@
         gateToolbar(tb, model);
         tb.hidden = false;
         tb.classList.add('hb-tb--float');
-        // Inside .hb-canvas rather than the body so the bar keeps inheriting the editor theme's
-        // custom properties; position:fixed means the canvas's own overflow never clips it.
         const layer = document.querySelector('.hb-canvas') || document.body;
         if (tb.parentElement !== layer) layer.appendChild(tb);
         positionToolbar();
@@ -999,7 +856,7 @@
         const descEl = inspector.querySelector('.hb-inspector__desc');
         if (nameEl) nameEl.textContent = c.title || model.name;
         if (descEl) descEl.textContent = c.description || '';
-        switchInspector(1); // Block tab
+        switchInspector(1);
     }
 
     function select(blk) {
@@ -1021,16 +878,11 @@
         selected.classList.remove('is-selected');
         selected = null;
         stowToolbar();
-        switchInspector(0); // back to Post tab
-        // A forced state preview is an editing aid for the SELECTED block only. Left behind, the
-        // block keeps painting its hover/active look after the user moves on — the canvas then
-        // shows styling the default state does not have, which reads as "it worked live but was
-        // gone after reload".
+        switchInspector(0);
         if (previewStates[id]) { delete previewStates[id]; reRenderBlock(id); }
         document.dispatchEvent(new CustomEvent('hb:block-deselected', { detail: {} }));
     }
 
-    // ── public runtime API (window.hbEditor) ──────────────────
     function indexOf(id) {
         for (let i = 0; i < doc.blocks.length; i++) { if (doc.blocks[i].id === id) return i; }
         return -1;
@@ -1043,9 +895,6 @@
         return true;
     }
 
-    // Rebuilds one block's DOM in place from its current model — used after any attribute write.
-    // Preserves the current selection (re-points the toolbar at the fresh element if this was the
-    // selected block) and the caret position if the user is mid-edit in one of its rich-text fields.
     function reRenderBlock(id) {
         const old = findBlockEl(id);
         const model = findModel(id);
@@ -1053,7 +902,6 @@
 
         const caret = captureCaret(old);
         const wasSelected = selected === old;
-        // A re-rendered PARENT swallows its selected child's DOM — re-select it after.
         const selectedId = selected && old.contains(selected) && selected !== old
             ? selected.getAttribute('data-block') : null;
 
@@ -1066,11 +914,9 @@
         if (wasSelected) {
             selected = next;
             next.classList.add('is-selected');
-            // The bar itself survived the swap untouched (it lives in the canvas layer, never
-            // inside the block) — this re-measures against the new element and re-observes it.
             dockToolbar(next, model);
         } else if (selectedId) {
-            selected = null; // the old child element is gone; re-select its fresh DOM
+            selected = null;
             selectById(selectedId);
         }
 
@@ -1078,11 +924,6 @@
         return true;
     }
 
-    // A container contract that declares a `columns` count attribute (heisenberg/columns) keeps
-    // its innerBlocks length in lockstep with it: raising the count appends fresh children of the
-    // first allowed block, lowering it drops trailing children (undo restores them). A blank
-    // mid-edit value ("" while the user retypes) leaves the children alone — the blocks-changed
-    // sync below writes the real length back, so the model never saves a non-integer count.
     function reconcileColumnsCount(model) {
         const c = REGISTRY[model.name];
         if (!c || !c.attributes || !Object.prototype.hasOwnProperty.call(c.attributes, 'columns')) return;
@@ -1104,9 +945,6 @@
         if (model.innerBlocks.length > want) model.innerBlocks.length = want;
     }
 
-    // The reverse edge of the lockstep: any structural change (delete/duplicate/drag of a child,
-    // hydration of a saved document) rewrites the count attribute from the real children length,
-    // so the inspector's field can never show a stale number.
     function syncColumnsCounts(list) {
         (list || doc.blocks).forEach(function (m) {
             const c = REGISTRY[m.name];
@@ -1126,26 +964,15 @@
         if (key === 'columns') reconcileColumnsCount(model);
         reRenderBlock(id);
         document.dispatchEvent(new CustomEvent('hb:block-updated', { detail: { id: id, key: key, value: value, model: model } }));
-        // The document changed, so anything derived from it must re-read. This matters for
-        // attributes the canvas DOM encodes structurally — a heading's `level` drives data-level,
-        // which is what the Navigator's Outline nests on. Fired after reRenderBlock so listeners
-        // that scan the DOM (panel-navigator) see the updated markup, not the stale markup.
         document.dispatchEvent(new CustomEvent('hb:blocks-changed'));
         return true;
     }
 
-    // The supports counterpart of setAttribute. Style-tab controls are keyed by dotted paths into
-    // `supports` (e.g. "color.text", "align"), which setAttribute cannot address — without this,
-    // callers had to reach into the model themselves and hand-roll the re-render + events, giving
-    // the document two different write paths that could drift. There is one write path per branch.
     function setSupport(id, path, value) {
         const model = findModel(id);
         if (!model) return false;
         const parts = String(path || '').split('.');
         if (!parts.length || parts[0] === '') return false;
-        // The model gate for interaction states: only the states the renderer can compile
-        // may ever be written, no matter which surface (inspector, toolbar, code view)
-        // asked — a bogus "state" would serialize, save, and then never emit any CSS.
         if (parts[0] === 'states' && ['hover', 'active', 'focus'].indexOf(parts[1]) === -1) {
             console.warn('hbEditor.setSupport: invalid state "' + parts[1] + '" rejected (' + path + ')');
             return false;
@@ -1163,11 +990,6 @@
         return true;
     }
 
-    // Force a block to render as it would in one of its interaction states, so an override being
-    // authored in the inspector is visible on the canvas. Re-rendering is enough:
-    // styleDeclarations() reads previewStates and merges supports.states.<state> over the base.
-    // The `.hb-state-preview-<state>` class rides along for any contract CSS keyed off it — the
-    // same hook BlockRenderer::stateStylesCss() emits for the public page.
     function previewState(id, state) {
         const model = findModel(id);
         if (!model) return false;
@@ -1205,8 +1027,6 @@
         return true;
     }
 
-    // Insert a NEW block into a container at an optional child index — the palette-drop,
-    // inner-appender and quick-inserter path. Refuses children the contract doesn't allow.
     function insertInto(containerId, name, atIndex) {
         const owner = findModel(containerId);
         if (!owner || !containerAllows(owner, name)) return null;
@@ -1228,7 +1048,7 @@
         const loc = locateBlock(id);
         if (!loc) return false;
         const el = findBlockEl(id);
-        if (selected === el) deselect(); // stow the toolbar while the node is still in the document
+        if (selected === el) deselect();
         loc.list.splice(loc.index, 1);
         if (loc.parent) reRenderBlock(loc.parent.id);
         else if (el && el.parentNode) el.parentNode.removeChild(el);
@@ -1236,8 +1056,6 @@
         return true;
     }
 
-    // Nested-aware sibling move (the toolbar's up/down): swaps within whichever
-    // siblings array the block lives in.
     function moveById(id, delta) {
         const loc = locateBlock(id);
         if (!loc) return false;
@@ -1252,12 +1070,65 @@
         return true;
     }
 
-    // Nested-aware duplicate: deep-clones the model and re-merges contract defaults as the
-    // next sibling. normalizeModel is told the cloned source's id matches hb\d+ (it was just
-    // minted on first render), so by default it PRESERVES the id — and a duplicate that keeps
-    // its source's id collides with the source at every lookup: locateBlock/findModel/findBlockEl
-    // all return the FIRST match (the source), so any edit the user makes after selecting the
-    // duplicate overwrites the source. Reassign ids across the duplicated subtree post-clone.
+    function modelContains(root, needle) {
+        const inner = Array.isArray(root.innerBlocks) ? root.innerBlocks : [];
+        for (let i = 0; i < inner.length; i++) {
+            if (inner[i].id === needle || modelContains(inner[i], needle)) return true;
+        }
+        return false;
+    }
+    function treeDepth(m) {
+        const inner = Array.isArray(m.innerBlocks) ? m.innerBlocks : [];
+        let d = 1;
+        for (let i = 0; i < inner.length; i++) d = Math.max(d, 1 + treeDepth(inner[i]));
+        return d;
+    }
+    function depthOf(id) {
+        let d = 0;
+        let p = parentIdOf(id);
+        while (p) { d++; p = parentIdOf(p); }
+        return d;
+    }
+
+    function moveBlockTo(id, newParentId, rawIndex) {
+        const loc = locateBlock(id);
+        if (!loc) return false;
+        const model = loc.list[loc.index];
+        let list = doc.blocks;
+        let owner = null;
+        if (newParentId) {
+            owner = findModel(newParentId);
+            if (!owner || !containerAllows(owner, model.name)) return false;
+            if (newParentId === id || modelContains(model, newParentId)) return false;
+            if (depthOf(owner.id) + treeDepth(model) >= MAX_NESTING_DEPTH) return false;
+            list = owner.innerBlocks;
+        } else if (!loc.parent) {
+            const toIndex = Math.max(0, Math.min(rawIndex - (loc.index < rawIndex ? 1 : 0), doc.blocks.length - 1));
+            return toIndex === loc.index ? false : moveBlock(loc.index, toIndex);
+        }
+        let index = rawIndex;
+        if (loc.list === list && loc.index < index) index--;
+        index = Math.max(0, Math.min(index, list.length));
+        if (loc.list === list && index === loc.index) return false;
+        loc.list.splice(loc.index, 1);
+        list.splice(index, 0, model);
+        if (loc.parent) reRenderBlock(loc.parent.id);
+        if (owner) reRenderBlock(owner.id);
+        else {
+            const fresh = renderBlockEl(model);
+            const wrap = wrapEl();
+            if (fresh && wrap) {
+                const next = doc.blocks[index + 1];
+                const before = next ? findBlockEl(next.id) : null;
+                if (before) wrap.insertBefore(fresh, before);
+                else { const app = appenderEl(); if (app && app.parentNode === wrap) wrap.insertBefore(fresh, app); else wrap.appendChild(fresh); }
+            }
+        }
+        selectById(id);
+        document.dispatchEvent(new CustomEvent('hb:blocks-changed'));
+        return true;
+    }
+
     function duplicateBlock(id) {
         const loc = locateBlock(id);
         const source = loc ? loc.list[loc.index] : null;
@@ -1280,19 +1151,6 @@
         return copy.id;
     }
 
-    // Insert a saved reusable-block composition ("pattern") — the toolbar's save-as-block
-    // icon writes one through /editor/patterns, the Components panel's Blocks tab reads the
-    // same store and calls this with a pattern id (toolbar-composition.md §8).
-    //
-    // Each top-level entry in the saved shape is run through normalizeModel first, so the
-    // re-id + re-default dance is the same one replaceDoc/duplicateBlock already take — a
-    // pattern inserted on a fresh editor has the same shape as one inserted on a long-lived
-    // one. Insertion walks top-level entries in order, appending each: after the first one
-    // lands it becomes selected, so the rest cascade into it as innerBlocks only when the
-    // container actually allows that child — otherwise they fall through to top-level,
-    // matching insertBlock's own branching. Unknown block names are dropped (same rule as
-    // insertBlock returning null), so a pattern whose contract was removed since saving it
-    // degrades to "fewer blocks than you saved" instead of a hard failure.
     function insertPattern(blocks) {
         if (!Array.isArray(blocks) || !blocks.length) return null;
         let firstId = null;
@@ -1307,11 +1165,6 @@
         return firstId;
     }
 
-    // ── pattern store I/O (toolbar-composition.md §8) ───────────
-    // The save flow lives in the toolbar (live/toolbar/block-toolbar.blade.php); the Blocks tab
-    // only reads/deletes from the same store. The single shared event `hb:patterns-changed`
-    // refreshes the tab on either side — saves fire it after a successful POST, deletes after
-    // a successful DELETE, and a host that mounts its own patterns UI can fire it too.
     function patternsIndexUrl() {
         const root = document.querySelector('[data-hb-panel-cb]');
         return root ? root.getAttribute('data-hb-patterns-index-url') || '' : '';
@@ -1347,9 +1200,6 @@
             .finally(() => { if (btn) btn.disabled = false; });
     }
 
-    // Same body as insertBlock, minus the contract-based newBlockModel() — caller supplies
-    // the already-normalized model so a pattern's saved attributes/supports/innerBlocks
-    // land verbatim rather than being re-defaulted.
     function insertBlockByModel(model) {
         const wrap = wrapEl();
         const app = appenderEl();
@@ -1366,11 +1216,6 @@
         return el;
     }
 
-    // ── drag & drop reorder / insert (Pointer Events, no HTML5 DnD) ────
-    // Shared geometry: given a strip of items, find which one the pointer is over and whether the
-    // drop should land before or after it (by which half of its box the pointer is in). Falls back
-    // to the first/last item so dropping in the empty space past either end of the list — the
-    // appender, the gap below the last block — still resolves to something.
     function resolveDropItem(container, itemSelector, excludeEl, clientX, clientY) {
         if (!container) return null;
         const items = Array.prototype.filter.call(container.querySelectorAll(itemSelector), (it) => it !== excludeEl);
@@ -1393,15 +1238,7 @@
         if (!container) return;
         container.querySelectorAll(itemSelector).forEach((it) => it.classList.remove('is-drop-before', 'is-drop-after'));
     }
-    // moveBlock's toIndex is a post-removal index (see its own splice, above) — convert a "drop
-    // before/after this currently-visible block" hover into that index.
-    function moveDropIndex(fromIndex, hoverIndex, below) {
-        const desired = below ? hoverIndex + 1 : hoverIndex;
-        return desired > fromIndex ? desired - 1 : desired;
-    }
 
-    // Auto-scroll the canvas while a drag is active near its top/bottom edge. Shared by both drag
-    // gestures below (both hover the canvas); `autoScrollY` is kept current by whichever is running.
     let autoScrollRAF = null;
     let autoScrollY = 0;
     function autoScrollTick() {
@@ -1423,83 +1260,102 @@
         return !!(el && el.closest && el.closest('.hb-canvas'));
     }
 
-    // Canvas reorder — the gesture starts ONLY from the toolbar's grip (.hb-tb__btn--drag), and the
-    // toolbar is only ever shown for the currently SELECTED block. Starting there (never from a
-    // pointerdown on the block body) is what keeps this from ever hijacking rich-text selection or
-    // caret placement: the wrap's own mousedown-to-select listener and the .hb-ce contenteditable
-    // regions never see a pointerdown that belongs to a drag.
     function wireCanvasBlockDrag() {
+        var noDrag = '.hb-ce, a, button, input, textarea, select, label, [data-hb-inner-appender], .hb-img-empty, [data-image-picker], .hb-tb';
         document.addEventListener('pointerdown', (e) => {
             if (e.button != null && e.button !== 0) return;
-            const grip = e.target.closest('.hb-tb__btn--drag');
-            if (!grip) return;
-            const blk = selected; // the toolbar only ever acts for the selected block
             const wrap = wrapEl();
-            if (!blk || !wrap) return;
-            // Nested blocks reorder via the toolbar's up/down (moveById) — their
-            // display:contents wrappers have no geometry for the drop-line math.
-            if (blk.classList.contains('hb-blk--nested')) return;
-            e.preventDefault(); // also suppresses the compat mousedown/click for this gesture
-            try { grip.setPointerCapture(e.pointerId); } catch (err) { /* older engines */ }
-            const startY = e.clientY;
+            if (!wrap) return;
+            const grip = e.target.closest && e.target.closest('.hb-tb__btn--drag');
+            let blk = null;
+            let pressEl = null;
+            if (grip) {
+                blk = selected;
+                pressEl = grip;
+            } else {
+                pressEl = e.target.closest && e.target.closest('.hb-blk');
+                if (!pressEl || !wrap.contains(pressEl)) return;
+                if (e.target.closest(noDrag)) return;
+                blk = pressEl;
+            }
+            if (!blk) return;
+            const id = blk.getAttribute('data-block');
+            const model = id ? findModel(id) : null;
+            if (!model) return;
+            e.preventDefault();
+            select(blk);
+            try { pressEl.setPointerCapture(e.pointerId); } catch (err) { }
+            const startX = e.clientX, startY = e.clientY;
             let active = false;
             let hover = null;
+            let inside = null;
+            let insideEl = null;
+            let insideMark = null;
 
+            function clearInsideMarks() {
+                if (insideEl) { insideEl.classList.remove('is-drop-inside'); insideEl = null; }
+                if (insideMark) { insideMark.classList.remove('is-drop-before', 'is-drop-after'); insideMark = null; }
+            }
             function onMove(ev) {
                 autoScrollY = ev.clientY;
                 if (!active) {
-                    if (Math.abs(ev.clientY - startY) < 4) return;
+                    if (Math.abs(ev.clientX - startX) + Math.abs(ev.clientY - startY) < 5) return;
                     active = true;
                     blk.classList.add('is-dragging');
+                    document.body.classList.add('hb-canvas-drag');
                     startAutoScroll();
                 }
-                const found = resolveDropItem(wrap, ':scope > .hb-blk', blk, ev.clientX, ev.clientY);
-                if (!found) return;
-                if (hover && hover.el === found.el && hover.below === found.below) return;
-                hover = found;
                 clearDropMarks(wrap, ':scope > .hb-blk');
-                found.el.classList.add(found.below ? 'is-drop-after' : 'is-drop-before');
+                clearInsideMarks();
+                hover = null;
+                inside = null;
+                if (!overCanvas(ev.clientX, ev.clientY)) return;
+                const target = containerAt(ev.clientX, ev.clientY, model.name);
+                if (target && target.blk !== blk && !blk.contains(target.blk)) {
+                    const rootEl = target.blk.querySelector(':scope > [data-block-id]') || target.blk;
+                    insideEl = rootEl;
+                    rootEl.classList.add('is-drop-inside');
+                    const slot = resolveInsideDrop(rootEl, ev.clientY);
+                    inside = { id: target.model.id, index: slot.index };
+                    if (slot.markEl) {
+                        insideMark = slot.markEl;
+                        insideMark.classList.add(slot.below ? 'is-drop-after' : 'is-drop-before');
+                    }
+                    return;
+                }
+                hover = resolveDropItem(wrap, ':scope > .hb-blk', blk, ev.clientX, ev.clientY);
+                if (hover) hover.el.classList.add(hover.below ? 'is-drop-after' : 'is-drop-before');
             }
             function cleanup() {
-                grip.removeEventListener('pointermove', onMove);
-                grip.removeEventListener('pointerup', onUp);
-                grip.removeEventListener('pointercancel', onCancel);
+                pressEl.removeEventListener('pointermove', onMove);
+                pressEl.removeEventListener('pointerup', onUp);
+                pressEl.removeEventListener('pointercancel', onCancel);
                 blk.classList.remove('is-dragging');
+                document.body.classList.remove('hb-canvas-drag');
                 clearDropMarks(wrap, ':scope > .hb-blk');
+                clearInsideMarks();
                 stopAutoScroll();
             }
             function onUp() {
-                if (active && hover) {
-                    const fromIndex = indexOf(blk.getAttribute('data-block'));
-                    const hoverIndex = indexOf(hover.el.getAttribute('data-block'));
-                    if (fromIndex !== -1 && hoverIndex !== -1) {
-                        const toIndex = moveDropIndex(fromIndex, hoverIndex, hover.below);
-                        if (toIndex !== fromIndex) moveBlock(fromIndex, toIndex);
+                if (active) {
+                    if (inside) {
+                        moveBlockTo(id, inside.id, inside.index);
+                    } else if (hover) {
+                        const hoverIndex = indexOf(hover.el.getAttribute('data-block'));
+                        if (hoverIndex !== -1) moveBlockTo(id, null, hover.below ? hoverIndex + 1 : hoverIndex);
                     }
                 }
                 cleanup();
             }
             function onCancel() { cleanup(); }
-            grip.addEventListener('pointermove', onMove);
-            grip.addEventListener('pointerup', onUp);
-            grip.addEventListener('pointercancel', onCancel);
+            pressEl.addEventListener('pointermove', onMove);
+            pressEl.addEventListener('pointerup', onUp);
+            pressEl.addEventListener('pointercancel', onCancel);
         });
     }
 
-    // ── container edge-resize ──────────────────────────────────
-    // Hovering within RESIZE_BAND px inside a resizable block root's right/bottom edge shows the
-    // matching resize cursor (hb-resize-* classes, 35-blocks.css); dragging writes size.width/
-    // size.height. A block is resizable when its CONTRACT declares supports.size.width/height
-    // (group, columns, column today — any future contract joins automatically). During the drag
-    // only the root's style attribute is regenerated from the model (styleDeclarations — cheap,
-    // and it keeps pointer capture on the ORIGINAL element, which a reRenderBlock would replace);
-    // the setSupport commit on release does the real re-render, events and history step.
     const RESIZE_BAND = 6;
     const RESIZE_MIN = 24;
-    // All resize candidates along the .hb-blk chain match first (a columns row and its columns
-    // share one bottom edge); the SELECTED block wins when it is among them — so selecting the
-    // row and grabbing the shared edge resizes the row, while an unselected hit resizes the
-    // innermost block, which is what the pointer is visually closest to.
     function resizeHitAt(target, x, y) {
         const hits = [];
         let blk = target && target.closest ? target.closest('.hb-blk') : null;
@@ -1551,7 +1407,7 @@
             e.stopPropagation();
             resizing = true;
             select(hit.blk);
-            try { hit.root.setPointerCapture(e.pointerId); } catch (err) { /* older engines */ }
+            try { hit.root.setPointerCapture(e.pointerId); } catch (err) { }
             const startX = e.clientX, startY = e.clientY;
             const startW = hit.rect.width, startH = hit.rect.height;
             const size = () => {
@@ -1578,8 +1434,6 @@
                 cleanup();
                 if (!wrote) return;
                 const id = hit.model.id;
-                // Commit through the public write path so re-render, events and the history
-                // debounce all happen exactly like an inspector edit.
                 if (hit.w) setSupport(id, 'size.width', size().width);
                 if (hit.h) setSupport(id, 'size.height', size().height);
             }
@@ -1598,12 +1452,6 @@
         }, true);
     }
 
-    // Palette → canvas — dragging a Components card onto the canvas inserts it at the drop
-    // position; a plain click (no movement past the threshold) still appends via the existing click
-    // handler in boot(), untouched.
-    // The deepest container under the pointer that accepts `name` — walks the .hb-blk
-    // chain upward from the hit, so a drop over a paragraph inside a column targets the
-    // column, and a drop over bare group space targets the group.
     function containerAt(x, y, name) {
         const hit = document.elementFromPoint(x, y);
         let blk = hit && hit.closest ? hit.closest('.hb-blk') : null;
@@ -1615,8 +1463,6 @@
         return null;
     }
 
-    // Child-index resolution inside a container: nested wrappers are display:contents
-    // (empty rects), so geometry reads each child's ROOT element instead.
     function resolveInsideDrop(rootEl, y) {
         const items = Array.prototype.slice.call(rootEl.querySelectorAll(':scope > .hb-blk'));
         const rootOf = (w) => w.querySelector(':scope > [data-block-id]') || w;
@@ -1647,13 +1493,13 @@
             if (!card) return;
             const name = card.getAttribute('data-hb-insert-block');
             if (!name) return;
-            try { card.setPointerCapture(e.pointerId); } catch (err) { /* older engines */ }
+            try { card.setPointerCapture(e.pointerId); } catch (err) { }
             const startX = e.clientX, startY = e.clientY;
             let active = false;
             let hover = null;
-            let inside = null;     // { id, index } when hovering INSIDE a container
-            let insideEl = null;   // the container root carrying is-drop-inside
-            let insideMark = null; // the child root carrying the insertion line
+            let inside = null;
+            let insideEl = null;
+            let insideMark = null;
             let ghost = null;
 
             function clearInsideMarks() {
@@ -1677,8 +1523,6 @@
                 hover = null;
                 inside = null;
                 if (!wrap || !overCanvas(ev.clientX, ev.clientY)) return;
-                // Containers first: a drop over one lands INSIDE it, at the child slot
-                // under the pointer.
                 const target = containerAt(ev.clientX, ev.clientY, name);
                 if (target) {
                     const rootEl = target.blk.querySelector(':scope > [data-block-id]') || target.blk;
@@ -1706,9 +1550,6 @@
             }
             function onUp(ev) {
                 if (active) {
-                    // The paired mouseup (and any click it produces) is retargeted to `card` by
-                    // pointer capture even when the drop happened over the canvas — guard the click
-                    // handler against treating this as a second, separate insert.
                     card.__hbDragSuppressClick = true;
                     if (overCanvas(ev.clientX, ev.clientY)) {
                         if (inside) {
@@ -1720,7 +1561,6 @@
                             insertBlock(name);
                         }
                     }
-                    // Dropped outside the canvas entirely — treated as a cancelled drag, no insert.
                 }
                 cleanup();
             }
@@ -1731,31 +1571,17 @@
         });
     }
 
-    // ── wiring ─────────────────────────────────────────────────
     function boot() {
         const wrap = wrapEl();
-        // Flag on the element (house convention) so a replaced canvas wrap re-wires on the
-        // next hb:refresh; the document-level listeners below carry their own flags.
         if (!wrap || wrap.__hbWired) return;
         wrap.__hbWired = true;
 
-        // Select on mousedown (so the caret still lands where clicked).
         wrap.addEventListener('mousedown', (e) => {
-            // Belt and braces: a press on the toolbar must never be read as a press on a block and
-            // re-select something out from under the block the bar is acting for. It cannot reach
-            // this listener today (the bar floats in .hb-canvas, an ANCESTOR of this wrap, so the
-            // event never bubbles here) — the guard that carries the weight is the deselect-on-
-            // empty-canvas listener further down, which does sit at that level. This one costs
-            // nothing and keeps the rule true wherever the bar ends up living.
             if (e.target.closest('.hb-tb')) return;
             const blk = e.target.closest('.hb-blk');
             if (blk) select(blk);
         });
 
-        // An empty container's click-to-add target (renderNode's inner-blocks branch renders
-        // it). Dispatches the cancelable hb:quick-insert first — the Gutenberg-style quick
-        // inserter (live/quick-inserter.blade.php) claims it by preventDefault and drives
-        // insertInto() itself; with no inserter mounted the default is the first allowed block.
         wrap.addEventListener('click', (e) => {
             const add = e.target.closest('[data-hb-inner-appender]');
             if (!add) return;
@@ -1778,9 +1604,6 @@
             insertInto(owner.id, childName);
         });
 
-        // An empty image block's click-to-pick placeholder — fire a cancelable event for another
-        // component (the media dialog) to handle. No dialog lives here; this just signals intent.
-        // setAttribute(id, 'url', …) is how the picker's result comes back into the model.
         wrap.addEventListener('click', (e) => {
             const ph = e.target.closest('.hb-img-empty');
             if (!ph) return;
@@ -1791,7 +1614,6 @@
             document.dispatchEvent(new CustomEvent('hb:pick-image', { detail: { id: model.id, model: model }, cancelable: true }));
         });
 
-        // Rich-text edits flow back into the model (raw innerHTML, like the builder).
         wrap.addEventListener('input', (e) => {
             const ce = e.target.closest && e.target.closest('.hb-ce[data-hb-rt]');
             if (!ce) return;
@@ -1803,9 +1625,6 @@
             document.dispatchEvent(new CustomEvent('hb:blocks-changed'));
         });
 
-        // The + appender. Dispatches the cancelable hb:quick-insert first — the quick
-        // inserter popup claims it (preventDefault) and offers every block; the fallback
-        // stays the classic "write something" paragraph insert.
         document.querySelectorAll('[data-hb-insert]').forEach((btn) => {
             if (btn.__hbIns2) return; btn.__hbIns2 = true;
             btn.addEventListener('click', (e) => {
@@ -1819,23 +1638,14 @@
             });
         });
 
-        // Components panel cards / any [data-hb-insert-block] insert that block directly.
         if (!document.__hbInsertBlockWired) {
             document.__hbInsertBlockWired = true;
             document.addEventListener('click', (e) => {
                 const card = e.target.closest('[data-hb-insert-block]');
                 if (!card) return;
-                // A real palette→canvas drag (wirePaletteDrag) sets this when pointer capture
-                // retargets the paired mouseup — and therefore the click — back onto the source
-                // card instead of wherever it was actually dropped. Swallow that one click only.
                 if (card.__hbDragSuppressClick) { card.__hbDragSuppressClick = false; return; }
                 insertBlock(card.getAttribute('data-hb-insert-block'));
             });
-            // Saved-blocks tab cards — pick the saved composition and ask the server for it,
-            // so the live runtime always re-receives a fresh set of ids. The server fetch is
-            // the same GET /editor/patterns the editor's first paint seeded from; without it
-            // the client would have to thread each pattern's full blocks tree into the panel's
-            // initial render payload, which would balloon for any install with a real library.
             document.addEventListener('click', (e) => {
                 const delBtn = e.target.closest('[data-hb-pattern-delete]');
                 if (delBtn) {
@@ -1854,15 +1664,12 @@
                     insertPattern(pattern.blocks || []);
                 }).catch(() => {});
             });
-            // Click on empty canvas (not a block / toolbar / appender) deselects.
             document.addEventListener('mousedown', (e) => {
                 const canvas = e.target.closest('.hb-canvas');
                 if (canvas && !e.target.closest('.hb-blk') && !e.target.closest('.hb-tb') && !e.target.closest('.hb-appender')) deselect();
             });
         }
 
-        // Drag & drop — wired once, globally (both listen on `document` regardless of which
-        // panel/canvas markup exists at boot time). See the file header for the gesture design.
         if (!document.__hbBlockDnd) {
             document.__hbBlockDnd = true;
             wireCanvasBlockDrag();
@@ -1875,12 +1682,6 @@
     else boot();
     document.addEventListener('hb:refresh', boot);
 
-    // ── whole-document swap (code view apply + saved-post hydration) ──
-    // Accepts models in the SAVE shape ({name, attributes, supports, innerBlocks}) with or
-    // without ids: every model gets a fresh id (stale/duplicate incoming ids could collide
-    // with live ones), attributes are merged over the contract's defaults (a saved or
-    // hand-written doc may omit attributes added to the contract since), and unknown block
-    // names are dropped — same rule as insertBlock returning null.
     function normalizeModel(raw) {
         const c = raw && raw.name ? REGISTRY[raw.name] : null;
         if (!c) return null;
@@ -1894,13 +1695,6 @@
             if (m) inner.push(m);
         });
         return {
-            // Preserve the original id if the post-supplied one already matches the runtime
-            // naming pattern (hb<n>); only synthesise a fresh one when there's no id at all
-            // (newly-inserted blocks minted by the palette / runtime use that pattern too, so
-            // collisions across re-renders are impossible without it). Reassigning every id
-            // unconditionally — the previous behaviour — silently broke the inspector's
-            // data-hb-control lookups and hbEditor.setSupport writes, because the model id
-            // didn't match the id the controls had been wired against on first render.
             id: (typeof raw.id === 'string' && /^hb\d+$/.test(raw.id)) ? raw.id : ('hb' + (++blockSeq)),
             name: raw.name, schemaVersion: c.version == null ? null : c.version,
             attributes: attrs, supports: (raw.supports && typeof raw.supports === 'object') ? raw.supports : {},
@@ -1922,8 +1716,6 @@
         });
         return true;
     }
-    // opts.baseline: this swap IS the document's starting point (saved-post hydration) —
-    // history resets so nothing can be undone back past it to an empty canvas.
     function replaceDoc(blocks, opts) {
         const models = [];
         (Array.isArray(blocks) ? blocks : []).forEach(function (raw) {
@@ -1936,17 +1728,6 @@
         return true;
     }
 
-    // ── translation fold (docs/content-translation.md §0/Wave 2) ───────────────
-    // The write_canvas apply path while editing a NON-home locale must not replaceDoc — that
-    // would overwrite the bare (home-locale) values a translation turn must leave untouched
-    // (this is the exact bug the fold replaces: French replied, English vanished). Instead the
-    // model's freshly parsed blocks are folded into the EXISTING doc.blocks' `_<locale>`
-    // variants, matched BY POSITION — mirrors McpToolRegistry::foldTranslatedBlocks()/
-    // foldNode() (PHP, server-side create_translation) exactly: same path-naming scheme
-    // ("blocks[N]" top level, ">N" per innerBlocks depth), same refusal rule (a block-count or
-    // block-name mismatch at ANY position/depth aborts the WHOLE fold — nothing partially
-    // applies), same bare-value-is-the-translator's-actual-text read. Reuses isTranslatableAttr/
-    // resolveAttrKey — the one place the suffix rule lives — rather than re-deriving it.
     function foldReadIncoming(attributes, key) {
         const suffixed = key + '_' + editingLocale;
         if (Object.prototype.hasOwnProperty.call(attributes, suffixed)) return attributes[suffixed];
@@ -1992,9 +1773,6 @@
             return foldNode(storedNode, translatedNodes[index] || {}, mismatches, path + '[' + index + ']');
         });
     }
-    // Returns {ok:true, blocks:N} on success (doc.blocks mutated in place, re-rendered, and
-    // hb:blocks-changed fired — the same dirty/history signal every other edit path uses) or
-    // {ok:false, error} naming every mismatch WITHOUT touching doc.blocks at all.
     function foldTranslation(blocks) {
         if (editingLocale === homeLocale) {
             return { ok: false, error: 'foldTranslation is only valid while editing a non-home locale.' };
@@ -2015,10 +1793,6 @@
         return { ok: true, blocks: doc.blocks.length };
     }
 
-    // panel-ai.blade.php's applyCanvasTool — the ONE decision write_canvas's landed shortcode
-    // needs: home locale keeps append/replace exactly as before; a non-home locale folds
-    // (mode="replace" only — "append" is refused, there being no home-locale row for a brand
-    // new block to join).
     function applyCanvasWrite(blocks, mode) {
         const incoming = Array.isArray(blocks) ? blocks : [];
         if (!incoming.length) return { ok: false, error: 'no blocks' };
@@ -2031,10 +1805,6 @@
         return { ok: true, translating: false, appliedCount: incoming.length };
     }
 
-    // ── history (undo/redo) ────────────────────────────────────
-    // Snapshot-based: every mutation event schedules a debounced commit (rapid typing
-    // coalesces into one step); undo/redo swap serialized states through renderDoc with
-    // ids preserved. The stack lives here because doc.blocks lives here.
     const HISTORY_CAP = 100;
     const history = { past: [], future: [], current: '[]', timer: null, restoring: false };
     function historyEmit() {
@@ -2096,9 +1866,6 @@
     }
     document.addEventListener('hb:blocks-changed', historySchedule);
     document.addEventListener('hb:block-updated', historySchedule);
-    // Ctrl/Cmd+Z / Shift+Z / Y. Native undo stays native inside real text fields (inputs,
-    // the code textarea); .hb-ce contenteditable is ours — its DOM is rebuilt per keystroke,
-    // so native undo is broken there and document history is the correct handler.
     if (!document.__hbHistoryKeys) {
         document.__hbHistoryKeys = true;
         document.addEventListener('keydown', function (e) {
@@ -2114,15 +1881,6 @@
         });
     }
 
-    // Switches which locale every translatable attribute read/write targets (docs/
-    // content-translation.md §0/Wave 2): re-renders every top-level block in place (each walks
-    // its own innerBlocks, so nested content follows) so the canvas shows that locale's text —
-    // readAttr's own bare-key fallback covers a block never translated into it — persists the
-    // choice, and re-seeds whichever block panel the inspector currently has open (the panel
-    // reads model.attributes directly today, so a stale-locale value would otherwise linger
-    // until the next selection change). hb:editing-locale-change is the one signal every other
-    // "which locale am I looking at" surface (topbar trigger, title field, Translations rows)
-    // reacts to — no consumer re-derives the locale itself.
     function setEditingLocale(locale) {
         if (typeof locale !== 'string' || CONTENT_LOCALES.indexOf(locale) === -1) return false;
         editingLocale = locale;
@@ -2135,8 +1893,6 @@
         return true;
     }
 
-    // The documented public runtime API other editor components (inspector, navigator, media
-    // dialog, …) build against. See the file header for the event contract that goes with it.
     window.hbEditor = {
         getDoc: function () { return doc; },
         getSelectedId: function () { return selected ? selected.getAttribute('data-block') : null; },
@@ -2147,9 +1903,6 @@
         insertInto: insertInto,
         setAttribute: setAttribute,
         setSupport: setSupport,
-        // docs/content-translation.md §0/Wave 2 — the editing-locale seam every other editor
-        // component (topbar, inspector, code view) reads/writes translatable attributes through,
-        // so the suffix rule lives in exactly one place.
         getEditingLocale: function () { return editingLocale; },
         getHomeLocale: function () { return homeLocale; },
         getContentLocales: function () { return CONTENT_LOCALES.slice(); },
@@ -2157,6 +1910,7 @@
         resolveAttrKey: resolveAttrKey,
         readAttr: readAttr,
         moveById: moveById,
+        moveBlockTo: moveBlockTo,
         duplicateBlock: duplicateBlock,
         insertPattern: insertPattern,
         previewState: previewState,
@@ -2166,18 +1920,12 @@
         selectById: selectById,
         reRenderBlock: reRenderBlock,
         replaceDoc: replaceDoc,
-        // docs/content-translation.md §0/Wave 2 — the write_canvas apply path's non-home-locale
-        // branch (panel-ai.blade.php's applyCanvasTool) folds through here instead of replaceDoc.
         foldTranslation: foldTranslation,
         applyCanvasWrite: applyCanvasWrite,
         undo: undo,
         redo: redo,
         canUndo: function () { return history.past.length > 0; },
         canRedo: function () { return history.future.length > 0; },
-        // Builds the exact envelope BlocksPayloadService::validatePayload() expects, so the
-        // save wiring never has to reconstruct it (and can't drift from the validator):
-        // payload-level schemaVersion is the integer 1 — NOT the per-block contract version
-        // string each model already carries in its own `schemaVersion`.
         buildSavePayload: function (extra) {
             return Object.assign({
                 schemaVersion: 1,

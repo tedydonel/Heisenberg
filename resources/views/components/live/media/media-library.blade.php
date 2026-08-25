@@ -1,12 +1,3 @@
-{{-- live/media/media-library — a search field over a responsive auto-fill card grid. Reuses
-     ui/search-field and live/media/media-card.
-
-     When `select-url` is given (media-dialog.blade.php threads through route('media.select'), see
-     routes/media.php + MediaLibraryController::select), the search field and grid are live: search
-     debounces into a fetch, results replace the grid, and picking a card dispatches a bubbling
-     `hb:media-pick` event with the file payload. Without `select-url` (the showcase page never sets
-     it) this stays exactly the static, presentational component it was — `hbRefresh()` is a deliberate
-     no-op in that case, so nothing here fetches or changes for that page. --}}
 @once
 <style>
     .hb-medialib { display: flex; flex-direction: column; gap: var(--hb-space-5, 20px); width: 100%; }
@@ -39,7 +30,6 @@
                     if (grid) grid.hidden = true;
                     if (empty) { empty.textContent = msg; empty.hidden = false; }
                 };
-                // Localized copy comes from the Blade side via data attributes — JS owns no strings.
                 const msgEmpty = root.dataset.msgEmpty || '';
                 const msgLoadError = root.dataset.msgLoadError || '';
                 const msgUntitled = root.dataset.msgUntitled || '';
@@ -50,9 +40,6 @@
                     root.dispatchEvent(new CustomEvent('hb:media-pick', { bubbles: true, detail: file }));
                 };
 
-                // One card, built once — paint() AND hbUploadCard's success swap
-                // both come through here so an optimistically-inserted card is
-                // pixel- and behaviour-identical to a fetched one.
                 function buildCard(file) {
                     const node = template.content.firstElementChild.cloneNode(true);
                     const thumbEl = node.querySelector('.hb-mediacard__thumb');
@@ -98,9 +85,6 @@
                     currentFiles.forEach((file) => grid.appendChild(buildCard(file)));
                 }
 
-                // Deliberately a no-op with no select-url — see the file header. This is what
-                // keeps the showcase page's static demo untouched. Returns the fetch promise
-                // so a caller (the dialog's upload flow) can sequence work after the grid loads.
                 root.hbRefresh = (search) => {
                     if (!selectUrl) return Promise.resolve();
                     const sep = selectUrl.indexOf('?') === -1 ? '?' : '&';
@@ -111,11 +95,6 @@
                         .catch(() => setMessage(msgLoadError));
                 };
 
-                // ── optimistic upload cards ──────────────────────────
-                // The extracted media-card's uploading/error states, live: the
-                // dialog's upload flow calls hbUploadCard(name) per file and
-                // drives the handle. Cards are PREPENDED so fresh uploads are
-                // where the eye already is.
                 const uploadingTpl = root.querySelector('[data-hb-mediacard-uploading-template]');
                 const errorTpl = root.querySelector('[data-hb-mediacard-error-template]');
                 const msgUploading = root.dataset.msgUploading || '';
@@ -136,8 +115,6 @@
                             if (fill) fill.style.width = pct + '%';
                             if (status) status.textContent = msgUploading + ' ' + pct + '%';
                         },
-                        // The server said no (or the preflight did) — swap to the
-                        // error card; Retry re-runs the caller's upload for THIS file.
                         fail: (message, retry) => {
                             if (!errorTpl) { node.remove(); return; }
                             const err = errorTpl.content.firstElementChild.cloneNode(true);
@@ -152,7 +129,6 @@
                             node.replaceWith(err);
                             node = err;
                         },
-                        // Landed — become a real, pickable card.
                         succeed: (file) => {
                             currentFiles.unshift(file);
                             node.replaceWith(buildCard(file));
@@ -198,10 +174,6 @@
         @endforeach
     </div>
     <div class="hb-medialib__empty" data-hb-medialib-empty @if (count($items)) hidden @endif>{{ __('heisenberg::editor.media.empty') }}</div>
-    {{-- Clone targets for JS-rendered results — guarantees fetched cards are pixel-identical to
-         the server-rendered ones above without re-implementing media-card's markup/icons in JS.
-         The uploading/error variants are the extracted design's full-state cards (spinner +
-         progress track, error + Retry), cloned live by hbUploadCard() during an upload. --}}
     <template data-hb-mediacard-template><x-live.media.media-card /></template>
     <template data-hb-mediacard-uploading-template><x-live.media.media-card state="uploading" :progress="0" /></template>
     <template data-hb-mediacard-error-template><x-live.media.media-card state="error" /></template>

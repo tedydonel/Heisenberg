@@ -37,8 +37,6 @@ class SitemapTest extends TestCase
         return $xml;
     }
 
-    // ── content-type / well-formedness ──────────────────────────────────
-
     public function test_it_serves_well_formed_xml_with_the_right_content_type_and_namespaces(): void
     {
         $this->makePost();
@@ -53,8 +51,6 @@ class SitemapTest extends TestCase
         $this->assertSame('http://www.sitemaps.org/schemas/sitemap/0.9', $namespaces['']);
         $this->assertSame('http://www.w3.org/1999/xhtml', $namespaces['xhtml']);
     }
-
-    // ── inclusion / exclusion ───────────────────────────────────────────
 
     public function test_a_published_post_with_no_seo_meta_row_is_included(): void
     {
@@ -132,8 +128,6 @@ class SitemapTest extends TestCase
         $this->assertCount(0, $xml->xpath('//s:url'));
     }
 
-    // ── hreflang alternates ──────────────────────────────────────────────
-
     public function test_a_solo_post_has_no_hreflang_alternates(): void
     {
         $this->makePost();
@@ -173,8 +167,6 @@ class SitemapTest extends TestCase
         $this->assertCount(1, $xml->xpath('//s:url'));
         $this->assertCount(0, $xml->xpath('//xhtml:link'));
     }
-
-    // ── url_template ─────────────────────────────────────────────────────
 
     public function test_url_template_substitution(): void
     {

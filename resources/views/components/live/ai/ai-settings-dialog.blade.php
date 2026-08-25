@@ -1,25 +1,3 @@
-{{-- live/ai/ai-settings-dialog — AI configuration, in the media-dialog's modal shell.
-
-     Same trick as live/revisions-dialog: the scrim carries `.hb-mediadialog__scrim` and the card
-     carries `.hb-mediadialog`, so live/media/media-dialog's @once script wires hbOpen()/hbClose(),
-     Escape, backdrop-close and the Tab focus trap for this dialog too.
-
-     STRUCTURE — a provider is a VENDOR, not a wire format:
-       Providers tab  a list of vendors (OpenAI, Anthropic, xAI, Gemini, OpenRouter, Ollama…).
-                      Each owns a base URL, an API key and an API *format* (the two shapes this
-                      package speaks). Models are DISCOVERED from the vendor's own /models
-                      endpoint — shipping a catalogue would be stale the week a model launches.
-       Models tab     every model across every provider, each with an enable toggle and its own
-                      effort. Effort is per model because a small local model has no use for
-                      `xhigh` and a reasoning model is wasted at `low`.
-
-     Rows are built in JS because they are user data, but every control inside one is cloned from
-     a server-rendered <template>, so the extracted ui/* atoms are used rather than re-implemented
-     as HTML strings.
-
-     Keys are WRITE-ONLY. The payload carries `has_key` booleans and the name of an env var; there
-     is no endpoint that returns key material and none may be added. A key entered here is stored
-     encrypted, and an environment variable always wins over it. --}}
 @once
 <style>
     .hb-aidialog { width: 680px; height: 600px; }
@@ -30,8 +8,6 @@
     }
     .hb-aidialog__err[hidden] { display: none; }
 
-    {{-- Two-layer scroll shell: the outer div is the flex slot and the position:relative anchor
-         for ui/custom-scrollbar, the inner one actually scrolls. --}}
     .hb-aidialog__body { flex: 1 1 auto; min-height: 0; overflow: hidden; position: relative; }
     .hb-aidialog__body[hidden] { display: none; }
     .hb-aidialog__scroll {
@@ -135,9 +111,6 @@
                 const payload = JSON.parse(scrim.dataset.payload || '{}');
                 const urls = JSON.parse(scrim.dataset.urls || '{}');
 
-                // Everything the dialog will save. `providers`/`models` are the two lists the
-                // whole structure hangs off; keys are NOT here — they go through their own
-                // write-only endpoint.
                 const state = {
                     providers: (payload.settings && payload.settings.providers) || [],
                     models: (payload.settings && payload.settings.models) || [],
@@ -145,8 +118,6 @@
                     tools: (payload.settings && payload.settings.tools) || [],
                     mcpServers: (payload.settings && payload.settings.mcp_servers) || [],
                 };
-                // Connection facts from the server (has_key, connected) — booleans only,
-                // refreshed whenever the server answers.
                 let described = payload.providers || [];
                 let presets = payload.presets || [];
 
@@ -169,14 +140,6 @@
                     body: body ? JSON.stringify(body) : undefined,
                 }).then((r) => r.json().catch(() => ({})).then((data) => ({ ok: r.ok, status: r.status, data })));
 
-                /**
-                 * Write the whole settings blob and re-sync from the response.
-                 *
-                 * Adding or removing a provider persists IMMEDIATELY rather than waiting for
-                 * Save, because the key and discover endpoints look a provider up in the
-                 * SAVED settings — an unsaved provider makes them answer "unknown provider",
-                 * which is exactly the dead end this used to produce.
-                 */
                 const persist = () => {
                     showError('');
                     setStatus(msg('msgSaving'));
@@ -196,8 +159,6 @@
                                 showError((data.errors || [])[0] || (status === 403 ? msg('msgForbidden') : msg('msgSaveFailed')));
                                 return false;
                             }
-                            // Trust the server's normalised copy over local state, so a
-                            // provider id it rewrote (or dropped) is reflected here.
                             state.providers = (data.settings && data.settings.providers) || state.providers;
                             state.models = (data.settings && data.settings.models) || state.models;
                             state.activeModel = (data.settings && data.settings.active_model) || null;
@@ -214,12 +175,6 @@
                         .catch(() => { setStatus(''); showError(msg('msgSaveFailed')); return false; });
                 };
 
-                /**
-                 * Keep the model form's provider picker in step with the provider list.
-                 * Options are cloned from a server-rendered <template> of the ui/select
-                 * atom's own option markup, so the atom is reused rather than re-written
-                 * as an HTML string here.
-                 */
                 const renderProviderOptions = () => {
                     const select = scrim.querySelector('[data-hb-model-new-provider]');
                     const menu = select?.querySelector('[data-hb-select-menu]');
@@ -234,13 +189,11 @@
                         menu.appendChild(option);
                     });
 
-                    // Keep a valid selection: the current one if it survived, else the first.
                     const current = select.dataset.value;
                     const stillThere = state.providers.some((p) => p.id === current);
                     setSelect(select, stillThere ? current : ((state.providers[0] || {}).id || ''));
                 };
 
-                // ── providers ───────────────────────────────────────────────────────────
                 const renderProviders = () => {
                     const list = scrim.querySelector('[data-hb-prov-list]');
                     list.innerHTML = '';
@@ -251,7 +204,6 @@
                         const row = tmpl('provider');
                         const models = state.models.filter((m) => m.provider === provider.id);
 
-                        // Addressable so a just-added provider's panel can be opened.
                         row.dataset.hbProvRow = provider.id;
 
                         row.querySelector('[data-hb-prov-label]').textContent = provider.label;
@@ -259,8 +211,6 @@
                             ? models.map((m) => m.label || m.id).join(' · ')
                             : msg('msgNoModelsYet');
 
-                        // Three states, not two: a local endpoint is reachable with no key at
-                        // all, so "no key" is only a problem when the vendor needs one.
                         const tag = row.querySelector('[data-hb-prov-status] .hb-statustag');
                         const connected = !!info.connected;
                         tag.querySelector('span:last-child').textContent = connected ? msg('msgConnected') : msg('msgNotConnected');
@@ -273,8 +223,6 @@
 
                         const keyInput = inputOf(row, '[data-hb-prov-key]');
                         keyInput.placeholder = info.has_key ? msg('msgKeySaved') : msg('msgKeyEnter');
-                        // An env var outranks a stored key; say so rather than letting an
-                        // operator wonder why their pasted key seems ignored.
                         row.querySelector('[data-hb-prov-keyhint]').textContent = info.key_from_env
                             ? msg('msgKeyFromEnv').replace(':env', info.key_env || '')
                             : (info.key_env ? msg('msgKeyEnvHint').replace(':env', info.key_env) : '');
@@ -315,7 +263,6 @@
 
                         row.querySelector('[data-hb-prov-remove]')?.addEventListener('click', () => {
                             state.providers.splice(index, 1);
-                            // Its models go with it — a model without a provider cannot be called.
                             state.models = state.models.filter((m) => m.provider !== provider.id);
                             if (state.activeModel && state.activeModel.indexOf(provider.id + ':') === 0) {
                                 state.activeModel = null;
@@ -327,8 +274,6 @@
                     });
                 };
 
-                // Discovered ids as tick-boxes: adding every model a big gateway serves would
-                // bury the list, so the operator picks.
                 const renderDiscovered = (row, provider, ids) => {
                     const holder = row.querySelector('[data-hb-prov-discovered]');
                     holder.innerHTML = '';
@@ -368,11 +313,8 @@
                                 base_url: preset.base_url, key_env: preset.key_env || null,
                                 icon: preset.icon || null, built_in: true,
                             });
-                            // Persist now: the key and discover endpoints resolve a provider
-                            // from the SAVED settings, so an unsaved one cannot take a key.
                             persist().then((saved) => {
                                 if (!saved) return;
-                                // Drop the operator straight into the panel they need next.
                                 const row = scrim.querySelector(`[data-hb-prov-row="${preset.id}"] [data-hb-prov-panel]`);
                                 if (row) row.hidden = false;
                             });
@@ -403,11 +345,8 @@
                         key_env: env || null, icon: null, built_in: false,
                     });
 
-                    // Same reason as the preset path: a provider must exist server-side
-                    // before its key can be stored against it.
                     persist().then((saved) => {
                         if (!saved) {
-                            // Roll back so the list never shows a provider the server refused.
                             state.providers = state.providers.filter((p) => p.id !== id);
                             renderProviders();
                             return;
@@ -420,13 +359,11 @@
                     });
                 });
 
-                // ── models ──────────────────────────────────────────────────────────────
                 const renderModels = () => {
                     const list = scrim.querySelector('[data-hb-model-list]');
                     list.innerHTML = '';
                     scrim.querySelector('[data-hb-model-empty]').hidden = state.models.length > 0;
 
-                    // Grouped by provider so a mixed install reads as "whose model is this".
                     state.providers.forEach((provider) => {
                         const models = state.models.filter((m) => m.provider === provider.id);
                         if (!models.length) return;
@@ -452,7 +389,6 @@
                             toggle.checked = !!model.enabled;
                             toggle.addEventListener('change', () => {
                                 model.enabled = toggle.checked;
-                                // The model in use cannot also be off.
                                 if (!model.enabled && state.activeModel === key) state.activeModel = null;
                                 renderModels();
                                 setStatus('');
@@ -479,8 +415,6 @@
                     });
                 };
 
-                // One form for add AND edit — the fields are identical, and two of them would
-                // drift. `editing` null means add.
                 let editing = null;
                 const modelForm = scrim.querySelector('[data-hb-model-form]');
 
@@ -494,8 +428,6 @@
                     scrim.querySelector('[data-hb-model-form-title]').textContent = model ? msg('msgEditModel') : msg('msgAddModel');
                 };
 
-                // The ui/select atom keeps its value on the root and its label in a span; set
-                // both rather than forking the atom to accept a programmatic value.
                 const setSelect = (root, value) => {
                     if (!root) return;
                     root.dataset.value = value || '';
@@ -545,7 +477,6 @@
                     showError('');
                 });
 
-                // ── MCP servers (outbound) ──────────────────────────────────────────────
                 const renderServers = () => {
                     const list = scrim.querySelector('[data-hb-mcp-list]');
                     if (!list) return;
@@ -586,8 +517,6 @@
                                         check.checked = (server.allowed_tools || []).indexOf(tool.name) !== -1;
                                         check.addEventListener('change', () => {
                                             const set = new Set(server.allowed_tools || []);
-                                            // Unticking is the control, not a hint: a tool absent
-                                            // from this list is refused before it can run.
                                             if (check.checked) set.add(tool.name); else set.delete(tool.name);
                                             server.allowed_tools = Array.from(set);
                                             setStatus('');
@@ -621,7 +550,6 @@
                     renderServers();
                 });
 
-                // ── shell ───────────────────────────────────────────────────────────────
                 scrim.querySelector('[data-hb-tablist]')?.addEventListener('change', (event) => {
                     bodies.forEach((b) => { b.hidden = b.dataset.hbTabBody !== event.detail.value; });
                 });
@@ -684,9 +612,6 @@
         array_keys((array) ($payload['formats'] ?? [])),
         array_values((array) ($payload['formats'] ?? [])),
     );
-    // Provider options for the model form. Rendered server-side from the SAVED list; a
-    // provider added in this session is picked up on the next open, which is the one
-    // place a full round trip is genuinely simpler than mirroring the atom in JS.
     $providerOptions = array_map(
         static fn (array $p): array => ['value' => $p['id'], 'label' => $p['label']],
         (array) ($payload['settings']['providers'] ?? []),
@@ -746,7 +671,6 @@
 
         <div class="hb-aidialog__err" data-hb-ai-err hidden></div>
 
-        {{-- Providers ------------------------------------------------------------------ --}}
         <div class="hb-aidialog__body" data-hb-tab-body="providers">
             <div class="hb-aidialog__scroll" data-hb-ai-providers-scroll>
                 <p class="hb-aidialog__intro">{{ __('heisenberg::editor.ai.providers_intro') }}</p>
@@ -776,7 +700,6 @@
             <x-ui.custom-scrollbar container="[data-hb-ai-providers-scroll]" />
         </div>
 
-        {{-- Models --------------------------------------------------------------------- --}}
         <div class="hb-aidialog__body" data-hb-tab-body="models" hidden>
             <div class="hb-aidialog__scroll" data-hb-ai-models-scroll>
                 <p class="hb-aidialog__intro">{{ __('heisenberg::editor.ai.models_intro') }}</p>
@@ -786,7 +709,6 @@
 
                 <div><x-ui.button variant="secondary" data-hb-model-add-toggle>{{ __('heisenberg::editor.ai.model_add') }}</x-ui.button></div>
 
-                {{-- One form for add and edit — identical fields, and two would drift. --}}
                 <div class="hb-aidialog__addform" data-hb-model-form hidden>
                     <span class="hb-aidialog__name" data-hb-model-form-title></span>
                     <x-ui.field-label>{{ __('heisenberg::editor.ai.model_id_label') }}</x-ui.field-label>
@@ -809,7 +731,6 @@
             <x-ui.custom-scrollbar container="[data-hb-ai-models-scroll]" />
         </div>
 
-        {{-- MCP Servers (outbound) ------------------------------------------------------ --}}
         <div class="hb-aidialog__body" data-hb-tab-body="mcp" hidden>
             <div class="hb-aidialog__scroll" data-hb-ai-mcp-scroll>
                 <p class="hb-aidialog__intro">{{ __('heisenberg::editor.ai.mcp_intro') }}</p>
@@ -833,7 +754,6 @@
             <x-ui.custom-scrollbar container="[data-hb-ai-mcp-scroll]" />
         </div>
 
-        {{-- Expose (inbound MCP server) ------------------------------------------------- --}}
         <div class="hb-aidialog__body" data-hb-tab-body="expose" hidden>
             <div class="hb-aidialog__scroll" data-hb-ai-expose-scroll>
                 <p class="hb-aidialog__intro">{{ __('heisenberg::editor.ai.expose_intro') }}</p>
@@ -869,7 +789,6 @@
         </div>
     </div>
 
-    {{-- Row templates. Cloned per entry so every control stays an extracted atom. --}}
     <template data-hb-tmpl="provider">
         <div class="hb-aidialog__row hb-aidialog__row--stacked">
             <div class="hb-aidialog__rowhead">
@@ -941,8 +860,6 @@
         <label class="hb-aidialog__tool"><input type="checkbox"><span></span></label>
     </template>
 
-    {{-- One ui/select option, rendered by the atom itself so its markup stays the single
-         source when the provider picker is rebuilt after a provider is added or removed. --}}
     <template data-hb-tmpl="select-option">
         <button type="button" role="option" data-hb-select-option="" aria-selected="false" class="hb-select__option">
             <span></span>

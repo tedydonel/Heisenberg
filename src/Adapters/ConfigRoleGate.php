@@ -39,7 +39,6 @@ class ConfigRoleGate implements RoleGate
 
     public function rolesOf(Authenticatable $user): array
     {
-        // Spatie laravel-permission.
         if (method_exists($user, 'getRoleNames')) {
             $names = $user->getRoleNames();
 

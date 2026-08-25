@@ -1,11 +1,3 @@
-{{-- live/pickers/variable-menu — a searchable menu that binds a field to a design token. `mode`
-     (color|number) switches the trailing affordance (swatch vs value) and the token set. The token
-     names + values come from the theme (data), rendered via --hb-* only for chrome. --}}
-{{-- `tokens` is `displayName => swatch-or-value` — the NAME the user gave the token in the Style
-     tab, never its CSS reference. `values` is the optional parallel map of
-     `displayName => value to emit on select`; without it the name is emitted, which is what the
-     components gallery relies on. This split exists because the row must READ as "Accent" while
-     WRITING `var(--hb-t-accent-1)`. --}}
 @props(['mode' => 'color', 'selected' => 'border', 'tokens' => null, 'values' => []])
 @php
     $default = $mode === 'number'
@@ -46,8 +38,6 @@
             items.forEach((it) => it.addEventListener('click', () => {
                 items.forEach((i) => i.classList.remove('hb-vmi--on'));
                 it.classList.add('hb-vmi--on');
-                // `value` is what a consumer writes to the model (the CSS reference); `name` is
-                // what the row reads as. They differ whenever data-vm-value is present.
                 menu.dispatchEvent(new CustomEvent('varselect', {
                     bubbles: true,
                     detail: { name: it.dataset.vmName, value: it.dataset.vmValue ?? it.dataset.vmName },

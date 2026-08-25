@@ -1,19 +1,3 @@
-{{-- ui/section — inspector section:
-     a $space-3-padded block with a 13px/600 secondary-colored title and an optional
-     right-hand action slot, divided from the previous section by a top hairline.
-     `collapsible` adds a caret and hides the body (Content/Advanced tabs use it; the
-     Style tab's sections don't). Distinct from ui/category-head, which is the small
-     uppercase eyebrow used by the inserter.
-
-     Vanilla JS, not Alpine: Alpine is not loaded on /editor (no @vite, no Alpine script,
-     no @livewireScripts, and /editor renders no Livewire component — see live/sidebar's
-     own note making this same call). A prior commit added x-data/x-on/x-show here anyway,
-     which left the caret permanently dead; this is the fix, in the same
-     @once + document-delegated-listener idiom used everywhere else in the editor. A single
-     delegated click listener (not a per-node boot()) is used deliberately — this component's
-     consumers (the Block-tab panels) render many instances up front and toggle their
-     visibility rather than being rebuilt, but a delegated listener needs no re-wiring
-     either way, so it's the simplest correct option. --}}
 @once
 
 <script>

@@ -1,9 +1,3 @@
-{{-- ui/button —
-     Three variants collapsed into one component (variant prop) per shared geometry: gap 6, radius-md,
-     fs-sm/500 label, optional 14px leading icon (hidden unless leadingIcon is set).
-     Hover/disabled are inferred CSS states — the source shows one static frame per variant, no hover swatch.
-     Height is a fixed 28px (explicit request, not from the source's padding-derived ~32px) so every
-     button using this component is the same height everywhere it's used. --}}
 @once
 
 @endonce

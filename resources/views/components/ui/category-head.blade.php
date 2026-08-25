@@ -1,11 +1,3 @@
-{{-- ui/category-head — 28px row, uppercase eyebrow label +
-     chevron. Source shows the expanded instance (caret-up); collapsed flips to caret-down, the standard
-     pairing. Click flips the `collapsed` visual state, dispatches a 'toggle' CustomEvent (bubbles, with
-     `detail.collapsed` = the state being left), AND — same contract as ui/disclosure-row — toggles a
-     sibling [data-hb-category-body] element's `hidden` via the global `.hb-editor [hidden]` rule
-     (01-reset.css). Any caller opts in by marking its content sibling with that attribute; nothing
-     else to wire. The 'toggle' event still fires regardless, for anything that wants to react beyond
-     show/hide. --}}
 @once
 
 <script>

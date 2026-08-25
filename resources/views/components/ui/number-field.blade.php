@@ -1,5 +1,3 @@
-{{-- ui/number-field — 72x26, centered value on an inset fill.
-     Real <input type="number"> — native stepping/arrow-key behavior covers "keyboard steps". --}}
 @once
 
 @endonce

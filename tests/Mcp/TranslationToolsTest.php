@@ -47,8 +47,6 @@ class TranslationToolsTest extends TestCase
         return (array) json_decode($call['text'], true);
     }
 
-    // ── create_translation: pre-flight validation ────────────────────────
-
     public function test_create_translation_is_offered_on_both_surfaces(): void
     {
         $registry = app(McpToolRegistry::class);
@@ -115,8 +113,6 @@ class TranslationToolsTest extends TestCase
         $this->assertTrue($call['isError']);
     }
 
-    // ── title / excerpt: locale-suffixed columns on the SAME row ─────────
-
     public function test_title_and_excerpt_write_to_locale_suffixed_columns_without_touching_english(): void
     {
         $source = $this->toolData('create_post', [
@@ -138,8 +134,6 @@ class TranslationToolsTest extends TestCase
         $this->assertSame('Hello', $post->title_en);
         $this->assertSame('An English summary', $post->excerpt_en);
     }
-
-    // ── code: folded into the EXISTING blocks by position ─────────────────
 
     public function test_code_folds_translated_text_into_existing_blocks_by_position_without_touching_english(): void
     {
@@ -213,8 +207,6 @@ class TranslationToolsTest extends TestCase
         $this->assertStringContainsString('block name mismatch', $call['text']);
     }
 
-    // ── return shape: completeness, same signal get_post's translations map reports ──
-
     public function test_returns_the_target_locales_completeness(): void
     {
         $source = $this->toolData('create_post', ['title' => 'Hello', 'code' => '[p]One[/p]']);
@@ -245,8 +237,6 @@ class TranslationToolsTest extends TestCase
         $this->assertSame('published', Post::query()->findOrFail($source['id'])->status);
     }
 
-    // ── get_post's translations map: per-locale completeness, not a sibling map ──
-
     public function test_get_post_translations_map_reports_per_locale_completeness(): void
     {
         $source = $this->toolData('create_post', ['title' => 'Hello', 'code' => '[p]One[/p]']);
@@ -275,8 +265,6 @@ class TranslationToolsTest extends TestCase
         $this->assertFalse($result['translations']['fr']['title']);
         $this->assertFalse($result['translations']['fr']['complete']);
     }
-
-    // ── update_category / update_tag (unrelated to the translation model) ──
 
     public function test_update_category_sets_bilingual_fields_and_leaves_others_untouched(): void
     {

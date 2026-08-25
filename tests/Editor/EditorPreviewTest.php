@@ -75,8 +75,6 @@ class EditorPreviewTest extends TestCase
         return $response->json();
     }
 
-    // ── the editor page ships the preview wiring ────────────────────────
-
     public function test_editor_page_ships_the_preview_button_and_its_wiring(): void
     {
         $html = $this->get('/editor')->assertOk()->getContent();
@@ -107,8 +105,6 @@ class EditorPreviewTest extends TestCase
         // The doc is read through the public runtime API, never the frozen internals directly.
         $this->assertStringContainsString('window.hbEditor.getDoc()', $html);
     }
-
-    // ── never-saved document: session round trip ────────────────────────
 
     public function test_unsaved_document_preview_stores_then_renders_through_block_renderer(): void
     {
@@ -199,8 +195,6 @@ class EditorPreviewTest extends TestCase
         );
     }
 
-    // ── rejection cases PreviewController already intends ────────────────
-
     public function test_oversized_payload_is_rejected_with_413(): void
     {
         $huge = str_repeat('a', 1024 * 1024 + 1);
@@ -215,8 +209,6 @@ class EditorPreviewTest extends TestCase
     {
         $this->postJson('/editor/preview', ['nope' => true])->assertStatus(422);
     }
-
-    // ── already-saved post: DB-backed preview, no session round trip ────
 
     public function test_saved_post_preview_renders_straight_from_the_database(): void
     {

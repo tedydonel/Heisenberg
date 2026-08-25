@@ -32,8 +32,6 @@ class SeoUrlResolverTest extends TestCase
         ));
     }
 
-    // ── string template: back-compat ────────────────────────────────────
-
     public function test_string_template_still_substitutes_locale_and_slug_for_every_locale(): void
     {
         $this->app['config']->set('heisenberg.seo.url_template', 'https://example.com/{locale}/blog/{slug}');
@@ -45,8 +43,6 @@ class SeoUrlResolverTest extends TestCase
         $this->assertSame('https://example.com/en/blog/hello', $resolver->url($en));
         $this->assertSame('https://example.com/fr/blog/bonjour', $resolver->url($fr));
     }
-
-    // ── map form ──────────────────────────────────────────────────────────
 
     public function test_map_template_picks_the_entry_for_the_posts_own_locale(): void
     {
@@ -98,8 +94,6 @@ class SeoUrlResolverTest extends TestCase
         $this->assertSame('https://example.de/de/blog/hallo', $resolver->url($post));
     }
 
-    // ── map fallback chain: locale -> '*' -> default_locale -> preview route ───
-
     public function test_missing_locale_entry_falls_back_to_the_star_catch_all(): void
     {
         $this->app['config']->set('heisenberg.seo.url_template', [
@@ -144,8 +138,6 @@ class SeoUrlResolverTest extends TestCase
         );
     }
 
-    // ── dev-default preview-route fallback when nothing is configured ──────
-
     public function test_nothing_configured_falls_back_to_the_dev_default_preview_route(): void
     {
         $this->app['config']->set('heisenberg.seo.url_template', null);
@@ -158,8 +150,6 @@ class SeoUrlResolverTest extends TestCase
             $resolver->url($post)
         );
     }
-
-    // ── the override seam: a custom bound PostUrlResolver wins EVERYWHERE ──
 
     public function test_a_custom_bound_resolver_wins_on_the_sitemap(): void
     {

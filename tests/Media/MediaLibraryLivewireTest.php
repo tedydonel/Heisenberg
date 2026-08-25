@@ -124,8 +124,6 @@ class MediaLibraryLivewireTest extends TestCase
         Storage::disk('uploads')->assertExists($file->stored_path);
     }
 
-    // ── Authorization: upload ────────────────────────────────────────────
-
     public function test_upload_denied_without_create_ability_via_livewire(): void
     {
         $this->roleGate->abilities['media.create'] = false;
@@ -153,8 +151,6 @@ class MediaLibraryLivewireTest extends TestCase
         $this->assertSame([], Storage::disk('uploads')->allFiles());
         $this->assertNotNull($component->get('error'));
     }
-
-    // ── Authorization: delete ────────────────────────────────────────────
 
     public function test_true_guest_cannot_delete_via_livewire(): void
     {

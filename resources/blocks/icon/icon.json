@@ -16,7 +16,7 @@
     "attributes": {
         "icon": {
             "type": "string",
-            "default": "",
+            "default": "feather/star",
             "sanitize": "text",
             "control": {
                 "type": "text",

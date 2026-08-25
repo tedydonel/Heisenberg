@@ -68,8 +68,6 @@ class PostPersistenceTest extends TestCase
         ], $overrides);
     }
 
-    // ── round trip ───────────────────────────────────────────────────────
-
     public function test_store_then_show_round_trips_a_block_tree(): void
     {
         $blocks = [
@@ -92,8 +90,6 @@ class PostPersistenceTest extends TestCase
         $this->assertSame($blocks, $show->json('blocks'));
     }
 
-    // ── 422 on an invalid payload ────────────────────────────────────────
-
     public function test_store_rejects_an_invalid_payload_with_422_and_an_error_map(): void
     {
         $payload = $this->envelope([$this->block('heisenberg/nope')], ['title_en' => 'Bad']);
@@ -109,8 +105,6 @@ class PostPersistenceTest extends TestCase
         );
         $this->assertSame(0, Post::count());
     }
-
-    // ── 409 on a stale content_version ──────────────────────────────────
 
     public function test_update_returns_409_on_a_stale_content_version(): void
     {
@@ -135,8 +129,6 @@ class PostPersistenceTest extends TestCase
         $this->assertSame($version, $fresh->content_version, 'a rejected save must not bump the version');
         $this->assertSame('v1', $fresh->blocks()->first()->content['attributes']['content']);
     }
-
-    // ── authorization denied for an unauthorized actor ──────────────────
 
     public function test_update_denied_for_an_unauthorized_actor(): void
     {
@@ -168,8 +160,6 @@ class PostPersistenceTest extends TestCase
         $this->assertSame($version, $fresh->content_version);
         $this->assertSame('hi', $fresh->blocks()->first()->content['attributes']['content']);
     }
-
-    // ── autosave does not trip the lifecycle guard ──────────────────────
 
     public function test_autosave_does_not_trip_the_lifecycle_guard(): void
     {
@@ -295,8 +285,6 @@ class PostPersistenceTest extends TestCase
         $response->assertStatus(422);
         $this->assertSame('pending_review', Post::find($postId)->status);
     }
-
-    // ── scheduling (the Summary status control's `scheduled` edge) ─────────
 
     /** Advances a fresh draft to `pending_review`, the only legal edge into `scheduled`. */
     private function promoteToPendingReview(FakeActor $actor, int|string $postId, int $version): int

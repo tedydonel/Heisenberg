@@ -124,8 +124,6 @@ class BlockRendererDynamicAttrsTest extends TestCase
         $this->assertStringContainsString('<div', $danger); // falls back to div
     }
 
-    // ── fixtures ──────────────────────────────────────────────
-
     private function writeDyn(): void
     {
         $contract = [

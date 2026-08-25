@@ -68,8 +68,6 @@ class SeoMediaToolsTest extends TestCase
         ]);
     }
 
-    // ── get_seo / update_seo tool registration ──────────────────────
-
     public function test_seo_and_media_tools_are_offered_on_both_surfaces(): void
     {
         $registry = app(McpToolRegistry::class);
@@ -81,8 +79,6 @@ class SeoMediaToolsTest extends TestCase
             $this->assertContains($tool, $externalNames, "{$tool} missing on external surface");
         }
     }
-
-    // ── get_seo ────────────────────────────────────────────────────
 
     public function test_get_seo_returns_has_seo_false_when_no_row_exists(): void
     {
@@ -115,8 +111,6 @@ class SeoMediaToolsTest extends TestCase
         $this->assertSame('A great description of the page.', $result['seo']['meta_description_en']);
         $this->assertTrue($result['seo']['in_sitemap']);
     }
-
-    // ── update_seo ─────────────────────────────────────────────────
 
     public function test_update_seo_creates_a_row_with_locale_neutral_and_localized_fields(): void
     {
@@ -249,8 +243,6 @@ class SeoMediaToolsTest extends TestCase
         $this->assertTrue($call['isError']);
     }
 
-    // ── analyze_seo ────────────────────────────────────────────────
-
     public function test_analyze_seo_returns_the_analyzer_shape(): void
     {
         $post = $this->toolData('create_post', [
@@ -274,8 +266,6 @@ class SeoMediaToolsTest extends TestCase
         $this->assertArrayHasKey('id', $result['checks'][0]);
         $this->assertArrayHasKey('status', $result['checks'][0]);
     }
-
-    // ── update_media ───────────────────────────────────────────────
 
     public function test_update_media_sets_alt_caption_and_credit_both_locales(): void
     {
