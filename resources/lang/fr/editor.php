@@ -717,4 +717,19 @@ return [
         'browse_all' => 'Parcourir tous les composants',
     ],
 
+    // Sélecteur de variables réservé aux e-mails (Tâche 5 du plan
+    // .hermes/plans/2026-08-25_190059-email-template-variables.md). Monté à côté
+    // du sujet du canevas, du sujet miroir de l’inspecteur et de toute zone
+    // éditable de texte enrichi sélectionnée. Insertion littérale de texte
+    // `{{ clef.pointée }}` — jamais innerHTML.
+    'email_variable_menu' => [
+        'label' => 'Insérer une variable d’e-mail',
+        'search_placeholder' => 'Rechercher des variables…',
+        'search_label' => 'Rechercher des variables',
+        'list_label' => 'Variables d’e-mail enregistrées',
+        'empty' => 'Aucune variable ne correspond à votre recherche.',
+        'trigger_label' => 'Insérer une variable',
+        'trigger_aria' => 'Insérer ici une variable d’e-mail',
+    ],
+
 ];

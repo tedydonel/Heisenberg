@@ -721,4 +721,17 @@ return [
         'browse_all' => 'Browse all components',
     ],
 
+    // Email-only variable picker (Task 5 of .hermes/plans/2026-08-25_190059-email-template-variables.md).
+    // Mounted beside the canvas subject, the inspector subject mirror, and every selected-block
+    // rich-text editable. Authors insert literal `{{ dotted.key }}` text — never innerHTML.
+    'email_variable_menu' => [
+        'label' => 'Insert email variable',
+        'search_placeholder' => 'Search variables…',
+        'search_label' => 'Search variables',
+        'list_label' => 'Registered email variables',
+        'empty' => 'No variables match your search.',
+        'trigger_label' => 'Insert variable',
+        'trigger_aria' => 'Insert an email variable here',
+    ],
+
 ];
