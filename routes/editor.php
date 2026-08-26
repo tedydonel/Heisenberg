@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 use Heisenberg\Http\Controllers\CategoryController;
 use Heisenberg\Http\Controllers\EditorController;
+use Heisenberg\Http\Controllers\EmailBatchExportController;
 use Heisenberg\Http\Controllers\EmailPreviewController;
 use Heisenberg\Http\Controllers\FontController;
 use Heisenberg\Http\Controllers\HeisenbergPatternController;
@@ -129,6 +130,11 @@ Route::middleware(config('heisenberg.middleware.editor', ['web']))->group(functi
     // self-contained RFC-822 message (cid-embedded, built with Symfony Mime directly). Same
     // gating as the two routes above, plus a 404 for a non-email post — see the controller.
     Route::get('/editor/{post}/email-export', [EmailPreviewController::class, 'export'])->whereNumber('post')->name('heisenberg.editor.email.export');
+    // Wave E5 / Task 6: admin-only batch file factory. Same editor stack as the GETs above,
+    // bound by PostPolicy::generateEmailBatch (LocalDevRoleGate + `email.generate` tier + email
+    // type + published status). The body is JSON; success returns application/zip with an
+    // attachment Content-Disposition and the on-disk temp zip is deleted after streaming.
+    Route::post('/editor/email/{post}/batch-export', [EmailBatchExportController::class, 'export'])->whereNumber('post')->name('heisenberg.editor.email.batch-export');
     // Locale switcher — POST flips the active locale (session), then redirects
     // back to the referer (or a provided `return` query param). Whitelist lives
     // in Heisenberg\Support\LocaleConfig (config('heisenberg.locales'), docs/content-translation.md

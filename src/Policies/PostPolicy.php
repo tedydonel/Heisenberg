@@ -101,6 +101,47 @@ class PostPolicy
     }
 
     /**
+     * Wave E5 / Task 6 (.hermes/plans/2026-08-25_190059-email-template-variables.md):
+     * may $user produce an admin batch zip of personalized files for this email?
+     *
+     * The PostPolicy delegation pattern is identical to every other method here — `LocalDevRoleGate`
+     * wraps the configured `RoleGate` so a `GuestActor` is allowed ONLY while
+     * `app()->environment('local')` AND `config('heisenberg.allow_anonymous_in_local')` are both
+     * true, and a real, authenticated actor is NEVER affected in any environment. Wrapped in
+     * `LocalDevRoleGate`, the tier check below is the one and only authorization decision for
+     * the route: the controller is a thin JSON-POST wrapper around the exporter, and the
+     * exporter's only inputs are `Post` and an admin-supplied options array — there is no
+     * per-row permission, no host-mailer bypass, and no other `RoleGate` call site here.
+     *
+     * Three checks (plan's "Authorization:" locked decision §9):
+     *  1. RoleGate tier `email.generate` — `config('heisenberg.roles.email.generate')`, default
+     *     `['admin']`. A host that wants editors to also be able to mass-export rewrites this
+     *     list in their published config — no policy or controller change required.
+     *  2. `$post->type === 'email'` — a plain blog post is not a batch-able surface.
+     *  3. `$post->status === 'published'` — the plan calls published "ready to send"; a draft has
+     *     not been approved for sending yet.
+     *
+     * Returns `false` for everything else, including an unpublished email (403) and a non-email
+     * post. The controller surfaces a non-email post as 404 (the URL itself is wrong for it), so
+     * this method only checks `email.generate` + `email` + `published` and the route / controller
+     * performs the 404 disambiguation. We deliberately return `false` here for a non-email post
+     * rather than skipping the type/status checks — keeping all three checks in this method
+     * preserves the contract that every batch-authorization call goes through exactly one place.
+     */
+    public function generateEmailBatch(Authenticatable $user, Post $post): bool
+    {
+        if (! $this->roleGate->is($user, 'email.generate')) {
+            return false;
+        }
+
+        if ((string) ($post->type ?? '') !== 'email') {
+            return false;
+        }
+
+        return (string) ($post->status ?? '') === 'published';
+    }
+
+    /**
      * Listing what's currently in the trash (PostTrashController::trashed()) — a class-based
      * ability with no single post to check ownership against, same shape as
      * {@see CategoryPolicy::viewAny()}. Same `admins`-only tier as delete()/restore(): the trash
