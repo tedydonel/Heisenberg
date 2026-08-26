@@ -167,9 +167,14 @@ return [
     // the first URL segment — change it if `/emails` collides with a host's own routing.
     // `heisenberg.middleware.email` gates the group; PostPolicy `view` runs regardless, so a
     // DRAFT email is never readable by a visitor no matter how open that stack is.
+    // `batch_max_recipients` (Wave E5 / Task 6, .hermes/plans/2026-08-25_190059-email-template-variables.md):
+    // cap on the recipient list length a single admin batch export may carry. Hosts raise it
+    // deliberately; 100 is the conservative default that keeps a single batch from running
+    // away in memory or zip time on a server with modest resources.
     'email' => [
-        'routes'       => true,
-        'route_prefix' => 'emails',
+        'routes'              => true,
+        'route_prefix'        => 'emails',
+        'batch_max_recipients' => 100,
     ],
     'css_prefix'   => 'hb',           // emitted CSS class/var prefix (gtc-block -> hb-block)
     'components'   => [
@@ -482,6 +487,13 @@ return [
     // for. They were missing (2026-08-10), which made ConfigRoleGate resolve
     // them to an empty role set — the HTTP media API then denied EVERY user,
     // even admins, on any host using the bundled gate.
+    //
+    // Wave E5 / Task 6 — `email.generate` is the tier PostPolicy::generateEmailBatch
+    // asks for before producing an admin batch zip. Defaults to `admin`-only: an
+    // author or editor must NOT be able to mass-export personalized files even if
+    // they can author the email itself. A host that wants a different surface (e.g.
+    // editors may export for the host's marketing pipeline) rewrites the list here
+    // without touching a single policy.
     'roles' => [
         'super'   => ['admin'],
         'admins'  => ['admin'],
@@ -497,6 +509,9 @@ return [
         // surface). Same admin+editor tier as the media.update/deleteAny abilities above —
         // an author may submit content but doesn't moderate other people's comments.
         'comments.moderate' => ['admin', 'editor'],
+
+        // Wave E5 / Task 6 — admin batch export. Defaults to admin-only; see PostPolicy::generateEmailBatch.
+        'email.generate'    => ['admin'],
     ],
 
     // Publishing lifecycle
