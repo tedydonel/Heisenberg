@@ -173,7 +173,7 @@
                     if (field.__hbPostDiscussion) return;
                     field.__hbPostDiscussion = true;
 
-                    const toggle = field.querySelector('[data-hb-post-allow-comments]');
+                    const toggle = field.querySelector('[data-hb-post-allow-comments] .hb-toggle__input');
                     const hint = field.querySelector('[data-hb-post-discussion-hint]');
                     if (!toggle) return;
 

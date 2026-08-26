@@ -608,7 +608,7 @@ class EditorRendersTest extends TestCase
 
         $this->assertStringContainsString('data-nav-depth', $html);
         $this->assertStringContainsString('data-nav-twist', $html);
-        $this->assertStringContainsString('walk(kids, depth + 1)', $html);
+        $this->assertStringContainsString('walk(kids, depth + 1, id)', $html);
     }
 
     /**
@@ -647,6 +647,14 @@ class EditorRendersTest extends TestCase
 
         // A real ui/toggle, not a bare navigation row.
         $this->assertStringContainsString('data-hb-post-allow-comments', $html);
+        // The discussion JS resolves its toggle through this exact shape: the
+        // data attribute lands on ui/toggle's wrapper <label>, and reading
+        // .checked off that label instead of drilling into .hb-toggle__input
+        // sends {} and silently 422s every save.
+        $this->assertMatchesRegularExpression(
+            '/data-hb-post-allow-comments[^>]*>\s*<input[^>]*hb-toggle__input/',
+            $html,
+        );
         // Two real ui/slider controls, not a bare navigation row.
         $this->assertStringContainsString('data-hb-post-layout-x', $html);
         $this->assertStringContainsString('data-hb-post-layout-y', $html);
