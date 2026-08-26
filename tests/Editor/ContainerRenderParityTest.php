@@ -329,7 +329,10 @@ class ContainerRenderParityTest extends TestCase
         $this->assertStringContainsString('--hb-column-h: 100px', $html);
 
         // The stylesheet must consume both: basis + cap for width, plain height.
-        $this->assertStringContainsString('flex: 1 1 var(--hb-column-w, 0)', $html);
+        // The basis fallback is `auto`, not 0 (8fafc2b5): flex-basis 0 collapsed
+        // column-direction containers to zero height whenever only one child had
+        // content — the parent's auto height leaves flex-grow nothing to distribute.
+        $this->assertStringContainsString('flex: 1 1 var(--hb-column-w, auto)', $html);
         $this->assertStringContainsString('max-width: var(--hb-column-maxw, var(--hb-column-w, none))', $html);
         $this->assertStringContainsString('height: var(--hb-column-h, auto)', $html);
     }
