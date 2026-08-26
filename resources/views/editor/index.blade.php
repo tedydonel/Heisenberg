@@ -92,6 +92,9 @@
         <x-live.icon-picker-dialog
             :search-url="\Illuminate\Support\Facades\Route::has('heisenberg.editor.icons.search') ? route('heisenberg.editor.icons.search') : null"
             :sets="app(\Heisenberg\Services\IconLibraryService::class)->sets()" />
+        @if (! empty($emailVariablePicker))
+            <x-live.pickers.email-variable-menu :entries="$emailVariablePicker['entries']" :all-targets="$emailVariablePicker['allTargets']" />
+        @endif
         <x-ui.custom-scrollbar container=".hb-canvas" />
         <div class="hb-blk-toolbar-holder" hidden>
             <x-live.toolbar.block-toolbar data-hb-block-toolbar :rich-text="true" :block-type="'Text'" :active-formats="[]"

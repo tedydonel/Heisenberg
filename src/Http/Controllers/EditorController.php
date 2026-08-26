@@ -12,6 +12,7 @@ use Heisenberg\Models\Tag;
 use Heisenberg\Services\AiProviderRegistry;
 use Heisenberg\Services\AiSettingsRepository;
 use Heisenberg\Services\BlockRegistryService;
+use Heisenberg\Services\EmailVariableRegistry;
 use Heisenberg\Services\FontCatalogService;
 use Heisenberg\Services\SavedThemeRepository;
 use Heisenberg\Services\ThemeRepository;
@@ -40,13 +41,13 @@ final class EditorController
      * (docs/email-system.md §6.2), so that query form redirects to it rather than rendering a
      * second, differently-addressed email editor: one document type, one URL.
      */
-    public function index(Request $request, BlockRegistryService $registry, ThemeRepository $themes, SavedThemeRepository $savedThemes, FontCatalogService $fonts): View|RedirectResponse
+    public function index(Request $request, BlockRegistryService $registry, ThemeRepository $themes, SavedThemeRepository $savedThemes, FontCatalogService $fonts, EmailVariableRegistry $emailVariables): View|RedirectResponse
     {
         if ($this->documentType($request->query('type')) === 'email') {
             return redirect()->route('heisenberg.editor.email.new');
         }
 
-        return $this->blankDocument('post', $registry, $themes, $savedThemes, $fonts);
+        return $this->blankDocument('post', $request, $registry, $themes, $savedThemes, $fonts, $emailVariables);
     }
 
     /**
@@ -55,12 +56,12 @@ final class EditorController
      * create-only `type` handling) — which is what gates the palette down to the email-safe
      * blocks, narrows the canvas to the 600px shell, and gives the Post tab its email shape.
      */
-    public function newEmail(BlockRegistryService $registry, ThemeRepository $themes, SavedThemeRepository $savedThemes, FontCatalogService $fonts): View
+    public function newEmail(Request $request, BlockRegistryService $registry, ThemeRepository $themes, SavedThemeRepository $savedThemes, FontCatalogService $fonts, EmailVariableRegistry $emailVariables): View
     {
-        return $this->blankDocument('email', $registry, $themes, $savedThemes, $fonts);
+        return $this->blankDocument('email', $request, $registry, $themes, $savedThemes, $fonts, $emailVariables);
     }
 
-    private function blankDocument(string $documentType, BlockRegistryService $registry, ThemeRepository $themes, SavedThemeRepository $savedThemes, FontCatalogService $fonts): View
+    private function blankDocument(string $documentType, Request $request, BlockRegistryService $registry, ThemeRepository $themes, SavedThemeRepository $savedThemes, FontCatalogService $fonts, EmailVariableRegistry $emailVariables): View
     {
         // The editor is one big server-rendered component tree; the FIRST render
         // after a view-cache rebuild compiles/loads hundreds of Blade views and
@@ -113,6 +114,11 @@ final class EditorController
             // contractsFor('email')) once this document is one — filtered SERVER-SIDE, never by
             // client JS re-reading the full registry. See paletteBlocks()'s own docblock.
             'paletteBlocks' => $this->paletteBlocks($registry, $shared['registry'], $documentType),
+            // The email-only variable picker (Task 5): null on plain posts; an array of safe
+            // editor metadata on email documents whose actor can `update`. Pickled through
+            // emailVariablePickerPayload() — only the eight editor-safe fields the picker needs,
+            // never formatter objects, host classes, or runtime values.
+            'emailVariablePicker' => $this->emailVariablePickerPayload($request, $emailVariables, null, $documentType),
         ]));
     }
 
@@ -125,13 +131,13 @@ final class EditorController
      * it back in the surface the split exists to keep it out of. A redirect rather than a 404
      * because this is a link people already hold — a saved bookmark, a row in a host's admin list.
      */
-    public function show(Request $request, BlockRegistryService $registry, ThemeRepository $themes, SavedThemeRepository $savedThemes, FontCatalogService $fonts, string $post): View|RedirectResponse
+    public function show(Request $request, BlockRegistryService $registry, ThemeRepository $themes, SavedThemeRepository $savedThemes, FontCatalogService $fonts, EmailVariableRegistry $emailVariables, string $post): View|RedirectResponse
     {
         $model = $this->openable($request, $post);
 
         return $model->type === 'email'
             ? redirect()->route('heisenberg.editor.email.show', ['post' => $model->getKey()])
-            : $this->openDocument($model, $registry, $themes, $savedThemes, $fonts);
+            : $this->openDocument($model, $request, $registry, $themes, $savedThemes, $fonts, $emailVariables);
     }
 
     /**
@@ -139,12 +145,12 @@ final class EditorController
      * plain post asked for here redirects back to the post surface, so each document is reachable
      * at exactly one authoring URL no matter which one a link points at.
      */
-    public function showEmail(Request $request, BlockRegistryService $registry, ThemeRepository $themes, SavedThemeRepository $savedThemes, FontCatalogService $fonts, string $post): View|RedirectResponse
+    public function showEmail(Request $request, BlockRegistryService $registry, ThemeRepository $themes, SavedThemeRepository $savedThemes, FontCatalogService $fonts, EmailVariableRegistry $emailVariables, string $post): View|RedirectResponse
     {
         $model = $this->openable($request, $post);
 
         return $model->type === 'email'
-            ? $this->openDocument($model, $registry, $themes, $savedThemes, $fonts)
+            ? $this->openDocument($model, $request, $registry, $themes, $savedThemes, $fonts, $emailVariables)
             : redirect()->route('heisenberg.editor.show', ['post' => $model->getKey()]);
     }
 
@@ -168,7 +174,7 @@ final class EditorController
     }
 
     /** Renders the editor shell around an already-resolved, already-authorized document. */
-    private function openDocument(Post $model, BlockRegistryService $registry, ThemeRepository $themes, SavedThemeRepository $savedThemes, FontCatalogService $fonts): View
+    private function openDocument(Post $model, Request $request, BlockRegistryService $registry, ThemeRepository $themes, SavedThemeRepository $savedThemes, FontCatalogService $fonts, EmailVariableRegistry $emailVariables): View
     {
         if (PHP_SAPI !== 'cli') {
             @set_time_limit(120); // same cold-render headroom as index()
@@ -241,6 +247,9 @@ final class EditorController
             // See index()'s own note — filtered server-side to the email surface once this
             // document is one.
             'paletteBlocks' => $this->paletteBlocks($registry, $shared['registry'], $documentType),
+            // The email-only variable picker (Task 5). The actor's `update` ability is checked
+            // here so a viewer-tier actor never gets the picker UI on a saved email.
+            'emailVariablePicker' => $this->emailVariablePickerPayload($request, $emailVariables, $model, $documentType),
         ]));
     }
 
@@ -279,6 +288,92 @@ final class EditorController
         );
 
         return array_intersect_key($fullRegistry, array_flip($emailNames));
+    }
+
+    /**
+     * The email-only variable picker's server-rendered payload (Task 5 of
+     * .hermes/plans/2026-08-25_190059-email-template-variables.md). Returns the picker
+     * entries (each a strict editor-safe shape) when ALL of:
+     *  - the document is an email (a plain post MUST NOT carry the picker);
+     *  - the actor passes PostPolicy::update for the document (read-only views do not get
+     *    the picker — Task 5 says "Gate the picker the same way the email editor is gated:
+     *    if the actor cannot `update` the document, no insertion UI");
+     *  - the EmailVariableRegistry has at least one definition (an empty registry gives the
+     *    author nothing to pick from, so the picker mount point is also suppressed).
+     *
+     * Returns `null` in any of those three cases — the editor view branch checks for null
+     * and skips the picker's Blade component entirely.
+     *
+     * Each row carries ONLY the eight editor-safe fields {@see EmailVariableRegistry::
+     * editorMetadata()} documents — `key`, `label`, `type`, `targets`, `group`,
+     * `description`, `options`, formatted `sample` — never formatter objects, closures,
+     * host classes, or raw non-scalar samples. The formatted sample is the STRING the
+     * registry's own memoized formatter produced, so a non-scalar host sample still
+     * reaches the editor as a literal string.
+     *
+     * @return array{entries: list<array<string, mixed>>, allTargets: list<string>}|null
+     */
+    private function emailVariablePickerPayload(
+        Request $request,
+        EmailVariableRegistry $registry,
+        ?Post $model,
+        string $documentType,
+    ): ?array {
+        if ($documentType !== 'email') {
+            return null;
+        }
+
+        if (! $this->actorCanUpdateEmail($request, $model)) {
+            return null;
+        }
+
+        $entries = $registry->editorMetadata();
+        if ($entries === []) {
+            return null;
+        }
+
+        $seenTargets = [];
+        foreach ($entries as $entry) {
+            foreach ((array) ($entry['targets'] ?? []) as $target) {
+                $target = (string) $target;
+                $seenTargets[$target] = true;
+            }
+        }
+        $allTargets = array_values(array_filter(
+            ['text', 'url', 'email'],
+            static fn (string $target): bool => isset($seenTargets[$target]),
+        ));
+
+        return [
+            'entries' => array_values($entries),
+            'allTargets' => $allTargets,
+        ];
+    }
+
+    /**
+     * True when the current request's actor may `update` the given email post — the
+     * gate the picker reuses, by design (Task 5 "Gate the picker the same way the
+     * email editor is gated"). Delegates to PostPolicy via Laravel's Gate facade
+     * exactly the way PostController's save endpoints do; a failed check is a NO,
+     * never a thrown authorization exception — the picker's job here is to stay
+     * invisible on read-only views, not to start a 403 round-trip.
+     */
+    private function actorCanUpdateEmail(Request $request, ?Post $model): bool
+    {
+        try {
+            $actor = $request->user() ?? new GuestActor();
+            if ($model === null) {
+                $model = new Post();
+                $actorId = $actor->getAuthIdentifier();
+                if ($actorId !== null) {
+                    $model->author_id = $actorId;
+                }
+            }
+
+            return Gate::forUser($actor)->check('update', $model);
+        } catch (\Throwable) {
+            return false;
+        }
     }
 
     /**
