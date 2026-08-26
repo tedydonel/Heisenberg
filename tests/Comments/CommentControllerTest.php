@@ -116,6 +116,7 @@ class CommentControllerTest extends TestCase
     public function test_thread_reflects_allow_comments_false(): void
     {
         $post = $this->publishedPost();
+        $this->makeComment($post, Comment::STATUS_APPROVED, null, ['body' => 'already there']);
         $post->allow_comments = false;
         $post->save();
 
@@ -124,6 +125,11 @@ class CommentControllerTest extends TestCase
         $response->assertOk();
         $this->assertFalse($response->json('allow_comments'));
         $this->assertFalse($response->json('can_comment'));
+        // thread() is a pure data read: an off flag must not withhold history.
+        // The bundled views hide their whole section; hosts decide for themselves
+        // via these flags (see CommentController's docblock).
+        $this->assertSame(1, $response->json('count'));
+        $this->assertSame('already there', $response->json('items.0.body'));
     }
 
     public function test_guest_can_submit_a_pending_comment(): void

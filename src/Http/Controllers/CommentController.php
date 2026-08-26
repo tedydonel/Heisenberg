@@ -23,10 +23,17 @@ use Illuminate\Support\Facades\Gate;
  * {@see \Heisenberg\Http\Controllers\PreviewController} does — a draft stays
  * invisible to a guest (and to `thread()`/`store()` alike), while a
  * `published` post is publicly readable per PostPolicy::view()'s status
- * branch. This is deliberately independent of the post's own
- * `allow_comments` flag, which only ever governs whether NEW comments may be
- * posted — a post with comments turned off still shows its (already
- * existing) thread, it just can't grow one.
+ * branch.
+ *
+ * The post's own `allow_comments` flag is enforced at different depths on
+ * purpose. store() refuses new comments outright (403 when off). thread()
+ * stays a pure data read — the full existing thread comes back alongside the
+ * `allow_comments` / `can_comment` flags, so a host rendering their own
+ * visitor UI can choose either posture (hide everything, or keep showing the
+ * frozen thread WordPress-style). Note the bundled views make the stricter
+ * choice for their own chrome: allow_comments === false omits the whole
+ * comments section from preview.blade.php entirely, existing comments
+ * included ({@see PreviewController::showPost} / PostPublicController::show).
  */
 class CommentController
 {
