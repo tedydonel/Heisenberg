@@ -1,5 +1,4 @@
 @once
-@once
 <style>
     .hb-inspector {
         display: flex;
@@ -62,7 +61,6 @@
         flex-direction: column;
         gap: var(--hb-space-3, 12px);
         padding: var(--hb-space-3, 12px);
-        border-bottom: 1px solid var(--hb-border);
         flex: none;
     }
     .hb-post-title__eyebrow {

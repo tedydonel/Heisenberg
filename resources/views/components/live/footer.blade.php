@@ -1,5 +1,4 @@
 @once
-@once
 <style>
     .hb-footer {
         display: flex;
