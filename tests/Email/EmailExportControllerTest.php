@@ -7,6 +7,8 @@ namespace Heisenberg\Tests\Email;
 use Heisenberg\Models\Block;
 use Heisenberg\Models\Post;
 use Heisenberg\Models\PublicFile;
+use Heisenberg\Services\EmailVariableRegistry;
+use Heisenberg\Support\EmailVariableDefinition;
 use Heisenberg\Tests\TestCase;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Storage;
@@ -279,5 +281,336 @@ class EmailExportControllerTest extends TestCase
 
         $this->assertStringNotContainsString('<div class="hb-topbar__exportsel">', $html);
         $this->assertStringNotContainsString('data-hb-export-item data-format="html"', $html);
+    }
+
+    // ====================================================================
+    // Wave E5 / Task 4 — sample-only single-document export. The HTML and
+    // EML downloads must resolve `{{ ... }}` tokens through the registered
+    // sample set, never accept runtime values, and never leak a host value
+    // or a formatter exception message on a resolution failure.
+    // ====================================================================
+
+    private function makeEmailForExportSamples(string $sample = 'Sample'): Post
+    {
+        $post = Post::create([
+            'title_en' => 'Hello {{ user.first_name }}',
+            'title_fr' => 'Bonjour {{ user.first_name }}',
+            'locale' => 'en',
+            'status' => 'published',
+            'slug' => 'export-newsletter',
+        ]);
+        $post->type = 'email';
+        $post->save();
+
+        $this->addBlock($post, 1, 'heisenberg/heading', [
+            'content' => 'Hi {{ user.first_name }}',
+            'level' => 1,
+        ]);
+        $this->addBlock($post, 2, 'heisenberg/button', [
+            'text' => 'Read more from {{ user.first_name }}',
+            'url' => '{{ unsubscribe_url }}',
+        ]);
+
+        /** @var EmailVariableRegistry $registry */
+        $registry = $this->app->make(EmailVariableRegistry::class);
+        $registry->register(new EmailVariableDefinition(
+            key: 'user.first_name',
+            label: 'First name',
+            type: 'text',
+            sample: $sample,
+        ));
+        $registry->register(new EmailVariableDefinition(
+            key: 'unsubscribe_url',
+            label: 'Unsubscribe URL',
+            type: 'url',
+            sample: 'https://example.test/unsubscribe/sample',
+        ));
+
+        return $post;
+    }
+
+    public function test_html_export_substitutes_registered_samples_never_raw_tokens(): void
+    {
+        $post = $this->makeEmailForExportSamples();
+
+        $response = $this->get("/emails/{$post->slug}/export?format=html");
+
+        $response->assertOk();
+        $this->assertStringStartsWith('text/html', (string) $response->headers->get('Content-Type'));
+        $html = (string) $response->getContent();
+        $this->assertStringContainsString('Hi Sample', $html);
+        $this->assertStringNotContainsString('{{ user.first_name }}', $html);
+        $this->assertStringContainsString('https://example.test/unsubscribe/sample', $html);
+        $this->assertStringNotContainsString('{{ unsubscribe_url }}', $html);
+    }
+
+    public function test_html_export_does_not_accept_runtime_values_from_query_string(): void
+    {
+        $post = $this->makeEmailForExportSamples();
+
+        $r1 = $this->get("/emails/{$post->slug}/export?format=html");
+        $r2 = $this->get("/emails/{$post->slug}/export?format=html&variables[user.first_name]=Ada");
+
+        $r1->assertOk();
+        $r2->assertOk();
+        // The runtime-attempting request produces the same bytes as the plain request.
+        $this->assertSame($r1->getContent(), $r2->getContent());
+        $this->assertStringNotContainsString('Hi Ada', (string) $r2->getContent());
+    }
+
+    public function test_eml_export_substitutes_registered_samples_in_subject_and_body(): void
+    {
+        config(['mail.from.address' => 'sender@example.test', 'mail.from.name' => 'Example Sender']);
+        $post = $this->makeEmailForExportSamples();
+
+        $response = $this->get("/emails/{$post->slug}/export?format=eml");
+
+        $response->assertOk();
+        $this->assertSame('message/rfc822', $response->headers->get('Content-Type'));
+        $raw = (string) $response->getContent();
+        // Subject and body both use the registered sample — no raw `{{ ... }}` token survives.
+        $dequoted = str_replace(["=\r\n", "=\n"], '', $raw);
+        $this->assertStringContainsString('Subject: Hello Sample', $dequoted);
+        $this->assertStringContainsString('Hi Sample', $dequoted);
+        $this->assertStringContainsString('https://example.test/unsubscribe/sample', $dequoted);
+        $this->assertStringNotContainsString('{{ user.first_name }}', $dequoted);
+        $this->assertStringNotContainsString('{{ unsubscribe_url }}', $dequoted);
+    }
+
+    public function test_eml_export_does_not_accept_runtime_values_from_query_string(): void
+    {
+        config(['mail.from.address' => 'sender@example.test', 'mail.from.name' => 'Example Sender']);
+        $post = $this->makeEmailForExportSamples();
+
+        $r1 = $this->get("/emails/{$post->slug}/export?format=eml");
+        $r2 = $this->get("/emails/{$post->slug}/export?format=eml&variables[user.first_name]=Ada");
+
+        $r1->assertOk();
+        $r2->assertOk();
+        // The runtime-attempting request must NOT leak the runtime value into the EML body.
+        // (The Message-ID, Date, and multipart boundary are non-deterministic across two
+        // independent serializations, so the strictest assertion is on the body content.)
+        $dequoted = str_replace(["=\r\n", "=\n"], '', (string) $r2->getContent());
+        $this->assertStringNotContainsString('Hi Ada', $dequoted);
+        $this->assertStringNotContainsString('Ada</a>', $dequoted);
+        $this->assertStringNotContainsString('{{ user.first_name }}', $dequoted);
+        $this->assertStringContainsString('Subject: Hello Sample', $dequoted);
+        $this->assertStringContainsString('Hi Sample', $dequoted);
+    }
+
+    // ─────────────────────────────────────────────────────────────────────
+    // Non-leakage, locale, and token-free compatibility. The registered
+    // sample is exactly what the author sees; runtime values (whatever
+    // they are) NEVER appear. Locale is threaded into the same sample
+    // resolution. An email with no tokens renders byte-for-byte through
+    // the new sample path exactly like it did through the empty runtime
+    // path — the Task 0 baseline stays compatible.
+    // ─────────────────────────────────────────────────────────────────────
+
+    public function test_html_export_uses_the_exact_registered_sample_value_never_a_runtime_default(): void
+    {
+        // The sample is `Tedy-Donelly` — a deliberately odd non-secret value. A runtime default
+        // that silently substituted the sample with anything else (e.g. "Sample") would leak
+        // host-meaning into a recipient's browser. This test pins the exact registered string
+        // in BOTH the heading and the rich-text button label (translatable string target).
+        $post = $this->makeEmailForExportSamples(sample: 'Tedy-Donelly');
+
+        $html = (string) $this->get("/emails/{$post->slug}/export?format=html")->assertOk()->getContent();
+
+        $this->assertStringContainsString('Hi Tedy-Donelly', $html);
+        $this->assertStringNotContainsString('Hi Sample', $html);
+        $this->assertStringContainsString('Tedy-Donelly</a>', $html);
+    }
+
+    public function test_html_export_threads_locale_through_sample_substitution(): void
+    {
+        // The same email rendered with `?locale=fr` should still substitute the sample value
+        // (samples are formatter-typed, locale-formatted) — Task 4 does NOT change locale
+        // resolution; only the source of values (registered sample, never runtime).
+        $post = $this->makeEmailForExportSamples();
+
+        $fr = (string) $this->get("/emails/{$post->slug}/export?format=html&locale=fr")->assertOk()->getContent();
+        $this->assertStringContainsString('Hi Sample', $fr);
+
+        // The French title `Bonjour ...` becomes `Bonjour Sample` — sample resolved in fr context.
+        $this->assertStringContainsString('Bonjour Sample', $fr);
+    }
+
+    public function test_show_by_slug_token_free_email_renders_through_the_sample_path_unmodified(): void
+    {
+        // An email with NO `{{ ... }}` tokens anywhere must render byte-for-byte with or
+        // without Task 4's sample context. The sample context is empty (no registered defs)
+        // and the interpolator short-circuits on no-token strings — proving the sample path
+        // does not perturb the existing no-variable baseline.
+        $post = Post::create([
+            'title_en' => 'A Newsletter',
+            'locale' => 'en',
+            'status' => 'published',
+            'slug' => 'plain-newsletter',
+        ]);
+        $post->type = 'email';
+        $post->save();
+        $this->addBlock($post, 1, 'heisenberg/heading', ['content' => 'Hello Subscribers', 'level' => 1]);
+        $this->addBlock($post, 2, 'heisenberg/paragraph', ['content' => 'No tokens in this body.']);
+
+        $html = (string) $this->get("/emails/{$post->slug}")->assertOk()->getContent();
+        $this->assertStringContainsString('Hello Subscribers', $html);
+        $this->assertStringContainsString('No tokens in this body.', $html);
+        $this->assertStringNotContainsString('{{', $html);
+    }
+
+    // ─────────────────────────────────────────────────────────────────────
+    // 422 controlled error path — unknown tokens and formatter failures.
+    // The author-facing GETs must surface a controlled 422 carrying keys +
+    // safe reasons only. Runtime values, formatter exception messages,
+    // and stack traces never reach the response body.
+    // ─────────────────────────────────────────────────────────────────────
+
+    private function makeEmailWithUnregisteredToken(): Post
+    {
+        $post = Post::create([
+            'title_en' => 'Hello {{ user.first_name }}',
+            'locale' => 'en',
+            'status' => 'published',
+            'slug' => 'unknown-token',
+        ]);
+        $post->type = 'email';
+        $post->save();
+
+        // Register only the heading's variable, leave `user.unknown` (in the
+        // paragraph) unregistered — exercises the REASON_UNKNOWN_TOKEN path
+        // alongside REASON_MISSING_VALUE.
+        $this->addBlock($post, 1, 'heisenberg/heading', [
+            'content' => 'Hi {{ user.first_name }}',
+            'level' => 1,
+        ]);
+        $this->addBlock($post, 2, 'heisenberg/paragraph', [
+            'content' => 'Unregistered: {{ user.unknown }}',
+        ]);
+
+        /** @var EmailVariableRegistry $registry */
+        $registry = $this->app->make(EmailVariableRegistry::class);
+        $registry->register(new EmailVariableDefinition(
+            key: 'user.first_name',
+            label: 'First name',
+            type: 'text',
+            sample: 'Sample',
+        ));
+
+        return $post;
+    }
+
+    public function test_show_by_slug_returns_422_with_keys_and_safe_reasons_for_unregistered_token(): void
+    {
+        $post = $this->makeEmailWithUnregisteredToken();
+
+        $response = $this->getJson("/emails/{$post->slug}");
+
+        $response->assertStatus(422);
+        $response->assertJsonStructure(['message', 'failures', 'keys']);
+        $body = $response->json();
+        $this->assertSame(['user.unknown'], $body['keys']);
+        $this->assertCount(1, $body['failures']);
+        $this->assertSame('user.unknown', $body['failures'][0]['key']);
+        $this->assertSame('unknown token', $body['failures'][0]['reason']);
+        // The unregistered key carries no associated VALUE; the body must not contain
+        // any string that the author never supplied.
+        $this->assertStringNotContainsString('{{ user.first_name }}', (string) $body['message']);
+        $this->assertStringNotContainsString('Hi Sample', (string) $body['message']);
+    }
+
+    public function test_size_endpoint_returns_422_for_unregistered_token(): void
+    {
+        $post = $this->makeEmailWithUnregisteredToken();
+
+        $response = $this->getJson("/editor/{$post->id}/email-size");
+
+        $response->assertStatus(422);
+        $response->assertJsonStructure(['message', 'failures', 'keys']);
+        $this->assertSame(['user.unknown'], $response->json('keys'));
+    }
+
+    public function test_html_export_returns_422_for_unregistered_token(): void
+    {
+        $post = $this->makeEmailWithUnregisteredToken();
+
+        $response = $this->getJson("/emails/{$post->slug}/export?format=html");
+
+        $response->assertStatus(422);
+        $response->assertJsonStructure(['message', 'failures', 'keys']);
+        $this->assertSame(['user.unknown'], $response->json('keys'));
+    }
+
+    public function test_eml_export_returns_422_for_unregistered_token(): void
+    {
+        $post = $this->makeEmailWithUnregisteredToken();
+
+        $response = $this->getJson("/emails/{$post->slug}/export?format=eml");
+
+        $response->assertStatus(422);
+        $response->assertJsonStructure(['message', 'failures', 'keys']);
+        $this->assertSame(['user.unknown'], $response->json('keys'));
+    }
+
+    public function test_422_body_never_includes_formatter_exception_message_or_stack_trace(): void
+    {
+        // `user.first_name` is registered with a custom `throwing` formatter that throws on
+        // format() with a message containing a host secret. The 422 body must include the safe
+        // reason (`formatter failed`) but NOT the host secret, the formatter's exception message,
+        // or any stack trace fragment.
+        $post = Post::create([
+            'title_en' => 'Hello',
+            'locale' => 'en',
+            'status' => 'published',
+            'slug' => 'formatter-fail',
+        ]);
+        $post->type = 'email';
+        $post->save();
+        $this->addBlock($post, 1, 'heisenberg/paragraph', ['content' => 'Hi {{ user.first_name }}']);
+
+        /** @var EmailVariableRegistry $registry */
+        $registry = $this->app->make(EmailVariableRegistry::class);
+        $registry->registerType(new \Heisenberg\Tests\Email\ThrowingTextEmailVariableType());
+        $registry->register(new EmailVariableDefinition(
+            key: 'user.first_name',
+            label: 'First name',
+            type: 'throwing',
+            sample: 'Sample',
+        ));
+
+        $response = $this->getJson("/emails/{$post->slug}");
+        $response->assertStatus(422);
+
+        $raw = (string) $response->getContent();
+        $this->assertStringContainsString('formatter failed', $raw);
+        $this->assertStringNotContainsString('host-secret-token', $raw);
+        $this->assertStringNotContainsString('formatter-internal', $raw);
+        $this->assertStringNotContainsString('Stack trace', $raw);
+        $this->assertStringNotContainsString('#0 /', $raw);
+        $this->assertStringNotContainsString('EmailVariableInterpolator.php', $raw);
+    }
+}
+
+/**
+ * Helper type that throws on format() with a message containing a host secret. The
+ * interpolator's REASON_FORMATTER_FAILED path must replace the wrapped message with the
+ * safe reason constant — this proves that nothing host-side surfaces through the 422 body.
+ */
+final class ThrowingTextEmailVariableType implements \Heisenberg\Contracts\EmailVariableType
+{
+    public function key(): string
+    {
+        return 'throwing';
+    }
+
+    /** @return list<'text'|'url'|'email'> */
+    public function targets(): array
+    {
+        return ['text'];
+    }
+
+    public function format(mixed $value, \Heisenberg\Support\EmailVariableDefinition $definition, string $locale): string
+    {
+        throw new \RuntimeException('host-secret-token: formatter-internal state ' . json_encode($value));
     }
 }

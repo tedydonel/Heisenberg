@@ -7,11 +7,13 @@ namespace Heisenberg\Http\Controllers;
 use Heisenberg\Adapters\GuestActor;
 use Heisenberg\Models\Post;
 use Heisenberg\Services\EmailRenderer;
+use Heisenberg\Services\EmailVariableRegistry;
+use Heisenberg\Support\EmailVariableContext;
+use Heisenberg\Support\EmailVariableResolutionException;
 use Heisenberg\Support\LocaleConfig;
 use Illuminate\Contracts\Auth\Authenticatable;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
-use Illuminate\Http\Response;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\Route;
 use Illuminate\Support\Str;
@@ -38,11 +40,51 @@ use Symfony\Component\Mime\Part\File as MimeFile;
  * guessing slugs. And every one of them 404s for a non-email post: these routes only ever make
  * sense for `type = 'email'`, and the post's own surface (preview, sitemap) reciprocates by
  * 404ing/excluding emails, so neither document type is ever reachable through the other's URL.
+ *
+ * Wave E5 / Task 4: every built-in author-facing render path here passes
+ * `EmailVariableContext::samples(...)` explicitly — preview, size, single HTML export, single
+ * EML export, and the id-scoped redirect path that ends up rendering through one of those.
+ * The renderer's fourth parameter is NEVER defaulted to samples: a missing-context call still
+ * means strict empty runtime and a real exception; this controller is the boundary that turns
+ * the registered samples into the visible preview. Unknown tokens and any other resolution
+ * failure are surfaced as a controlled HTTP 422 with keys + safe reasons (never runtime values,
+ * never formatter exception messages, never stack traces).
  */
 class EmailPreviewController
 {
-    public function __construct(private EmailRenderer $renderer)
+    public function __construct(
+        private EmailRenderer $renderer,
+        private EmailVariableRegistry $variables,
+    ) {
+    }
+
+    /**
+     * Build the sample context this controller hands to {@see EmailRenderer::render()} on every
+     * author-facing GET. The registry singleton is the source of truth for which keys exist and
+     * what their `sample` value is — a non-secret placeholder so the editor sees what a token
+     * looks like without leaking recipient data into a "view in browser" URL.
+     */
+    private function sampleContext(): EmailVariableContext
     {
+        return EmailVariableContext::samples($this->variables);
+    }
+
+    /**
+     * Convert an {@see EmailVariableResolutionException} into a controlled HTTP 422 response
+     * carrying keys and safe reasons only. Runtime values, formatter exception messages,
+     * and stack traces NEVER reach the response body — the exception's `getMessage()` is itself
+     * value-free by design (`EmailVariableResolutionException` aggregates keys/reasons and
+     * discards formatter internals), so it is safe to surface verbatim. The JSON body mirrors
+     * `getFailures()` so programmatic callers can still iterate the failures without parsing
+     * the human-readable summary.
+     */
+    private function respondToResolutionFailure(EmailVariableResolutionException $e): JsonResponse
+    {
+        return response()->json([
+            'message' => $e->getMessage(),
+            'failures' => $e->getFailures(),
+            'keys' => $e->getKeys(),
+        ], 422);
     }
 
     /**
@@ -54,13 +96,17 @@ class EmailPreviewController
      * message, so a browser tab given the Mailable's actual HTML would render every image
      * broken. See {@see EmailRenderer::rewriteImages()}'s own docblock.
      */
-    public function showBySlug(Request $request, string $slug): Response
+    public function showBySlug(Request $request, string $slug): BaseResponse
     {
         $locale = $this->contentLocale($request);
         $model = $this->findBySlugOrFail($slug);
         Gate::forUser($this->actor($request))->authorize('view', $model);
 
-        $result = $this->renderer->render($model, $locale, preview: true);
+        try {
+            $result = $this->renderer->render($model, $locale, preview: true, variables: $this->sampleContext());
+        } catch (EmailVariableResolutionException $e) {
+            return $this->respondToResolutionFailure($e);
+        }
 
         return response($result->html, 200, [
             'Content-Type' => 'text/html; charset=UTF-8',
@@ -115,7 +161,11 @@ class EmailPreviewController
         abort_unless($model->type === 'email', 404);
         Gate::forUser($this->actor($request))->authorize('view', $model);
 
-        $result = $this->renderer->render($model, $locale);
+        try {
+            $result = $this->renderer->render($model, $locale, variables: $this->sampleContext());
+        } catch (EmailVariableResolutionException $e) {
+            return $this->respondToResolutionFailure($e);
+        }
 
         return response()->json(['sizeBytes' => $result->sizeBytes]);
     }
@@ -166,7 +216,11 @@ class EmailPreviewController
      */
     private function exportHtml(Post $model, string $locale): BaseResponse
     {
-        $result = $this->renderer->render($model, $locale, preview: true);
+        try {
+            $result = $this->renderer->render($model, $locale, preview: true, variables: $this->sampleContext());
+        } catch (EmailVariableResolutionException $e) {
+            return $this->respondToResolutionFailure($e);
+        }
         $html = $this->absolutizeImageUrls($result->html);
 
         return response($html, 200, [
@@ -201,7 +255,11 @@ class EmailPreviewController
      */
     private function exportEml(Post $model, string $locale): BaseResponse
     {
-        $result = $this->renderer->render($model, $locale);
+        try {
+            $result = $this->renderer->render($model, $locale, variables: $this->sampleContext());
+        } catch (EmailVariableResolutionException $e) {
+            return $this->respondToResolutionFailure($e);
+        }
 
         $email = (new SymfonyEmail())
             ->subject($result->subject)
@@ -260,6 +318,17 @@ class EmailPreviewController
      * title accessor through call sites this controller does not thread a parameter into, and all
      * of them must agree with the locale the blocks were rendered in.
      */
+    private function contentLocale(Request $request): string
+    {
+        $requested = trim((string) $request->query('locale', ''));
+
+        if ($requested !== '' && LocaleConfig::isValid($requested)) {
+            app()->setLocale($requested);
+        }
+
+        return app()->getLocale();
+    }
+
     /**
      * `?locale=fr` (or `&locale=fr`) to carry an explicit request through a redirect, `''` when
      * none was asked for — the id-scoped editor routes must not silently drop the author's choice
@@ -272,17 +341,6 @@ class EmailPreviewController
         return ($requested !== '' && LocaleConfig::isValid($requested))
             ? $separator . 'locale=' . $requested
             : '';
-    }
-
-    private function contentLocale(Request $request): string
-    {
-        $requested = trim((string) $request->query('locale', ''));
-
-        if ($requested !== '' && LocaleConfig::isValid($requested)) {
-            app()->setLocale($requested);
-        }
-
-        return app()->getLocale();
     }
 
     private function findOrFail(string $post): Post
@@ -337,7 +395,6 @@ class EmailPreviewController
 
         return route($name, ['slug' => $slug]);
     }
-
 
     private function actor(Request $request): Authenticatable
     {

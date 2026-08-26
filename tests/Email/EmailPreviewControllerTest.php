@@ -7,6 +7,8 @@ namespace Heisenberg\Tests\Email;
 use Heisenberg\Models\Block;
 use Heisenberg\Models\Post;
 use Heisenberg\Models\PublicFile;
+use Heisenberg\Services\EmailVariableRegistry;
+use Heisenberg\Support\EmailVariableDefinition;
 use Heisenberg\Tests\TestCase;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Storage;
@@ -306,5 +308,142 @@ class EmailPreviewControllerTest extends TestCase
         // so it must exceed the bare preview HTML's own length.
         $previewHtml = $this->get("/emails/{$post->slug}")->getContent();
         $this->assertGreaterThan(strlen($previewHtml), $size);
+    }
+
+    // ====================================================================
+    // Wave E5 / Task 4 — sample-only author-facing GETs. Every built-in
+    // GET that actually renders (`showBySlug`, size, HTML export, EML
+    // export) MUST pass `EmailVariableContext::samples(...)` explicitly
+    // so a registered sample value reaches the browser, never a runtime
+    // value the host (or attacker) tried to inject.
+    // ====================================================================
+
+    /**
+     * Fixture: published email with `{{ user.first_name }}` in the heading
+     * subject mirror. The registry registers a non-secret sample so we can
+     * observe which value (sample vs. raw token vs. attacker-supplied
+     * runtime value) reaches the response.
+     */
+    private function makeEmailWithVariableToken(string $sample = 'Sample', string $subject = 'Hello {{ user.first_name }}'): Post
+    {
+        $post = Post::create([
+            'title_en' => $subject,
+            'locale' => 'en',
+            'status' => 'published',
+        ]);
+        $post->type = 'email';
+        $post->save();
+
+        $this->addBlock($post, 1, 'heisenberg/heading', [
+            'content' => 'Hi {{ user.first_name }}',
+            'level' => 1,
+        ]);
+        // The button URL carries `{{ unsubscribe_url }}` (url target) and the
+        // button label is the rich-text `user.first_name` (text target).
+        $this->addBlock($post, 2, 'heisenberg/button', [
+            'text' => 'Read more from {{ user.first_name }}',
+            'url' => '{{ unsubscribe_url }}',
+        ]);
+
+        /** @var EmailVariableRegistry $registry */
+        $registry = $this->app->make(EmailVariableRegistry::class);
+        $registry->register(new EmailVariableDefinition(
+            key: 'user.first_name',
+            label: 'First name',
+            type: 'text',
+            sample: $sample,
+        ));
+        $registry->register(new EmailVariableDefinition(
+            key: 'unsubscribe_url',
+            label: 'Unsubscribe URL',
+            type: 'url',
+            sample: 'https://example.test/unsubscribe/sample',
+        ));
+
+        return $post;
+    }
+
+    public function test_show_by_slug_substitutes_registered_samples_never_raw_tokens(): void
+    {
+        // An author-facing GET previewing an email that contains a registered variable must
+        // render the SAMPLE value (so the author can see how a token looks) — never the raw
+        // `{{ user.first_name }}` token, which is what a strict empty runtime context would
+        // produce via an aggregated REASON_MISSING_VALUE failure.
+        $post = $this->makeEmailWithVariableToken();
+
+        $html = (string) $this->get("/emails/{$post->slug}")->assertOk()->getContent();
+
+        $this->assertStringContainsString('Hi Sample', $html);
+        $this->assertStringNotContainsString('{{ user.first_name }}', $html);
+        $this->assertStringContainsString('https://example.test/unsubscribe/sample', $html);
+        $this->assertStringNotContainsString('{{ unsubscribe_url }}', $html);
+    }
+
+    public function test_show_by_slug_does_not_accept_runtime_values_from_query_string(): void
+    {
+        // `?variables[user.first_name]=Ada` must NEVER reach the render — author-facing GETs
+        // are sample-only, and runtime values belong on the host mailer / batch admin route,
+        // never on a slug GET a "view in browser" link might point at.
+        $post = $this->makeEmailWithVariableToken(sample: 'Sample');
+
+        $this->get("/emails/{$post->slug}?variables[user.first_name]=Ada")
+            ->assertOk();
+
+        $html = (string) $this->get("/emails/{$post->slug}?variables[user.first_name]=Ada")->getContent();
+
+        $this->assertStringContainsString('Hi Sample', $html);
+        $this->assertStringNotContainsString('Hi Ada', $html);
+    }
+
+    public function test_known_id_scoped_routes_redirect_to_the_slug_which_then_uses_samples(): void
+    {
+        // The id-scoped /editor/{post}/email-preview only REDIRECTS today (the actual render
+        // happens at the slug URL) — but Task 4 requires that EVERY author-facing render path
+        // (including those that delegate by id) explicitly passes the sample context. This test
+        // follows the redirect and asserts the sample reaches the response.
+        $post = $this->makeEmailWithVariableToken();
+
+        $redirect = $this->get("/editor/{$post->id}/email-preview");
+        $redirect->assertRedirect("/emails/{$post->slug}");
+
+        $html = (string) $this->followingRedirects()->get("/editor/{$post->id}/email-preview")->getContent();
+        $this->assertStringContainsString('Hi Sample', $html);
+        $this->assertStringNotContainsString('{{ user.first_name }}', $html);
+    }
+
+    public function test_size_endpoint_uses_samples_and_returns_200(): void
+    {
+        // The size chip (topbar/footer) measures the REAL, cid-embedded render — same surface
+        // the Mailable sends — and must therefore run with the same sample context the slug
+        // preview does. Otherwise an unsatisfied token would 422 the size fetch even though the
+        // author is editing, not sending.
+        $post = $this->makeEmailWithVariableToken();
+
+        $response = $this->getJson("/editor/{$post->id}/email-size");
+
+        $response->assertOk();
+        $response->assertJsonStructure(['sizeBytes']);
+        $this->assertIsInt($response->json('sizeBytes'));
+        $this->assertGreaterThan(0, $response->json('sizeBytes'));
+    }
+
+    public function test_size_endpoint_does_not_accept_runtime_values_from_query_string(): void
+    {
+        // A size request that tries to inject runtime values via the query string must still
+        // return a size that corresponds to the registered sample — otherwise a "view in browser"
+        // link could leak a recipient's address into a size measurement.
+        $post = $this->makeEmailWithVariableToken(sample: 'Sample');
+
+        $response = $this->getJson("/editor/{$post->id}/email-size?variables[user.first_name]=Ada");
+
+        $response->assertOk();
+        $this->assertIsInt($response->json('sizeBytes'));
+
+        // The size measured with an attempt at runtime injection equals the size with no
+        // injection at all (both use the registered sample). Comparing to the rendered HTML
+        // (cid portion normalized) is more reliable than comparing to a fixed number — sizes
+        // shift with theme tokens, image bytes, etc.
+        $plain = $this->getJson("/editor/{$post->id}/email-size")->json('sizeBytes');
+        $this->assertSame($plain, $response->json('sizeBytes'));
     }
 }
