@@ -61,7 +61,9 @@
         </span>
         <span class="hb-disclosure__label">{{ $label }}</span>
     </span>
+    @if ($chevron !== 'none')
     <span class="hb-disclosure__chevron" aria-hidden="true">
         @include('heisenberg::components.ui.icon', ['name' => $chevron === 'down' ? 'caret-down' : 'caret-right', 'size' => 13])
     </span>
+    @endif
 </button>

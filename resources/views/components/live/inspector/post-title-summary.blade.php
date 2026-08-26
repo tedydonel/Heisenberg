@@ -161,7 +161,7 @@
                 @endif
             </div>
             <hr class="hb-post-divider">
-            <x-ui.disclosure-row icon="arrow-counter-clockwise" :label="__('heisenberg::editor.revisions.title')" chevron="right"
+            <x-ui.disclosure-row icon="arrow-counter-clockwise" :label="__('heisenberg::editor.revisions.title')" chevron="none"
                 data-hb-revisions-open
                 :data-hb-post-id="$postId ?? ''"
                 :data-hb-revisions-url-template="$postRevisionsUrlTemplate" />
