@@ -269,9 +269,41 @@ class HeisenbergServiceProvider extends ServiceProvider
 
         // docs/email-system.md §5 — beside BlockRenderer, never replacing it; same singleton
         // posture as the rest of this graph (both its own dependencies are already singletons).
+        // Wave E5 / Task 3 — also takes EmailVariableInterpolator (Task 2) so `render()` can
+        // resolve `{{ dotted.key }}` tokens into a copied subject + block tree before the
+        // existing rendering/security pipeline runs. The fourth `?EmailVariableContext $variables`
+        // parameter is optional and defaults to a strict empty runtime context.
         $this->app->singleton(\Heisenberg\Services\EmailRenderer::class, fn ($app) => new \Heisenberg\Services\EmailRenderer(
             $app->make(BlockRenderer::class),
             $app->make(\Heisenberg\Services\ThemeRepository::class),
+            $app->make(\Heisenberg\Services\EmailVariableInterpolator::class),
+        ));
+
+        // Wave E5 / .hermes/plans/2026-08-25_190059-email-template-variables.md Task 1 —
+        // the host-extensible variable registry + formatter contract. Singleton next to
+        // EmailRenderer (its built-in formatters are auto-registered in the constructor);
+        // host providers resolve the same instance in boot(...) so registration order
+        // inside one container boot is the natural order of provider boot() calls.
+        $this->app->singleton(\Heisenberg\Services\EmailVariableRegistry::class, fn () => new \Heisenberg\Services\EmailVariableRegistry());
+
+        // Wave E5 / Task 2 — the strict, context-aware interpolator that resolves
+        // `{{ dotted.key }}` tokens into a copied subject + email block tree BEFORE
+        // BlockRenderer's sanitization. Wiring it into EmailRenderer::render() is Task 3;
+        // this binding makes the interpolator resolvable from focused tests and any
+        // host code that wants to drive interpolation outside the renderer.
+        $this->app->singleton(\Heisenberg\Services\EmailVariableInterpolator::class, fn ($app) => new \Heisenberg\Services\EmailVariableInterpolator(
+            $app->make(\Heisenberg\Services\EmailVariableRegistry::class),
+            $app->make(\Heisenberg\Services\BlockRegistryService::class),
+        ));
+
+        // Wave E5 / Task 6 — the admin batch file factory. Host-supplied recipient
+        // value maps × requested locales → one zip on disk (no SMTP, no mailer,
+        // no campaign tables). The service is stateless; its renderer, registry,
+        // and translation-status dependencies are container-managed services.
+        $this->app->singleton(\Heisenberg\Services\EmailBatchExporter::class, fn ($app) => new \Heisenberg\Services\EmailBatchExporter(
+            $app->make(\Heisenberg\Services\EmailRenderer::class),
+            $app->make(\Heisenberg\Services\EmailVariableRegistry::class),
+            $app->make(\Heisenberg\Services\TranslationStatusService::class),
         ));
     }
 

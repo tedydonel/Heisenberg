@@ -7,6 +7,7 @@ namespace Heisenberg\Services;
 use Heisenberg\Models\Post;
 use Heisenberg\Models\PublicFile;
 use Heisenberg\Support\EmailRenderResult;
+use Heisenberg\Support\EmailVariableContext;
 use Heisenberg\Support\LocaleConfig;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
@@ -77,8 +78,8 @@ use TijsVerkoyen\CssToInlineStyles\CssToInlineStyles;
  * the library would otherwise copy them onto every `<table>`/`<td>`/`<img>` in the document (they
  * were never candidates for inlining before this class existed to keep them out of its way).
  *
- * PLAIN TEXT (§5.6): {@see self::textFor()} walks the RAW block tree directly (not the rendered
- * HTML) — attribute text, stripped of rich-text tags via `strip_tags()` + `html_entity_decode()`
+ * PLAIN TEXT (§5.6): {@see self::textFor()} walks the interpolated block tree directly (not the
+ * rendered HTML) — attribute text, stripped of rich-text tags via `strip_tags()` + `html_entity_decode()`
  * — so it never depends on how a template happens to lay out markup. A button's URL is appended
  * in parentheses; a skipped block (no text-bearing mapping, e.g. embed/icon/separator) simply
  * contributes nothing.
@@ -115,6 +116,7 @@ class EmailRenderer
     public function __construct(
         private BlockRenderer $renderer,
         private ThemeRepository $themes,
+        private EmailVariableInterpolator $variables,
     ) {
     }
 
@@ -126,12 +128,45 @@ class EmailRenderer
      * swaps in the image's real, publicly reachable URL instead and never populates the embeds
      * manifest (nothing there for a preview call to attach). The rest of the pipeline — token
      * resolution, shell, inlining, plain text, subject — is identical either way.
+     *
+     * `$variables` (Wave E5 / Task 3, `.hermes/plans/2026-08-25_190059-email-template-variables.md`):
+     * the per-recipient runtime context used to resolve `{{ dotted.key }}` tokens. The fourth
+     * parameter is OPTIONAL; an omitted context means a strict empty runtime context — every
+     * referenced token without a runtime value throws `REASON_MISSING_VALUE` aggregated, and
+     * registered samples are NEVER silently substituted (Task 4 wires the sample context into
+     * every author-facing GET). The interpolated block tree and subject are the SAME data the
+     * rest of the pipeline reads — `capColumns()`, `BlockRenderer`, image rewriting, theme-token
+     * resolution, shell, inlining, plain text. The original `Block::content` payload and the
+     * post's stored `title_*` are NEVER mutated.
      */
-    public function render(Post $email, string $locale, bool $preview = false): EmailRenderResult
+    public function render(
+        Post $email,
+        string $locale,
+        bool $preview = false,
+        ?EmailVariableContext $variables = null,
+    ): EmailRenderResult
     {
         $locale = LocaleConfig::isValid($locale) ? $locale : LocaleConfig::default();
 
-        $blocks = $this->capColumns($email->blocks->map(fn ($block) => $block->content)->values()->all());
+        // Read block content into arrays (Task 3 step 1) — we never mutate the
+        // underlying models; the interpolated copy lives only in local arrays.
+        $rawBlocks = $email->blocks->map(fn ($block) => $block->content)->values()->all();
+
+        // Interpolate copied subject + copied block tree exactly once (Task 3
+        // step 2) BEFORE every other pipeline step. Strict: a single failure
+        // throws an aggregated EmailVariableResolutionException with key/reason
+        // pairs and NO runtime values.
+        $context = $variables ?? EmailVariableContext::runtime([]);
+        $interpolated = $this->variables->interpolate(
+            $email->title($locale),
+            $rawBlocks,
+            $context,
+            $locale,
+        );
+        $interpolatedSubject = $interpolated['subject'];
+        $interpolatedBlocks = $interpolated['blocks'];
+
+        $blocks = $this->capColumns($interpolatedBlocks);
 
         $theme = $this->themes->load();
         $tokenMap = $this->themeTokenMap($theme);
@@ -152,7 +187,9 @@ class EmailRenderer
             $bodyHtml .= $this->resolveTokens($html, $tokenMap);
         }
 
-        $subject = $email->title($locale);
+        // Preserve the interpolated plain-text subject for EmailRenderResult/MIME;
+        // wrapShell() handles `<title>` escaping at its own boundary.
+        $subject = $interpolatedSubject;
         $shellHtml = $this->wrapShell($bodyHtml, $tokenMap, $subject);
         $finalHtml = $this->inlineStyles($shellHtml);
 
@@ -566,7 +603,7 @@ HTML;
     }
 
     /**
-     * Plain-text alternative (§5.6), walked from the RAW block tree — never the rendered HTML.
+     * Plain-text alternative (§5.6), walked from the interpolated block tree — never rendered HTML.
      * Recognizes the 10 email-safe block slugs by their bare name (after the configured
      * `block_prefix/`); anything else (an authored-but-excluded embed/icon, or an unknown
      * block) contributes nothing, same "skip, don't fail" posture as the HTML pipeline.

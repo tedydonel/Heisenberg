@@ -8,6 +8,9 @@ use Heisenberg\Models\Block;
 use Heisenberg\Models\Post;
 use Heisenberg\Models\PublicFile;
 use Heisenberg\Services\EmailRenderer;
+use Heisenberg\Support\EmailVariableContext;
+use Heisenberg\Support\EmailVariableDefinition;
+use Heisenberg\Support\EmailVariableResolutionException;
 use Heisenberg\Tests\TestCase;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Storage;
@@ -327,5 +330,511 @@ class EmailRendererTest extends TestCase
         $this->assertStringContainsString('-webkit-text-size-adjust:100%', $result->html);
         $this->assertStringNotContainsString('style="-webkit-text-size-adjust', $result->html);
         $this->assertStringNotContainsString('mso-table-lspace: 0pt;', $result->html);
+    }
+
+    // ====================================================================
+    // Wave E5 / Task 3 — personalization threading through the renderer.
+    // The signature gains `?EmailVariableContext $variables = null`; an
+    // omitted context MUST mean a strict empty runtime context (every
+    // missing token becomes REASON_MISSING_VALUE), never a sample fallback.
+    // Existing no-variable calls remain byte-for-byte compatible.
+    // ====================================================================
+
+    /**
+     * Fixture used by every Task 3 vertical slice: subject + heading +
+     * paragraph (rich-text) + button (rich-text label + url) + image +
+     * separator + two columns each with a paragraph, all carrying
+     * `{{ user.first_name }}` / `{{ user.email }}` / `{{ unsubscribe_url }}`
+     * tokens in the right contract-aware slots.
+     */
+    private function variableFixture(): Post
+    {
+        $post = Post::create([
+            'title_en' => 'Welcome {{ user.first_name }}',
+            'locale' => 'en',
+        ]);
+        $post->type = 'email';
+        $post->save();
+
+        $this->makeImageFile();
+
+        $this->addBlock($post, 1, 'heisenberg/heading', [
+            'content' => 'Hi {{ user.first_name }}',
+            'level' => 1,
+        ]);
+        $this->addBlock($post, 2, 'heisenberg/paragraph', [
+            'content' => 'Hello {{ user.first_name }}, welcome aboard.',
+        ]);
+        $this->addBlock($post, 3, 'heisenberg/image', [
+            'url' => '/uploads/media/2026/07/photo.jpg',
+            'alt' => 'Photo for {{ user.first_name }}',
+            'caption' => 'Photo caption for {{ user.first_name }}',
+        ]);
+        // The button URL carries `{{ unsubscribe_url }}` (url target) and the
+        // button label is the rich-text `user.first_name` (text target).
+        $this->addBlock($post, 4, 'heisenberg/button', [
+            'text' => 'Read more from {{ user.first_name }}',
+            'url' => '{{ unsubscribe_url }}',
+        ]);
+        $this->addBlock($post, 5, 'heisenberg/separator', []);
+        $this->addBlock($post, 6, 'heisenberg/columns', ['columns' => 2], [
+            [
+                'id' => 'col1', 'name' => 'heisenberg/column', 'schemaVersion' => '1.0.0',
+                'attributes' => [], 'supports' => [],
+                'innerBlocks' => [
+                    [
+                        'id' => 'col1p', 'name' => 'heisenberg/paragraph', 'schemaVersion' => '1.0.0',
+                        'attributes' => ['content' => 'Left: {{ user.first_name }}'], 'supports' => [], 'innerBlocks' => [],
+                    ],
+                ],
+            ],
+            [
+                'id' => 'col2', 'name' => 'heisenberg/column', 'schemaVersion' => '1.0.0',
+                'attributes' => [], 'supports' => [],
+                'innerBlocks' => [
+                    [
+                        'id' => 'col2p', 'name' => 'heisenberg/paragraph', 'schemaVersion' => '1.0.0',
+                        'attributes' => ['content' => 'Right: {{ user.first_name }}'], 'supports' => [], 'innerBlocks' => [],
+                    ],
+                ],
+            ],
+        ]);
+
+        // Register the three definitions the fixture uses.
+        $registry = $this->app->make(\Heisenberg\Services\EmailVariableRegistry::class);
+        $registry->register(new EmailVariableDefinition(
+            key: 'user.first_name',
+            label: 'First name',
+            type: 'text',
+            sample: 'Sample',
+        ));
+        $registry->register(new EmailVariableDefinition(
+            key: 'user.email',
+            label: 'Email',
+            type: 'email',
+            sample: 'sample@example.test',
+        ));
+        $registry->register(new EmailVariableDefinition(
+            key: 'unsubscribe_url',
+            label: 'Unsubscribe URL',
+            type: 'url',
+            sample: 'https://example.test/unsub/sample',
+        ));
+
+        return $post;
+    }
+
+    public function test_render_accepts_an_optional_variable_context(): void
+    {
+        // Plain render (no variables) — byte-for-byte compatible. The new
+        // fourth parameter is `?EmailVariableContext $variables = null`.
+        // CIDs are randomized by EmailRenderer::rewriteImages(), so we
+        // strip the cid component out of both outputs before comparison —
+        // the cid is the SAME mechanism regardless of whether a context
+        // was passed.
+        $legacy = $this->renderer()->render($this->fullFixture(), 'en');
+        $explicitNull = $this->renderer()->render(
+            $this->fullFixture(),
+            'en',
+            false,
+            EmailVariableContext::runtime([]),
+        );
+
+        $normalize = static function (string $html): string {
+            return (string) preg_replace('/cid:[a-zA-Z0-9]+@heisenberg/', 'cid:NORMALIZED', $html);
+        };
+
+        $this->assertSame($normalize($legacy->html), $normalize($explicitNull->html));
+        $this->assertSame($legacy->subject, $explicitNull->subject);
+        $this->assertSame($legacy->text, $explicitNull->text);
+    }
+
+    public function test_subject_html_text_and_button_label_are_personalized(): void
+    {
+        $post = $this->variableFixture();
+
+        $result = $this->renderer()->render(
+            $post,
+            'en',
+            false,
+            EmailVariableContext::runtime([
+                'user.first_name' => 'Ada',
+                'user.email' => 'ada@example.test',
+                'unsubscribe_url' => 'https://example.test/unsub/ada',
+            ]),
+        );
+
+        // Subject is interpolated raw (no HTML entities) — MIME subjects stay plain text.
+        $this->assertSame('Welcome Ada', $result->subject);
+
+        // Rich-text `content` is HTML-escaped before the block renderer's sanitizer
+        // sees it; "Ada" has nothing to escape, but "<unsafe>" would prove it.
+        $this->assertStringContainsString('Hi Ada', $result->html);
+        $this->assertStringContainsString('Hello Ada, welcome aboard.', $result->html);
+        $this->assertStringContainsString('Photo for Ada', $result->html);
+        $this->assertStringContainsString('Photo caption for Ada', $result->html);
+        $this->assertStringContainsString('Left: Ada', $result->html);
+        $this->assertStringContainsString('Right: Ada', $result->html);
+
+        // Button label (rich-text) and button URL (url contract attr) are substituted.
+        $this->assertStringContainsString('Read more from Ada', $result->html);
+        $this->assertStringContainsString('href="https://example.test/unsub/ada"', $result->html);
+
+        // Plain-text alternative contains the interpolated subject line + URL.
+        $this->assertStringContainsString('Hi Ada', $result->text);
+        $this->assertStringContainsString('Read more from Ada (https://example.test/unsub/ada)', $result->text);
+    }
+
+    public function test_rich_text_variable_replacement_is_html_escaped_so_script_payloads_become_text(): void
+    {
+        $post = $this->variableFixture();
+
+        $result = $this->renderer()->render(
+            $post,
+            'en',
+            false,
+            EmailVariableContext::runtime([
+                'user.first_name' => '<script>alert(1)</script>',
+                'user.email' => 'ada@example.test',
+                'unsubscribe_url' => 'https://example.test/unsub/ada',
+            ]),
+        );
+
+        // The replacement was HTML-escaped BEFORE BlockRenderer::sanitizeRichText()
+        // saw it — there is no surviving <script> anywhere in the HTML body.
+        $this->assertStringNotContainsString('<script>alert(1)</script>', $result->html);
+        $this->assertStringContainsString('&lt;script&gt;alert(1)&lt;/script&gt;', $result->html);
+    }
+
+    public function test_javascript_url_is_rejected_by_existing_safe_url_gate(): void
+    {
+        $post = $this->variableFixture();
+
+        $result = $this->renderer()->render(
+            $post,
+            'en',
+            false,
+            EmailVariableContext::runtime([
+                'user.first_name' => 'Ada',
+                'user.email' => 'ada@example.test',
+                // The interpolator substitutes this RAW; BlockRenderer::safeUrl()
+                // is the gate that neutralizes javascript: in the HTML output.
+                'unsubscribe_url' => 'javascript:alert(1)',
+            ]),
+        );
+
+        // The HTML body must NOT carry a `javascript:` URL — safeUrl() is the gate.
+        $this->assertStringNotContainsString('javascript:', $result->html);
+    }
+
+    public function test_two_recipient_contexts_produce_distinct_html_text_and_subject(): void
+    {
+        $post = $this->variableFixture();
+
+        $ada = $this->renderer()->render(
+            $post,
+            'en',
+            false,
+            EmailVariableContext::runtime([
+                'user.first_name' => 'Ada',
+                'user.email' => 'ada@example.test',
+                'unsubscribe_url' => 'https://example.test/unsub/ada',
+            ]),
+        );
+        $ben = $this->renderer()->render(
+            $post,
+            'en',
+            false,
+            EmailVariableContext::runtime([
+                'user.first_name' => 'Ben',
+                'user.email' => 'ben@example.test',
+                'unsubscribe_url' => 'https://example.test/unsub/ben',
+            ]),
+        );
+
+        $this->assertNotSame($ada->html, $ben->html);
+        $this->assertNotSame($ada->text, $ben->text);
+        $this->assertSame('Welcome Ada', $ada->subject);
+        $this->assertSame('Welcome Ben', $ben->subject);
+    }
+
+    public function test_mime_subject_is_raw_plain_text_without_html_entities(): void
+    {
+        $post = $this->variableFixture();
+
+        $result = $this->renderer()->render(
+            $post,
+            'en',
+            false,
+            EmailVariableContext::runtime([
+                'user.first_name' => '<unsafe> & "quoted"',
+                'user.email' => 'ada@example.test',
+                'unsubscribe_url' => 'https://example.test/unsub/ada',
+            ]),
+        );
+
+        // The subject the Mailable forwards to Symfony Mime is the raw plain
+        // text — no HTML entities. HTML consumers such as wrapShell() escape
+        // at their own boundary.
+        $this->assertSame('Welcome <unsafe> & "quoted"', $result->subject);
+        $this->assertStringNotContainsString('&lt;', $result->subject);
+        $this->assertStringNotContainsString('&quot;', $result->subject);
+    }
+
+    public function test_image_blocks_keep_cid_embed_behavior_under_personalization(): void
+    {
+        $post = $this->variableFixture();
+
+        $result = $this->renderer()->render(
+            $post,
+            'en',
+            false,
+            EmailVariableContext::runtime([
+                'user.first_name' => 'Ada',
+                'user.email' => 'ada@example.test',
+                'unsubscribe_url' => 'https://example.test/unsub/ada',
+            ]),
+        );
+
+        // The image block's URL is still rewritten to `cid:…` and the
+        // embeds manifest still carries exactly one entry — the interpolator
+        // does NOT mutate `url` for image blocks unless the contract slot
+        // says so, but the URL rewrite to cid still fires for the substituted
+        // /uploads/media/2026/07/photo.jpg literal.
+        $this->assertMatchesRegularExpression('/src="cid:[a-zA-Z0-9]+@heisenberg"/', $result->html);
+        $this->assertCount(1, $result->embeds);
+        $this->assertStringContainsString('cid:' . $result->embeds[0]['cid'], $result->html);
+    }
+
+    public function test_size_bytes_is_a_non_zero_total_under_personalization(): void
+    {
+        $post = $this->variableFixture();
+
+        $result = $this->renderer()->render(
+            $post,
+            'en',
+            false,
+            EmailVariableContext::runtime([
+                'user.first_name' => 'Ada',
+                'user.email' => 'ada@example.test',
+                'unsubscribe_url' => 'https://example.test/unsub/ada',
+            ]),
+        );
+
+        $this->assertGreaterThan(0, $result->sizeBytes);
+        $this->assertGreaterThanOrEqual(strlen($result->html), $result->sizeBytes);
+    }
+
+    public function test_persisted_block_content_remains_tokenized_after_render(): void
+    {
+        $post = $this->variableFixture();
+
+        $this->renderer()->render(
+            $post,
+            'en',
+            false,
+            EmailVariableContext::runtime([
+                'user.first_name' => 'Ada',
+                'user.email' => 'ada@example.test',
+                'unsubscribe_url' => 'https://example.test/unsub/ada',
+            ]),
+        );
+
+        // The interpolator must NEVER write back to the input tree. The
+        // stored Block::content payload still carries literal tokens —
+        // except the separator block, which never had any token.
+        $hadTokenCount = 0;
+        foreach ($post->blocks as $block) {
+            $content = is_array($block->content) ? $block->content : [];
+            $serialized = (string) json_encode($content);
+
+            if (str_contains($serialized, '{{ user.first_name }}')) {
+                $hadTokenCount++;
+            } else {
+                // Sanity: a block that had no tokens stays a block with no tokens.
+                $this->assertStringNotContainsString('Ada', $serialized, 'a block without tokens must not receive a substituted value');
+            }
+        }
+        $this->assertGreaterThan(0, $hadTokenCount, 'at least one block in the fixture carried a token');
+
+        // Same assertion for the persisted post title.
+        $post->refresh();
+        $this->assertSame('Welcome {{ user.first_name }}', $post->title_en);
+    }
+
+    public function test_missing_runtime_value_throws_before_a_real_render_can_send(): void
+    {
+        $post = $this->variableFixture();
+
+        $this->expectException(EmailVariableResolutionException::class);
+        $this->expectExceptionMessage('user.first_name');
+
+        // `user.first_name` is registered but the runtime map omits it.
+        $this->renderer()->render(
+            $post,
+            'en',
+            false,
+            EmailVariableContext::runtime([
+                'user.email' => 'ada@example.test',
+                'unsubscribe_url' => 'https://example.test/unsub/ada',
+            ]),
+        );
+    }
+
+    public function test_unknown_token_throws_before_a_real_render_can_send(): void
+    {
+        $post = $this->variableFixture();
+
+        // Add a paragraph that references `user.mystery` (no definition).
+        $this->addBlock($post, 8, 'heisenberg/paragraph', [
+            'content' => 'Top-secret: {{ user.mystery }}',
+        ]);
+
+        $this->expectException(EmailVariableResolutionException::class);
+        $this->expectExceptionMessage('user.mystery');
+
+        // `user.mystery` is not registered.
+        $this->renderer()->render(
+            $post,
+            'en',
+            false,
+            EmailVariableContext::runtime([
+                'user.first_name' => 'Ada',
+                'user.email' => 'ada@example.test',
+                'unsubscribe_url' => 'https://example.test/unsub/ada',
+                'user.mystery' => 'whatever',
+            ]),
+        );
+    }
+
+    public function test_subject_and_block_failures_are_aggregated_into_one_exception(): void
+    {
+        $post = Post::create([
+            'title_en' => 'Welcome {{ user.subject_unknown }}',
+            'locale' => 'en',
+            'type' => 'email',
+        ]);
+        $this->addBlock($post, 1, 'heisenberg/paragraph', [
+            'content' => 'Hello {{ user.block_unknown }}',
+        ]);
+
+        try {
+            $this->renderer()->render($post, 'en', false, EmailVariableContext::runtime([]));
+            $this->fail('Expected subject and block failures to prevent rendering.');
+        } catch (EmailVariableResolutionException $e) {
+            $this->assertSame(
+                ['user.subject_unknown', 'user.block_unknown'],
+                $e->getKeys(),
+            );
+        }
+    }
+
+    public function test_incompatible_target_throws_before_a_real_render_can_send(): void
+    {
+        // Register a custom formatter that ONLY supports `url` — pushing it
+        // into a text attribute (the paragraph `content`) must fail with
+        // REASON_INCOMPATIBLE_TARGET, aggregated.
+        $registry = $this->app->make(\Heisenberg\Services\EmailVariableRegistry::class);
+        $registry->registerType(new TestUrlOnlyEmailVariableType());
+        $registry->register(new EmailVariableDefinition(
+            key: 'campaign.badge_url',
+            label: 'Campaign badge URL',
+            type: 'url_only',
+            sample: 'https://example.test/badge',
+        ));
+
+        $post = $this->variableFixture();
+        // Add a paragraph that uses campaign.badge_url in `content` (text target).
+        $this->addBlock($post, 7, 'heisenberg/paragraph', [
+            'content' => 'Badge: {{ campaign.badge_url }}',
+        ]);
+
+        try {
+            $this->renderer()->render(
+                $post,
+                'en',
+                false,
+                EmailVariableContext::runtime([
+                    'user.first_name' => 'Ada',
+                    'user.email' => 'ada@example.test',
+                    'unsubscribe_url' => 'https://example.test/unsub/ada',
+                    'campaign.badge_url' => 'https://example.test/badge/ada',
+                ]),
+            );
+            $this->fail('Expected EmailVariableResolutionException for an incompatible formatter target.');
+        } catch (EmailVariableResolutionException $e) {
+            $this->assertSame('campaign.badge_url', $e->getKey());
+            $this->assertStringContainsString('incompatible', $e->getReason());
+            // The host value is never leaked through the exception message.
+            $this->assertStringNotContainsString('badge/ada', $e->getMessage());
+        }
+    }
+
+    public function test_omitted_context_means_strict_empty_runtime_context_never_samples(): void
+    {
+        // A registered variable with a SAMPLE must NOT silently fall through
+        // to that sample — an omitted context means a strict empty runtime
+        // map (every missing token throws). Preview/single-export surfaces
+        // pass EmailVariableContext::samples(...) explicitly (Task 4).
+        $post = $this->variableFixture();
+
+        $this->expectException(EmailVariableResolutionException::class);
+        $this->expectExceptionMessage('user.first_name');
+
+        // No fourth argument at all.
+        $this->renderer()->render($post, 'en');
+    }
+
+    public function test_no_variable_email_call_still_renders_byte_for_byte(): void
+    {
+        // A post with NO tokens renders byte-for-byte whether or not the new
+        // fourth argument is supplied. This is the compatibility anchor the
+        // plan's Locked API decision §7 promises. (CIDs are randomized inside
+        // EmailRenderer::rewriteImages(), so we strip the cid component out
+        // of both outputs before comparison — the cid is the SAME mechanism
+        // it has always been, regardless of whether a variable context was
+        // passed; what we are proving is that interpolation does not perturb
+        // any other byte of the rendered HTML.)
+        $baseline = $this->renderer()->render($this->fullFixture(), 'en');
+        $withExplicitEmpty = $this->renderer()->render(
+            $this->fullFixture(),
+            'en',
+            false,
+            EmailVariableContext::runtime([]),
+        );
+
+        $normalize = static function (string $html): string {
+            // Strip the random cid portion; keep the cid-scheme intact.
+            return (string) preg_replace('/cid:[a-zA-Z0-9]+@heisenberg/', 'cid:NORMALIZED', $html);
+        };
+
+        $this->assertSame($normalize($baseline->html), $normalize($withExplicitEmpty->html));
+        $this->assertSame($baseline->subject, $withExplicitEmpty->subject);
+        $this->assertSame($baseline->text, $withExplicitEmpty->text);
+        $this->assertSame($baseline->sizeBytes, $withExplicitEmpty->sizeBytes);
+    }
+}
+
+/**
+ * Helper formatter for Task 3's "incompatible target" slice. Targets ONLY
+ * `url`, so pushing it into a `text` attribute fails aggregated with
+ * REASON_INCOMPATIBLE_TARGET.
+ */
+final class TestUrlOnlyEmailVariableType implements \Heisenberg\Contracts\EmailVariableType
+{
+    public function key(): string
+    {
+        return 'url_only';
+    }
+
+    /** @return list<'text'|'url'|'email'> */
+    public function targets(): array
+    {
+        return ['url'];
+    }
+
+    public function format(mixed $value, EmailVariableDefinition $definition, string $locale): string
+    {
+        return (string) $value;
     }
 }
