@@ -56,6 +56,12 @@ Schema::table('users', fn (Blueprint $t) => $t->string('role')->nullable());
 
 Different role names in your app? Remap them in `config/heisenberg.php` under `roles`, or bind your own `RoleGate` implementation entirely. Production apps should also wrap the route groups in their own auth middleware (`heisenberg.middleware.editor` / `.media` / `.ai`, all default `['web']`).
 
+## Email personalization and batch files
+
+Email documents use the same editor and safe block renderer, with host-registered `{{ dotted.key }}` variables. Your app registers definitions and custom formatter types in a service provider, including a mandatory non-secret sample for preview, size measurement, and single HTML/EML exports. Real recipient values are explicit flat runtime maps passed to `EmailRenderer`, `HeisenbergMailable`, or the admin batch exporter—Heisenberg never discovers recipients from its users or roles.
+
+Heisenberg **does not configure SMTP or send campaigns**. The optional mailable is a host-mailer convenience; the admin-only `email.generate` tier (default `admin`) produces a temporary ZIP containing exactly N recipients × requested locales as HTML or EML files. The host sends or stores those files. End-to-end **host usage guide** in [`docs/email-personalization.md`](docs/email-personalization.md); the as-built system reference (every locked decision + every public API) lives in [`docs/email-system.md`](docs/email-system.md) and the compile-checked [`examples/EmailVariables/`](examples/EmailVariables/) integration examples.
+
 ## Publishing content with your own templates
 
 Heisenberg renders block content; **you own the page around it**. A post template is a JSON contract declaring which chrome capabilities the page has — featured image, authored table of contents, reading time, breadcrumbs, share buttons, comments, and more:
@@ -121,6 +127,8 @@ Data Heisenberg doesn't own arrives through **provider contracts** with null def
 | [`docs/code-view.md`](docs/code-view.md) | The shortcode dialect |
 | [`docs/media-library-backend-blueprint.md`](docs/media-library-backend-blueprint.md) | The media subsystem, end to end |
 | [`docs/ai-mcp-plan.md`](docs/ai-mcp-plan.md) | The AI assistant and MCP integration |
+| [`docs/email-personalization.md`](docs/email-personalization.md) | **Host usage guide for E5:** register variables, author tokens, send per-recipient emails, run the admin batch ZIP, authorize, configure, validate |
+| [`docs/email-system.md`](docs/email-system.md) | Email rendering, host variables, sample preview, and admin batch ZIP export (as-built system reference) |
 
 ## Requirements
 

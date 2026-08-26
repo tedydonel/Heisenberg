@@ -48,6 +48,8 @@ resources/
     │       ├── block/              # inspector Content/Style/Advanced panels (+ style/*)
     │       ├── toolbar/            # floating block toolbar (+ groups/, popover menus)
     │       ├── pickers/            # color picker, variable menu, effect editor
+    │       │   ├── email-variable-menu.blade.php  # E5 email-only authoring picker (mounted on email docs only)
+    │       │   └── variable-menu.blade.php        # theme-token picker (unchanged by E5)
     │       └── media/              # media dialog/cards/dropzone (used by inspector + gallery)
     ├── editor/
     │   ├── layouts/app.blade.php   # editor page shell
@@ -62,11 +64,18 @@ src/
 ├── Adapters/  Contracts/  Enums/  Models/  Policies/
 ├── Console/Commands/               # blocks:verify, templates:verify, scheduled publish
 ├── Editor/EditorIcon.php
-├── Http/{Controllers,Middleware,Requests}/
+├── Http/{Controllers,Middleware,Requests}/   # includes EmailPreviewController + EmailBatchExportController (E5)
 ├── Livewire/MediaLibrary.php
+├── Mail/                           # HeisenbergMailable (E5) + Mail/VariableTypes/ built-in formatters (E5)
 ├── Services/                       # BlockRegistryService, BlockRenderer, validators,
-│                                   #   BlocksPayloadService, ThemeRepository, MediaLibraryService, …
-└── Support/                        # BlockViewData, SupportsStyle, AnimationCatalog, …
+│                                   #   BlocksPayloadService, ThemeRepository, MediaLibraryService,
+│                                   #   EmailRenderer, EmailVariableRegistry, EmailVariableInterpolator,
+│                                   #   EmailBatchExporter (E5)
+└── Support/                        # BlockViewData, SupportsStyle, AnimationCatalog,
+                                    #   EmailVariableDefinition, EmailVariableContext,
+                                    #   EmailVariableResolutionException,
+                                    #   EmailBatchExportResult,
+                                    #   EmailBatchTranslationMissingException (E5)
 
 routes/
 ├── editor.php                      # /editor pages, JSON post API, assets, locale switch
@@ -74,7 +83,10 @@ routes/
 
 database/                           # package migrations
 config/heisenberg.php
-docs/                               # this file, BLUEPRINT, schemas, composition docs
+docs/                               # this file, BLUEPRINT, schemas, composition docs,
+                                    #   email-system.md, email-personalization.md (E5 host usage guide)
+examples/                           # E5 host integration examples
+└── EmailVariables/                  #   MoneyEmailVariableType, AppServiceProvider, BatchExport
 ```
 
 ## Placement rules (unchanged in spirit)
