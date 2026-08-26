@@ -86,7 +86,7 @@ every embed via the mailer — drop it into `Mail::to(...)->send(...)` and it wo
 mailers consume the result object directly. An MCP surface note: AI authors emails through the same
 canvas path; `create_post` gains the `type` arg (draft emails only, same posture).
 
-**E5 (planned)** does not change that send boundary. It adds host-defined template variables and an
+**E5 (landed)** does not change that send boundary. It adds host-defined template variables and an
 admin batch **file** export. `RoleGate` decides who may generate the zip (`email.generate` →
 canonical role `admin` by default). It does **not** decide who receives the email: Heisenberg has
 no user directory, and `HeisenbergUser` is the editor actor only. The host (or the admin request
@@ -933,7 +933,7 @@ way as the preview/size URLs — those id routes redirect to the slug, §6.1).
   email-width canvas hint, size indicator), after the current inspector work lands.
 - **E4 (bench)**: reference install demo — author an email, render it, send via the log mailer,
   verify the MIME parts.
-- **E5 (host variables + admin batch export, in progress — Tasks 0–7 landed; Task 8 review pending):** see
+- **E5 (host variables + admin batch export — Tasks 0–8 landed and verified):** see
 `.hermes/plans/2026-08-25_190059-email-template-variables.md`. Host-registered merge tags
 (`{{ dotted.key }}`), typed formatters, interpolation **before** sanitization, sample preview,
 per-recipient `EmailRenderer` / optional `HeisenbergMailable` maps, and an **admin-only** zip

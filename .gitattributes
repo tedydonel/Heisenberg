@@ -2,6 +2,7 @@
 # export-ignored so `composer create-project` / --prefer-dist users don't
 # pull tests, docs, or scratch artifacts.
 /.github            export-ignore
+/.hermes            export-ignore
 /tests              export-ignore
 /docs               export-ignore
 /examples           export-ignore
@@ -10,7 +11,8 @@
 /.gitignore         export-ignore
 /phpunit.xml.dist   export-ignore
 /testbench.yaml     export-ignore
-/CODEBASE-REVIEW.md export-ignore
+/CODE_REVIEW.md     export-ignore
+/TODO.md            export-ignore
 /IDEA.md            export-ignore
 
 # Normalize line endings.
