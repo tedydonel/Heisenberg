@@ -2,10 +2,15 @@
 /build/
 /node_modules/
 /.playwright-mcp/
+/.claude/
 /.claude/worktrees/
 # Design reference (React prototype + screenshots) — kept local, not shipped.
 # Reversible: remove this line to version it.
 /heisenberg-ui/
+# Local Hermes state — never versioned.
+.freebuff/
+# Design sources + GitHub workflow templates are personal-machine state.
+.github/
 composer.lock
 # Dev-server (testbench serve) sqlite DB — created by `testbench migrate --seed`.
 /database/*.sqlite
