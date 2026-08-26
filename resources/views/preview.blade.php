@@ -17,6 +17,7 @@
     $ogImage = trim((string) ($seo['ogImage'] ?? ''));
     $jsonLd = is_array($seo['jsonLd'] ?? null) ? $seo['jsonLd'] : [];
     $alternates = $alternates ?? [];
+
 @endphp
 <!DOCTYPE html>
 <html lang="en">
@@ -137,7 +138,12 @@
             <h1 class="hb-preview-title">{{ $title }}</h1>
             @if (! empty($featured['url']))
                 <figure class="hb-preview-featured">
-                    <img src="{{ $featured['url'] }}"@if (! empty($featured['srcset'])) srcset="{{ $featured['srcset'] }}"@endif@if (! empty($featured['sizes'])) sizes="{{ $featured['sizes'] }}"@if (! empty($featured['alt'])) alt="{{ $featured['alt'] }}"@else alt=""@endif>
+                    <img
+                        src="{{ $featured['url'] }}"
+                        @if (! empty($featured['srcset'])) srcset="{{ $featured['srcset'] }}" @endif
+                        @if (! empty($featured['sizes'])) sizes="{{ $featured['sizes'] }}" @endif
+                        alt="{{ $featured['alt'] ?? '' }}"
+                    >
                 </figure>
             @endif
             @if (count($toc) > 0)

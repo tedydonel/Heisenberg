@@ -302,6 +302,12 @@ class EditorPreviewTest extends TestCase
             'stored_name' => 'hero.jpg',
             'mime_type' => 'image/jpeg',
             'size_bytes' => 2048,
+            'width' => 1600,
+            'height' => 900,
+            'variants' => [
+                'small' => ['path' => 'media/2026/08/hero-small.jpg', 'width' => 320],
+                'medium' => ['path' => 'media/2026/08/hero-medium.jpg', 'width' => 768],
+            ],
             'alt_text_en' => 'A hero image',
         ]);
         $this->putJson("/editor/posts/{$postId}/featured-image", ['featured_image_id' => $file->id])->assertOk();
@@ -310,6 +316,8 @@ class EditorPreviewTest extends TestCase
 
         $this->assertStringContainsString('<figure class="hb-preview-featured"', $with);
         $this->assertStringContainsString($file->url, $with);
+        $this->assertStringContainsString('srcset="/uploads/media/2026/08/hero-small.jpg 320w, /uploads/media/2026/08/hero-medium.jpg 768w, /uploads/media/2026/08/hero.jpg 1600w"', $with);
+        $this->assertStringContainsString('sizes="100vw"', $with);
         $this->assertStringContainsString('alt="A hero image"', $with);
     }
 
