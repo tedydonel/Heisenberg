@@ -6,6 +6,18 @@ All notable changes to this project are documented here. The format is based on
 
 ## [Unreleased]
 
+## [0.0.3] - 2026-08-27
+
+### Fixed
+
+- **Blade component namespace collision.** Heisenberg's anonymous components are now registered
+  under the `heisenberg::` namespace prefix, preventing host application components (e.g.,
+  generic `ui.tabs`, `ui.button`) from shadowing the editor's own components. All templates
+  updated to use `<x-heisenberg::ui.*>` and `<x-heisenberg::live.*>`.
+- Hard-coded `/heisenberg-assets/` URLs in the editor layout replaced with named route helpers
+  (`route('heisenberg.editor.asset.css')`, `route('heisenberg.editor.asset.logo')`) so the
+  editor works correctly when deployed behind a URL prefix.
+
 ## [0.0.2] - 2026-08-27
 
 ### Added
@@ -70,6 +82,7 @@ All notable changes to this project are documented here. The format is based on
 First public release: block editor, media library, taxonomy, post templates, canonical role gates,
 AI writing assistant, MCP integration, revisions, autosave, and host-owned rendering seams.
 
-[Unreleased]: https://github.com/tedydonel/Heisenberg/compare/v0.0.2...HEAD
+[Unreleased]: https://github.com/tedydonel/Heisenberg/compare/v0.0.3...HEAD
+[0.0.3]: https://github.com/tedydonel/Heisenberg/compare/v0.0.2...v0.0.3
 [0.0.2]: https://github.com/tedydonel/Heisenberg/compare/v0.0.1...v0.0.2
 [0.0.1]: https://github.com/tedydonel/Heisenberg/releases/tag/v0.0.1
