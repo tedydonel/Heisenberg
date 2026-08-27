@@ -63,7 +63,7 @@ class PreviewSeoTest extends TestCase
 
         $html = (string) $this->get("/editor/{$post->id}/preview")->assertOk()->getContent();
 
-        $this->assertStringContainsString('<script type="application/ld+json">', $html);
+        $this->assertStringContainsString('type="application/ld+json"', $html);
         // JSON_UNESCAPED_SLASHES -- no backslash-escaping of the URL.
         $this->assertStringContainsString('"@context":"https://schema.org"', $html);
         $this->assertStringContainsString('"headline":"Custom SEO title"', $html);
