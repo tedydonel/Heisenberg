@@ -221,7 +221,7 @@
                     <div class="hb-aihistdialog__empty" data-hb-aihist-empty hidden></div>
                     <div class="hb-aihistdialog__list" data-hb-aihist-list></div>
                 </div>
-                <x-ui.custom-scrollbar container="[data-hb-aihist-scroll]" />
+                <x-heisenberg::ui.custom-scrollbar container="[data-hb-aihist-scroll]" />
             </div>
             <div class="hb-aihistdialog__foot" data-hb-aihist-foot hidden>
                 <span class="hb-aihistdialog__count" data-hb-aihist-count></span>

@@ -19,7 +19,7 @@
         </div>
 
         <div class="hb-inspector__populated" data-hb-block-populated hidden>
-            <x-ui.sub-tabs :items="$subTabs" :active-index="$subActiveIndex" />
+            <x-heisenberg::ui.sub-tabs :items="$subTabs" :active-index="$subActiveIndex" />
             <div class="hb-inspector__body" data-hb-inspector-body>
                 <div data-hb-subpanel="content" data-hb-subpanel-content>
                     @foreach ($registry as $hbRegBlockName => $hbRegBlockContract)
@@ -40,7 +40,7 @@
                             }
                         @endphp
                         <div data-hb-block-panel="{{ $hbRegBlockName }}" hidden>
-                            <x-live.block.content
+                            <x-heisenberg::live.block.content
                                 :block-title="$hbRegBlockContract['title'] ?? 'Block'"
                                 :settings="$hbSettings"
                             />
@@ -50,21 +50,21 @@
                 <div data-hb-subpanel="style" data-hb-subpanel-style hidden>
                     @foreach ($registry as $hbRegBlockName => $hbRegBlockContract)
                         <div data-hb-block-panel="{{ $hbRegBlockName }}" hidden>
-                            <x-live.block.style-panel :supports="$hbRegBlockContract['supports'] ?? []" :theme="$theme" :inner-blocks="$hbRegBlockContract['innerBlocks'] ?? []" />
+                            <x-heisenberg::live.block.style-panel :supports="$hbRegBlockContract['supports'] ?? []" :theme="$theme" :inner-blocks="$hbRegBlockContract['innerBlocks'] ?? []" />
                         </div>
                     @endforeach
                 </div>
                 <div data-hb-subpanel="advanced" data-hb-subpanel-advanced hidden>
                     @foreach ($registry as $hbRegBlockName => $hbRegBlockContract)
                         <div data-hb-block-panel="{{ $hbRegBlockName }}" hidden>
-                            <x-live.block.advanced />
+                            <x-heisenberg::live.block.advanced />
                         </div>
                     @endforeach
                 </div>
 
-                <x-ui.custom-scrollbar container="[data-hb-subpanel-content]" />
-                <x-ui.custom-scrollbar container="[data-hb-subpanel-style]" />
-                <x-ui.custom-scrollbar container="[data-hb-subpanel-advanced]" />
+                <x-heisenberg::ui.custom-scrollbar container="[data-hb-subpanel-content]" />
+                <x-heisenberg::ui.custom-scrollbar container="[data-hb-subpanel-style]" />
+                <x-heisenberg::ui.custom-scrollbar container="[data-hb-subpanel-advanced]" />
             </div>
         </div>
     </div>

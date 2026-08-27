@@ -180,7 +180,7 @@
     <div class="hb-topbar__zone hb-topbar__zone--left">
         @foreach ($leftButtons as $btn)
             @if (is_null($btn))
-                <x-ui.divider orientation="vertical" style="width:1px;height:16px;" />
+                <x-heisenberg::ui.divider orientation="vertical" style="width:1px;height:16px;" />
             @else
                 <button
                     type="button"
@@ -199,7 +199,7 @@
     <div class="hb-topbar__zone hb-topbar__zone--center">
         @foreach ($centerButtons as $btn)
             @if (is_null($btn))
-                <x-ui.divider orientation="vertical" style="width:1px;height:16px;" />
+                <x-heisenberg::ui.divider orientation="vertical" style="width:1px;height:16px;" />
             @else
                 <button type="button" class="hb-topbar__btn" aria-label="{{ $btn['label'] }}"
                     @if ($btn['undo'] ?? false) data-hb-undo disabled @endif
@@ -283,7 +283,7 @@
                 </button>
             @endif
         @endforeach
-        <x-ui.divider orientation="vertical" style="width:1px;height:14px;" />
+        <x-heisenberg::ui.divider orientation="vertical" style="width:1px;height:14px;" />
         <button type="button" class="hb-topbar__save">{{ __('heisenberg::editor.common.save') }}</button>
         <button type="button" class="hb-topbar__btn" aria-label="{{ __('heisenberg::editor.topbar.aria_panel_right') }}" data-hb-toggle="inspector">
             <span class="hb-topbar__icon" aria-hidden="true" style="transform:rotate(180deg);">

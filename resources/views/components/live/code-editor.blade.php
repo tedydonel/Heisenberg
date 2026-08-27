@@ -706,8 +706,8 @@
             <textarea class="hb-codeview__input" data-hb-cv-input spellcheck="false" wrap="off"
                 aria-label="{{ __('heisenberg::editor.code.aria_input') }}"
                 placeholder="{{ __('heisenberg::editor.code.placeholder') }}"></textarea>
-            <x-ui.custom-scrollbar container="[data-hb-cv-input]" :smooth="false" />
-            <x-ui.custom-scrollbar container="[data-hb-cv-input]" axis="x" :smooth="false" />
+            <x-heisenberg::ui.custom-scrollbar container="[data-hb-cv-input]" :smooth="false" />
+            <x-heisenberg::ui.custom-scrollbar container="[data-hb-cv-input]" axis="x" :smooth="false" />
         </div>
     </div>
     <div class="hb-codeview__status" data-hb-cv-status hidden>

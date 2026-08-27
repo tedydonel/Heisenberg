@@ -149,12 +149,12 @@
 @endphp
 <aside {{ $attributes->merge(['class' => 'hb-sidebar']) }}>
     <div class="hb-sidebar__logo-zone">
-        <img class="hb-sidebar__logo-mark" src="/heisenberg-assets/editor-logo.svg" alt="" aria-hidden="true">
+        <img class="hb-sidebar__logo-mark" src="{{ route('heisenberg.editor.asset.logo') }}" alt="" aria-hidden="true">
         <span class="hb-sidebar__brand">Heisenberg</span>
     </div>
     <nav class="hb-sidebar__nav">
         @foreach ($navItems as $item)
-            <x-ui.nav-item
+            <x-heisenberg::ui.nav-item
                 :icon="$item['icon']"
                 :label="$item['label']"
                 :active="$item['active'] ?? false"

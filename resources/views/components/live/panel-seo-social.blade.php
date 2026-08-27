@@ -152,7 +152,7 @@
     data-hb-seo-preview-prefix="{{ __('heisenberg::editor.panel_seo_social.seo_url_slug_prefix') }}"
     data-hb-seo-url-placeholder="{{ __('heisenberg::editor.panel_seo_social.seo_url_slug_value') }}"
     {{ $attributes->merge(['class' => 'hb-panel-seo']) }}>
-    <x-ui.panel-tabs :items="[['label' => __('heisenberg::editor.panel_seo_social.tab_seo')], ['label' => __('heisenberg::editor.panel_seo_social.tab_social')]]" :active-index="0" />
+    <x-heisenberg::ui.panel-tabs :items="[['label' => __('heisenberg::editor.panel_seo_social.tab_seo')], ['label' => __('heisenberg::editor.panel_seo_social.tab_social')]]" :active-index="0" />
 
     <div class="hb-panel-seo__content" data-hb-panel-seo-seo>
         <div class="hb-panel-seo__scroll" data-hb-panel-seo-seo-scroll>
@@ -172,7 +172,7 @@
                 <span class="hb-seo-field__label">{{ __('heisenberg::editor.panel_seo_social.seo_title_label') }}</span>
                 <span class="hb-seo-field__count" data-hb-seo-count="meta_title">{{ mb_strlen((string) $postSeo['meta_title']) }}/60</span>
             </div>
-            <x-ui.input data-hb-seo-field="meta_title" :value="$postSeo['meta_title']" :placeholder="__('heisenberg::editor.panel_seo_social.seo_title_ph')" width="100%" :disabled="$hbSeoDisabled" />
+            <x-heisenberg::ui.input data-hb-seo-field="meta_title" :value="$postSeo['meta_title']" :placeholder="__('heisenberg::editor.panel_seo_social.seo_title_ph')" width="100%" :disabled="$hbSeoDisabled" />
         </div>
 
         <div class="hb-seo-field">
@@ -180,12 +180,12 @@
                 <span class="hb-seo-field__label">{{ __('heisenberg::editor.panel_seo_social.seo_meta_label') }}</span>
                 <span class="hb-seo-field__count" data-hb-seo-count="meta_description">{{ mb_strlen((string) $postSeo['meta_description']) }}/160</span>
             </div>
-            <x-ui.text-area data-hb-seo-field="meta_description" :value="$postSeo['meta_description']" :placeholder="__('heisenberg::editor.panel_seo_social.seo_meta_ph')" width="100%" height="64px" :disabled="$hbSeoDisabled" />
+            <x-heisenberg::ui.text-area data-hb-seo-field="meta_description" :value="$postSeo['meta_description']" :placeholder="__('heisenberg::editor.panel_seo_social.seo_meta_ph')" width="100%" height="64px" :disabled="$hbSeoDisabled" />
         </div>
 
         <div class="hb-seo-field">
             <span class="hb-seo-field__label">{{ __('heisenberg::editor.panel_seo_social.seo_url_slug') }}</span>
-            <x-ui.field data-hb-post-slug-input data-hb-current-slug="{{ $postSlug }}" :prefix="__('heisenberg::editor.panel_seo_social.seo_canonical_prefix')" :value="$postSlug" width="100%" :disabled="$hbSeoDisabled" />
+            <x-heisenberg::ui.field data-hb-post-slug-input data-hb-current-slug="{{ $postSlug }}" :prefix="__('heisenberg::editor.panel_seo_social.seo_canonical_prefix')" :value="$postSlug" width="100%" :disabled="$hbSeoDisabled" />
         </div>
 
         <div class="hb-seo-field">
@@ -198,15 +198,15 @@
 
         <div class="hb-seo-field">
             <span class="hb-seo-field__label">{{ __('heisenberg::editor.panel_seo_social.seo_focus_keyphrase') }}</span>
-            <x-ui.input data-hb-seo-field="focus_keyphrase" :value="$postSeo['focus_keyphrase']" :placeholder="__('heisenberg::editor.panel_seo_social.seo_focus_keyphrase_ph')" width="100%" :disabled="$hbSeoDisabled" />
+            <x-heisenberg::ui.input data-hb-seo-field="focus_keyphrase" :value="$postSeo['focus_keyphrase']" :placeholder="__('heisenberg::editor.panel_seo_social.seo_focus_keyphrase_ph')" width="100%" :disabled="$hbSeoDisabled" />
         </div>
 
         <div class="hb-seo-checklist" data-hb-seo-checklist>
             <div data-hb-seo-check-prototypes hidden>
-                <x-ui.status-check-row status="pass" text="" data-hb-check-proto="pass" />
-                <x-ui.status-check-row status="warn" text="" data-hb-check-proto="warn" />
-                <x-ui.status-check-row status="fail" text="" data-hb-check-proto="fail" />
-                <x-ui.status-check-row status="na" text="" data-hb-check-proto="na" />
+                <x-heisenberg::ui.status-check-row status="pass" text="" data-hb-check-proto="pass" />
+                <x-heisenberg::ui.status-check-row status="warn" text="" data-hb-check-proto="warn" />
+                <x-heisenberg::ui.status-check-row status="fail" text="" data-hb-check-proto="fail" />
+                <x-heisenberg::ui.status-check-row status="na" text="" data-hb-check-proto="na" />
             </div>
             <span class="hb-seo-checklist__empty" data-hb-seo-checklist-empty>{{ __('heisenberg::editor.panel_seo_social.checklist_empty') }}</span>
         </div>
@@ -215,25 +215,25 @@
         <div class="hb-seo-toggles">
             <div class="hb-seo-toggle-row">
                 <span class="hb-seo-toggle-row__label">{{ __('heisenberg::editor.panel_seo_social.seo_index_label') }}</span>
-                <x-ui.toggle data-hb-seo-field="robots_index" :on="(bool) $postSeo['robots_index']" name="seo-index" :disabled="$hbSeoDisabled" />
+                <x-heisenberg::ui.toggle data-hb-seo-field="robots_index" :on="(bool) $postSeo['robots_index']" name="seo-index" :disabled="$hbSeoDisabled" />
             </div>
             <div class="hb-seo-toggle-row">
                 <span class="hb-seo-toggle-row__label">{{ __('heisenberg::editor.panel_seo_social.seo_sitemap_label') }}</span>
-                <x-ui.toggle data-hb-seo-field="in_sitemap" :on="(bool) $postSeo['in_sitemap']" name="seo-sitemap" :disabled="$hbSeoDisabled" />
+                <x-heisenberg::ui.toggle data-hb-seo-field="in_sitemap" :on="(bool) $postSeo['in_sitemap']" name="seo-sitemap" :disabled="$hbSeoDisabled" />
             </div>
             <div class="hb-seo-toggle-row">
                 <span class="hb-seo-toggle-row__label">{{ __('heisenberg::editor.panel_seo_social.seo_follow_label') }}</span>
-                <x-ui.toggle data-hb-seo-field="robots_follow" :on="(bool) $postSeo['robots_follow']" name="seo-follow" :disabled="$hbSeoDisabled" />
+                <x-heisenberg::ui.toggle data-hb-seo-field="robots_follow" :on="(bool) $postSeo['robots_follow']" name="seo-follow" :disabled="$hbSeoDisabled" />
             </div>
         </div>
         <hr class="hb-seo-divider">
 
         <div class="hb-seo-field">
             <span class="hb-seo-field__label hb-seo-field__label--muted">{{ __('heisenberg::editor.panel_seo_social.seo_canonical') }}</span>
-            <x-ui.input data-hb-seo-field="canonical_url" :value="$postSeo['canonical_url']" :placeholder="__('heisenberg::editor.panel_seo_social.seo_canonical_ph')" width="100%" :disabled="$hbSeoDisabled" />
+            <x-heisenberg::ui.input data-hb-seo-field="canonical_url" :value="$postSeo['canonical_url']" :placeholder="__('heisenberg::editor.panel_seo_social.seo_canonical_ph')" width="100%" :disabled="$hbSeoDisabled" />
         </div>
         </div>
-        <x-ui.custom-scrollbar container="[data-hb-panel-seo-seo-scroll]" />
+        <x-heisenberg::ui.custom-scrollbar container="[data-hb-panel-seo-seo-scroll]" />
     </div>
 
     <div class="hb-panel-seo__content" data-hb-panel-seo-social hidden>
@@ -261,7 +261,7 @@
                 $hbSeoOgSelectUrl = \Illuminate\Support\Facades\Route::has('media.select') ? route('media.select') : null;
                 $hbSeoOgUploadUrl = \Illuminate\Support\Facades\Route::has('media.upload') ? route('media.upload') : null;
             @endphp
-            <x-live.media.media-dialog
+            <x-heisenberg::live.media.media-dialog
                 data-hb-seo-og-dialog
                 hidden
                 :scrim="true"
@@ -275,21 +275,21 @@
 
         <div class="hb-seo-field">
             <span class="hb-seo-field__label">{{ __('heisenberg::editor.panel_seo_social.social_title') }}</span>
-            <x-ui.input data-hb-seo-field="og_title" :value="$postSeo['og_title']" :placeholder="__('heisenberg::editor.panel_seo_social.social_title_ph')" width="100%" :disabled="$hbSeoDisabled" />
+            <x-heisenberg::ui.input data-hb-seo-field="og_title" :value="$postSeo['og_title']" :placeholder="__('heisenberg::editor.panel_seo_social.social_title_ph')" width="100%" :disabled="$hbSeoDisabled" />
         </div>
 
         <div class="hb-seo-field">
             <span class="hb-seo-field__label">{{ __('heisenberg::editor.panel_seo_social.social_description') }}</span>
-            <x-ui.text-area data-hb-seo-field="og_description" :value="$postSeo['og_description']" :placeholder="__('heisenberg::editor.panel_seo_social.social_description_ph')" width="100%" height="56px" :disabled="$hbSeoDisabled" />
+            <x-heisenberg::ui.text-area data-hb-seo-field="og_description" :value="$postSeo['og_description']" :placeholder="__('heisenberg::editor.panel_seo_social.social_description_ph')" width="100%" height="56px" :disabled="$hbSeoDisabled" />
         </div>
 
         <div class="hb-seo-social-preview">
-            <x-ui.social-preview-row logo="facebook-logo-bold" :label="__('heisenberg::editor.panel_seo_social.social_facebook')" />
-            <x-ui.social-preview-row logo="twitter-logo-bold" :label="__('heisenberg::editor.panel_seo_social.social_x')" />
-            <x-ui.social-preview-row logo="linkedin-logo-bold" :label="__('heisenberg::editor.panel_seo_social.social_linkedin')" />
+            <x-heisenberg::ui.social-preview-row logo="facebook-logo-bold" :label="__('heisenberg::editor.panel_seo_social.social_facebook')" />
+            <x-heisenberg::ui.social-preview-row logo="twitter-logo-bold" :label="__('heisenberg::editor.panel_seo_social.social_x')" />
+            <x-heisenberg::ui.social-preview-row logo="linkedin-logo-bold" :label="__('heisenberg::editor.panel_seo_social.social_linkedin')" />
         </div>
         </div>
-        <x-ui.custom-scrollbar container="[data-hb-panel-seo-social-scroll]" />
+        <x-heisenberg::ui.custom-scrollbar container="[data-hb-panel-seo-social-scroll]" />
     </div>
 </div>
 

@@ -10,7 +10,7 @@
         </div>
 
         @if ($documentType !== 'email')
-        <x-ui.disclosure-row icon="image" :label="__('heisenberg::editor.inspector.post_featured_image')" chevron="down" />
+        <x-heisenberg::ui.disclosure-row icon="image" :label="__('heisenberg::editor.inspector.post_featured_image')" chevron="down" />
         <div class="hb-post-dropzone-wrap" data-hb-disclosure-body data-hb-featured-field
             @if ((string) $postFeaturedImageUrlTemplate !== '') data-hb-featured-image-update-url-template="{{ $postFeaturedImageUrlTemplate }}" @endif>
             <button type="button" class="hb-post-dropzone" data-hb-featured-trigger aria-haspopup="dialog" aria-label="{{ __('heisenberg::editor.inspector.post_featured_set') }}" @if ($postFeaturedImage !== null) hidden @endif>
@@ -37,7 +37,7 @@
                 $hbFeaturedSelectUrl = \Illuminate\Support\Facades\Route::has('media.select') ? route('media.select') : null;
                 $hbFeaturedUploadUrl = \Illuminate\Support\Facades\Route::has('media.upload') ? route('media.upload') : null;
             @endphp
-            <x-live.media.media-dialog
+            <x-heisenberg::live.media.media-dialog
                 data-hb-featured-dialog
                 hidden
                 :scrim="true"
@@ -50,7 +50,7 @@
         </div>
         @endif
 
-        <x-ui.disclosure-row icon="file-text" :label="__('heisenberg::editor.inspector.post_summary')" chevron="down" />
+        <x-heisenberg::ui.disclosure-row icon="file-text" :label="__('heisenberg::editor.inspector.post_summary')" chevron="down" />
         <div data-hb-disclosure-body>
             @php $hbStatusRow = collect($postMeta)->firstWhere('key', 'status'); @endphp
             @php $hbUrlRow = collect($postMeta)->firstWhere('key', 'url'); @endphp
@@ -137,13 +137,13 @@
 
             <div class="hb-post-popup" data-hb-post-popup="publish" hidden>
                 <div class="hb-pop hb-post-pop">
-                    <x-ui.date-picker data-hb-post-published-input :value="$postPublishedAt ?? ''" />
+                    <x-heisenberg::ui.date-picker data-hb-post-published-input :value="$postPublishedAt ?? ''" />
                 </div>
             </div>
 
             <div class="hb-post-popup" data-hb-post-popup="schedule" hidden>
                 <div class="hb-pop hb-post-pop">
-                    <x-ui.date-picker data-hb-post-schedule-input :value="$postScheduledAt ?? ''" />
+                    <x-heisenberg::ui.date-picker data-hb-post-schedule-input :value="$postScheduledAt ?? ''" />
                 </div>
             </div>
 
@@ -151,17 +151,17 @@
             <div class="hb-post-toggles">
                 <div class="hb-post-toggle-row">
                     <span class="hb-post-toggle-row__label">{{ __('heisenberg::editor.inspector.post_pending_review') }}</span>
-                    <x-ui.toggle :on="$postPendingReview" name="post-pending-review" />
+                    <x-heisenberg::ui.toggle :on="$postPendingReview" name="post-pending-review" />
                 </div>
                 @if ($documentType !== 'email')
                 <div class="hb-post-toggle-row">
                     <span class="hb-post-toggle-row__label">{{ __('heisenberg::editor.inspector.post_stick_top') }}</span>
-                    <x-ui.toggle :on="$postStickToTop" name="post-stick-top" />
+                    <x-heisenberg::ui.toggle :on="$postStickToTop" name="post-stick-top" />
                 </div>
                 @endif
             </div>
             <hr class="hb-post-divider">
-            <x-ui.disclosure-row icon="arrow-counter-clockwise" :label="__('heisenberg::editor.revisions.title')" chevron="none"
+            <x-heisenberg::ui.disclosure-row icon="arrow-counter-clockwise" :label="__('heisenberg::editor.revisions.title')" chevron="none"
                 data-hb-revisions-open
                 :data-hb-post-id="$postId ?? ''"
                 :data-hb-revisions-url-template="$postRevisionsUrlTemplate" />
@@ -181,9 +181,9 @@
                 <button type="button" class="hb-post-trash-cancel" data-hb-post-trash-cancel hidden>{{ __('heisenberg::editor.common.cancel') }}</button>
             </div>
         </div>
-        <x-live.revisions-dialog />
+        <x-heisenberg::live.revisions-dialog />
 
-        <x-ui.disclosure-row icon="translate" :label="__('heisenberg::editor.inspector.post_translations')" chevron="down" />
+        <x-heisenberg::ui.disclosure-row icon="translate" :label="__('heisenberg::editor.inspector.post_translations')" chevron="down" />
         <div class="hb-post-translations-body" data-hb-disclosure-body data-hb-post-translations-field>
             <div class="hb-post-translations-list" data-hb-post-translations-list>
                 @if ($postTranslations === null)
@@ -223,20 +223,20 @@
         </div>
 
         @if ($documentType !== 'email')
-        <x-ui.disclosure-row icon="chat-circle" :label="__('heisenberg::editor.inspector.post_discussion')" chevron="down" />
+        <x-heisenberg::ui.disclosure-row icon="chat-circle" :label="__('heisenberg::editor.inspector.post_discussion')" chevron="down" />
         <div class="hb-post-discussion-body" data-hb-disclosure-body data-hb-post-discussion-field
             data-hb-post-id="{{ $postId ?? '' }}"
             data-hb-discussion-url-template="{{ $postDiscussionUrlTemplate }}">
             <div class="hb-post-toggle-row">
                 <span class="hb-post-toggle-row__label">{{ __('heisenberg::editor.inspector.post_allow_comments') }}</span>
-                <x-ui.toggle data-hb-post-allow-comments :on="$postAllowComments" name="post-allow-comments" :disabled="$postId === null" />
+                <x-heisenberg::ui.toggle data-hb-post-allow-comments :on="$postAllowComments" name="post-allow-comments" :disabled="$postId === null" />
             </div>
             <span class="hb-post-taxonomy-hint" data-hb-post-discussion-hint @if ($postId !== null) hidden @endif>{{ __('heisenberg::editor.inspector.post_taxonomy_needs_save') }}</span>
         </div>
         @endif
 
         @if ($documentType !== 'email')
-        <x-ui.disclosure-row icon="list-numbers" :label="__('heisenberg::editor.toc.title')" chevron="down" />
+        <x-heisenberg::ui.disclosure-row icon="list-numbers" :label="__('heisenberg::editor.toc.title')" chevron="down" />
         <div class="hb-post-toc-body" data-hb-disclosure-body data-hb-post-toc-field>
             <span class="hb-post-toc-summary" data-hb-post-toc-summary>
                 {{ count($postTocEntries) > 0
@@ -250,6 +250,6 @@
                 {{ __('heisenberg::editor.toc.edit') }}
             </button>
         </div>
-        <x-live.toc-dialog />
+        <x-heisenberg::live.toc-dialog />
         @endif
 

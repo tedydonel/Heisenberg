@@ -5,7 +5,7 @@
     @php
         $hbDocumentType = $documentType ?? 'post';
     @endphp
-    <x-live.topbar class="hb-editor__topbar" :post-id="$postId ?? null" :content-version="$contentVersion ?? 0"
+    <x-heisenberg::live.topbar class="hb-editor__topbar" :post-id="$postId ?? null" :content-version="$contentVersion ?? 0"
         :home-locale="$postLocale ?? 'en'"
         :content-locales="$contentLocales ?? ['en', 'fr']"
         :content-locale-labels="$contentLocaleLabels ?? []"
@@ -13,40 +13,40 @@
         :document-type="$hbDocumentType"
         :email-preview-url-template="$emailPreviewUrlTemplate ?? ''"
         :email-export-url-template="$emailExportUrlTemplate ?? ''" />
-    <x-live.sidebar class="hb-editor__sidebar" :document-type="$hbDocumentType" />
+    <x-heisenberg::live.sidebar class="hb-editor__sidebar" :document-type="$hbDocumentType" />
     <div class="hb-editor__panel">
-        <x-live.panel-components-blocks :registry="$paletteBlocks ?? $registry" />
+        <x-heisenberg::live.panel-components-blocks :registry="$paletteBlocks ?? $registry" />
         @if ($hbDocumentType !== 'email')
-        <x-live.panel-seo-social hidden
+        <x-heisenberg::live.panel-seo-social hidden
             :post-id="$postId ?? null"
             :post-title="$postTitle ?? ''"
             :post-slug="$postSlug ?? ''"
             :post-seo="$postSeo ?? null"
             :seo-analyze-url-template="$postSeoAnalyzeUrlTemplate ?? ''" />
         @endif
-        <x-live.panel-style-themes hidden :theme="$theme ?? []" :saved-themes="$savedThemes ?? []" :font-options="$fontOptions ?? []"
+        <x-heisenberg::live.panel-style-themes hidden :theme="$theme ?? []" :saved-themes="$savedThemes ?? []" :font-options="$fontOptions ?? []"
             :theme-update-url="route('heisenberg.editor.theme.update')" :fonts-search-url="route('heisenberg.editor.fonts.search')"
             :themes-store-url="route('heisenberg.editor.themes.store')" :themes-destroy-url="route('heisenberg.editor.themes.destroy')" />
-        <x-live.panel-ai hidden :stream-url="route('heisenberg.editor.ai.stream')"
+        <x-heisenberg::live.panel-ai hidden :stream-url="route('heisenberg.editor.ai.stream')"
             :conversations-url="route('heisenberg.editor.ai.conversations.index')"
             :suggest-url="route('heisenberg.editor.ai.suggest')"
             :model-options="$aiModelOptions ?? []"
             :active-model="$aiActiveModel ?? null"
             :locale="app()->getLocale()"
             :post-id="$postId ?? null" />
-        <x-live.panel-navigator hidden :registry="$registry" />
+        <x-heisenberg::live.panel-navigator hidden :registry="$registry" />
     </div>
     <div class="hb-editor__canvas">
-        <x-live.canvas :title="$postTitle ?? ''" :page-padding-x="$postPagePaddingX ?? 56" :page-padding-y="$postPagePaddingY ?? 56"
+        <x-heisenberg::live.canvas :title="$postTitle ?? ''" :page-padding-x="$postPagePaddingX ?? 56" :page-padding-y="$postPagePaddingY ?? 56"
             :document-type="$hbDocumentType"
             :post-locale="$postLocale ?? 'en'" :content-locale-labels="$contentLocaleLabels ?? []" />
-        <x-live.code-editor hidden />
-        <x-live.quick-inserter :registry="$paletteBlocks ?? $registry" />
+        <x-heisenberg::live.code-editor hidden />
+        <x-heisenberg::live.quick-inserter :registry="$paletteBlocks ?? $registry" />
         @php
             $hbBlockImageSelectUrl = \Illuminate\Support\Facades\Route::has('media.select') ? route('media.select') : null;
             $hbBlockImageUploadUrl = \Illuminate\Support\Facades\Route::has('media.upload') ? route('media.upload') : null;
         @endphp
-        <x-live.media.media-dialog
+        <x-heisenberg::live.media.media-dialog
             data-hb-block-image-dialog
             hidden
             :scrim="true"
@@ -89,20 +89,20 @@
                 document.addEventListener('hb:refresh', boot);
             })();
         </script>
-        <x-live.icon-picker-dialog
+        <x-heisenberg::live.icon-picker-dialog
             :search-url="\Illuminate\Support\Facades\Route::has('heisenberg.editor.icons.search') ? route('heisenberg.editor.icons.search') : null"
             :sets="app(\Heisenberg\Services\IconLibraryService::class)->sets()" />
         @if (! empty($emailVariablePicker))
-            <x-live.pickers.email-variable-menu :entries="$emailVariablePicker['entries']" :all-targets="$emailVariablePicker['allTargets']" />
+            <x-heisenberg::live.pickers.email-variable-menu :entries="$emailVariablePicker['entries']" :all-targets="$emailVariablePicker['allTargets']" />
         @endif
-        <x-ui.custom-scrollbar container=".hb-canvas" />
+        <x-heisenberg::ui.custom-scrollbar container=".hb-canvas" />
         <div class="hb-blk-toolbar-holder" hidden>
-            <x-live.toolbar.block-toolbar data-hb-block-toolbar :rich-text="true" :block-type="'Text'" :active-formats="[]"
+            <x-heisenberg::live.toolbar.block-toolbar data-hb-block-toolbar :rich-text="true" :block-type="'Text'" :active-formats="[]"
                 :theme-tokens="$themeTokens['color'] ?? []"
                 :supports="['color' => ['text' => true, 'background' => true], 'align' => ['left', 'center', 'right']]" />
         </div>
     </div>
-    <x-live.inspector class="hb-editor__inspector" :registry="$registry" :post-title="$postTitle ?? ''"
+    <x-heisenberg::live.inspector class="hb-editor__inspector" :registry="$registry" :post-title="$postTitle ?? ''"
         :post-meta="$postMeta ?? []"
         :post-status-transitions="$postStatusTransitions ?? []" :post-status-labels="$postStatusLabels ?? []"
         :post-scheduled-at="$postScheduledAt ?? null"
@@ -125,18 +125,18 @@
         :fonts-search-url="route('heisenberg.editor.fonts.search')"
         :theme="$theme ?? []"
         :document-type="$hbDocumentType" />
-    <x-live.footer class="hb-editor__footer" :document-type="$hbDocumentType" :post-id="$postId ?? null"
+    <x-heisenberg::live.footer class="hb-editor__footer" :document-type="$hbDocumentType" :post-id="$postId ?? null"
         :email-size-url-template="$emailSizeUrlTemplate ?? ''" />
 
-    <x-live.ai.ai-settings-dialog :payload="$aiPayload ?? []"
+    <x-heisenberg::live.ai.ai-settings-dialog :payload="$aiPayload ?? []"
         :settings-url="$aiSettingsUrl ?? null"
         :key-url-template="$aiKeyUrlTemplate ?? null"
         :discover-url-template="$aiDiscoverUrlTemplate ?? null"
         :mcp-test-url="$aiMcpTestUrl ?? null" />
 
-    <x-live.ai.ai-history-dialog />
+    <x-heisenberg::live.ai.ai-history-dialog />
 
-    <x-live.block-runtime :registry="$registry" :blocks-css="$blocksCss" :registry-hash="$registryHash ?? ''"
+    <x-heisenberg::live.block-runtime :registry="$registry" :blocks-css="$blocksCss" :registry-hash="$registryHash ?? ''"
         :post-id="$postId ?? null" :post-locale="$postLocale ?? 'en'" :content-locales="$contentLocales ?? ['en', 'fr']" />
 
     @if (! empty($initialBlocks))

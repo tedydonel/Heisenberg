@@ -207,7 +207,7 @@
     data-msg-length-limit="{{ __('heisenberg::editor.panel_ai_tools.ai_length_limit') }}"
     data-msg-history-error="{{ __('heisenberg::editor.panel_ai_tools.ai_history_error') }}"
     {{ $attributes->merge(['class' => 'hb-panel-ai']) }}>
-    <x-ui.panel-tabs :items="[['label' => __('heisenberg::editor.panel_ai_tools.tab_ai')], ['label' => __('heisenberg::editor.panel_ai_tools.tab_tools')]]" :active-index="0" />
+    <x-heisenberg::ui.panel-tabs :items="[['label' => __('heisenberg::editor.panel_ai_tools.tab_ai')], ['label' => __('heisenberg::editor.panel_ai_tools.tab_tools')]]" :active-index="0" />
 
     <div class="hb-panel-ai__content" data-hb-panel-ai-ai>
         <div class="hb-ai-body">
@@ -218,9 +218,9 @@
                         <span class="hb-ai-header__badge-icon">@include('heisenberg::components.ui.icon', ['name' => 'sparkle-fill', 'size' => 16])</span>
                     </span>
                     <span class="hb-ai-header__title">{{ __('heisenberg::editor.panel_ai_tools.ai_assistant') }}</span>
-                    <x-ui.icon-button icon="notepad-fill" class="hb-ai-header__action"
+                    <x-heisenberg::ui.icon-button icon="notepad-fill" class="hb-ai-header__action"
                         :label="__('heisenberg::editor.panel_ai_tools.ai_history_open')" data-hb-ai-history-open />
-                    <x-ui.icon-button icon="gear-fill" class="hb-ai-header__action"
+                    <x-heisenberg::ui.icon-button icon="gear-fill" class="hb-ai-header__action"
                         :label="__('heisenberg::editor.ai.settings_open')" data-hb-ai-settings-open />
                 </div>
             </div>
@@ -228,7 +228,7 @@
             <div class="hb-ai-thread" data-hb-ai-thread></div>
             <div class="hb-ai-empty" data-hb-ai-empty>{{ __('heisenberg::editor.panel_ai_tools.ai_empty') }}</div>
         </div>
-            <x-ui.custom-scrollbar container="[data-hb-ai-scroll]" />
+            <x-heisenberg::ui.custom-scrollbar container="[data-hb-ai-scroll]" />
         </div>
 
         <div class="hb-ai-composer">
@@ -241,7 +241,7 @@
                 </button>
                 <span class="hb-ai-composer__spacer" hidden></span>
                 @if (! empty($modelOptions))
-                    <x-ui.select class="hb-ai-model" data-hb-ai-model
+                    <x-heisenberg::ui.select class="hb-ai-model" data-hb-ai-model
                         :options="$modelOptions" :value="$activeModel"
                         :aria-label="__('heisenberg::editor.panel_ai_tools.ai_model_label')" />
                 @endif
@@ -307,17 +307,17 @@
     </template>
 
     <div class="hb-panel-ai__content" data-hb-panel-ai-tools hidden>
-        <x-ui.search-field :placeholder="__('heisenberg::editor.panel_ai_tools.search_tools')"
+        <x-heisenberg::ui.search-field :placeholder="__('heisenberg::editor.panel_ai_tools.search_tools')"
             data-hb-filter="[data-hb-panel-ai-tools]" data-hb-filter-item=".hb-panel-ai__grid > *" />
-        <x-ui.category-head :label="__('heisenberg::editor.panel_ai_tools.category_writing')" />
+        <x-heisenberg::ui.category-head :label="__('heisenberg::editor.panel_ai_tools.category_writing')" />
         <div class="hb-panel-ai__toolsbody" data-hb-ai-tools-scroll>
             <div class="hb-panel-ai__grid">
                 @foreach ($toolCards as $card)
-                    <x-ui.tool-card :icon="$card['icon']" :label="$card['label']"
+                    <x-heisenberg::ui.tool-card :icon="$card['icon']" :label="$card['label']"
                         :data-hb-ai-suggest="$card['label']" />
                 @endforeach
             </div>
-            <x-ui.custom-scrollbar container="[data-hb-ai-tools-scroll]" />
+            <x-heisenberg::ui.custom-scrollbar container="[data-hb-ai-tools-scroll]" />
         </div>
     </div>
 </div>

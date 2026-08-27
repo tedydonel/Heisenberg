@@ -637,7 +637,7 @@ class HeisenbergServiceProvider extends ServiceProvider
 
         $componentsDir = __DIR__ . '/../resources/views/components';
         if (is_dir($componentsDir)) {
-            \Illuminate\Support\Facades\Blade::anonymousComponentPath($componentsDir);
+            \Illuminate\Support\Facades\Blade::anonymousComponentPath($componentsDir, 'heisenberg');
         }
 
         $this->loadTranslationsFrom(__DIR__ . '/../resources/lang', 'heisenberg');

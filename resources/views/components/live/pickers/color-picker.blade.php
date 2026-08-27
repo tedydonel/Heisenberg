@@ -22,7 +22,7 @@
 <div class="hb-pop hb-cp @if ($standalone) hb-cp--standalone @endif" data-hb-colorpicker data-cp-value="{{ $value }}" data-cp-mode="{{ $standalone ? 'fill' : $mode }}" style="--hb-cp-hue: #f00;">
     @unless ($standalone)
     <div class="hb-cp__tabs">
-        <x-ui.tabs :active-index="$mode === 'gradient' ? 1 : 0" :items="[
+        <x-heisenberg::ui.tabs :active-index="$mode === 'gradient' ? 1 : 0" :items="[
             ['value' => 'fill', 'label' => __('heisenberg::editor.color_picker.tab_fill')],
             ['value' => 'gradient', 'label' => __('heisenberg::editor.color_picker.tab_gradient')],
         ]" />
@@ -30,7 +30,7 @@
 
     <div class="hb-cp__body" data-cp-body="gradient" @if ($mode !== 'gradient') hidden @endif>
         <div class="hb-cp__type-row">
-            <x-ui.select
+            <x-heisenberg::ui.select
                 class="hb-cp__select hb-cp__select--type"
                 data-cp-gradient-type
                 :options="$gradientTypes"
@@ -42,7 +42,7 @@
                 <input type="text" inputmode="numeric" value="90" aria-label="{{ __('heisenberg::editor.color_picker.aria_gradient_angle') }}" data-cp-gradient-angle>
                 <span>&deg;</span>
             </label>
-            <x-ui.select
+            <x-heisenberg::ui.select
                 class="hb-cp__select hb-cp__select--shape"
                 data-cp-gradient-shape
                 :options="$gradientShapes"
@@ -108,7 +108,7 @@
             <button type="button" class="hb-cp__eyedropper" aria-label="{{ __('heisenberg::editor.color_picker.aria_eyedropper') }}" title="{{ __('heisenberg::editor.color_picker.aria_eyedropper') }}" data-cp-eyedropper hidden>
                 @include('heisenberg::components.ui.icon', ['name' => 'eyedropper', 'size' => 14])
             </button>
-            <x-ui.select
+            <x-heisenberg::ui.select
                 class="hb-cp__select hb-cp__select--model"
                 data-cp-model
                 :options="$colorModels"

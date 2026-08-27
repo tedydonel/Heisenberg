@@ -663,7 +663,7 @@
 
         <div class="hb-mediadialog__top">
             <span class="hb-mediadialog__title">{{ __('heisenberg::editor.ai.settings_title') }}</span>
-            <span class="hb-aidialog__tabs"><x-ui.tabs :items="$tabs" :active-index="0" /></span>
+            <span class="hb-aidialog__tabs"><x-heisenberg::ui.tabs :items="$tabs" :active-index="0" /></span>
             <button type="button" class="hb-mediadialog__close" aria-label="{{ __('heisenberg::editor.common.close') }}">
                 @include('heisenberg::components.ui.icon', ['name' => 'x', 'size' => 16])
             </button>
@@ -681,23 +681,23 @@
                 <div class="hb-aidialog__group">{{ __('heisenberg::editor.ai.presets_title') }}</div>
                 <div data-hb-preset-list></div>
 
-                <div><x-ui.button variant="secondary" data-hb-prov-add-toggle>{{ __('heisenberg::editor.ai.provider_add') }}</x-ui.button></div>
+                <div><x-heisenberg::ui.button variant="secondary" data-hb-prov-add-toggle>{{ __('heisenberg::editor.ai.provider_add') }}</x-heisenberg::ui.button></div>
                 <div class="hb-aidialog__addform" data-hb-prov-form hidden>
-                    <x-ui.field-label>{{ __('heisenberg::editor.ai.provider_name') }}</x-ui.field-label>
-                    <x-ui.input data-hb-prov-new-label placeholder="MiniMax" />
-                    <x-ui.field-label>{{ __('heisenberg::editor.ai.provider_format') }}</x-ui.field-label>
-                    <x-ui.select data-hb-prov-new-format :options="$formatOptions" value="openai"
+                    <x-heisenberg::ui.field-label>{{ __('heisenberg::editor.ai.provider_name') }}</x-heisenberg::ui.field-label>
+                    <x-heisenberg::ui.input data-hb-prov-new-label placeholder="MiniMax" />
+                    <x-heisenberg::ui.field-label>{{ __('heisenberg::editor.ai.provider_format') }}</x-heisenberg::ui.field-label>
+                    <x-heisenberg::ui.select data-hb-prov-new-format :options="$formatOptions" value="openai"
                         :aria-label="__('heisenberg::editor.ai.provider_format')" />
                     <span class="hb-aidialog__hint">{{ __('heisenberg::editor.ai.provider_format_hint') }}</span>
-                    <x-ui.field-label>{{ __('heisenberg::editor.ai.base_url_label') }}</x-ui.field-label>
-                    <x-ui.input data-hb-prov-new-url placeholder="https://api.minimax.io/v1" />
-                    <x-ui.field-label>{{ __('heisenberg::editor.ai.key_env_label') }}</x-ui.field-label>
-                    <x-ui.input data-hb-prov-new-env placeholder="HEISENBERG_AI_MINIMAX_KEY" />
+                    <x-heisenberg::ui.field-label>{{ __('heisenberg::editor.ai.base_url_label') }}</x-heisenberg::ui.field-label>
+                    <x-heisenberg::ui.input data-hb-prov-new-url placeholder="https://api.minimax.io/v1" />
+                    <x-heisenberg::ui.field-label>{{ __('heisenberg::editor.ai.key_env_label') }}</x-heisenberg::ui.field-label>
+                    <x-heisenberg::ui.input data-hb-prov-new-env placeholder="HEISENBERG_AI_MINIMAX_KEY" />
                     <span class="hb-aidialog__hint">{{ __('heisenberg::editor.ai.key_env_optional') }}</span>
-                    <div><x-ui.button variant="primary" data-hb-prov-add>{{ __('heisenberg::editor.ai.provider_add_button') }}</x-ui.button></div>
+                    <div><x-heisenberg::ui.button variant="primary" data-hb-prov-add>{{ __('heisenberg::editor.ai.provider_add_button') }}</x-heisenberg::ui.button></div>
                 </div>
             </div>
-            <x-ui.custom-scrollbar container="[data-hb-ai-providers-scroll]" />
+            <x-heisenberg::ui.custom-scrollbar container="[data-hb-ai-providers-scroll]" />
         </div>
 
         <div class="hb-aidialog__body" data-hb-tab-body="models" hidden>
@@ -707,28 +707,28 @@
                 <div data-hb-model-list></div>
                 <div class="hb-aidialog__empty" data-hb-model-empty>{{ __('heisenberg::editor.ai.model_none') }}</div>
 
-                <div><x-ui.button variant="secondary" data-hb-model-add-toggle>{{ __('heisenberg::editor.ai.model_add') }}</x-ui.button></div>
+                <div><x-heisenberg::ui.button variant="secondary" data-hb-model-add-toggle>{{ __('heisenberg::editor.ai.model_add') }}</x-heisenberg::ui.button></div>
 
                 <div class="hb-aidialog__addform" data-hb-model-form hidden>
                     <span class="hb-aidialog__name" data-hb-model-form-title></span>
-                    <x-ui.field-label>{{ __('heisenberg::editor.ai.model_id_label') }}</x-ui.field-label>
-                    <x-ui.input data-hb-model-new-id placeholder="claude-opus-5" />
-                    <x-ui.field-label>{{ __('heisenberg::editor.ai.model_label_label') }}</x-ui.field-label>
-                    <x-ui.input data-hb-model-new-label placeholder="Opus 5" />
-                    <x-ui.field-label>{{ __('heisenberg::editor.ai.model_provider_label') }}</x-ui.field-label>
-                    <x-ui.select data-hb-model-new-provider :options="$providerOptions"
+                    <x-heisenberg::ui.field-label>{{ __('heisenberg::editor.ai.model_id_label') }}</x-heisenberg::ui.field-label>
+                    <x-heisenberg::ui.input data-hb-model-new-id placeholder="claude-opus-5" />
+                    <x-heisenberg::ui.field-label>{{ __('heisenberg::editor.ai.model_label_label') }}</x-heisenberg::ui.field-label>
+                    <x-heisenberg::ui.input data-hb-model-new-label placeholder="Opus 5" />
+                    <x-heisenberg::ui.field-label>{{ __('heisenberg::editor.ai.model_provider_label') }}</x-heisenberg::ui.field-label>
+                    <x-heisenberg::ui.select data-hb-model-new-provider :options="$providerOptions"
                         :aria-label="__('heisenberg::editor.ai.model_provider_label')" />
-                    <x-ui.field-label>{{ __('heisenberg::editor.ai.effort_label') }}</x-ui.field-label>
-                    <x-ui.select data-hb-model-new-effort :options="$effortOptions" value="high"
+                    <x-heisenberg::ui.field-label>{{ __('heisenberg::editor.ai.effort_label') }}</x-heisenberg::ui.field-label>
+                    <x-heisenberg::ui.select data-hb-model-new-effort :options="$effortOptions" value="high"
                         :aria-label="__('heisenberg::editor.ai.effort_label')" />
                     <span class="hb-aidialog__hint">{{ __('heisenberg::editor.ai.effort_hint') }}</span>
                     <div class="hb-aidialog__actions">
-                        <x-ui.button variant="primary" data-hb-model-form-save>{{ __('heisenberg::editor.common.save') }}</x-ui.button>
-                        <x-ui.button variant="ghost" data-hb-model-form-cancel>{{ __('heisenberg::editor.common.cancel') }}</x-ui.button>
+                        <x-heisenberg::ui.button variant="primary" data-hb-model-form-save>{{ __('heisenberg::editor.common.save') }}</x-heisenberg::ui.button>
+                        <x-heisenberg::ui.button variant="ghost" data-hb-model-form-cancel>{{ __('heisenberg::editor.common.cancel') }}</x-heisenberg::ui.button>
                     </div>
                 </div>
             </div>
-            <x-ui.custom-scrollbar container="[data-hb-ai-models-scroll]" />
+            <x-heisenberg::ui.custom-scrollbar container="[data-hb-ai-models-scroll]" />
         </div>
 
         <div class="hb-aidialog__body" data-hb-tab-body="mcp" hidden>
@@ -741,17 +741,17 @@
                 <div data-hb-mcp-list></div>
                 <div class="hb-aidialog__empty" data-hb-mcp-empty>{{ __('heisenberg::editor.ai.mcp_empty') }}</div>
 
-                <x-ui.divider />
+                <x-heisenberg::ui.divider />
                 <div class="hb-aidialog__addform" data-hb-mcp-form>
-                    <x-ui.field-label>{{ __('heisenberg::editor.ai.mcp_add') }}</x-ui.field-label>
-                    <x-ui.input data-hb-mcp-new-id placeholder="linear" />
-                    <x-ui.input data-hb-mcp-new-url placeholder="https://mcp.linear.app/mcp" />
-                    <x-ui.input data-hb-mcp-new-env placeholder="HEISENBERG_MCP_LINEAR_TOKEN" />
+                    <x-heisenberg::ui.field-label>{{ __('heisenberg::editor.ai.mcp_add') }}</x-heisenberg::ui.field-label>
+                    <x-heisenberg::ui.input data-hb-mcp-new-id placeholder="linear" />
+                    <x-heisenberg::ui.input data-hb-mcp-new-url placeholder="https://mcp.linear.app/mcp" />
+                    <x-heisenberg::ui.input data-hb-mcp-new-env placeholder="HEISENBERG_MCP_LINEAR_TOKEN" />
                     <span class="hb-aidialog__hint">{{ __('heisenberg::editor.ai.mcp_auth_hint') }}</span>
-                    <div><x-ui.button variant="secondary" data-hb-mcp-add>{{ __('heisenberg::editor.ai.mcp_add_button') }}</x-ui.button></div>
+                    <div><x-heisenberg::ui.button variant="secondary" data-hb-mcp-add>{{ __('heisenberg::editor.ai.mcp_add_button') }}</x-heisenberg::ui.button></div>
                 </div>
             </div>
-            <x-ui.custom-scrollbar container="[data-hb-ai-mcp-scroll]" />
+            <x-heisenberg::ui.custom-scrollbar container="[data-hb-ai-mcp-scroll]" />
         </div>
 
         <div class="hb-aidialog__body" data-hb-tab-body="expose" hidden>
@@ -760,32 +760,32 @@
                 @unless ($mcpServerEnabled)
                     <span class="hb-aidialog__hint">{{ __('heisenberg::editor.ai.expose_disabled') }}</span>
                 @endunless
-                <x-ui.field-label>{{ __('heisenberg::editor.ai.expose_endpoint') }}</x-ui.field-label>
+                <x-heisenberg::ui.field-label>{{ __('heisenberg::editor.ai.expose_endpoint') }}</x-heisenberg::ui.field-label>
                 <span class="hb-aidialog__code">{{ url($mcpServerPath) }}</span>
                 @if ($mcpTokensEnv !== '')
                     <span class="hb-aidialog__hint">{{ __('heisenberg::editor.ai.expose_tokens', ['env' => $mcpTokensEnv]) }}</span>
                 @endif
 
                 @if ($exposedTools !== [])
-                    <x-ui.divider />
-                    <x-ui.field-label>{{ __('heisenberg::editor.ai.expose_tools') }}</x-ui.field-label>
+                    <x-heisenberg::ui.divider />
+                    <x-heisenberg::ui.field-label>{{ __('heisenberg::editor.ai.expose_tools') }}</x-heisenberg::ui.field-label>
                     @foreach ($exposedTools as $tool)
                         <div class="hb-aidialog__row">
                             <span class="hb-aidialog__meta">
                                 <span class="hb-aidialog__name">{{ $tool['name'] }}</span>
                                 <span class="hb-aidialog__hint">{{ $tool['description'] }}</span>
                             </span>
-                            <x-ui.status-tag :label="$tool['tier']" :status="$tool['tier'] === 'read' ? 'neutral' : 'success'" />
+                            <x-heisenberg::ui.status-tag :label="$tool['tier']" :status="$tool['tier'] === 'read' ? 'neutral' : 'success'" />
                         </div>
                     @endforeach
                 @endif
             </div>
-            <x-ui.custom-scrollbar container="[data-hb-ai-expose-scroll]" />
+            <x-heisenberg::ui.custom-scrollbar container="[data-hb-ai-expose-scroll]" />
         </div>
 
         <div class="hb-aidialog__foot">
             <span class="hb-aidialog__status" data-hb-ai-status></span>
-            <x-ui.button variant="primary" data-hb-ai-save>{{ __('heisenberg::editor.ai.save') }}</x-ui.button>
+            <x-heisenberg::ui.button variant="primary" data-hb-ai-save>{{ __('heisenberg::editor.ai.save') }}</x-heisenberg::ui.button>
         </div>
     </div>
 
@@ -796,19 +796,19 @@
                     <span class="hb-aidialog__name" data-hb-prov-label></span>
                     <span class="hb-aidialog__hint" data-hb-prov-sub></span>
                 </span>
-                <span class="hb-aidialog__slot" data-hb-prov-status><x-ui.status-tag label="" status="neutral" /></span>
-                <span class="hb-aidialog__slot"><x-ui.icon-button icon="caret-down" :label="__('heisenberg::editor.ai.provider_configure')" data-hb-prov-toggle /></span>
-                <span class="hb-aidialog__slot"><x-ui.icon-button icon="trash-simple" :label="__('heisenberg::editor.ai.provider_remove')" data-hb-prov-remove /></span>
+                <span class="hb-aidialog__slot" data-hb-prov-status><x-heisenberg::ui.status-tag label="" status="neutral" /></span>
+                <span class="hb-aidialog__slot"><x-heisenberg::ui.icon-button icon="caret-down" :label="__('heisenberg::editor.ai.provider_configure')" data-hb-prov-toggle /></span>
+                <span class="hb-aidialog__slot"><x-heisenberg::ui.icon-button icon="trash-simple" :label="__('heisenberg::editor.ai.provider_remove')" data-hb-prov-remove /></span>
             </div>
             <div class="hb-aidialog__panel" data-hb-prov-panel hidden>
-                <x-ui.field-label>{{ __('heisenberg::editor.ai.api_key_label') }}</x-ui.field-label>
-                <x-ui.input data-hb-prov-key />
+                <x-heisenberg::ui.field-label>{{ __('heisenberg::editor.ai.api_key_label') }}</x-heisenberg::ui.field-label>
+                <x-heisenberg::ui.input data-hb-prov-key />
                 <span class="hb-aidialog__hint" data-hb-prov-keyhint></span>
-                <x-ui.field-label>{{ __('heisenberg::editor.ai.base_url_label') }}</x-ui.field-label>
-                <x-ui.input data-hb-prov-url />
+                <x-heisenberg::ui.field-label>{{ __('heisenberg::editor.ai.base_url_label') }}</x-heisenberg::ui.field-label>
+                <x-heisenberg::ui.input data-hb-prov-url />
                 <div class="hb-aidialog__actions">
-                    <x-ui.button variant="secondary" data-hb-prov-savekey>{{ __('heisenberg::editor.ai.key_save') }}</x-ui.button>
-                    <x-ui.button variant="secondary" data-hb-prov-discover>{{ __('heisenberg::editor.ai.discover_models') }}</x-ui.button>
+                    <x-heisenberg::ui.button variant="secondary" data-hb-prov-savekey>{{ __('heisenberg::editor.ai.key_save') }}</x-heisenberg::ui.button>
+                    <x-heisenberg::ui.button variant="secondary" data-hb-prov-discover>{{ __('heisenberg::editor.ai.discover_models') }}</x-heisenberg::ui.button>
                 </div>
                 <div class="hb-aidialog__tools" data-hb-prov-discovered hidden></div>
             </div>
@@ -821,23 +821,23 @@
                 <span class="hb-aidialog__name" data-hb-preset-label></span>
                 <span class="hb-aidialog__hint" data-hb-preset-sub></span>
             </span>
-            <span class="hb-aidialog__slot"><x-ui.button variant="secondary" data-hb-preset-add>{{ __('heisenberg::editor.ai.preset_add') }}</x-ui.button></span>
+            <span class="hb-aidialog__slot"><x-heisenberg::ui.button variant="secondary" data-hb-preset-add>{{ __('heisenberg::editor.ai.preset_add') }}</x-heisenberg::ui.button></span>
         </div>
     </template>
 
     <template data-hb-tmpl="model">
         <div class="hb-aidialog__row">
-            <span class="hb-aidialog__slot" data-hb-model-enabled><x-ui.toggle /></span>
+            <span class="hb-aidialog__slot" data-hb-model-enabled><x-heisenberg::ui.toggle /></span>
             <span class="hb-aidialog__meta">
                 <span class="hb-aidialog__name" data-hb-model-name></span>
                 <span class="hb-aidialog__hint" data-hb-model-sub></span>
             </span>
             <span class="hb-aidialog__slot" data-hb-model-active-tag hidden>
-                <x-ui.status-tag :label="__('heisenberg::editor.ai.model_in_use')" status="success" />
+                <x-heisenberg::ui.status-tag :label="__('heisenberg::editor.ai.model_in_use')" status="success" />
             </span>
-            <span class="hb-aidialog__slot" data-hb-model-use><x-ui.button variant="secondary">{{ __('heisenberg::editor.ai.provider_use') }}</x-ui.button></span>
-            <span class="hb-aidialog__slot"><x-ui.icon-button icon="pencil-simple" :label="__('heisenberg::editor.ai.model_edit')" data-hb-model-edit /></span>
-            <span class="hb-aidialog__slot"><x-ui.icon-button icon="trash-simple" :label="__('heisenberg::editor.ai.model_remove')" data-hb-model-remove /></span>
+            <span class="hb-aidialog__slot" data-hb-model-use><x-heisenberg::ui.button variant="secondary">{{ __('heisenberg::editor.ai.provider_use') }}</x-heisenberg::ui.button></span>
+            <span class="hb-aidialog__slot"><x-heisenberg::ui.icon-button icon="pencil-simple" :label="__('heisenberg::editor.ai.model_edit')" data-hb-model-edit /></span>
+            <span class="hb-aidialog__slot"><x-heisenberg::ui.icon-button icon="trash-simple" :label="__('heisenberg::editor.ai.model_remove')" data-hb-model-remove /></span>
         </div>
     </template>
 
@@ -848,9 +848,9 @@
                     <span class="hb-aidialog__name" data-hb-mcp-label></span>
                     <span class="hb-aidialog__hint" data-hb-mcp-url></span>
                 </span>
-                <span class="hb-aidialog__slot" data-hb-mcp-enabled><x-ui.toggle /></span>
-                <span class="hb-aidialog__slot"><x-ui.button variant="secondary" data-hb-mcp-test>{{ __('heisenberg::editor.ai.mcp_test') }}</x-ui.button></span>
-                <span class="hb-aidialog__slot"><x-ui.icon-button icon="trash-simple" :label="__('heisenberg::editor.ai.mcp_remove')" data-hb-mcp-remove /></span>
+                <span class="hb-aidialog__slot" data-hb-mcp-enabled><x-heisenberg::ui.toggle /></span>
+                <span class="hb-aidialog__slot"><x-heisenberg::ui.button variant="secondary" data-hb-mcp-test>{{ __('heisenberg::editor.ai.mcp_test') }}</x-heisenberg::ui.button></span>
+                <span class="hb-aidialog__slot"><x-heisenberg::ui.icon-button icon="trash-simple" :label="__('heisenberg::editor.ai.mcp_remove')" data-hb-mcp-remove /></span>
             </div>
             <div class="hb-aidialog__tools" data-hb-mcp-tools hidden></div>
         </div>

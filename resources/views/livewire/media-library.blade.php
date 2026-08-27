@@ -57,7 +57,7 @@
         <label class="hb-mlw__drop">
             <input type="file" class="hb-mlw__file" wire:model="uploads" multiple
                 x-on:change="pending = [...$event.target.files].map(f => ({ name: f.name, progress: 0 })); tab = 'library'">
-            <x-live.media.upload-dropzone />
+            <x-heisenberg::live.media.upload-dropzone />
         </label>
     </div>
 
@@ -85,7 +85,7 @@
         @if ($files->count())
             <div class="hb-mlw__grid">
                 @foreach ($files as $file)
-                    <x-live.media.media-card
+                    <x-heisenberg::live.media.media-card
                         wire:key="media-{{ $file->id }}"
                         wire:click="select({{ $file->id }})"
                         :state="$selectedId === $file->id ? 'selected' : 'default'"

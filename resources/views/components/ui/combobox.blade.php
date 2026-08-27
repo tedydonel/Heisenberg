@@ -241,7 +241,7 @@
                     @endforeach
                 </div>
             </div>
-            <x-ui.custom-scrollbar container="[data-hb-combobox-options-scroll]" />
+            <x-heisenberg::ui.custom-scrollbar container="[data-hb-combobox-options-scroll]" />
         </div>
     </div>
 </div>

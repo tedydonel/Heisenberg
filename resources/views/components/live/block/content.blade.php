@@ -4,40 +4,40 @@
     'classes' => [],
 ])
 <div class="hb-blockcontent">
-    <x-ui.panel-section :title="$blockTitle" collapsible>
+    <x-heisenberg::ui.panel-section :title="$blockTitle" collapsible>
         @foreach ($settings as $field)
             <div class="hb-icol">
                 <span class="hb-ilbl">{{ $field['label'] ?? '' }}</span>
                 @if (($field['type'] ?? 'text') === 'select')
-                    <x-ui.select :options="$field['options'] ?? []" :value="$field['value'] ?? ''"
+                    <x-heisenberg::ui.select :options="$field['options'] ?? []" :value="$field['value'] ?? ''"
                         data-hb-control="{{ $field['key'] ?? '' }}" data-hb-control-kind="attributes" data-hb-control-type="select" />
                 @elseif (($field['type'] ?? 'text') === 'textarea')
-                    <x-ui.text-area :value="$field['value'] ?? ''" width="100%"
+                    <x-heisenberg::ui.text-area :value="$field['value'] ?? ''" width="100%"
                         data-hb-control="{{ $field['key'] ?? '' }}" data-hb-control-kind="attributes" data-hb-control-type="text" />
                 @elseif (($field['type'] ?? 'text') === 'number')
-                    <x-ui.number-stepper :value="$field['value'] ?? 0"
+                    <x-heisenberg::ui.number-stepper :value="$field['value'] ?? 0"
                         :min="$field['min'] ?? null" :max="$field['max'] ?? null" :step="$field['step'] ?? 1"
                         data-hb-control="{{ $field['key'] ?? '' }}" data-hb-control-kind="attributes" data-hb-control-type="number" />
                 @else
-                    <x-ui.input :value="$field['value'] ?? ''"
+                    <x-heisenberg::ui.input :value="$field['value'] ?? ''"
                         data-hb-control="{{ $field['key'] ?? '' }}" data-hb-control-kind="attributes" data-hb-control-type="{{ $field['type'] ?? 'text' }}" />
                 @endif
             </div>
         @endforeach
-    </x-ui.panel-section>
+    </x-heisenberg::ui.panel-section>
 
-    <x-ui.panel-section title="General" collapsible>
+    <x-heisenberg::ui.panel-section title="General" collapsible>
         <div class="hb-irow hb-irow--top">
             <div class="hb-icol">
                 <span class="hb-ilbl">Anchor</span>
-                <x-ui.input value="" placeholder="section-anchor"
+                <x-heisenberg::ui.input value="" placeholder="section-anchor"
                     data-hb-control="anchor" data-hb-control-kind="attributes" data-hb-control-type="text" />
                 <span class="hb-ihint">Links and the table of contents jump to this anchor.</span>
                 <span class="hb-ihint hb-ihint--warning" data-hb-anchor-warning hidden>Another block already uses this anchor.</span>
             </div>
             <div class="hb-icol">
                 <span class="hb-ilbl">Title</span>
-                <x-ui.input value="" placeholder="Tooltip text"
+                <x-heisenberg::ui.input value="" placeholder="Tooltip text"
                     data-hb-control="titleAttr" data-hb-control-kind="attributes" data-hb-control-type="text" />
             </div>
         </div>
@@ -46,14 +46,14 @@
             <div class="hb-classchips" data-hb-control="extraClasses" data-hb-control-kind="attributes" data-hb-control-type="chips">
                 <div class="hb-chips" data-hb-chip-list>
                     @foreach ($classes as $cls)
-                        <x-ui.chip :label="$cls" />
+                        <x-heisenberg::ui.chip :label="$cls" />
                     @endforeach
                 </div>
                 <input type="text" class="hb-classchips__input" placeholder="Add class…" aria-label="Add class" data-hb-chip-input>
             </div>
-                        <span data-hb-chip-prototype hidden aria-hidden="true"><x-ui.chip label="" /></span>
+                        <span data-hb-chip-prototype hidden aria-hidden="true"><x-heisenberg::ui.chip label="" /></span>
         </div>
-    </x-ui.panel-section>
+    </x-heisenberg::ui.panel-section>
 </div>
 @once
 <style>

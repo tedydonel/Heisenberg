@@ -58,7 +58,7 @@ $inspStyle = 'width:272px; border:1px solid var(--hb-border); border-radius:8px;
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>Heisenberg Editor Components</title>
-    <link rel="stylesheet" href="/heisenberg-assets/editor.css">
+    <link rel="stylesheet" href="{{ route('heisenberg.editor.asset.css') }}">
 </head>
 <body class="hb-preview">
     <main class="hb-preview__main">
@@ -71,61 +71,61 @@ $inspStyle = 'width:272px; border:1px solid var(--hb-border); border-radius:8px;
             <article class="hb-preview__card">
                 <h2 class="hb-preview__card-title">Button</h2>
                 <div class="hb-preview__card-body" style="gap:8px;">
-                    <x-ui.button variant="primary" leading-icon="plus">Save</x-ui.button>
-                    <x-ui.button variant="secondary">Cancel</x-ui.button>
-                    <x-ui.button variant="ghost">Ghost</x-ui.button>
-                    <x-ui.button variant="primary" :disabled="true">Disabled</x-ui.button>
+                    <x-heisenberg::ui.button variant="primary" leading-icon="plus">Save</x-heisenberg::ui.button>
+                    <x-heisenberg::ui.button variant="secondary">Cancel</x-heisenberg::ui.button>
+                    <x-heisenberg::ui.button variant="ghost">Ghost</x-heisenberg::ui.button>
+                    <x-heisenberg::ui.button variant="primary" :disabled="true">Disabled</x-heisenberg::ui.button>
                 </div>
             </article>
 
             <article class="hb-preview__card">
                 <h2 class="hb-preview__card-title">Icon Button</h2>
                 <div class="hb-preview__card-body" style="gap:8px;">
-                    <x-ui.icon-button icon="align-left" label="Align left" />
-                    <x-ui.icon-button icon="align-center" label="Align center" :active="true" />
+                    <x-heisenberg::ui.icon-button icon="align-left" label="Align left" />
+                    <x-heisenberg::ui.icon-button icon="align-center" label="Align center" :active="true" />
                 </div>
             </article>
 
             <article class="hb-preview__card">
                 <h2 class="hb-preview__card-title">Select</h2>
                 <div class="hb-preview__card-body">
-                    <x-ui.select :options="$socialOptions" value="b" />
+                    <x-heisenberg::ui.select :options="$socialOptions" value="b" />
                 </div>
             </article>
 
             <article class="hb-preview__card">
                 <h2 class="hb-preview__card-title">Input / Field / Number Field</h2>
                 <div class="hb-preview__card-body" style="gap:8px; flex-wrap:wrap;">
-                    <x-ui.input value="Value" :show-chevron="true" />
-                    <x-ui.field prefix="X" value="0" unit="px" :chevron="true" />
-                    <x-ui.number-field value="100" />
+                    <x-heisenberg::ui.input value="Value" :show-chevron="true" />
+                    <x-heisenberg::ui.field prefix="X" value="0" unit="px" :chevron="true" />
+                    <x-heisenberg::ui.number-field value="100" />
                 </div>
             </article>
 
             <article class="hb-preview__card">
                 <h2 class="hb-preview__card-title">Field Label / Text Area</h2>
                 <div class="hb-preview__card-body" style="flex-direction:column; align-items:flex-start; gap:6px;">
-                    <x-ui.field-label>Label</x-ui.field-label>
-                    <x-ui.text-area />
+                    <x-heisenberg::ui.field-label>Label</x-heisenberg::ui.field-label>
+                    <x-heisenberg::ui.text-area />
                 </div>
             </article>
 
             <article class="hb-preview__card">
                 <h2 class="hb-preview__card-title">Checkbox / Radio / Toggle</h2>
                 <div class="hb-preview__card-body" style="flex-direction:column; align-items:flex-start; gap:8px;">
-                    <x-ui.checkbox label="Checked" :checked="true" />
-                    <x-ui.checkbox label="Indeterminate" :indeterminate="true" />
-                    <x-ui.checkbox label="Unchecked" />
-                    <x-ui.radio name="demo-radio" label="Selected" :selected="true" />
-                    <x-ui.radio name="demo-radio" label="Unselected" />
-                    <x-ui.toggle :on="true" />
+                    <x-heisenberg::ui.checkbox label="Checked" :checked="true" />
+                    <x-heisenberg::ui.checkbox label="Indeterminate" :indeterminate="true" />
+                    <x-heisenberg::ui.checkbox label="Unchecked" />
+                    <x-heisenberg::ui.radio name="demo-radio" label="Selected" :selected="true" />
+                    <x-heisenberg::ui.radio name="demo-radio" label="Unselected" />
+                    <x-heisenberg::ui.toggle :on="true" />
                 </div>
             </article>
 
             <article class="hb-preview__card">
                 <h2 class="hb-preview__card-title">Tabs (pill)</h2>
                 <div class="hb-preview__card-body">
-                    <x-ui.tabs :items="$tabItems" :active-index="0" />
+                    <x-heisenberg::ui.tabs :items="$tabItems" :active-index="0" />
                 </div>
             </article>
 
@@ -133,85 +133,85 @@ $inspStyle = 'width:272px; border:1px solid var(--hb-border); border-radius:8px;
                 <h2 class="hb-preview__card-title">Tab Item / Panel Tabs</h2>
                 <div class="hb-preview__card-body" style="flex-direction:column; align-items:flex-start; gap:10px;">
                     <div style="display:flex; gap:6px;">
-                        <x-ui.tab-item label="Tab" :active="true" />
-                        <x-ui.tab-item label="Tab" />
+                        <x-heisenberg::ui.tab-item label="Tab" :active="true" />
+                        <x-heisenberg::ui.tab-item label="Tab" />
                     </div>
-                    <x-ui.panel-tabs :items="$panelTabItems" :active-index="0" />
+                    <x-heisenberg::ui.panel-tabs :items="$panelTabItems" :active-index="0" />
                 </div>
             </article>
 
             <article class="hb-preview__card">
                 <h2 class="hb-preview__card-title">Sub-Tabs / Segmented</h2>
                 <div class="hb-preview__card-body" style="flex-direction:column; align-items:stretch; gap:10px;">
-                    <x-ui.sub-tabs :items="$subTabItems" :active-index="1" />
-                    <x-ui.segmented :items="$segmentedItems" :active-index="0" />
+                    <x-heisenberg::ui.sub-tabs :items="$subTabItems" :active-index="1" />
+                    <x-heisenberg::ui.segmented :items="$segmentedItems" :active-index="0" />
                 </div>
             </article>
 
             <article class="hb-preview__card">
                 <h2 class="hb-preview__card-title">Swatch / Slider</h2>
                 <div class="hb-preview__card-body" style="gap:16px;">
-                    <x-ui.swatch color="#3D68F5" />
-                    <x-ui.swatch color="rgba(61,104,245,0.4)" />
-                    <x-ui.slider value="60" />
+                    <x-heisenberg::ui.swatch color="#3D68F5" />
+                    <x-heisenberg::ui.swatch color="rgba(61,104,245,0.4)" />
+                    <x-heisenberg::ui.slider value="60" />
                 </div>
             </article>
 
             <article class="hb-preview__card">
                 <h2 class="hb-preview__card-title">Badge / Status Tag / Chip</h2>
                 <div class="hb-preview__card-body" style="gap:8px; flex-wrap:wrap;">
-                    <x-ui.badge label="Badge" />
-                    <x-ui.badge label="Accent" variant="accent" />
-                    <x-ui.status-tag label="Active" status="success" />
-                    <x-ui.status-tag label="Error" status="danger" />
-                    <x-ui.chip label="Chip" />
+                    <x-heisenberg::ui.badge label="Badge" />
+                    <x-heisenberg::ui.badge label="Accent" variant="accent" />
+                    <x-heisenberg::ui.status-tag label="Active" status="success" />
+                    <x-heisenberg::ui.status-tag label="Error" status="danger" />
+                    <x-heisenberg::ui.chip label="Chip" />
                 </div>
             </article>
 
             <article class="hb-preview__card">
                 <h2 class="hb-preview__card-title">Divider</h2>
                 <div class="hb-preview__card-body">
-                    <x-ui.divider />
+                    <x-heisenberg::ui.divider />
                 </div>
             </article>
 
             <article class="hb-preview__card">
                 <h2 class="hb-preview__card-title">Nav Item / Search Field</h2>
                 <div class="hb-preview__card-body" style="flex-direction:column; align-items:stretch; gap:8px;">
-                    <x-ui.nav-item icon="house-fill" label="Home" :active="true" />
-                    <x-ui.nav-item icon="circle" label="Menu Item" />
-                    <x-ui.search-field placeholder="Search components…" />
+                    <x-heisenberg::ui.nav-item icon="house-fill" label="Home" :active="true" />
+                    <x-heisenberg::ui.nav-item icon="circle" label="Menu Item" />
+                    <x-heisenberg::ui.search-field placeholder="Search components…" />
                 </div>
             </article>
 
             <article class="hb-preview__card">
                 <h2 class="hb-preview__card-title">Category Head / Suggestion Row</h2>
                 <div class="hb-preview__card-body" style="flex-direction:column; align-items:stretch; gap:8px;">
-                    <x-ui.category-head label="Base" />
-                    <x-ui.suggestion-row label="Suggestion" />
+                    <x-heisenberg::ui.category-head label="Base" />
+                    <x-heisenberg::ui.suggestion-row label="Suggestion" />
                 </div>
             </article>
 
             <article class="hb-preview__card">
                 <h2 class="hb-preview__card-title">Status Check Row</h2>
                 <div class="hb-preview__card-body" style="flex-direction:column; align-items:stretch; gap:8px;">
-                    <x-ui.status-check-row status="pass" text="Check item passed" />
-                    <x-ui.status-check-row status="fail" text="Check item failed" />
+                    <x-heisenberg::ui.status-check-row status="pass" text="Check item passed" />
+                    <x-heisenberg::ui.status-check-row status="fail" text="Check item failed" />
                 </div>
             </article>
 
             <article class="hb-preview__card">
                 <h2 class="hb-preview__card-title">Social Preview Row</h2>
                 <div class="hb-preview__card-body">
-                    <x-ui.social-preview-row logo="facebook-logo-bold" label="Facebook" />
+                    <x-heisenberg::ui.social-preview-row logo="facebook-logo-bold" label="Facebook" />
                 </div>
             </article>
 
             <article class="hb-preview__card">
                 <h2 class="hb-preview__card-title">Tool Card / Theme Preset Card</h2>
                 <div class="hb-preview__card-body" style="gap:8px;">
-                    <div style="width:96px;"><x-ui.tool-card icon="sparkle" label="Tool" /></div>
-                    <div style="width:96px;"><x-ui.theme-preset-card :colors="['#FFFFFF', '#000000', '#0A0A0A']" label="Theme" /></div>
+                    <div style="width:96px;"><x-heisenberg::ui.tool-card icon="sparkle" label="Tool" /></div>
+                    <div style="width:96px;"><x-heisenberg::ui.theme-preset-card :colors="['#FFFFFF', '#000000', '#0A0A0A']" label="Theme" /></div>
                 </div>
             </article>
 
@@ -224,15 +224,15 @@ $inspStyle = 'width:272px; border:1px solid var(--hb-border); border-radius:8px;
                 <div>
                     <p class="hb-preview__card-title" style="margin-bottom:8px;">Text block (heading)</p>
                     <div style="{{ $inspStyle }}">
-                        <x-ui.sub-tabs :items="$subTabItems" :active-index="1" />
-                        <x-live.block.style-panel :supports="$headingSupports" />
+                        <x-heisenberg::ui.sub-tabs :items="$subTabItems" :active-index="1" />
+                        <x-heisenberg::live.block.style-panel :supports="$headingSupports" />
                     </div>
                 </div>
                 <div>
                     <p class="hb-preview__card-title" style="margin-bottom:8px;">Container</p>
                     <div style="{{ $inspStyle }}">
-                        <x-ui.sub-tabs :items="$subTabItems" :active-index="1" />
-                        <x-live.block.style-panel :supports="$containerSupports" />
+                        <x-heisenberg::ui.sub-tabs :items="$subTabItems" :active-index="1" />
+                        <x-heisenberg::live.block.style-panel :supports="$containerSupports" />
                     </div>
                 </div>
             </div>
@@ -244,15 +244,15 @@ $inspStyle = 'width:272px; border:1px solid var(--hb-border); border-radius:8px;
                 <div>
                     <p class="hb-preview__card-title" style="margin-bottom:8px;">Content</p>
                     <div style="{{ $inspStyle }}">
-                        <x-ui.sub-tabs :items="$subTabItems" :active-index="0" />
-                        <x-live.block.content block-title="Heading" :settings="$headingSettings" :classes="$headingClasses" />
+                        <x-heisenberg::ui.sub-tabs :items="$subTabItems" :active-index="0" />
+                        <x-heisenberg::live.block.content block-title="Heading" :settings="$headingSettings" :classes="$headingClasses" />
                     </div>
                 </div>
                 <div>
                     <p class="hb-preview__card-title" style="margin-bottom:8px;">Advanced</p>
                     <div style="{{ $inspStyle }}">
-                        <x-ui.sub-tabs :items="$subTabItems" :active-index="2" />
-                        <x-live.block.advanced />
+                        <x-heisenberg::ui.sub-tabs :items="$subTabItems" :active-index="2" />
+                        <x-heisenberg::live.block.advanced />
                     </div>
                 </div>
             </div>
@@ -262,9 +262,9 @@ $inspStyle = 'width:272px; border:1px solid var(--hb-border); border-radius:8px;
             <h2 class="hb-preview__section-title">Block toolbar — gates on the block's capabilities</h2>
             <p class="hb-preview__section-note">Like the inspector, the toolbar loads only the groups a block can use. A <b>text block</b> gets Format + text-colour + Align + AI; an <b>image</b> (no rich-text / colour / align) gets just handle · save · more. Its type-pill opens the block-type dropdown.</p>
             <div style="display:flex; flex-direction:column; gap:16px; margin-top:16px; align-items:flex-start;">
-                <div><p class="hb-preview__section-note" style="margin-bottom:6px;">Text block</p><x-live.toolbar.block-toolbar :rich-text="true" :supports="$headingSupports" block-type="Heading" /></div>
-                <div><p class="hb-preview__section-note" style="margin-bottom:6px;">Image block</p><x-live.toolbar.block-toolbar :rich-text="false" :supports="['size' => ['width' => true], 'border' => ['radius' => true]]" block-type="Image" /></div>
-                <div style="margin-top:8px;"><p class="hb-preview__section-note" style="margin-bottom:6px;">Block-type dropdown</p><x-live.toolbar.type-menu selected="Text" /></div>
+                <div><p class="hb-preview__section-note" style="margin-bottom:6px;">Text block</p><x-heisenberg::live.toolbar.block-toolbar :rich-text="true" :supports="$headingSupports" block-type="Heading" /></div>
+                <div><p class="hb-preview__section-note" style="margin-bottom:6px;">Image block</p><x-heisenberg::live.toolbar.block-toolbar :rich-text="false" :supports="['size' => ['width' => true], 'border' => ['radius' => true]]" block-type="Image" /></div>
+                <div style="margin-top:8px;"><p class="hb-preview__section-note" style="margin-bottom:6px;">Block-type dropdown</p><x-heisenberg::live.toolbar.type-menu selected="Text" /></div>
             </div>
         </section>
 
@@ -272,17 +272,17 @@ $inspStyle = 'width:272px; border:1px solid var(--hb-border); border-radius:8px;
             <h2 class="hb-preview__section-title">Custom color picker</h2>
             <p class="hb-preview__section-note">The custom picker (<code>UluZm</code>/<code>Dcq6M</code>): Fill (SV square, hue + alpha sliders, eyedropper, RGBA model + inputs) and Gradient (type/angle/reverse, gradient bar, stops).</p>
             <div style="display:flex; gap:24px; flex-wrap:wrap; margin-top:16px; align-items:flex-start;">
-                <x-live.pickers.color-picker mode="fill" />
-                <x-live.pickers.color-picker mode="gradient" />
+                <x-heisenberg::live.pickers.color-picker mode="fill" />
+                <x-heisenberg::live.pickers.color-picker mode="gradient" />
             </div>
         </section>
 
         <section class="hb-preview__section" style="min-height:auto;">
             <h2 class="hb-preview__section-title">Popovers — drop shadow · variable pickers</h2>
             <div style="display:flex; gap:24px; flex-wrap:wrap; margin-top:16px; align-items:flex-start;">
-                <x-live.pickers.effect-editor />
-                <x-live.pickers.variable-menu mode="color" selected="border" />
-                <x-live.pickers.variable-menu mode="number" selected="radius-md" />
+                <x-heisenberg::live.pickers.effect-editor />
+                <x-heisenberg::live.pickers.variable-menu mode="color" selected="border" />
+                <x-heisenberg::live.pickers.variable-menu mode="number" selected="radius-md" />
             </div>
         </section>
 
@@ -290,27 +290,27 @@ $inspStyle = 'width:272px; border:1px solid var(--hb-border); border-radius:8px;
             <h2 class="hb-preview__section-title">Media — Card states</h2>
             <p class="hb-preview__section-note">Media Card (NVDCV) and its variants: default, hover, selected, uploading, error.</p>
             <div style="display:flex; gap:20px; flex-wrap:wrap; margin-top:16px;">
-                <div style="width:200px;"><x-live.media.media-card name="Filename.png" meta="0 KB • Jan 1, 2026" /></div>
-                <div style="width:200px;"><x-live.media.media-card state="hover" name="Hovered.png" meta="128 KB • Jul 12, 2026" /></div>
-                <div style="width:200px;"><x-live.media.media-card state="selected" name="Selected.png" meta="128 KB • Jul 12, 2026" /></div>
-                <div style="width:200px;"><x-live.media.media-card state="uploading" name="Visa Photo.jpg" :progress="42" /></div>
-                <div style="width:200px;"><x-live.media.media-card state="error" name="Passport.pdf" /></div>
+                <div style="width:200px;"><x-heisenberg::live.media.media-card name="Filename.png" meta="0 KB • Jan 1, 2026" /></div>
+                <div style="width:200px;"><x-heisenberg::live.media.media-card state="hover" name="Hovered.png" meta="128 KB • Jul 12, 2026" /></div>
+                <div style="width:200px;"><x-heisenberg::live.media.media-card state="selected" name="Selected.png" meta="128 KB • Jul 12, 2026" /></div>
+                <div style="width:200px;"><x-heisenberg::live.media.media-card state="uploading" name="Visa Photo.jpg" :progress="42" /></div>
+                <div style="width:200px;"><x-heisenberg::live.media.media-card state="error" name="Passport.pdf" /></div>
             </div>
         </section>
 
         <section class="hb-preview__section" style="min-height:auto;">
             <h2 class="hb-preview__section-title">Media — Upload dropzone</h2>
-            <div style="margin-top:16px;"><x-live.media.upload-dropzone /></div>
+            <div style="margin-top:16px;"><x-heisenberg::live.media.upload-dropzone /></div>
         </section>
 
         <section class="hb-preview__section" style="min-height:auto;">
             <h2 class="hb-preview__section-title">Media Dialog — Upload Files</h2>
-            <div style="margin-top:16px; overflow-x:auto;"><x-live.media.media-dialog tab="upload" /></div>
+            <div style="margin-top:16px; overflow-x:auto;"><x-heisenberg::live.media.media-dialog tab="upload" /></div>
         </section>
 
         <section class="hb-preview__section" style="min-height:auto;">
             <h2 class="hb-preview__section-title">Media Dialog — Media Library</h2>
-            <div style="margin-top:16px; overflow-x:auto;"><x-live.media.media-dialog tab="library" :items="$mediaItems" /></div>
+            <div style="margin-top:16px; overflow-x:auto;"><x-heisenberg::live.media.media-dialog tab="library" :items="$mediaItems" /></div>
         </section>
 
         <section class="hb-preview__section">

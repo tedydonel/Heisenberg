@@ -257,7 +257,7 @@
     'documentType' => 'post',
 ])
 <aside data-hb-inspector data-hb-fonts-search-url="{{ $fontsSearchUrl }}" {{ $attributes->merge(['class' => 'hb-inspector']) }}>
-    <x-ui.panel-tabs :items="$panelTabs" :active-index="$panelActiveIndex" />
+    <x-heisenberg::ui.panel-tabs :items="$panelTabs" :active-index="$panelActiveIndex" />
 
     <div class="hb-inspector__post-content" data-hb-inspector-post-content @if ($panelActiveIndex !== 0) hidden @endif>
         @include('heisenberg::components.live.inspector.post-title-summary')

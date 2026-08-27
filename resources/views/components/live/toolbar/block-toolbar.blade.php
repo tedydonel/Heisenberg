@@ -11,30 +11,30 @@
     data-hb-save-saving="{{ __('heisenberg::editor.patterns.save_dialog_saving') }}"
     data-hb-save-error-required="{{ __('heisenberg::editor.patterns.name_required') }}"
     data-hb-pattern-delete-confirm="{{ __('heisenberg::editor.patterns.delete_confirm') }}">
-    <x-live.toolbar.groups.handle :block-type="$blockType" />
+    <x-heisenberg::live.toolbar.groups.handle :block-type="$blockType" />
 
     @if ($richText)
         <span class="hb-tb__sep"></span>
-        <x-live.toolbar.groups.format :active="$activeFormats" />
+        <x-heisenberg::live.toolbar.groups.format :active="$activeFormats" />
     @endif
 
     <span class="hb-tb__sep"></span>
-    <x-live.toolbar.groups.style :has-color="$has('color')" :has-align="$has('align')" />
+    <x-heisenberg::live.toolbar.groups.style :has-color="$has('color')" :has-align="$has('align')" />
 
     <span class="hb-tb__sep"></span>
-    <x-live.toolbar.groups.action :rich-text="$richText" />
+    <x-heisenberg::live.toolbar.groups.action :rich-text="$richText" />
 
     <div class="hb-tb__pop" data-tb-pop="type" hidden>
-        <x-live.toolbar.type-menu :selected="$blockType" />
+        <x-heisenberg::live.toolbar.type-menu :selected="$blockType" />
     </div>
     <div class="hb-tb__pop" data-tb-pop="align" hidden>
-        <x-live.toolbar.align-menu />
+        <x-heisenberg::live.toolbar.align-menu />
     </div>
     <div class="hb-tb__pop" data-tb-pop="color" hidden>
-        <x-live.toolbar.color-menu :tokens="$themeTokens" />
+        <x-heisenberg::live.toolbar.color-menu :tokens="$themeTokens" />
     </div>
     <div class="hb-tb__pop" data-tb-pop="more" hidden>
-        <x-live.toolbar.more-menu />
+        <x-heisenberg::live.toolbar.more-menu />
     </div>
 </div>
 @once

@@ -3,9 +3,9 @@
     $hbFlexOn = fn (string $key): bool => $layout === null || $layout === [] || (($layout[$key] ?? false) === true);
     $hbFlexAxis = ['start', 'center', 'end'];
 @endphp
-<x-ui.panel-section title="Flex Layout">
+<x-heisenberg::ui.panel-section title="Flex Layout">
     @if ($hbFlexOn('direction'))
-        <x-ui.segmented data-hb-style-flexmode :active-index="null" :items="[
+        <x-heisenberg::ui.segmented data-hb-style-flexmode :active-index="null" :items="[
             ['value' => 'wrap', 'icon' => 'squares-four'],
             ['value' => 'column', 'icon' => 'arrow-down'],
             ['value' => 'row', 'icon' => 'arrow-right'],
@@ -35,7 +35,7 @@
             @if ($hbFlexOn('gap'))
                 <div class="hb-iradio hb-iradio--on is-active" role="radio" aria-checked="true" tabindex="0" data-hb-style-radio data-hb-flex-spacing="packed">
                     <span class="hb-iradio__dot hb-iradio__dot--on"></span>
-                    <x-ui.field icon="arrows-horizontal" value="0" data-hb-control="layout.gap" data-hb-control-kind="supports" data-hb-control-type="text" />
+                    <x-heisenberg::ui.field icon="arrows-horizontal" value="0" data-hb-control="layout.gap" data-hb-control-kind="supports" data-hb-control-type="text" />
                 </div>
             @endif
             @if ($hbFlexOn('justify'))
@@ -44,4 +44,4 @@
             @endif
         </div>
     </div>
-</x-ui.panel-section>
+</x-heisenberg::ui.panel-section>

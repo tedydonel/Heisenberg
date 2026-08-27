@@ -15,7 +15,7 @@
         $items[] = ['value' => $value, 'icon' => $icons[$value][0], 'label' => $icons[$value][1]];
     }
 @endphp
-<x-ui.panel-section title="Alignment">
-    <x-ui.segmented :active-index="null" :items="$items"
+<x-heisenberg::ui.panel-section title="Alignment">
+    <x-heisenberg::ui.segmented :active-index="null" :items="$items"
         data-hb-control="align" data-hb-control-kind="supports" data-hb-control-type="segmented" />
-</x-ui.panel-section>
+</x-heisenberg::ui.panel-section>

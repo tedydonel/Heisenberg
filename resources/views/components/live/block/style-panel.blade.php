@@ -72,77 +72,77 @@
     $showAppearance = $showStroke || $has('appearance');
 @endphp
 <div data-hb-var-labels="{{ json_encode($hbVarLabels, JSON_UNESCAPED_SLASHES) }}" data-hb-var-values="{{ json_encode($hbVarValues, JSON_UNESCAPED_SLASHES) }}" {{ $attributes->merge(['class' => 'hb-blockstyle']) }}>
-    <x-ui.panel-section title="State">
-        <x-ui.tabs data-hb-style-state :active-index="0" :items="[
+    <x-heisenberg::ui.panel-section title="State">
+        <x-heisenberg::ui.tabs data-hb-style-state :active-index="0" :items="[
             ['value' => 'default', 'label' => 'Default'],
             ['value' => 'hover', 'label' => 'Hover'],
             ['value' => 'active', 'label' => 'Active'],
             ['value' => 'focus', 'label' => 'Focus'],
         ]" />
-    </x-ui.panel-section>
+    </x-heisenberg::ui.panel-section>
 
     @if (is_array($supports['align'] ?? null) && count($supports['align']) > 0)
-        <x-live.block.style.alignment :values="$supports['align']" />
+        <x-heisenberg::live.block.style.alignment :values="$supports['align']" />
     @endif
 
     @if ($has('typography'))
-        <x-live.block.style.typography :typography="$typography" />
+        <x-heisenberg::live.block.style.typography :typography="$typography" />
     @endif
 
     @if ($has('position'))
-        <x-live.block.style.position />
+        <x-heisenberg::live.block.style.position />
     @endif
 
     @if ($isContainer && $has('layout'))
-        <x-live.block.style.flex-layout :layout="is_array($supports['layout'] ?? null) ? $supports['layout'] : []" />
+        <x-heisenberg::live.block.style.flex-layout :layout="is_array($supports['layout'] ?? null) ? $supports['layout'] : []" />
     @endif
 
     @if ($has('spacing'))
-        <x-live.block.style.spacing :spacing="is_array($supports['spacing'] ?? null) ? $supports['spacing'] : []" />
+        <x-heisenberg::live.block.style.spacing :spacing="is_array($supports['spacing'] ?? null) ? $supports['spacing'] : []" />
     @endif
 
     @if ($has('size'))
-        <x-live.block.style.dimensions :size="is_array($supports['size'] ?? null) ? $supports['size'] : []" />
+        <x-heisenberg::live.block.style.dimensions :size="is_array($supports['size'] ?? null) ? $supports['size'] : []" />
     @endif
 
     @if ($showAppearance)
-        <x-live.block.style.appearance :show-opacity="$has('appearance')" :show-corners="$showStroke" />
+        <x-heisenberg::live.block.style.appearance :show-opacity="$has('appearance')" :show-corners="$showStroke" />
     @endif
 
     @if ($showFill)
-        <x-live.block.style.fill :path="$hbFillPath" />
+        <x-heisenberg::live.block.style.fill :path="$hbFillPath" />
     @endif
 
     @if ($showStroke)
-        <x-live.block.style.stroke />
+        <x-heisenberg::live.block.style.stroke />
     @endif
 
     @if ($showEffects)
-        <x-live.block.style.effects />
+        <x-heisenberg::live.block.style.effects />
     @endif
 
     @if ($showFill || $showStroke || $showAppearance)
         <div class="hb-style-popup" data-hb-style-popup="color" hidden>
-            <x-live.pickers.color-picker value="#000000" />
+            <x-heisenberg::live.pickers.color-picker value="#000000" />
         </div>
         <div class="hb-style-popup" data-hb-style-popup="gradient-stop" hidden>
-            <x-live.pickers.color-picker value="#000000" :standalone="true" />
+            <x-heisenberg::live.pickers.color-picker value="#000000" :standalone="true" />
         </div>
     @endif
     @if ($showEffects)
         <div class="hb-style-popup" data-hb-style-popup="effect" hidden>
-            <x-live.pickers.effect-editor />
+            <x-heisenberg::live.pickers.effect-editor />
         </div>
     @endif
 
     <div class="hb-style-popup" data-hb-style-popup="var-color" hidden>
-        <x-live.pickers.variable-menu mode="color" selected="" :tokens="$hbColorTokens" :values="$hbColorValues" />
+        <x-heisenberg::live.pickers.variable-menu mode="color" selected="" :tokens="$hbColorTokens" :values="$hbColorValues" />
     </div>
     <div class="hb-style-popup" data-hb-style-popup="var-number" hidden>
-        <x-live.pickers.variable-menu mode="number" selected="" :tokens="$hbSpaceTokens" :values="$hbSpaceValues" />
+        <x-heisenberg::live.pickers.variable-menu mode="number" selected="" :tokens="$hbSpaceTokens" :values="$hbSpaceValues" />
     </div>
     <div class="hb-style-popup" data-hb-style-popup="var-font" hidden>
-        <x-live.pickers.variable-menu mode="number" selected="" :tokens="$hbFontTokens" :values="$hbFontValues" />
+        <x-heisenberg::live.pickers.variable-menu mode="number" selected="" :tokens="$hbFontTokens" :values="$hbFontValues" />
     </div>
 
     <span data-hb-style-var-prototype hidden aria-hidden="true">

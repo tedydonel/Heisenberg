@@ -271,20 +271,20 @@
             data-msg-upload-network="{{ __('heisenberg::editor.media.upload_network') }}">
             <div class="hb-mediadialog__top">
                 <span class="hb-mediadialog__title">{{ $title }}</span>
-                <span class="hb-mediadialog__tabs"><x-ui.tabs :items="$tabs" :active-index="$activeIndex" /></span>
+                <span class="hb-mediadialog__tabs"><x-heisenberg::ui.tabs :items="$tabs" :active-index="$activeIndex" /></span>
                 <button type="button" class="hb-mediadialog__close" aria-label="{{ __('heisenberg::editor.common.close') }}">
                     @include('heisenberg::components.ui.icon', ['name' => 'x', 'size' => 16])
                 </button>
             </div>
             <div class="hb-mediadialog__err" data-hb-mediadialog-err hidden></div>
             <div class="hb-mediadialog__body hb-mediadialog__body--upload" data-hb-tab-body="upload" @if ($tab !== 'upload') hidden @endif>
-                <x-live.media.upload-dropzone />
+                <x-heisenberg::live.media.upload-dropzone />
             </div>
             <div class="hb-mediadialog__body hb-mediadialog__body--library" data-hb-tab-body="library" @if ($tab !== 'library') hidden @endif>
                 <div class="hb-mediadialog__scroll" data-hb-mediadialog-scroll>
-                    <x-live.media.media-library :items="$items" :select-url="$selectUrl" />
+                    <x-heisenberg::live.media.media-library :items="$items" :select-url="$selectUrl" />
                 </div>
-                <x-ui.custom-scrollbar container="[data-hb-mediadialog-scroll]" />
+                <x-heisenberg::ui.custom-scrollbar container="[data-hb-mediadialog-scroll]" />
             </div>
         </div>
     </div>
@@ -297,20 +297,20 @@
         data-msg-upload-network="{{ __('heisenberg::editor.media.upload_network') }}">
         <div class="hb-mediadialog__top">
             <span class="hb-mediadialog__title">{{ $title }}</span>
-            <span class="hb-mediadialog__tabs"><x-ui.tabs :items="$tabs" :active-index="$activeIndex" /></span>
+            <span class="hb-mediadialog__tabs"><x-heisenberg::ui.tabs :items="$tabs" :active-index="$activeIndex" /></span>
             <button type="button" class="hb-mediadialog__close" aria-label="{{ __('heisenberg::editor.common.close') }}">
                 @include('heisenberg::components.ui.icon', ['name' => 'x', 'size' => 16])
             </button>
         </div>
         <div class="hb-mediadialog__err" data-hb-mediadialog-err hidden></div>
         <div class="hb-mediadialog__body hb-mediadialog__body--upload" data-hb-tab-body="upload" @if ($tab !== 'upload') hidden @endif>
-            <x-live.media.upload-dropzone />
+            <x-heisenberg::live.media.upload-dropzone />
         </div>
         <div class="hb-mediadialog__body hb-mediadialog__body--library" data-hb-tab-body="library" @if ($tab !== 'library') hidden @endif>
             <div class="hb-mediadialog__scroll" data-hb-mediadialog-scroll>
-                <x-live.media.media-library :items="$items" :select-url="$selectUrl" />
+                <x-heisenberg::live.media.media-library :items="$items" :select-url="$selectUrl" />
             </div>
-            <x-ui.custom-scrollbar container="[data-hb-mediadialog-scroll]" />
+            <x-heisenberg::ui.custom-scrollbar container="[data-hb-mediadialog-scroll]" />
         </div>
     </div>
 @endif

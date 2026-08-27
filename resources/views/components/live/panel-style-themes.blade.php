@@ -39,7 +39,7 @@
     data-hb-themes-destroy-url="{{ $themesDestroyUrl }}"
     data-hb-panel-style-strings="{{ json_encode($hbPanelStyleStrings, JSON_UNESCAPED_SLASHES) }}"
     {{ $attributes->merge(['class' => 'hb-panel-style']) }}>
-    <x-ui.panel-tabs :items="[['label' => __('heisenberg::editor.panel_style_themes.tab_style')], ['label' => __('heisenberg::editor.panel_style_themes.tab_themes')]]" :active-index="0" />
+    <x-heisenberg::ui.panel-tabs :items="[['label' => __('heisenberg::editor.panel_style_themes.tab_style')], ['label' => __('heisenberg::editor.panel_style_themes.tab_themes')]]" :active-index="0" />
 
     <div class="hb-panel-style__content" data-hb-panel-style-style>
         <div class="hb-panel-style__scroll" data-hb-style-scroll>
@@ -47,8 +47,8 @@
             <span class="hb-token-section__title">{{ __('heisenberg::editor.panel_style_themes.token_colors') }}</span>
             @foreach ($colors as $c)
                 <div class="hb-token-row" data-hb-token-row data-hb-token-section="colors" data-hb-token-name="{{ $c['name'] }}" data-hb-token-color="{{ $c['value'] }}">
-                    <x-ui.swatch :color="$c['value']" size="26" data-hb-token-swatch />
-                    <x-ui.input :value="$c['label']" width="100%" data-hb-token-field="label" />
+                    <x-heisenberg::ui.swatch :color="$c['value']" size="26" data-hb-token-swatch />
+                    <x-heisenberg::ui.input :value="$c['label']" width="100%" data-hb-token-field="label" />
                     <span class="hb-token-row__remove" data-hb-token-remove aria-hidden="true">@include('heisenberg::components.ui.icon', ['name' => 'x', 'size' => 14])</span>
                 </div>
             @endforeach
@@ -59,8 +59,8 @@
         </div>
         <template data-hb-token-template="colors">
             <div class="hb-token-row" data-hb-token-row data-hb-token-section="colors" data-hb-token-name="" data-hb-token-color="#000000">
-                <x-ui.swatch color="#000000" size="26" data-hb-token-swatch />
-                <x-ui.input value="" width="100%" data-hb-token-field="label" />
+                <x-heisenberg::ui.swatch color="#000000" size="26" data-hb-token-swatch />
+                <x-heisenberg::ui.input value="" width="100%" data-hb-token-field="label" />
                 <span class="hb-token-row__remove" data-hb-token-remove aria-hidden="true">@include('heisenberg::components.ui.icon', ['name' => 'x', 'size' => 14])</span>
             </div>
         </template>
@@ -69,8 +69,8 @@
             <span class="hb-token-section__title">{{ __('heisenberg::editor.panel_style_themes.token_radius') }}</span>
             @foreach ($radii as $r)
                 <div class="hb-token-row" data-hb-token-row data-hb-token-section="radii" data-hb-token-name="{{ $r['name'] }}">
-                    <x-ui.input :value="$r['label']" width="70px" data-hb-token-field="label" />
-                    <x-ui.input :value="$r['value']" width="100%" data-hb-token-field="value" />
+                    <x-heisenberg::ui.input :value="$r['label']" width="70px" data-hb-token-field="label" />
+                    <x-heisenberg::ui.input :value="$r['value']" width="100%" data-hb-token-field="value" />
                     <span class="hb-token-row__remove" data-hb-token-remove aria-hidden="true">@include('heisenberg::components.ui.icon', ['name' => 'x', 'size' => 14])</span>
                 </div>
             @endforeach
@@ -81,8 +81,8 @@
         </div>
         <template data-hb-token-template="radii">
             <div class="hb-token-row" data-hb-token-row data-hb-token-section="radii" data-hb-token-name="">
-                <x-ui.input value="" width="70px" data-hb-token-field="label" />
-                <x-ui.input value="" width="100%" data-hb-token-field="value" />
+                <x-heisenberg::ui.input value="" width="70px" data-hb-token-field="label" />
+                <x-heisenberg::ui.input value="" width="100%" data-hb-token-field="value" />
                 <span class="hb-token-row__remove" data-hb-token-remove aria-hidden="true">@include('heisenberg::components.ui.icon', ['name' => 'x', 'size' => 14])</span>
             </div>
         </template>
@@ -91,8 +91,8 @@
             <span class="hb-token-section__title">{{ __('heisenberg::editor.panel_style_themes.token_spacing') }}</span>
             @foreach ($spacings as $s)
                 <div class="hb-token-row" data-hb-token-row data-hb-token-section="spaces" data-hb-token-name="{{ $s['name'] }}">
-                    <x-ui.input :value="$s['label']" width="100%" data-hb-token-field="label" />
-                    <x-ui.input :value="$s['value']" width="80px" data-hb-token-field="value" />
+                    <x-heisenberg::ui.input :value="$s['label']" width="100%" data-hb-token-field="label" />
+                    <x-heisenberg::ui.input :value="$s['value']" width="80px" data-hb-token-field="value" />
                     <span class="hb-token-row__remove" data-hb-token-remove aria-hidden="true">@include('heisenberg::components.ui.icon', ['name' => 'x', 'size' => 14])</span>
                 </div>
             @endforeach
@@ -103,8 +103,8 @@
         </div>
         <template data-hb-token-template="spaces">
             <div class="hb-token-row" data-hb-token-row data-hb-token-section="spaces" data-hb-token-name="">
-                <x-ui.input value="" width="100%" data-hb-token-field="label" />
-                <x-ui.input value="" width="80px" data-hb-token-field="value" />
+                <x-heisenberg::ui.input value="" width="100%" data-hb-token-field="label" />
+                <x-heisenberg::ui.input value="" width="80px" data-hb-token-field="value" />
                 <span class="hb-token-row__remove" data-hb-token-remove aria-hidden="true">@include('heisenberg::components.ui.icon', ['name' => 'x', 'size' => 14])</span>
             </div>
         </template>
@@ -113,7 +113,7 @@
             <span class="hb-token-section__title">{{ __('heisenberg::editor.panel_style_themes.token_fonts') }}</span>
             @foreach ($fonts as $f)
                 <div class="hb-token-row" data-hb-token-row data-hb-token-section="fonts" data-hb-token-name="{{ $f['name'] }}" data-hb-token-weights="{{ json_encode($f['weights'] ?? [400]) }}">
-                    <x-ui.combobox :options="$fontOptions" :value="$f['family']"
+                    <x-heisenberg::ui.combobox :options="$fontOptions" :value="$f['family']"
                         :placeholder="__('heisenberg::editor.panel_style_themes.select_font_ph')"
                         style="width:100%;" data-hb-token-field="family" />
                     <span class="hb-token-row__remove" data-hb-token-remove aria-hidden="true">@include('heisenberg::components.ui.icon', ['name' => 'x', 'size' => 14])</span>
@@ -126,7 +126,7 @@
         </div>
         <template data-hb-token-template="fonts">
             <div class="hb-token-row" data-hb-token-row data-hb-token-section="fonts" data-hb-token-name="" data-hb-token-weights="[400]">
-                <x-ui.combobox :options="$fontOptions" value=""
+                <x-heisenberg::ui.combobox :options="$fontOptions" value=""
                     :placeholder="__('heisenberg::editor.panel_style_themes.select_font_ph')"
                     style="width:100%;" data-hb-token-field="family" />
                 <span class="hb-token-row__remove" data-hb-token-remove aria-hidden="true">@include('heisenberg::components.ui.icon', ['name' => 'x', 'size' => 14])</span>
@@ -137,8 +137,8 @@
             <span class="hb-token-section__title">{{ __('heisenberg::editor.panel_style_themes.token_font_sizes') }}</span>
             @foreach ($fontSizes as $fs)
                 <div class="hb-token-row" data-hb-token-row data-hb-token-section="fontSizes" data-hb-token-name="{{ $fs['name'] }}">
-                    <x-ui.input :value="$fs['label']" width="70px" data-hb-token-field="label" />
-                    <x-ui.input :value="$fs['value']" width="100%" data-hb-token-field="value" />
+                    <x-heisenberg::ui.input :value="$fs['label']" width="70px" data-hb-token-field="label" />
+                    <x-heisenberg::ui.input :value="$fs['value']" width="100%" data-hb-token-field="value" />
                     <span class="hb-token-row__remove" data-hb-token-remove aria-hidden="true">@include('heisenberg::components.ui.icon', ['name' => 'x', 'size' => 14])</span>
                 </div>
             @endforeach
@@ -149,8 +149,8 @@
         </div>
         <template data-hb-token-template="fontSizes">
             <div class="hb-token-row" data-hb-token-row data-hb-token-section="fontSizes" data-hb-token-name="">
-                <x-ui.input value="" width="70px" data-hb-token-field="label" />
-                <x-ui.input value="" width="100%" data-hb-token-field="value" />
+                <x-heisenberg::ui.input value="" width="70px" data-hb-token-field="label" />
+                <x-heisenberg::ui.input value="" width="100%" data-hb-token-field="value" />
                 <span class="hb-token-row__remove" data-hb-token-remove aria-hidden="true">@include('heisenberg::components.ui.icon', ['name' => 'x', 'size' => 14])</span>
             </div>
         </template>
@@ -161,7 +161,7 @@
                 <span class="hb-token-add__label">{{ __('heisenberg::editor.panel_style_themes.save_to_themes') }}</span>
             </button>
             <div class="hb-token-saveform" data-hb-theme-saveform hidden>
-                <x-ui.input placeholder="{{ __('heisenberg::editor.panel_style_themes.save_theme_name_ph') }}" width="100%" data-hb-theme-save-name />
+                <x-heisenberg::ui.input placeholder="{{ __('heisenberg::editor.panel_style_themes.save_theme_name_ph') }}" width="100%" data-hb-theme-save-name />
                 <button type="button" class="hb-token-saveform__confirm" data-hb-theme-save-confirm aria-label="{{ __('heisenberg::editor.panel_style_themes.save_theme_confirm_aria') }}">
                     @include('heisenberg::components.ui.icon', ['name' => 'check', 'size' => 13])
                 </button>
@@ -172,19 +172,19 @@
             <span class="hb-token-saveform__error" data-hb-theme-save-error hidden></span>
         </div>
         </div>
-        <x-ui.custom-scrollbar container="[data-hb-style-scroll]" />
+        <x-heisenberg::ui.custom-scrollbar container="[data-hb-style-scroll]" />
     </div>
 
     <div class="hb-panel-style__content" data-hb-panel-style-themes hidden>
-        <x-ui.search-field :placeholder="__('heisenberg::editor.panel_style_themes.search_themes')"
+        <x-heisenberg::ui.search-field :placeholder="__('heisenberg::editor.panel_style_themes.search_themes')"
             data-hb-filter="[data-hb-panel-style-themes]" data-hb-filter-item="[data-hb-saved-theme], [data-hb-theme-preset]" />
 
         <div class="hb-panel-style__scroll" data-hb-themes-scroll>
-            <x-ui.category-head :label="__('heisenberg::editor.panel_style_themes.category_your_themes')" />
+            <x-heisenberg::ui.category-head :label="__('heisenberg::editor.panel_style_themes.category_your_themes')" />
             <div class="hb-panel-style__grid" data-hb-saved-themes-grid>
                 @foreach ($savedThemes as $saved)
                     <div class="hb-themepresetcard-wrap" data-hb-saved-theme data-hb-saved-theme-name="{{ $saved['name'] }}" data-hb-saved-theme-payload="{{ json_encode($saved['theme']) }}">
-                        <x-ui.theme-preset-card :colors="array_slice(array_column($saved['theme']['colors'] ?? [], 'value'), 0, 3)" :label="$saved['name']" />
+                        <x-heisenberg::ui.theme-preset-card :colors="array_slice(array_column($saved['theme']['colors'] ?? [], 'value'), 0, 3)" :label="$saved['name']" />
                         <button type="button" class="hb-saved-theme-delete" data-hb-saved-theme-delete aria-label="{{ __('heisenberg::editor.panel_style_themes.delete_theme_aria') }}">
                             @include('heisenberg::components.ui.icon', ['name' => 'x', 'size' => 12])
                         </button>
@@ -193,27 +193,27 @@
                 <span class="hb-token-add__label" data-hb-saved-themes-empty @if (count($savedThemes)) hidden @endif>{{ __('heisenberg::editor.panel_style_themes.no_saved_themes') }}</span>
             </div>
 
-            <x-ui.category-head :label="__('heisenberg::editor.panel_style_themes.category_presets')" />
+            <x-heisenberg::ui.category-head :label="__('heisenberg::editor.panel_style_themes.category_presets')" />
             <div class="hb-panel-style__grid">
                 @foreach ($themePresets as $preset)
-                    <x-ui.theme-preset-card :colors="$preset['colors']" :label="$preset['label']"
+                    <x-heisenberg::ui.theme-preset-card :colors="$preset['colors']" :label="$preset['label']"
                         data-hb-theme-preset :data-hb-theme-preset-colors="json_encode($preset['colors'])" />
                 @endforeach
             </div>
 
             <template data-hb-saved-theme-template>
                 <div class="hb-themepresetcard-wrap" data-hb-saved-theme data-hb-saved-theme-name="" data-hb-saved-theme-payload="">
-                    <x-ui.theme-preset-card :colors="['#FFFFFF', '#FFFFFF', '#FFFFFF']" label="" />
+                    <x-heisenberg::ui.theme-preset-card :colors="['#FFFFFF', '#FFFFFF', '#FFFFFF']" label="" />
                     <button type="button" class="hb-saved-theme-delete" data-hb-saved-theme-delete aria-label="{{ __('heisenberg::editor.panel_style_themes.delete_theme_aria') }}">
                         @include('heisenberg::components.ui.icon', ['name' => 'x', 'size' => 12])
                     </button>
                 </div>
             </template>
         </div>
-        <x-ui.custom-scrollbar container="[data-hb-themes-scroll]" />
+        <x-heisenberg::ui.custom-scrollbar container="[data-hb-themes-scroll]" />
     </div>
 
     <div class="hb-style-popup" data-hb-token-colorpicker-popup hidden>
-        <x-live.pickers.color-picker mode="fill" value="#000000" />
+        <x-heisenberg::live.pickers.color-picker mode="fill" value="#000000" />
     </div>
 </div>

@@ -5,8 +5,8 @@
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <meta name="csrf-token" content="{{ csrf_token() }}">
     <title>{{ trim((string) ($postTitle ?? '')) !== '' ? $postTitle : __('heisenberg::editor.canvas.ph_untitled_post') }}</title>
-    <link rel="icon" type="image/svg+xml" href="/heisenberg-assets/editor-logo.svg">
-    <link rel="stylesheet" href="/heisenberg-assets/editor.css">
+    <link rel="icon" type="image/svg+xml" href="{{ route('heisenberg.editor.asset.logo') }}">
+    <link rel="stylesheet" href="{{ route('heisenberg.editor.asset.css') }}">
 </head>
 <body>
     <div class="hb-editor">

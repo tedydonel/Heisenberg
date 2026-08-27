@@ -113,27 +113,27 @@
     data-hb-patterns-index-url="{{ $patternsIndexUrl }}"
     data-hb-patterns-store-url="{{ $patternsStoreUrl }}"
     data-hb-patterns-destroy-url="{{ $patternsDestroyUrl }}">
-    <x-ui.panel-tabs :items="[['label' => __('heisenberg::editor.panel_components_blocks.tab_components')], ['label' => __('heisenberg::editor.panel_components_blocks.tab_blocks')]]" :active-index="0" />
+    <x-heisenberg::ui.panel-tabs :items="[['label' => __('heisenberg::editor.panel_components_blocks.tab_components')], ['label' => __('heisenberg::editor.panel_components_blocks.tab_blocks')]]" :active-index="0" />
 
     <div class="hb-panel-cb__content" data-hb-panel-cb-components>
-        <x-ui.search-field :placeholder="__('heisenberg::editor.panel_components_blocks.search_components')"
+        <x-heisenberg::ui.search-field :placeholder="__('heisenberg::editor.panel_components_blocks.search_components')"
             data-hb-filter="[data-hb-panel-cb-components]" data-hb-filter-item="[data-hb-insert-block]" />
-        <x-ui.category-head :label="__('heisenberg::editor.panel_components_blocks.category_base')" />
+        <x-heisenberg::ui.category-head :label="__('heisenberg::editor.panel_components_blocks.category_base')" />
         <div class="hb-panel-cb__body" data-hb-category-body>
             <div class="hb-panel-cb__scroll" data-hb-panel-cb-scroll>
                 <div class="hb-panel-cb__grid">
                     @foreach ($blockCards as $card)
-                        <x-ui.tool-card :icon="$card['icon']" :label="$card['label']"
+                        <x-heisenberg::ui.tool-card :icon="$card['icon']" :label="$card['label']"
                             :data-hb-insert-block="$card['block']" />
                     @endforeach
                 </div>
             </div>
-            <x-ui.custom-scrollbar container="[data-hb-panel-cb-scroll]" />
+            <x-heisenberg::ui.custom-scrollbar container="[data-hb-panel-cb-scroll]" />
         </div>
     </div>
 
     <div class="hb-panel-cb__content" data-hb-panel-cb-blocks hidden>
-        <x-ui.search-field :placeholder="__('heisenberg::editor.panel_components_blocks.search_blocks')"
+        <x-heisenberg::ui.search-field :placeholder="__('heisenberg::editor.panel_components_blocks.search_blocks')"
             data-hb-filter="[data-hb-panel-cb-blocks]" data-hb-filter-item="[data-hb-saved-block]" />
         <div class="hb-panel-cb__body" data-hb-patterns-body>
             <div class="hb-panel-cb__scroll" data-hb-panel-cb-blocks-scroll>
@@ -141,7 +141,7 @@
                     @forelse ($patterns as $pattern)
                         <div class="hb-panel-cb__card" data-hb-saved-block="{{ (int) $pattern['id'] }}"
                             data-hb-pattern-name="{{ $pattern['name'] }}" title="{{ $pattern['name'] }}">
-                            <x-ui.tool-card :icon="'stack'" :label="$pattern['name']" />
+                            <x-heisenberg::ui.tool-card :icon="'stack'" :label="$pattern['name']" />
                             <button type="button" class="hb-panel-cb__card-del"
                                 data-hb-pattern-delete="{{ (int) $pattern['id'] }}"
                                 aria-label="{{ __('heisenberg::editor.patterns.delete') }}">@include('heisenberg::components.ui.icon', ['name' => 'x', 'size' => 14])</button>
@@ -151,7 +151,7 @@
                     @endforelse
                 </div>
             </div>
-            <x-ui.custom-scrollbar container="[data-hb-panel-cb-blocks-scroll]" />
+            <x-heisenberg::ui.custom-scrollbar container="[data-hb-panel-cb-blocks-scroll]" />
         </div>
     </div>
 </div>

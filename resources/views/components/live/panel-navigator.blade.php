@@ -350,7 +350,7 @@
 @endpush
 @endonce
 <div data-hb-panel-nav {{ $attributes->merge(['class' => 'hb-nav']) }}>
-    <x-ui.panel-tabs :items="[['label' => __('heisenberg::editor.panel_navigator.tab_list')], ['label' => __('heisenberg::editor.panel_navigator.tab_outline')]]" :active-index="0" />
+    <x-heisenberg::ui.panel-tabs :items="[['label' => __('heisenberg::editor.panel_navigator.tab_list')], ['label' => __('heisenberg::editor.panel_navigator.tab_outline')]]" :active-index="0" />
 
     <div class="hb-nav__content" data-hb-nav-list>
         <div class="hb-nav__body hb-nav__body--list" data-hb-nav-list-body></div>
@@ -360,12 +360,12 @@
                 <template data-hb-nav-icon="{{ $name }}">@include('heisenberg::components.ui.icon', ['name' => $navIcon, 'size' => 13])</template>
             @endforeach
         </div>
-        <x-ui.custom-scrollbar container=".hb-nav__body--list" />
+        <x-heisenberg::ui.custom-scrollbar container=".hb-nav__body--list" />
     </div>
 
     <div class="hb-nav__content" data-hb-nav-outline hidden>
         <div class="hb-nav__body hb-nav__body--outline" data-hb-nav-outline-body></div>
-        <x-ui.custom-scrollbar container=".hb-nav__body--outline" />
+        <x-heisenberg::ui.custom-scrollbar container=".hb-nav__body--outline" />
     </div>
 
     <div class="hb-nav__sr" role="status" aria-live="polite"></div>

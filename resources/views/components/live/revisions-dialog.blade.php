@@ -153,7 +153,7 @@
                 <div class="hb-revdialog__empty" data-hb-rev-empty hidden></div>
                 <div class="hb-revdialog__list" data-hb-rev-list></div>
             </div>
-            <x-ui.custom-scrollbar container="[data-hb-rev-scroll]" />
+            <x-heisenberg::ui.custom-scrollbar container="[data-hb-rev-scroll]" />
         </div>
     </div>
 </div>

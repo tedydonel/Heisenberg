@@ -160,10 +160,10 @@
     data-msg-load-error="{{ __('heisenberg::editor.media.load_error') }}"
     data-msg-uploading="{{ __('heisenberg::editor.media.uploading') }}"
     data-msg-untitled="{{ __('heisenberg::editor.common.untitled') }}">
-    <x-ui.search-field :placeholder="$placeholder ?? __('heisenberg::editor.media.search_ph')" />
+    <x-heisenberg::ui.search-field :placeholder="$placeholder ?? __('heisenberg::editor.media.search_ph')" />
     <div class="hb-medialib__grid" data-hb-medialib-grid @if (! count($items)) hidden @endif>
         @foreach ($items as $item)
-            <x-live.media.media-card
+            <x-heisenberg::live.media.media-card
                 :state="$item['state'] ?? 'default'"
                 :name="$item['name'] ?? 'Filename.png'"
                 :meta="$item['meta'] ?? ''"
@@ -174,7 +174,7 @@
         @endforeach
     </div>
     <div class="hb-medialib__empty" data-hb-medialib-empty @if (count($items)) hidden @endif>{{ __('heisenberg::editor.media.empty') }}</div>
-    <template data-hb-mediacard-template><x-live.media.media-card /></template>
-    <template data-hb-mediacard-uploading-template><x-live.media.media-card state="uploading" :progress="0" /></template>
-    <template data-hb-mediacard-error-template><x-live.media.media-card state="error" /></template>
+    <template data-hb-mediacard-template><x-heisenberg::live.media.media-card /></template>
+    <template data-hb-mediacard-uploading-template><x-heisenberg::live.media.media-card state="uploading" :progress="0" /></template>
+    <template data-hb-mediacard-error-template><x-heisenberg::live.media.media-card state="error" /></template>
 </div>

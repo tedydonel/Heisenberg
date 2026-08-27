@@ -2,7 +2,7 @@
     $hbAnimShow = json_encode(['attribute' => 'animate', 'in' => \Heisenberg\Support\AnimationCatalog::keys()]);
 @endphp
 <div class="hb-blockadvanced">
-    <x-ui.panel-section :title="__('heisenberg::editor.advanced.section_visibility')" collapsible>
+    <x-heisenberg::ui.panel-section :title="__('heisenberg::editor.advanced.section_visibility')" collapsible>
         @foreach ([
             [['hide_xs', 'hideXs'], ['hide_sm', 'hideSm']],
             [['hide_md', 'hideMd'], ['hide_lg', 'hideLg']],
@@ -10,32 +10,32 @@
         ] as $pair)
             <div class="hb-irow">
                 @foreach ($pair as $field)
-                    <label class="hb-tglrow"><span class="hb-tglrow__l">{{ __('heisenberg::editor.advanced.' . $field[0]) }}</span><x-ui.toggle data-hb-control="{{ $field[1] }}" data-hb-control-kind="attributes" data-hb-control-type="toggle" /></label>
+                    <label class="hb-tglrow"><span class="hb-tglrow__l">{{ __('heisenberg::editor.advanced.' . $field[0]) }}</span><x-heisenberg::ui.toggle data-hb-control="{{ $field[1] }}" data-hb-control-kind="attributes" data-hb-control-type="toggle" /></label>
                 @endforeach
             </div>
         @endforeach
-    </x-ui.panel-section>
+    </x-heisenberg::ui.panel-section>
 
-    <x-ui.panel-section :title="__('heisenberg::editor.advanced.section_animate')" collapsible>
+    <x-heisenberg::ui.panel-section :title="__('heisenberg::editor.advanced.section_animate')" collapsible>
         <div class="hb-icol">
             <span class="hb-ilbl">{{ __('heisenberg::editor.advanced.animation_type') }}</span>
-            <x-ui.combobox :static="true" value="" :options="\Heisenberg\Support\AnimationCatalog::options()" data-hb-control="animate" data-hb-control-kind="attributes" data-hb-control-type="combobox" />
+            <x-heisenberg::ui.combobox :static="true" value="" :options="\Heisenberg\Support\AnimationCatalog::options()" data-hb-control="animate" data-hb-control-kind="attributes" data-hb-control-type="combobox" />
         </div>
         <div class="hb-icol" data-hb-showwhen="{{ $hbAnimShow }}">
             <div class="hb-irow" style="justify-content:space-between;"><span class="hb-ilbl">{{ __('heisenberg::editor.advanced.duration') }}</span><span class="hb-tglrow__l"><span data-hb-range-readout>{{ \Heisenberg\Support\AnimationCatalog::DEFAULT_DURATION }}</span> ms</span></div>
-            <x-ui.slider :value="\Heisenberg\Support\AnimationCatalog::DEFAULT_DURATION" :min="100" :max="3000" :step="50" data-hb-control="animateDuration" data-hb-control-kind="attributes" data-hb-control-type="range" />
+            <x-heisenberg::ui.slider :value="\Heisenberg\Support\AnimationCatalog::DEFAULT_DURATION" :min="100" :max="3000" :step="50" data-hb-control="animateDuration" data-hb-control-kind="attributes" data-hb-control-type="range" />
         </div>
         <div class="hb-icol" data-hb-showwhen="{{ $hbAnimShow }}">
             <div class="hb-irow" style="justify-content:space-between;"><span class="hb-ilbl">{{ __('heisenberg::editor.advanced.delay') }}</span><span class="hb-tglrow__l"><span data-hb-range-readout>{{ \Heisenberg\Support\AnimationCatalog::DEFAULT_DELAY }}</span> ms</span></div>
-            <x-ui.slider :value="\Heisenberg\Support\AnimationCatalog::DEFAULT_DELAY" :min="0" :max="3000" :step="50" data-hb-control="animateDelay" data-hb-control-kind="attributes" data-hb-control-type="range" />
+            <x-heisenberg::ui.slider :value="\Heisenberg\Support\AnimationCatalog::DEFAULT_DELAY" :min="0" :max="3000" :step="50" data-hb-control="animateDelay" data-hb-control-kind="attributes" data-hb-control-type="range" />
         </div>
         <div class="hb-icol" data-hb-showwhen="{{ $hbAnimShow }}">
             <span class="hb-ilbl">{{ __('heisenberg::editor.advanced.easing') }}</span>
-            <x-ui.select :value="\Heisenberg\Support\AnimationCatalog::DEFAULT_EASING" :options="\Heisenberg\Support\AnimationCatalog::easingOptions()" data-hb-control="animateEasing" data-hb-control-kind="attributes" data-hb-control-type="select" />
+            <x-heisenberg::ui.select :value="\Heisenberg\Support\AnimationCatalog::DEFAULT_EASING" :options="\Heisenberg\Support\AnimationCatalog::easingOptions()" data-hb-control="animateEasing" data-hb-control-kind="attributes" data-hb-control-type="select" />
         </div>
-        <label class="hb-tglrow" data-hb-showwhen="{{ $hbAnimShow }}"><span class="hb-tglrow__l">{{ __('heisenberg::editor.advanced.play_once') }}</span><x-ui.toggle :on="true" data-hb-control="animateOnce" data-hb-control-kind="attributes" data-hb-control-type="toggle" /></label>
-        <x-ui.button variant="secondary" leading-icon="play" data-hb-anim-preview data-hb-showwhen="{{ $hbAnimShow }}">{{ __('heisenberg::editor.advanced.play_animation') }}</x-ui.button>
-    </x-ui.panel-section>
+        <label class="hb-tglrow" data-hb-showwhen="{{ $hbAnimShow }}"><span class="hb-tglrow__l">{{ __('heisenberg::editor.advanced.play_once') }}</span><x-heisenberg::ui.toggle :on="true" data-hb-control="animateOnce" data-hb-control-kind="attributes" data-hb-control-type="toggle" /></label>
+        <x-heisenberg::ui.button variant="secondary" leading-icon="play" data-hb-anim-preview data-hb-showwhen="{{ $hbAnimShow }}">{{ __('heisenberg::editor.advanced.play_animation') }}</x-heisenberg::ui.button>
+    </x-heisenberg::ui.panel-section>
 </div>
 @once
 <style>

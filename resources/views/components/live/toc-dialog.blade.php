@@ -336,7 +336,7 @@
                     <div class="hb-tocdialog__empty" data-hb-toc-empty>{{ __('heisenberg::editor.toc.empty_list') }}</div>
                     <div class="hb-tocdialog__list" data-hb-toc-list></div>
                 </div>
-                <x-ui.custom-scrollbar container="[data-hb-toc-scroll]" />
+                <x-heisenberg::ui.custom-scrollbar container="[data-hb-toc-scroll]" />
             </div>
             <template data-hb-toc-row-template>
                 <div class="hb-tocdialog__row">

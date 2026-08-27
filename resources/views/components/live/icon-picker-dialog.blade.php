@@ -201,10 +201,10 @@
             </button>
         </div>
         <div class="hb-icondialog__bar">
-            <x-ui.search-field :placeholder="__('heisenberg::editor.icon_picker.search_ph')"
+            <x-heisenberg::ui.search-field :placeholder="__('heisenberg::editor.icon_picker.search_ph')"
                 :aria-label="__('heisenberg::editor.icon_picker.search_ph') ?? null" data-hb-icon-search />
             <div class="hb-icondialog__set" data-hb-icon-set>
-                <x-ui.combobox static value="" :options="$hbIconSetOptions"
+                <x-heisenberg::ui.combobox static value="" :options="$hbIconSetOptions"
                     :placeholder="__('heisenberg::editor.icon_picker.all_sets')"
                     :aria-label="__('heisenberg::editor.icon_picker.all_sets')" />
             </div>
@@ -215,7 +215,7 @@
                 <div class="hb-icondialog__grid" data-hb-icon-grid></div>
                 <button type="button" class="hb-icondialog__more" data-hb-icon-more hidden>{{ __('heisenberg::editor.icon_picker.load_more') }}</button>
             </div>
-            <x-ui.custom-scrollbar container="[data-hb-icon-scroll]" />
+            <x-heisenberg::ui.custom-scrollbar container="[data-hb-icon-scroll]" />
         </div>
     </div>
 </div>

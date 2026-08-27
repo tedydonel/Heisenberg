@@ -28,5 +28,5 @@
         @if ($disabled) disabled @endif
         {{ $attributes->merge(['class' => 'hb-textarea' . ($resizable ? ' hb-textarea--resizable' : ''), 'style' => "flex:0 0 {$width};min-height:{$height};"]) }}
     >{{ $value }}</textarea>
-    <x-ui.custom-scrollbar container=".hb-textarea" axis="y" :smooth="false" />
+    <x-heisenberg::ui.custom-scrollbar container=".hb-textarea" axis="y" :smooth="false" />
 </div>

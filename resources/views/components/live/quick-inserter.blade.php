@@ -191,23 +191,23 @@
 @endphp
 <div data-hb-qi role="dialog" aria-label="{{ __('heisenberg::editor.quick_inserter.aria_label') }}"
     {{ $attributes->merge(['class' => 'hb-pop hb-qi']) }} hidden>
-    <x-ui.search-field :placeholder="__('heisenberg::editor.quick_inserter.search')"
+    <x-heisenberg::ui.search-field :placeholder="__('heisenberg::editor.quick_inserter.search')"
         data-hb-filter="[data-hb-qi]" data-hb-filter-item="[data-hb-qi-block]" />
     <div class="hb-qi__body">
         <div class="hb-qi__scroll" data-hb-qi-scroll>
             <div class="hb-qi__scroll-inner">
                 <div class="hb-qi__grid">
                     @foreach ($blockCards as $card)
-                        <x-ui.tool-card :icon="$card['icon']" :label="$card['label']"
+                        <x-heisenberg::ui.tool-card :icon="$card['icon']" :label="$card['label']"
                             :data-hb-qi-block="$card['block']" />
                     @endforeach
                 </div>
             </div>
         </div>
-        <x-ui.custom-scrollbar container="[data-hb-qi-scroll]" />
+        <x-heisenberg::ui.custom-scrollbar container="[data-hb-qi-scroll]" />
     </div>
     <div class="hb-qi__footer">
-        <x-ui.button variant="secondary" data-hb-qi-browse-all
-            leadingIcon="squares-four">{{ __('heisenberg::editor.quick_inserter.browse_all') }}</x-ui.button>
+        <x-heisenberg::ui.button variant="secondary" data-hb-qi-browse-all
+            leadingIcon="squares-four">{{ __('heisenberg::editor.quick_inserter.browse_all') }}</x-heisenberg::ui.button>
     </div>
 </div>
