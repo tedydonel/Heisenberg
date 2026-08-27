@@ -38,12 +38,12 @@
     </x-heisenberg::ui.panel-section>
 </div>
 @once
-<style>
+<style nonce="{{ heisenberg_csp_nonce() }}">
     .hb-tglrow { display: flex; align-items: center; justify-content: space-between; gap: var(--hb-space-2, 8px); cursor: pointer; }
     .hb-tglrow__l { font-family: var(--hb-font-sans, Rubik, sans-serif); font-size: 12px; color: var(--hb-text-secondary); }
     .hb-blockadvanced .hb-select__menu { max-height: 260px; overflow-y: auto; }
 </style>
-<script>
+<script nonce="{{ heisenberg_csp_nonce() }}">
     (() => {
         if (document.__hbAnimPreview) return;
         document.__hbAnimPreview = true;

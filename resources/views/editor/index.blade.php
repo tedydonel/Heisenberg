@@ -1,7 +1,7 @@
 @extends('heisenberg::editor.layouts.app')
 
 @section('content')
-    <style id="hb-theme-vars">{!! $themeCss ?? '' !!}</style>
+    <style id="hb-theme-vars" nonce="{{ heisenberg_csp_nonce() }}">{!! $themeCss ?? '' !!}</style>
     @php
         $hbDocumentType = $documentType ?? 'post';
     @endphp
@@ -56,7 +56,7 @@
             :select-url="$hbBlockImageSelectUrl"
             :upload-url="$hbBlockImageUploadUrl"
         />
-        <script>
+        <script nonce="{{ heisenberg_csp_nonce() }}">
             (() => {
                 let hbImageTargetId = null;
                 const hbImageDialog = () => document.querySelector('[data-hb-block-image-dialog]');
@@ -140,7 +140,7 @@
         :post-id="$postId ?? null" :post-locale="$postLocale ?? 'en'" :content-locales="$contentLocales ?? ['en', 'fr']" />
 
     @if (! empty($initialBlocks))
-        <script>
+        <script nonce="{{ heisenberg_csp_nonce() }}">
             (() => {
                 const blocks = @json($initialBlocks);
                 const hydrate = () => window.hbEditor.replaceDoc(blocks, { baseline: true });
@@ -151,7 +151,7 @@
     @endif
 
     @if (($postId ?? null) === null)
-        <script>
+        <script nonce="{{ heisenberg_csp_nonce() }}">
             (() => {
                 const KEY = 'hb-editor:unsaved-draft';
                 let adopted = false;

@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <meta name="csrf-token" content="{{ csrf_token() }}">
     <title>{{ __('heisenberg::editor.comments.title') }}</title>
-    <style>
+    <style nonce="{{ heisenberg_csp_nonce() }}">
         * { box-sizing: border-box; }
         body { margin: 0; background: #fafafa; color: #0a0a0a; font: 14px/1.5 Rubik, -apple-system, sans-serif; }
         .hb-comments-page { max-width: 900px; margin: 0 auto; padding: 32px 24px 64px; }
@@ -158,9 +158,9 @@
             'pager_label' => __('heisenberg::editor.comments.pager_label'),
         ];
     @endphp
-    <script type="application/json" data-hb-comments-strings>@json($hbCommentsStrings)</script>
+    <script nonce="{{ heisenberg_csp_nonce() }}" type="application/json" data-hb-comments-strings>@json($hbCommentsStrings)</script>
 
-    <script>
+    <script nonce="{{ heisenberg_csp_nonce() }}">
     (function () {
         'use strict';
 

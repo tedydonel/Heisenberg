@@ -1,5 +1,5 @@
 @once
-<style>
+<style nonce="{{ heisenberg_csp_nonce() }}">
     .hb-panel-style { display: flex; flex-direction: column; width: 240px; height: 100%; background: var(--hb-bg); border-right: 1px solid var(--hb-border); flex: none; }
     .hb-panel-style__content { display: flex; flex-direction: column; flex: 1 1 auto; min-height: 0; overflow: hidden; position: relative; }
     .hb-panel-style__content[hidden] { display: none; }
@@ -30,7 +30,7 @@
         .hb-themepresetcard-wrap.hb-saved-theme--active > .hb-themepresetcard { box-shadow: 0 0 0 2px var(--hb-tb-color, #3D68F5); border-color: var(--hb-tb-color, #3D68F5); }
 
 </style>
-<script>
+<script nonce="{{ heisenberg_csp_nonce() }}">
     (() => {
         const boot = () => {
             document.querySelectorAll('[data-hb-panel-style]').forEach((root) => {

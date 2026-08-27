@@ -1,5 +1,5 @@
         @once
-        <style>
+        <style nonce="{{ heisenberg_csp_nonce() }}">
             .hb-post-taxonomy-body,
             .hb-post-discussion-body,
             .hb-post-layout-body,
@@ -57,7 +57,7 @@
             }
             .hb-post-translation-row__chip--complete { background: #E3F5E8; color: #1B7A3D; }
         </style>
-        <script>
+        <script nonce="{{ heisenberg_csp_nonce() }}">
             (() => {
                 const csrfToken = () => {
                     const meta = document.querySelector('meta[name="csrf-token"]');

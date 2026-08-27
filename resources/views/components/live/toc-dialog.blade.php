@@ -1,5 +1,5 @@
 @once
-<style>
+<style nonce="{{ heisenberg_csp_nonce() }}">
     .hb-tocdialog { width: 600px; height: 560px; }
     .hb-tocdialog__body { position: relative; flex: 1 1 auto; min-height: 0; display: flex; flex-direction: column; }
     .hb-tocdialog__scrollwrap { position: relative; flex: 1 1 auto; min-height: 0; }
@@ -73,7 +73,7 @@
     }
     .hb-tocdialog__close:hover { background: var(--hb-surface-hover); }
 </style>
-<script>
+<script nonce="{{ heisenberg_csp_nonce() }}">
     (() => {
         const csrf = () => document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '';
 

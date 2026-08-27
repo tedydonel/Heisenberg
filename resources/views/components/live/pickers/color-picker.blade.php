@@ -123,7 +123,7 @@
     </div>
 
     @once
-    <script>
+    <script nonce="{{ heisenberg_csp_nonce() }}">
         (() => {
             const clamp = (x, a, b) => (x < a ? a : x > b ? b : x);
             const round = (x) => Math.round(x);

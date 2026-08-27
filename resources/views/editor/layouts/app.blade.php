@@ -6,12 +6,12 @@
     <meta name="csrf-token" content="{{ csrf_token() }}">
     <title>{{ trim((string) ($postTitle ?? '')) !== '' ? $postTitle : __('heisenberg::editor.canvas.ph_untitled_post') }}</title>
     <link rel="icon" type="image/svg+xml" href="{{ route('heisenberg.editor.asset.logo') }}">
-    <link rel="stylesheet" href="{{ route('heisenberg.editor.asset.css') }}">
+    <link rel="stylesheet" href="{{ route('heisenberg.editor.asset.css') }}" nonce="{{ heisenberg_csp_nonce() }}">
 </head>
 <body>
     <div class="hb-editor">
         @stack('hb-nav-strings')
-        <script>
+        <script nonce="{{ heisenberg_csp_nonce() }}">
             (() => {
                 const shell = document.currentScript.parentElement;
                 shell.classList.add('hb-editor--booting');
@@ -37,7 +37,7 @@
             })();
         </script>
         @yield('content')
-        <script>
+        <script nonce="{{ heisenberg_csp_nonce() }}">
             (() => {
                 const shell = document.currentScript.parentElement;
                 const release = () => requestAnimationFrame(() => requestAnimationFrame(

@@ -1,5 +1,5 @@
 @once
-<style>
+<style nonce="{{ heisenberg_csp_nonce() }}">
     .hb-panel-ai { display: flex; flex-direction: column; width: 100%; height: 100%; background: var(--hb-bg); border-right: 1px solid var(--hb-border); flex: none; }
     .hb-panel-ai__content { display: flex; flex-direction: column; flex: 1 1 auto; min-height: 0; overflow: hidden; }
     .hb-panel-ai__content[hidden] { display: none; }
@@ -147,7 +147,7 @@
     .hb-panel-ai__toolsbody { flex: 1 1 auto; min-height: 0; overflow: hidden; position: relative; }
     .hb-panel-ai__grid { display: grid; grid-template-columns: 1fr 1fr; align-content: start; gap: 8px; padding: var(--hb-space-3, 12px); }
 </style>
-<script>
+<script nonce="{{ heisenberg_csp_nonce() }}">
     (() => {
         const boot = () => {
             document.querySelectorAll('[data-hb-panel-ai]').forEach((root) => {

@@ -81,7 +81,7 @@
 </div>
 
 @once
-<style>
+<style nonce="{{ heisenberg_csp_nonce() }}">
     .hb-evinj { position: fixed; z-index: 90; min-width: 280px; max-width: 360px; max-height: 360px; display: flex; flex-direction: column; }
     .hb-evinj__main { display: flex; flex-direction: column; gap: 2px; }
     .hb-evinj__key {
@@ -121,7 +121,7 @@
 @endonce
 
 @once
-<script>
+<script nonce="{{ heisenberg_csp_nonce() }}">
     (() => {
         // The picker uses package-native vanilla JS only — no new dependencies, no new build
         // step, no global registry. It re-uses the existing `hbEditor` surface (window.hbEditor

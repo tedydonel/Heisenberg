@@ -1,5 +1,5 @@
         @once('hb-post-meta-live')
-        <script>
+        <script nonce="{{ heisenberg_csp_nonce() }}">
             (() => {
                 const statusLabel = (labels, status) => (labels && labels[status]) || status;
                 const readJson = (el, key, fallback) => {

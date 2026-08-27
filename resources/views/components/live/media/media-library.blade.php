@@ -1,5 +1,5 @@
 @once
-<style>
+<style nonce="{{ heisenberg_csp_nonce() }}">
     .hb-medialib { display: flex; flex-direction: column; gap: var(--hb-space-5, 20px); width: 100%; }
     .hb-medialib__grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: var(--hb-space-5, 20px); align-content: start; }
     .hb-medialib__grid[hidden] { display: none; }
@@ -10,7 +10,7 @@
 </style>
 @endonce
 @once('hb-medialib-core')
-<script>
+<script nonce="{{ heisenberg_csp_nonce() }}">
     (() => {
         const boot = () => {
             document.querySelectorAll('[data-hb-medialib]').forEach((root) => {

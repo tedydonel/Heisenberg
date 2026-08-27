@@ -4,7 +4,7 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>Heisenberg — {{ __('heisenberg::editor.common.untitled') }}</title>
-    <link rel="stylesheet" href="{{ route('heisenberg.editor.asset.css') }}">
+    <link rel="stylesheet" href="{{ route('heisenberg.editor.asset.css') }}" nonce="{{ heisenberg_csp_nonce() }}">
 </head>
 <body class="hb-preview">
     <main class="hb-preview__main">

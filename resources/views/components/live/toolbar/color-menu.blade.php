@@ -17,7 +17,7 @@
     </div>
 </div>
 @once
-<script>
+<script nonce="{{ heisenberg_csp_nonce() }}">
     (() => {
         const boot = () => document.querySelectorAll('[data-hb-colormenu]').forEach((menu) => {
             if (menu.__hbColor) return; menu.__hbColor = true;

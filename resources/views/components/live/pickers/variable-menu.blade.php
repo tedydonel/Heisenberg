@@ -29,7 +29,7 @@
     </div>
 </div>
 @once
-<script>
+<script nonce="{{ heisenberg_csp_nonce() }}">
     (() => {
         const boot = () => document.querySelectorAll('[data-hb-varmenu]').forEach((menu) => {
             if (menu.__hbVm) return; menu.__hbVm = true;

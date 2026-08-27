@@ -6,6 +6,24 @@ All notable changes to this project are documented here. The format is based on
 
 ## [Unreleased]
 
+## [0.0.4] - 2026-08-27
+
+### Added
+
+- **CSP nonce support for inline styles and scripts.** Heisenberg now reads the CSP nonce from
+  `Vite::useCspNonce()` (when available) and adds `nonce="..."` to every inline `<style>`,
+  `<script>`, and `<link rel="stylesheet">` tag. This allows Heisenberg to work correctly in
+  apps that enforce nonce-based Content Security Policy without requiring `'unsafe-inline'`.
+- README now includes CSP nonce setup instructions for Laravel apps using Vite.
+- README now includes a complete email system quick-start guide with code examples for
+  registering variables, sending via the mailable, rendering directly, and using the admin
+  batch ZIP export.
+
+### Changed
+
+- All Blade templates updated to emit `nonce="{{ heisenberg_csp_nonce() }}"` on inline
+  `<style>`, `<script>`, and `<link rel="stylesheet">` tags.
+
 ## [0.0.3] - 2026-08-27
 
 ### Fixed
@@ -82,7 +100,8 @@ All notable changes to this project are documented here. The format is based on
 First public release: block editor, media library, taxonomy, post templates, canonical role gates,
 AI writing assistant, MCP integration, revisions, autosave, and host-owned rendering seams.
 
-[Unreleased]: https://github.com/tedydonel/Heisenberg/compare/v0.0.3...HEAD
+[Unreleased]: https://github.com/tedydonel/Heisenberg/compare/v0.0.4...HEAD
+[0.0.4]: https://github.com/tedydonel/Heisenberg/compare/v0.0.3...v0.0.4
 [0.0.3]: https://github.com/tedydonel/Heisenberg/compare/v0.0.2...v0.0.3
 [0.0.2]: https://github.com/tedydonel/Heisenberg/compare/v0.0.1...v0.0.2
 [0.0.1]: https://github.com/tedydonel/Heisenberg/releases/tag/v0.0.1

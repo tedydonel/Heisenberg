@@ -11,7 +11,7 @@
     </div>
 </div>
 @once
-<script>
+<script nonce="{{ heisenberg_csp_nonce() }}">
     (() => {
         const boot = () => document.querySelectorAll('[data-hb-alignmenu]').forEach((menu) => {
             if (menu.__hbAlign) return; menu.__hbAlign = true;

@@ -1,5 +1,5 @@
 @once
-<style>
+<style nonce="{{ heisenberg_csp_nonce() }}">
     .hb-textarea-wrap { display: flex; align-items: stretch; gap: 4px; position: relative; }
     .hb-textarea {
         resize: none;

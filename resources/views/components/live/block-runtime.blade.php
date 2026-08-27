@@ -4,9 +4,9 @@
 
 
 
-<style id="hb-blocks-css">{!! $blocksCss !!}</style>
+<style id="hb-blocks-css" nonce="{{ heisenberg_csp_nonce() }}">{!! $blocksCss !!}</style>
 
-<script>
+<script nonce="{{ heisenberg_csp_nonce() }}">
     window.__hbEditor = Object.assign(window.__hbEditor || {}, {
         registry: @json($registry),
 
@@ -21,7 +21,7 @@
 </script>
 
 @once
-<script>
+<script nonce="{{ heisenberg_csp_nonce() }}">
 (() => {
     const DATA = window.__hbEditor || {};
     const REGISTRY = DATA.registry || {};

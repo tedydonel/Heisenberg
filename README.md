@@ -56,11 +56,125 @@ Schema::table('users', fn (Blueprint $t) => $t->string('role')->nullable());
 
 Different role names in your app? Remap them in `config/heisenberg.php` under `roles`, or bind your own `RoleGate` implementation entirely. Production apps should also wrap the route groups in their own auth middleware (`heisenberg.middleware.editor` / `.media` / `.ai`, all default `['web']`).
 
+## CSP nonce (Content Security Policy)
+
+If your app enforces a CSP with `nonce-based` style/script sources (e.g. via Laravel's `Vite::useCspNonce()`), Heisenberg's inline `<style>` and `<script>` blocks will be blocked by the browser unless they carry the same nonce. Heisenberg automatically reads the nonce from `Vite::useCspNonce()` — you just need to set it in a service provider:
+
+```php
+// app/Providers/AppServiceProvider.php
+use Illuminate\Support\Facades\Vite;
+
+public function boot(): void
+{
+    Vite::useCspNonce();
+    // or: Vite::useCspNonce('your-static-nonce') if you manage nonces yourself
+}
+```
+
+That's it. Heisenberg picks it up and adds `nonce="..."` to every inline `<style>`, `<script>`, and `<link rel="stylesheet">` tag. No `'unsafe-inline'` needed.
+
+If you don't use CSP nonces (most dev environments), Heisenberg works without this — the nonce attribute is simply omitted.
+
 ## Email personalization and batch files
 
-Email documents use the same editor and safe block renderer, with host-registered `{{ dotted.key }}` variables. Your app registers definitions and custom formatter types in a service provider, including a mandatory non-secret sample for preview, size measurement, and single HTML/EML exports. Real recipient values are explicit flat runtime maps passed to `EmailRenderer`, `HeisenbergMailable`, or the admin batch exporter—Heisenberg never discovers recipients from its users or roles.
+Email documents use the same editor and block renderer, with host-registered `{{ dotted.key }}` variables for per-recipient personalization.
 
-Heisenberg **does not configure SMTP or send campaigns**. The optional mailable is a host-mailer convenience; the admin-only `email.generate` tier (default `admin`) produces a temporary ZIP containing exactly N recipients × requested locales as HTML or EML files. The host sends or stores those files. End-to-end **host usage guide** in [`docs/email-personalization.md`](docs/email-personalization.md); the as-built system reference (every locked decision + every public API) lives in [`docs/email-system.md`](docs/email-system.md) and the compile-checked [`examples/EmailVariables/`](examples/EmailVariables/) integration examples.
+### Quick start
+
+1. **Register your variables** in `AppServiceProvider::boot()`:
+
+```php
+use Heisenberg\Services\EmailVariableRegistry;
+use Heisenberg\Support\EmailVariableDefinition;
+
+public function boot(EmailVariableRegistry $variables): void
+{
+    $variables->register(new EmailVariableDefinition(
+        key: 'user.first_name',
+        label: 'First name',
+        type: 'text',
+        sample: 'Tedy',
+        group: 'User',
+    ));
+
+    $variables->register(new EmailVariableDefinition(
+        key: 'unsubscribe_url',
+        label: 'Unsubscribe URL',
+        type: 'url',
+        sample: 'https://example.test/unsubscribe/sample',
+        group: 'Links',
+    ));
+}
+```
+
+2. **Author an email post** — switch to `email` document type in `/editor`, use the variable picker to insert tokens.
+
+3. **Send via your mailer**:
+
+```php
+use Heisenberg\Mail\HeisenbergMailable;
+
+Mail::to($user->email)->send(new HeisenbergMailable(
+    $emailPost->getKey(),
+    $user->preferred_locale ?? 'en',
+    [
+        'user.first_name' => $user->first_name,
+        'unsubscribe_url' => URL::signedRoute('unsubscribe', ['user' => $user->getKey()]),
+    ],
+));
+```
+
+4. **Or render without mailing**:
+
+```php
+use Heisenberg\Services\EmailRenderer;
+use Heisenberg\Support\EmailVariableContext;
+
+$result = app(EmailRenderer::class)->render(
+    $emailPost,
+    'en',
+    false,
+    EmailVariableContext::runtime([
+        'user.first_name' => 'Ada',
+        'unsubscribe_url' => 'https://example.test/unsubscribe/ada',
+    ]),
+);
+
+// $result->subject, $result->html, $result->text, $result->embeds
+```
+
+### Admin batch ZIP
+
+Export N recipients × locales in one call (admin-only by default):
+
+```
+POST /editor/email/{post}/batch-export
+{
+  "format": "html",
+  "locales": ["en", "fr"],
+  "recipients": [
+    { "id": "u1", "values": { "user.first_name": "Ada", "unsubscribe_url": "..." } },
+    { "id": "u2", "values": { "user.first_name": "Ben", "unsubscribe_url": "..." } }
+  ]
+}
+```
+
+### Configuration
+
+```php
+// config/heisenberg.php
+'email' => [
+    'routes'               => true,
+    'route_prefix'         => 'emails',
+    'batch_max_recipients' => 100,
+],
+
+'roles' => [
+    'email.generate' => ['admin'], // who may run batch export
+],
+```
+
+Heisenberg **does not configure SMTP or send campaigns** — it renders the files; you send them. Full guide in [`docs/email-personalization.md`](docs/email-personalization.md); system reference in [`docs/email-system.md`](docs/email-system.md); copy-paste examples in [`examples/EmailVariables/`](examples/EmailVariables/).
 
 ## Publishing content with your own templates
 

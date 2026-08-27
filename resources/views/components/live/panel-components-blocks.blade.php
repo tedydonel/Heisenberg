@@ -1,5 +1,5 @@
 @once
-<style>
+<style nonce="{{ heisenberg_csp_nonce() }}">
     .hb-panel-cb { display: flex; flex-direction: column; width: 240px; height: 100%; background: var(--hb-bg); border-right: 1px solid var(--hb-border); flex: none; }
     .hb-panel-cb__content { display: flex; flex-direction: column; flex: 1 1 auto; min-height: 0; overflow: hidden; }
     .hb-panel-cb__content[hidden] { display: none; }
@@ -16,7 +16,7 @@
     .hb-panel-cb__empty { padding: 24px 12px; text-align: center; color: var(--hb-muted, #6b6b6b);
         font-size: var(--hb-fs-sm, 12px); line-height: 1.45; }
 </style>
-<script>
+<script nonce="{{ heisenberg_csp_nonce() }}">
     (() => {
         const boot = () => {
             document.querySelectorAll('[data-hb-panel-cb]').forEach((root) => {

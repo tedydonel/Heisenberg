@@ -1,5 +1,5 @@
 @once
-<style>
+<style nonce="{{ heisenberg_csp_nonce() }}">
     .hb-qi {
         position: fixed; z-index: 900;
         width: 280px; max-width: calc(100vw - 16px);
@@ -28,7 +28,7 @@
     }
     .hb-qi__footer .hb-btn { width: 100%; }
 </style>
-<script>
+<script nonce="{{ heisenberg_csp_nonce() }}">
     (() => {
         const POPUP = '[data-hb-qi]';
         let containerId = null;

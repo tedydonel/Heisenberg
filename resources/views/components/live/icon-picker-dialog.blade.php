@@ -1,6 +1,6 @@
 @props(['searchUrl' => null, 'sets' => []])
 @once
-<style>
+<style nonce="{{ heisenberg_csp_nonce() }}">
     .hb-icondialog { width: 720px; height: 560px; }
     .hb-icondialog__bar { display: flex; gap: 8px; padding: var(--hb-space-3, 12px) var(--hb-space-4, 16px) 0; flex: none; }
     .hb-icondialog__bar > .hb-searchfield { flex: 1 1 auto; min-width: 0; height: 30px; }
@@ -27,7 +27,7 @@
     .hb-iconfield img[hidden] { display: none; }
     .hb-iconfield span { flex: 1 1 auto; min-width: 0; text-align: left; font-size: var(--hb-fs-sm, 12px); color: var(--hb-text-secondary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 </style>
-<script>
+<script nonce="{{ heisenberg_csp_nonce() }}">
     (() => {
         const PAGE = 96;
         const REF_RE = /^[a-z0-9-]+\/[a-z0-9-]+$/;

@@ -1,5 +1,5 @@
 @once
-<style>
+<style nonce="{{ heisenberg_csp_nonce() }}">
     .hb-mediadialog {
         display: flex; flex-direction: column; overflow: hidden;
         width: 900px; height: 640px; max-width: 100%; max-height: calc(100vh - 48px);
@@ -38,7 +38,7 @@
 </style>
 @endonce
 @once('hb-mediadialog-core')
-<script>
+<script nonce="{{ heisenberg_csp_nonce() }}">
     (() => {
         let hbOpenMediaScrim = null;
 

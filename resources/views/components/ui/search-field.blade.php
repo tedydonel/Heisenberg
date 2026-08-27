@@ -1,6 +1,6 @@
 @once
 
-<script>
+<script nonce="{{ heisenberg_csp_nonce() }}">
     (() => {
         const boot = () => {
             document.querySelectorAll('.hb-searchfield[data-hb-filter]').forEach((field) => {

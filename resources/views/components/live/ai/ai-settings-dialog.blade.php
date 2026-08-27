@@ -1,5 +1,5 @@
 @once
-<style>
+<style nonce="{{ heisenberg_csp_nonce() }}">
     .hb-aidialog { width: 680px; height: 600px; }
     .hb-aidialog__tabs { flex: none; width: 340px; }
     .hb-aidialog__err {
@@ -94,7 +94,7 @@
         font-size: var(--hb-fs-sm, 12px); color: var(--hb-text-muted);
     }
 </style>
-<script>
+<script nonce="{{ heisenberg_csp_nonce() }}">
     (() => {
         const boot = () => {
             document.querySelectorAll('[data-hb-ai-settings]').forEach((scrim) => {

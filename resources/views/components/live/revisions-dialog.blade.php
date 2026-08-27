@@ -1,5 +1,5 @@
 @once
-<style>
+<style nonce="{{ heisenberg_csp_nonce() }}">
     .hb-revdialog { width: 560px; height: 520px; }
     .hb-revdialog__body { position: relative; flex: 1 1 auto; min-height: 0; }
     .hb-revdialog__scroll { height: 100%; box-sizing: border-box; padding: var(--hb-space-4, 16px); }
@@ -31,7 +31,7 @@
     .hb-revdialog__restore:hover { opacity: .85; }
     .hb-revdialog__restore:disabled { opacity: .4; cursor: default; }
 </style>
-<script>
+<script nonce="{{ heisenberg_csp_nonce() }}">
     (() => {
         const boot = () => {
             document.querySelectorAll('[data-hb-revisions]').forEach((scrim) => {

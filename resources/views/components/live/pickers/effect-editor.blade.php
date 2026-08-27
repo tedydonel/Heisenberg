@@ -41,13 +41,13 @@
     </div>
 </div>
 @once
-<style>
+<style nonce="{{ heisenberg_csp_nonce() }}">
     .hb-shadow__body { display: flex; flex-direction: column; gap: 12px; }
     .hb-shadow[data-collapsed="true"] .hb-shadow__body { display: none; }
     .hb-shadow__head { border: 0; cursor: pointer; width: 100%; }
     .hb-shadow[data-collapsed="true"] .hb-shadow__head svg { transform: rotate(-90deg); }
 </style>
-<script>
+<script nonce="{{ heisenberg_csp_nonce() }}">
     (() => {
         const boot = () => document.querySelectorAll('[data-hb-effect-toggle]').forEach((head) => {
             if (head.__hbFx) return; head.__hbFx = true;

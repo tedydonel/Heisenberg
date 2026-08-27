@@ -1,5 +1,5 @@
 @props(['title' => '', 'pagePaddingX' => 56, 'pagePaddingY' => 56, 'documentType' => 'post', 'postLocale' => 'en', 'contentLocaleLabels' => []])
-<style>
+<style nonce="{{ heisenberg_csp_nonce() }}">
     .hb-page__locale-badge {
         display: inline-block; margin-bottom: 6px; padding: 2px 8px; border-radius: var(--hb-radius-full, 999px);
         background: var(--hb-bg-muted); color: var(--hb-text-secondary);
@@ -19,7 +19,7 @@
         </div>
     </div>
     @once
-    <script>
+    <script nonce="{{ heisenberg_csp_nonce() }}">
         (() => {
             const val = (el) => (el.tagName === 'INPUT' ? el.value : el.textContent).trim();
             const setVal = (el, v) => { if (el.tagName === 'INPUT') el.value = v; else el.textContent = v; };

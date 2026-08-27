@@ -1,6 +1,6 @@
 @props(['registry' => []])
 @once
-<style>
+<style nonce="{{ heisenberg_csp_nonce() }}">
     .hb-nav { display: flex; flex-direction: column; width: 240px; height: 100%; background: var(--hb-bg); border-right: 1px solid var(--hb-border); flex: none; }
     .hb-nav__content { display: flex; flex-direction: column; flex: 1 1 auto; min-height: 0; overflow: hidden; }
     .hb-nav__content[hidden] { display: none; }
@@ -48,7 +48,7 @@
     .hb-nav-orow.is-title .ot { color: var(--hb-text-primary); }
     .hb-nav-oempty { padding: 28px 16px; text-align: center; color: var(--hb-text-disabled); font-size: 12px; line-height: 1.5; }
 </style>
-<script>
+<script nonce="{{ heisenberg_csp_nonce() }}">
     (() => {
         const GRIP = '<svg viewBox="0 0 16 16" fill="currentColor" aria-hidden="true"><circle cx="5.5" cy="4" r="1.3"/><circle cx="5.5" cy="8" r="1.3"/><circle cx="5.5" cy="12" r="1.3"/><circle cx="10.5" cy="4" r="1.3"/><circle cx="10.5" cy="8" r="1.3"/><circle cx="10.5" cy="12" r="1.3"/></svg>';
         const BLOCK = '<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4" aria-hidden="true"><rect x="3" y="3" width="10" height="10" rx="1.5"/></svg>';
@@ -346,7 +346,7 @@
         'moved_announcement' => __('heisenberg::editor.panel_navigator.moved_announcement'),
     ];
 @endphp
-<script type="application/json" data-hb-nav-strings>@json($hbNavStrings)</script>
+<script nonce="{{ heisenberg_csp_nonce() }}" type="application/json" data-hb-nav-strings>@json($hbNavStrings)</script>
 @endpush
 @endonce
 <div data-hb-panel-nav {{ $attributes->merge(['class' => 'hb-nav']) }}>

@@ -1,6 +1,6 @@
 @once
 
-<script>
+<script nonce="{{ heisenberg_csp_nonce() }}">
     (() => {
         const pad2 = (n) => String(n).padStart(2, '0');
         const parseLocal = (value) => {

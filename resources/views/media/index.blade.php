@@ -4,7 +4,7 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>{{ __('heisenberg::editor.media.tab_library') }}</title>
-    <style>
+    <style nonce="{{ heisenberg_csp_nonce() }}">
         * { box-sizing: border-box; }
         body { margin: 0; background: #fafafa; color: #0a0a0a; font: 14px/1.5 Rubik, -apple-system, sans-serif; }
         .hb-media-page { max-width: 1040px; margin: 0 auto; padding: 32px 24px 64px; }

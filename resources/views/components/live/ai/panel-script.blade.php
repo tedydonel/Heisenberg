@@ -1,4 +1,4 @@
-<script>
+<script nonce="{{ heisenberg_csp_nonce() }}">
     (() => {
         const csrf = () => document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '';
 

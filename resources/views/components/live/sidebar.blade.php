@@ -1,5 +1,5 @@
 @once
-<style>
+<style nonce="{{ heisenberg_csp_nonce() }}">
     .hb-sidebar {
         display: flex;
         flex-direction: column;
@@ -48,7 +48,7 @@
     }
     .hb-editor--sidebar-collapsed .hb-navitem { justify-content: center; }
 </style>
-<script>
+<script nonce="{{ heisenberg_csp_nonce() }}">
     (() => {
         const PANEL_SELECTOR = {
             cb: '[data-hb-panel-cb]',

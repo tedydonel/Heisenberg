@@ -1,5 +1,5 @@
 @once
-<style>
+<style nonce="{{ heisenberg_csp_nonce() }}">
     .hb-footer {
         display: flex;
         align-items: center;
@@ -86,7 +86,7 @@
     .hb-locale__opt__check { width: 12px; height: 12px; flex: none; color: var(--hb-accent); display: none; }
     .hb-locale__opt.is-on .hb-locale__opt__check { display: inline-flex; }
 </style>
-<script>
+<script nonce="{{ heisenberg_csp_nonce() }}">
     (() => {
         const placeMenu = (menu, toggle) => {
             if (!menu || !toggle) return;
@@ -221,7 +221,7 @@
     </div>
 </div>
 @once
-<script>
+<script nonce="{{ heisenberg_csp_nonce() }}">
     (() => {
         const boot = () => {
             document.querySelectorAll('[data-hb-locale-switch]').forEach((opt) => {
@@ -244,7 +244,7 @@
 @endonce
 
 @once
-<script>
+<script nonce="{{ heisenberg_csp_nonce() }}">
     (() => {
         const STATE_LABELS = {
             saved: @json(__('heisenberg::editor.common.saved')),
@@ -293,7 +293,7 @@
 @endonce
 
 @once
-<script>
+<script nonce="{{ heisenberg_csp_nonce() }}">
     (() => {
         const KB = 1024;
         const WARN_BYTES = 100 * KB;

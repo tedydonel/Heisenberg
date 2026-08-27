@@ -1,6 +1,6 @@
 @once
 
-<script>
+<script nonce="{{ heisenberg_csp_nonce() }}">
     (() => {
         const paint = (input) => {
             const min = Number(input.min || 0);

@@ -28,6 +28,9 @@
         "intervention/image": "Generate responsive image variants (small/medium) for the media library on upload; without it, uploads still work but ship no variants. Require ^3.9 — v4 changed the ImageManager API and is NOT compatible."
     },
     "autoload": {
+        "files": [
+            "src/helpers.php"
+        ],
         "psr-4": {
             "Heisenberg\\": "src/"
         }

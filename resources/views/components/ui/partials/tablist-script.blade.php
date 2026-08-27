@@ -1,5 +1,5 @@
 @once('hb-tablist-core')
-<script>
+<script nonce="{{ heisenberg_csp_nonce() }}">
     (() => {
         const boot = () => {
             document.querySelectorAll('[data-hb-tablist]').forEach((root) => {

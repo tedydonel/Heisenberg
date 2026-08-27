@@ -1,5 +1,5 @@
 @once
-<style>
+<style nonce="{{ heisenberg_csp_nonce() }}">
     .hb-inspector {
         display: flex;
         flex-direction: column;
@@ -175,7 +175,7 @@
     }
     .hb-post-trash-cancel:hover { background: var(--hb-surface-hover); }
 </style>
-<script>
+<script nonce="{{ heisenberg_csp_nonce() }}">
     (() => {
         const boot = () => {
             document.querySelectorAll('[data-hb-inspector]').forEach((root) => {
@@ -272,7 +272,7 @@
 </aside>
 
 @once
-<script>
+<script nonce="{{ heisenberg_csp_nonce() }}">
 (() => {
     if (document.__hbInspectorBinding) return;
     document.__hbInspectorBinding = true;

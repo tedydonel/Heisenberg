@@ -1,6 +1,6 @@
 @once
 
-<script>
+<script nonce="{{ heisenberg_csp_nonce() }}">
     (() => {
         const storageKey = (key) => 'hb:disclosure:' + key;
         const readPersisted = (key) => {

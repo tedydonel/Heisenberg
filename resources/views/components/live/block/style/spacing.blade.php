@@ -1,5 +1,5 @@
 @once
-<style>
+<style nonce="{{ heisenberg_csp_nonce() }}">
         .hb-spacing-group { gap: 10px; }
 </style>
 @endonce

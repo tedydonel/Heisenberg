@@ -1,5 +1,5 @@
 @once
-<style>
+<style nonce="{{ heisenberg_csp_nonce() }}">
     .hb-dropzone {
         display: flex; flex-direction: column; align-items: center; justify-content: center;
         gap: var(--hb-space-3, 12px); width: 100%; max-width: 700px; margin: 0 auto;

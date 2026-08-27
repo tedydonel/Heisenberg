@@ -3,7 +3,7 @@
     x-on:livewire-upload-progress="pending.forEach(p => p.progress = $event.detail.progress)"
     x-on:uploads-done.window="pending = []">
     @once
-    <style>
+    <style nonce="{{ heisenberg_csp_nonce() }}">
         .hb-mlw { display: flex; flex-direction: column; overflow: hidden; width: 900px; max-width: 100%;
             background: var(--hb-bg); border: 1px solid var(--hb-border);
             border-radius: var(--hb-radius-lg, 8px); box-shadow: 3px 4px 4px rgba(0, 0, 0, .1);

@@ -1,5 +1,5 @@
 @once
-<style>
+<style nonce="{{ heisenberg_csp_nonce() }}">
     .hb-codeview {
         position: absolute; inset: 0; z-index: 5;
         display: flex; flex-direction: column;
@@ -114,7 +114,7 @@
         font: inherit; font-weight: 600; color: var(--hb-accent); text-decoration: underline;
     }
 </style>
-<script>
+<script nonce="{{ heisenberg_csp_nonce() }}">
     (() => {
         const LINE_H = 20;
         const TAG_RE = /\[(\/)?([a-z][a-z0-9-]*)((?:\s+[a-zA-Z0-9_.:-]+\s*=\s*(?:"(?:[^"\\]|\\.)*"|[^\s\]"]*[^\s\]"\/]))*)\s*(\/)?\]/g;

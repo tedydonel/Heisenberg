@@ -36,7 +36,7 @@
     @if ($ogImage !== '')<meta property="og:image" content="{{ $ogImage }}" />@elseif (! empty($featured['url']))<meta property="og:image" content="{{ $featured['url'] }}" />@endif
     <meta name="twitter:card" content="{{ $ogImage !== '' ? 'summary_large_image' : 'summary' }}" />
     @if ($jsonLd !== [])
-        <script type="application/ld+json">{!! json_encode($jsonLd, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE) !!}</script>
+        <script nonce="{{ heisenberg_csp_nonce() }}" type="application/ld+json">{!! json_encode($jsonLd, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE) !!}</script>
     @endif
     <link rel="icon" type="image/svg+xml" href="{{ route('heisenberg.editor.asset.logo') }}" />
     @if (! empty($fontsHref))
@@ -44,7 +44,7 @@
         <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
         <link href="{{ $fontsHref }}" rel="stylesheet" />
     @endif
-    <style>
+    <style nonce="{{ heisenberg_csp_nonce() }}">
         :root {
             --ink: #0a0a0a; --accent-1: #0a0a0a; --faint: #9a9a9a; --paper: #ffffff;
             --fs-sm: 13px; --fs-md: 14px; --fs-lg: 16px; --fs-xl: 20px;
@@ -59,8 +59,8 @@
             --sh-1: 0 1px 2px rgba(10,10,10,0.04); --speed: 170ms; --ink-soft: #1a1a1a; --on-ink: #ffffff;
         }
     </style>
-    <style>{!! $themeCss !!}</style>
-    <style>
+    <style nonce="{{ heisenberg_csp_nonce() }}">{!! $themeCss !!}</style>
+    <style nonce="{{ heisenberg_csp_nonce() }}">
         * { box-sizing: border-box; }
         body {
             margin: 0; background: var(--paper, #fff); color: var(--ink, #0a0a0a);
@@ -121,10 +121,10 @@
         .hb-preview-bar b { font-weight: 600; }
         .hb-preview-bar span { opacity: 0.6; }
     </style>
-    <style>{!! $blocksCss !!}</style>
-    <style>{!! $stateCss ?? '' !!}</style>
-    <link rel="stylesheet" href="{{ route('heisenberg.editor.asset.animations') }}" />
-    <link rel="stylesheet" href="{{ route('heisenberg.editor.asset.supports') }}" />
+    <style nonce="{{ heisenberg_csp_nonce() }}">{!! $blocksCss !!}</style>
+    <style nonce="{{ heisenberg_csp_nonce() }}">{!! $stateCss ?? '' !!}</style>
+    <link rel="stylesheet" href="{{ route('heisenberg.editor.asset.animations') }}" nonce="{{ heisenberg_csp_nonce() }}" />
+    <link rel="stylesheet" href="{{ route('heisenberg.editor.asset.supports') }}" nonce="{{ heisenberg_csp_nonce() }}" />
 </head>
 <body>
     <div class="hb-preview-bar"><b>Preview</b><span>— sanitized public rendering; close this tab to return to the editor.</span></div>
@@ -240,7 +240,7 @@
             @endif
         @endif
     </main>
-    <script>
+    <script nonce="{{ heisenberg_csp_nonce() }}">
     (function () {
         'use strict';
         if (window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
@@ -270,7 +270,7 @@
         });
     })();
     </script>
-    <script>
+    <script nonce="{{ heisenberg_csp_nonce() }}">
     (function () {
         'use strict';
         var root = document.querySelector('[data-hb-comments]');

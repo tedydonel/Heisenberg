@@ -56,7 +56,7 @@
     </x-heisenberg::ui.panel-section>
 </div>
 @once
-<style>
+<style nonce="{{ heisenberg_csp_nonce() }}">
     .hb-chips { display: flex; flex-wrap: wrap; gap: 6px; }
     .hb-chips:empty { display: none; }
     .hb-classchips { display: flex; flex-direction: column; gap: 6px; }

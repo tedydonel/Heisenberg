@@ -38,7 +38,7 @@
     </div>
 </div>
 @once
-<script>
+<script nonce="{{ heisenberg_csp_nonce() }}">
     (() => {
         const FORMAT_EXEC = { bold: 'bold', italic: 'italic', underline: 'underline', strikethrough: 'strikeThrough' };
 

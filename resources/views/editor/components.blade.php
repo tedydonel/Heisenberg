@@ -58,7 +58,7 @@ $inspStyle = 'width:272px; border:1px solid var(--hb-border); border-radius:8px;
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>Heisenberg Editor Components</title>
-    <link rel="stylesheet" href="{{ route('heisenberg.editor.asset.css') }}">
+    <link rel="stylesheet" href="{{ route('heisenberg.editor.asset.css') }}" nonce="{{ heisenberg_csp_nonce() }}">
 </head>
 <body class="hb-preview">
     <main class="hb-preview__main">

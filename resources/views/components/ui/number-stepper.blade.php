@@ -37,7 +37,7 @@
         @include('heisenberg::components.ui.icon', ['name' => 'plus', 'size' => 14])
     </button>
 </div>
-<script>
+<script nonce="{{ heisenberg_csp_nonce() }}">
     (() => {
         const STEP_BY = (key) => {
             document.querySelectorAll('[data-hb-numstepper-' + key + ']').forEach((btn) => {

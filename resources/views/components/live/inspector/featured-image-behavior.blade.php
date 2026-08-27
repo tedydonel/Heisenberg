@@ -1,5 +1,5 @@
         @once
-        <style>
+        <style nonce="{{ heisenberg_csp_nonce() }}">
             .hb-post-dropzone { cursor: pointer; padding: 0; font: inherit; appearance: none; -webkit-appearance: none; }
             .hb-post-dropzone:focus-visible { outline: 2px solid var(--hb-border-focus); outline-offset: 2px; }
             .hb-post-dropzone[hidden] { display: none; }
@@ -11,7 +11,7 @@
             .hb-post-dropzone-preview__btn:hover { background: rgba(10, 10, 10, .75); }
             .hb-post-dropzone-preview__btn--danger:hover { background: var(--hb-danger); }
         </style>
-        <script>
+        <script nonce="{{ heisenberg_csp_nonce() }}">
             (() => {
                 const csrf = () => (document.querySelector('meta[name="csrf-token"]') || {}).content || '';
                 const boot = () => {

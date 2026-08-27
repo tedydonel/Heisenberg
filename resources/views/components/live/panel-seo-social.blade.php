@@ -1,5 +1,5 @@
 @once
-<style>
+<style nonce="{{ heisenberg_csp_nonce() }}">
     .hb-panel-seo { display: flex; flex-direction: column; width: 240px; height: 100%; background: var(--hb-bg); border-right: 1px solid var(--hb-border); flex: none; }
     .hb-panel-seo__content { display: flex; flex-direction: column; flex: 1 1 auto; min-height: 0; overflow: hidden; position: relative; }
     .hb-panel-seo__content[hidden] { display: none; }
@@ -94,7 +94,7 @@
     .hb-seo-score__status { font-family: var(--hb-font-sans, Rubik, sans-serif); font-size: var(--hb-fs-xs, 11px); color: var(--hb-text-muted); }
     .hb-seo-score__status[hidden] { display: none; }
 </style>
-<script>
+<script nonce="{{ heisenberg_csp_nonce() }}">
     (() => {
         const boot = () => {
             document.querySelectorAll('[data-hb-panel-seo]').forEach((root) => {
@@ -294,7 +294,7 @@
 </div>
 
 @once('hb-panel-seo-live')
-<script>
+<script nonce="{{ heisenberg_csp_nonce() }}">
     (() => {
         const hbSlugMarkers = () => Array.from(document.querySelectorAll('[data-hb-post-slug-input]'));
         const hbSlugInputEl = (marker) => (marker.matches('input') ? marker : marker.querySelector('input'));

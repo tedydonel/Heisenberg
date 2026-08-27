@@ -1,4 +1,4 @@
-<script>
+<script nonce="{{ heisenberg_csp_nonce() }}">
     (() => {
         const HB_PANEL_KEYS = ['sidebar', 'panel', 'inspector'];
         const hbIsNarrow = () => window.matchMedia('(max-width: 1023px)').matches;

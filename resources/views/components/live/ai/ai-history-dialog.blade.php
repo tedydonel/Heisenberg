@@ -1,5 +1,5 @@
 @once
-<style>
+<style nonce="{{ heisenberg_csp_nonce() }}">
     .hb-aihistdialog { width: 480px; height: 520px; }
     .hb-aihistdialog__body { position: relative; flex: 1 1 auto; min-height: 0; display: flex; flex-direction: column; }
     .hb-aihistdialog__scrollwrap { position: relative; flex: 1 1 auto; min-height: 0; }
@@ -47,7 +47,7 @@
     .hb-aihistdialog__cancel { background: var(--hb-bg-muted); color: var(--hb-text-secondary); }
     .hb-aihistdialog__cancel[hidden] { display: none; }
 </style>
-<script>
+<script nonce="{{ heisenberg_csp_nonce() }}">
     (() => {
         const csrf = () => document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '';
 
