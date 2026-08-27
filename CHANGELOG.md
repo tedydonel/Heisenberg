@@ -6,6 +6,15 @@ All notable changes to this project are documented here. The format is based on
 
 ## [Unreleased]
 
+## [0.0.5] - 2026-08-27
+
+### Fixed
+
+- **CSP nonce helper called wrong Vite method.** `heisenberg_csp_nonce()` was calling
+  `Vite::useCspNonce()` which generates a fresh random nonce on every call, causing a
+  mismatch with the host's CSP header. Changed to `Vite::cspNonce()` which reads the
+  nonce the host already stored.
+
 ## [0.0.4] - 2026-08-27
 
 ### Added
@@ -100,7 +109,8 @@ All notable changes to this project are documented here. The format is based on
 First public release: block editor, media library, taxonomy, post templates, canonical role gates,
 AI writing assistant, MCP integration, revisions, autosave, and host-owned rendering seams.
 
-[Unreleased]: https://github.com/tedydonel/Heisenberg/compare/v0.0.4...HEAD
+[Unreleased]: https://github.com/tedydonel/Heisenberg/compare/v0.0.5...HEAD
+[0.0.5]: https://github.com/tedydonel/Heisenberg/compare/v0.0.4...v0.0.5
 [0.0.4]: https://github.com/tedydonel/Heisenberg/compare/v0.0.3...v0.0.4
 [0.0.3]: https://github.com/tedydonel/Heisenberg/compare/v0.0.2...v0.0.3
 [0.0.2]: https://github.com/tedydonel/Heisenberg/compare/v0.0.1...v0.0.2
