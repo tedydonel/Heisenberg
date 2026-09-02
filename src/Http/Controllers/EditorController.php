@@ -327,10 +327,10 @@ final class EditorController
             return null;
         }
 
+        // The panel renders even when the registry is empty — the host may not have
+        // registered any variables yet, and the panel's own empty state tells them
+        // where to look. Only `null` here is "don't mount" (not-email, read-only).
         $entries = $registry->editorMetadata();
-        if ($entries === []) {
-            return null;
-        }
 
         $seenTargets = [];
         foreach ($entries as $entry) {
@@ -401,6 +401,30 @@ final class EditorController
      */
     private function postMeta(?Post $model, string $documentType = 'post'): array
     {
+        $urlRow = [
+            // Same editable slug on both document types, but it means different things and so
+            // reads differently: a post's public path, or — for an email — the ONE address the
+            // built email is served at (docs/email-system.md §6.1), prefix included, so the
+            // author can see what the link they are about to send actually looks like.
+            'key' => 'url',
+            'label' => (string) __($documentType === 'email'
+                ? 'heisenberg::editor.inspector.summary_email_address'
+                : 'heisenberg::editor.inspector.summary_url'),
+            'value' => ($model !== null && (string) $model->slug !== '')
+                ? $this->slugPath($documentType) . $model->slug
+                : '—',
+            'raw' => (string) ($model?->slug ?? ''),
+        ];
+
+        // An email document has no lifecycle of its own — when a campaign sends is host
+        // business, not Heisenberg's — so the Summary only ever shows the email's own URL.
+        // Status / publish date / schedule date are post concepts and stop here. The slug
+        // popup (the only Summary interaction that survives) is generic enough to render
+        // against the URL row alone.
+        if ($documentType === 'email') {
+            return [$urlRow];
+        }
+
         $currentStatus = (string) ($model?->status ?? 'draft');
         $transitions = (array) config('heisenberg.lifecycle.transitions', []);
         $targets = array_values(array_unique(array_merge([$currentStatus], (array) ($transitions[$currentStatus] ?? []))));
@@ -424,20 +448,7 @@ final class EditorController
                 'label' => (string) __('heisenberg::editor.inspector.summary_publish'),
                 'value' => '',
             ],
-            [
-                // Same editable slug on both document types, but it means different things and so
-                // reads differently: a post's public path, or — for an email — the ONE address the
-                // built email is served at (docs/email-system.md §6.1), prefix included, so the
-                // author can see what the link they are about to send actually looks like.
-                'key' => 'url',
-                'label' => (string) __($documentType === 'email'
-                    ? 'heisenberg::editor.inspector.summary_email_address'
-                    : 'heisenberg::editor.inspector.summary_url'),
-                'value' => ($model !== null && (string) $model->slug !== '')
-                    ? $this->slugPath($documentType) . $model->slug
-                    : '—',
-                'raw' => (string) ($model?->slug ?? ''),
-            ],
+            $urlRow,
         ];
     }
 

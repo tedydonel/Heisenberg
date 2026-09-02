@@ -94,6 +94,7 @@
                         @endif
                     </div>
                 @endforeach
+                @if ($documentType !== 'email')
                 <div class="hb-post-meta__row hb-post-schedule-row" data-hb-post-schedule-row
                     @if (! $hbScheduledNow) hidden @endif>
                     <span class="hb-post-meta__label">{{ __('heisenberg::editor.inspector.summary_schedule_label') }}</span>
@@ -104,6 +105,7 @@
                         {{ $hbScheduleDisplay ?? '—' }}
                     </button>
                 </div>
+                @endif
             </div>
 
             <div class="hb-post-popup" data-hb-post-popup="status" hidden>
@@ -149,10 +151,12 @@
 
             <hr class="hb-post-divider">
             <div class="hb-post-toggles">
+                @if ($documentType !== 'email')
                 <div class="hb-post-toggle-row">
                     <span class="hb-post-toggle-row__label">{{ __('heisenberg::editor.inspector.post_pending_review') }}</span>
                     <x-heisenberg::ui.toggle :on="$postPendingReview" name="post-pending-review" />
                 </div>
+                @endif
                 @if ($documentType !== 'email')
                 <div class="hb-post-toggle-row">
                     <span class="hb-post-toggle-row__label">{{ __('heisenberg::editor.inspector.post_stick_top') }}</span>

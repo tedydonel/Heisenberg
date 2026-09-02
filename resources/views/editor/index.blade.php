@@ -13,9 +13,14 @@
         :document-type="$hbDocumentType"
         :email-preview-url-template="$emailPreviewUrlTemplate ?? ''"
         :email-export-url-template="$emailExportUrlTemplate ?? ''" />
-    <x-heisenberg::live.sidebar class="hb-editor__sidebar" :document-type="$hbDocumentType" />
+    <x-heisenberg::live.sidebar class="hb-editor__sidebar" :document-type="$hbDocumentType" :email-variable-picker="$emailVariablePicker" />
     <div class="hb-editor__panel">
         <x-heisenberg::live.panel-components-blocks :registry="$paletteBlocks ?? $registry" />
+        @if ($hbDocumentType === 'email')
+        <x-heisenberg::live.panel-variables hidden
+            :entries="$emailVariablePicker['entries'] ?? []"
+            :all-targets="$emailVariablePicker['allTargets'] ?? []" />
+        @endif
         @if ($hbDocumentType !== 'email')
         <x-heisenberg::live.panel-seo-social hidden
             :post-id="$postId ?? null"
@@ -92,9 +97,6 @@
         <x-heisenberg::live.icon-picker-dialog
             :search-url="\Illuminate\Support\Facades\Route::has('heisenberg.editor.icons.search') ? route('heisenberg.editor.icons.search') : null"
             :sets="app(\Heisenberg\Services\IconLibraryService::class)->sets()" />
-        @if (! empty($emailVariablePicker))
-            <x-heisenberg::live.pickers.email-variable-menu :entries="$emailVariablePicker['entries']" :all-targets="$emailVariablePicker['allTargets']" />
-        @endif
         <x-heisenberg::ui.custom-scrollbar container=".hb-canvas" />
         <div class="hb-blk-toolbar-holder" hidden>
             <x-heisenberg::live.toolbar.block-toolbar data-hb-block-toolbar :rich-text="true" :block-type="'Text'" :active-formats="[]"

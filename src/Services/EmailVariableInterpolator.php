@@ -94,6 +94,29 @@ final class EmailVariableInterpolator
      */
     private const TOKEN_PATTERN = '/\{\{\s*([a-z][a-z0-9_]*(?:\.[a-z][a-z0-9_]*)*)\s*\}\}/';
 
+    /**
+     * Variable-chip pattern (panel-variables.blade.php). The chip is the inline atom the
+     * Variables sidebar drags into the canvas — a `<span class="hb-var-token" contenteditable="false"
+     * data-hb-var-key="...">label</span>` — and the interpolator's job is to swap it for the
+     * same formatted value a `{{ key }}` text token in the same attribute would produce.
+     *
+     * Pattern notes:
+     *  - Class match requires the literal token `hb-var-token` somewhere in the class
+     *    attribute (other classes may be present; the chip CSS class is the contract).
+     *  - `data-hb-var-key` carries the dotted key the registry registered. Validation of the
+     *    key shape (charset, dots) is the registry's job, NOT the regex's — a malformed key
+     *    flows into `definition()` and resolves to null, producing REASON_UNKNOWN_TOKEN like
+     *    any other unknown key.
+     *  - Inner content is matched non-greedily to the first `</span>`. The chip's label is
+     *    plain text (the registry's label, or the key itself), so there's no nested-element
+     *    hazard in practice — but `[\s\S]*?` is the right tool if a future change ever nests.
+     *  - The chip's whole HTML element is consumed by the substitution; the formatter's
+     *    output takes the chip's place. Escape policy is HTML-escape (`ENT_QUOTES | ENT_HTML5`)
+     *    because the chip lives inside a rich-text attribute that {@see BlockRenderer::sanitizeRichText()}
+     *    has not yet run on.
+     */
+    private const CHIP_PATTERN = '/<span\b[^>]*\bclass="[^"]*\bhb-var-token\b[^"]*"[^>]*\bdata-hb-var-key="([^"]+)"[^>]*>[\s\S]*?<\/span>/';
+
     public function __construct(
         private EmailVariableRegistry $registry,
         private BlockRegistryService $blocks,
@@ -292,14 +315,20 @@ final class EmailVariableInterpolator
                 continue;
             }
 
-            // Pre-scan: do any `{{ ... }}` tokens actually appear in this
-            // string? Cheap short-circuit — a no-variable attribute is the
-            // common case for a long block list, and we must not allocate a
-            // $failures entry for a string that was never going to fail.
-            if (! preg_match(self::TOKEN_PATTERN, $value)) {
+            // Pre-scan: do any `{{ ... }}` tokens OR `<span class="hb-var-token">` chips
+            // actually appear in this string? Cheap short-circuit — a no-variable attribute
+            // is the common case for a long block list, and we must not allocate a $failures
+            // entry for a string that was never going to fail.
+            if (! preg_match(self::TOKEN_PATTERN, $value) && ! preg_match(self::CHIP_PATTERN, $value)) {
                 continue;
             }
 
+            // Chips first: each chip is a complete <span>…</span> element whose entire HTML
+            // is replaced by the formatted value, so the residue that flows into the token
+            // regex contains only text outside the chip. Tokens-in-chip-labels cannot happen
+            // — the chip's visible label is the variable's label/key, a plain string the host
+            // cannot make emit `{{ … }}` markup without going out of its way.
+            $value = $this->substituteChipsInString($value, $context, $locale, $target, $failures);
             $copy[$name] = $this->substituteInString($value, $context, $locale, $target, $escape, $failures);
         }
 
@@ -383,6 +412,82 @@ final class EmailVariableInterpolator
                 // Subject path: aggregate every failure in the string, then throw once.
                 throw new EmailVariableResolutionException($localFailures);
             }
+            foreach ($localFailures as $failure) {
+                $failures[] = $failure;
+            }
+        }
+
+        return $replaced ?? $value;
+    }
+
+    /**
+     * Resolve every `<span class="hb-var-token" data-hb-var-key="…">` chip in $value to the
+     * formatted value the same `{{ key }}` text token would produce. The chip is the inline atom
+     * the Variables sidebar drags into the canvas (panel-variables.blade.php); its WHOLE HTML
+     * element is replaced by the formatted value, then {@see BlockRenderer::sanitizeRichText()}
+     * runs on the residue as it would on any other rich-text content.
+     *
+     * Failure modes mirror {@see self::substituteInString()} exactly (UNKNOWN_TOKEN, MISSING_VALUE,
+     * INCOMPATIBLE_TARGET, FORMATTER_FAILED) — same fail-closed posture, aggregated into the
+     * caller's `$failures` accumulator, never a partial substitution that silently leaves the
+     * chip in place. The one policy difference: chips always run with HTML escaping (the
+     * `escape` flag the rich-text attribute carries is implicit here — chips only live in rich-text
+     * attributes, so target is always `text` and escape is always on).
+     *
+     * @param 'text'|'url'|'email' $target
+     * @param list<array{key: string, reason: string}> $failures accumulated by reference
+     */
+    private function substituteChipsInString(
+        string $value,
+        EmailVariableContext $context,
+        string $locale,
+        string $target,
+        array &$failures,
+    ): string {
+        $localFailures = [];
+
+        $replaced = (string) preg_replace_callback(
+            self::CHIP_PATTERN,
+            function (array $match) use ($context, $locale, $target, &$localFailures): string {
+                $key = $match[1];
+
+                $definition = $this->registry->definition($key);
+                if ($definition === null) {
+                    $localFailures[] = ['key' => $key, 'reason' => EmailVariableResolutionException::REASON_UNKNOWN_TOKEN];
+
+                    return $match[0];
+                }
+
+                if (! $context->has($key)) {
+                    $localFailures[] = ['key' => $key, 'reason' => EmailVariableResolutionException::REASON_MISSING_VALUE];
+
+                    return $match[0];
+                }
+
+                $formatterType = $this->registry->type($definition->type);
+                if (! $this->isTargetCompatible($formatterType, $target)) {
+                    $localFailures[] = ['key' => $key, 'reason' => EmailVariableResolutionException::REASON_INCOMPATIBLE_TARGET];
+
+                    return $match[0];
+                }
+
+                try {
+                    $formatted = $this->registry->format($definition, $context->get($key), $locale);
+                } catch (Throwable) {
+                    // Discard the wrapped message; the safe reason carries no host value, no
+                    // formatter-internal secret, no sample.
+                    $localFailures[] = ['key' => $key, 'reason' => EmailVariableResolutionException::REASON_FORMATTER_FAILED];
+
+                    return $match[0];
+                }
+
+                // Rich-text target: HTML-escape so the sanitizer sees plain text.
+                return htmlspecialchars($formatted, ENT_QUOTES | ENT_HTML5, 'UTF-8');
+            },
+            $value,
+        );
+
+        if ($localFailures !== []) {
             foreach ($localFailures as $failure) {
                 $failures[] = $failure;
             }

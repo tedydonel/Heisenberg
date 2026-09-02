@@ -312,6 +312,7 @@ return [
     'sidebar' => [
         'nav_components' => 'Composants',
         'nav_blocks' => 'Blocs',
+        'nav_variables' => 'Variables',
         'nav_seo' => 'SEO',
         'nav_socials' => 'Réseaux sociaux',
         'nav_style' => 'Style',
@@ -447,6 +448,13 @@ return [
         'card_divider' => 'Séparateur',
         'card_button' => 'Bouton',
         'empty_blocks' => 'Aucun bloc enregistré. Sélectionnez un conteneur sur le canvas et utilisez l’icône Enregistrer de la barre d’outils pour sauvegarder sa composition ici.',
+    ],
+
+    // Panneau Variables (live/panel-variables.blade.php) — visible uniquement pour les e-mails.
+    'panel_variables' => [
+        'tab_variables' => 'Variables',
+        'search' => 'Rechercher des variables…',
+        'empty' => 'Aucune variable enregistrée. Un hôte peut enregistrer des variables via EmailVariableRegistry.',
     ],
 
     // Blocs réutilisables sauvegardés (« patterns », panneau Blocs, popover d'enregistrement).

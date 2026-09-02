@@ -52,6 +52,7 @@
     (() => {
         const PANEL_SELECTOR = {
             cb: '[data-hb-panel-cb]',
+            variables: '[data-hb-panel-variables]',
             seo: '[data-hb-panel-seo]',
             style: '[data-hb-panel-style]',
             ai: '[data-hb-panel-ai]',
@@ -132,11 +133,18 @@
 </script>
 @endonce
 
-@props(['documentType' => 'post'])
+@props(['documentType' => 'post', 'emailVariablePicker' => null])
 @php
     $navItems = [
         ['icon' => 'cube-fill', 'label' => __('heisenberg::editor.sidebar.nav_components'), 'panel' => 'cb', 'tab' => 0, 'active' => true],
         ['icon' => 'grid-four-fill', 'label' => __('heisenberg::editor.sidebar.nav_blocks'), 'panel' => 'cb', 'tab' => 1],
+        ...($documentType === 'email' ? [
+            // The Variables panel is email-only — it's where the author drags host-platform
+            // merge tags into the canvas (see panel-variables.blade.php). Posts don't get it
+            // because posts have no merge-tag surface. Renders even with no variables
+            // registered — the panel's own empty state tells the host what to do.
+            ['icon' => 'text-t-fill', 'label' => __('heisenberg::editor.sidebar.nav_variables'), 'panel' => 'variables', 'tab' => 0],
+        ] : []),
         ...($documentType !== 'email' ? [
             ['icon' => 'globe-fill', 'label' => __('heisenberg::editor.sidebar.nav_seo'), 'panel' => 'seo', 'tab' => 0],
             ['icon' => 'share-network-fill', 'label' => __('heisenberg::editor.sidebar.nav_socials'), 'panel' => 'seo', 'tab' => 1],
