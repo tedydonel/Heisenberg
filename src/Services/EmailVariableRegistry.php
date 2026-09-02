@@ -165,6 +165,48 @@ class EmailVariableRegistry
         $this->formattedSamples = null;
     }
 
+    /**
+     * Register a definition only if no definition with the same key exists yet.
+     * Hosts can override a default by registering their own definition under
+     * the same key — the host's call wins, the default is silently skipped.
+     */
+    public function registerIfAbsent(EmailVariableDefinition $definition): void
+    {
+        if (isset($this->definitions[$definition->key])) {
+            return;
+        }
+
+        $this->register($definition);
+    }
+
+    /**
+     * Register a definition, replacing any existing definition with the same key.
+     * Used by hosts (and tests) that need to override a default's sample or other
+     * fields. Validates the key, label, and type exactly like register().
+     */
+    public function override(EmailVariableDefinition $definition): void
+    {
+        $this->validateKey($definition->key);
+
+        if (trim($definition->label) === '') {
+            throw new \InvalidArgumentException(sprintf(
+                "Email variable '%s' must have a non-empty label.",
+                $definition->key,
+            ));
+        }
+
+        if (! isset($this->types[$definition->type])) {
+            throw new \InvalidArgumentException(sprintf(
+                "Email variable '%s' references unknown formatter type '%s'; register the formatter first via registerType().",
+                $definition->key,
+                $definition->type
+            ));
+        }
+
+        $this->definitions[$definition->key] = $definition;
+        $this->formattedSamples = null;
+    }
+
     /** @return list<EmailVariableDefinition> */
     public function definitions(): array
     {

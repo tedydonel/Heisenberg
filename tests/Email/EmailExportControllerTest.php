@@ -313,13 +313,14 @@ class EmailExportControllerTest extends TestCase
 
         /** @var EmailVariableRegistry $registry */
         $registry = $this->app->make(EmailVariableRegistry::class);
-        $registry->register(new EmailVariableDefinition(
+        $registry->override(new EmailVariableDefinition(
             key: 'user.first_name',
             label: 'First name',
             type: 'text',
             sample: $sample,
         ));
-        $registry->register(new EmailVariableDefinition(
+
+        $registry->override(new EmailVariableDefinition(
             key: 'unsubscribe_url',
             label: 'Unsubscribe URL',
             type: 'url',
@@ -490,7 +491,7 @@ class EmailExportControllerTest extends TestCase
 
         /** @var EmailVariableRegistry $registry */
         $registry = $this->app->make(EmailVariableRegistry::class);
-        $registry->register(new EmailVariableDefinition(
+        $registry->override(new EmailVariableDefinition(
             key: 'user.first_name',
             label: 'First name',
             type: 'text',

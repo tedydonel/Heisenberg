@@ -327,15 +327,15 @@ class EmailVariableRegistryTest extends TestCase
         ));
         $registry->register(new EmailVariableDefinition(
             key: 'unsubscribe_url',
-            label: 'Unsubscribe URL',
+            label: 'Preference center URL',
             type: 'url',
-            sample: 'https://example.test/unsubscribe/sample',
+            sample: 'https://example.test/preferences/sample',
         ));
 
         $context = EmailVariableContext::samples($registry);
 
         $this->assertSame('Tedy', $context->get('user.first_name'));
-        $this->assertSame('https://example.test/unsubscribe/sample', $context->get('unsubscribe_url'));
+        $this->assertSame('https://example.test/preferences/sample', $context->get('unsubscribe_url'));
         $this->assertNull($context->get('does.not.exist'));
         $this->assertSame('sample', $context->mode());
         $this->assertFalse($context->isRuntime());
