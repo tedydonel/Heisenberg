@@ -13,14 +13,9 @@
         :document-type="$hbDocumentType"
         :email-preview-url-template="$emailPreviewUrlTemplate ?? ''"
         :email-export-url-template="$emailExportUrlTemplate ?? ''" />
-    <x-heisenberg::live.sidebar class="hb-editor__sidebar" :document-type="$hbDocumentType" :email-variable-picker="$emailVariablePicker" />
+    <x-heisenberg::live.sidebar class="hb-editor__sidebar" :document-type="$hbDocumentType" />
     <div class="hb-editor__panel">
         <x-heisenberg::live.panel-components-blocks :registry="$paletteBlocks ?? $registry" />
-        @if ($hbDocumentType === 'email')
-        <x-heisenberg::live.panel-variables hidden
-            :entries="$emailVariablePicker['entries'] ?? []"
-            :all-targets="$emailVariablePicker['allTargets'] ?? []" />
-        @endif
         @if ($hbDocumentType !== 'email')
         <x-heisenberg::live.panel-seo-social hidden
             :post-id="$postId ?? null"

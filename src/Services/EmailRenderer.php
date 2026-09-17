@@ -7,7 +7,6 @@ namespace Heisenberg\Services;
 use Heisenberg\Models\Post;
 use Heisenberg\Models\PublicFile;
 use Heisenberg\Support\EmailRenderResult;
-use Heisenberg\Support\EmailVariableContext;
 use Heisenberg\Support\LocaleConfig;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
@@ -116,12 +115,11 @@ class EmailRenderer
     public function __construct(
         private BlockRenderer $renderer,
         private ThemeRepository $themes,
-        private EmailVariableInterpolator $variables,
     ) {
     }
 
     /**
-     * `$preview` (docs/email-system.md §7-E3, {@see \Heisenberg\Http\Controllers\EmailPreviewController})
+     * `$preview` (docs/email-system.md §6, {@see \Heisenberg\Http\Controllers\EmailPreviewController})
      * is false for every real send/size measurement — the default, cid-embedded output the
      * Mailable attaches. Passed true ONLY for the editor's own browser-renderable preview tab: a
      * `cid:` reference has no meaning outside a MIME multipart message, so {@see self::rewriteImages()}
@@ -129,44 +127,21 @@ class EmailRenderer
      * manifest (nothing there for a preview call to attach). The rest of the pipeline — token
      * resolution, shell, inlining, plain text, subject — is identical either way.
      *
-     * `$variables` (Wave E5 / Task 3, `.hermes/plans/2026-08-25_190059-email-template-variables.md`):
-     * the per-recipient runtime context used to resolve `{{ dotted.key }}` tokens. The fourth
-     * parameter is OPTIONAL; an omitted context means a strict empty runtime context — every
-     * referenced token without a runtime value throws `REASON_MISSING_VALUE` aggregated, and
-     * registered samples are NEVER silently substituted (Task 4 wires the sample context into
-     * every author-facing GET). The interpolated block tree and subject are the SAME data the
-     * rest of the pipeline reads — `capColumns()`, `BlockRenderer`, image rewriting, theme-token
-     * resolution, shell, inlining, plain text. The original `Block::content` payload and the
-     * post's stored `title_*` are NEVER mutated.
+     * The author writes `{{ variable_name }}` placeholders directly into the email's text. Those
+     * tokens are NOT resolved here — Heisenberg renders what the author typed verbatim and the
+     * host's own newsletter / mailing-list integration reads the rendered text and substitutes
+     * values at send time. That keeps Heisenberg out of the subscriber / values / formatter
+     * business: the package ships the editor and the email-rendering surface, and nothing else.
      */
     public function render(
         Post $email,
         string $locale,
         bool $preview = false,
-        ?EmailVariableContext $variables = null,
     ): EmailRenderResult
     {
         $locale = LocaleConfig::isValid($locale) ? $locale : LocaleConfig::default();
 
-        // Read block content into arrays (Task 3 step 1) — we never mutate the
-        // underlying models; the interpolated copy lives only in local arrays.
-        $rawBlocks = $email->blocks->map(fn ($block) => $block->content)->values()->all();
-
-        // Interpolate copied subject + copied block tree exactly once (Task 3
-        // step 2) BEFORE every other pipeline step. Strict: a single failure
-        // throws an aggregated EmailVariableResolutionException with key/reason
-        // pairs and NO runtime values.
-        $context = $variables ?? EmailVariableContext::runtime([]);
-        $interpolated = $this->variables->interpolate(
-            $email->title($locale),
-            $rawBlocks,
-            $context,
-            $locale,
-        );
-        $interpolatedSubject = $interpolated['subject'];
-        $interpolatedBlocks = $interpolated['blocks'];
-
-        $blocks = $this->capColumns($interpolatedBlocks);
+        $blocks = $this->capColumns($email->blocks->map(fn ($block) => $block->content)->values()->all());
 
         $theme = $this->themes->load();
         $tokenMap = $this->themeTokenMap($theme);
@@ -187,9 +162,7 @@ class EmailRenderer
             $bodyHtml .= $this->resolveTokens($html, $tokenMap);
         }
 
-        // Preserve the interpolated plain-text subject for EmailRenderResult/MIME;
-        // wrapShell() handles `<title>` escaping at its own boundary.
-        $subject = $interpolatedSubject;
+        $subject = $email->title($locale);
         $shellHtml = $this->wrapShell($bodyHtml, $tokenMap, $subject);
         $finalHtml = $this->inlineStyles($shellHtml);
 
@@ -589,9 +562,29 @@ HTML;
      * normalizes the markup and is why $html must already be a full document (it always is —
      * this is only ever called on {@see self::wrapShell()}'s output). The client-hack rules are
      * added to the retained `<style>` tag AFTER conversion — see {@see self::CLIENT_HACK_CSS}.
+     *
+     * PLACEHOLDER PASSTHROUGH (the host substitutes `{{ variable_name }}` tokens at send time,
+     * outside Heisenberg): when the rendered HTML contains any `{{ ... }}` token we SKIP the
+     * DOMDocument round-trip entirely. PHP's DOMDocument normalizes href/src values through
+     * `rawurlencode` semantics, which would silently turn `{{ unsubscribe_url }}` into
+     * `{{%20unsubscribe_url%20}}` — the host's substitution step would never find the token.
+     * Skipping the round-trip is safe because the only `<style>` rule in the email shell is the
+     * columns-block mobile `@media` query, which CssToInlineStyles doesn't actually INLINE
+     * (its own `doCleanup()` strips media-query rules from what it inlines, leaving them in the
+     * retained `<style>`). We append the client-hack CSS to that same `<style>` tag by regex,
+     * identical to what the library would do after `convert()`.
      */
     private function inlineStyles(string $html): string
     {
+        if (str_contains($html, '{{')) {
+            return (string) preg_replace(
+                '/<\/style>/i',
+                self::CLIENT_HACK_CSS . "\n</style>",
+                $html,
+                1
+            );
+        }
+
         $inlined = (new CssToInlineStyles())->convert($html);
 
         return (string) preg_replace(

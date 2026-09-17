@@ -312,7 +312,6 @@ return [
     'sidebar' => [
         'nav_components' => 'Components',
         'nav_blocks' => 'Blocks',
-        'nav_variables' => 'Variables',
         'nav_seo' => 'SEO',
         'nav_socials' => 'Socials',
         'nav_style' => 'Style',
@@ -451,15 +450,6 @@ return [
         'card_divider' => 'Divider',
         'card_button' => 'Button',
         'empty_blocks' => 'No saved blocks yet. Pick a container on the canvas and use the toolbar’s save icon to save its composition here.',
-    ],
-
-    // Email Variables panel (live/panel-variables.blade.php). Hosts can register variables
-    //    through Heisenberg\Support\EmailVariableRegistry; entries surface here so the author
-    //    can drag-drop them into the canvas as inline token chips.
-    'panel_variables' => [
-        'tab_variables' => 'Variables',
-        'search' => 'Search variables…',
-        'empty' => 'No variables registered. A host can register variables through EmailVariableRegistry.',
     ],
 
     // User-saved reusable blocks ("patterns", live/panel-components-blocks.blade.php,
