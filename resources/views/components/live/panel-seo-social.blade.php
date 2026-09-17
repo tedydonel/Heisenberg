@@ -120,6 +120,7 @@
     'postId' => null,
     'postTitle' => '',
     'postSlug' => '',
+    'postPublicUrl' => '',
     'postSeo' => null,
     'seoAnalyzeUrlTemplate' => '',
 ])
@@ -139,6 +140,14 @@
     $hbSeoPreviewTitle = trim((string) ($postSeo['meta_title'] ?? '')) ?: trim((string) $postTitle);
     $hbSeoPreviewDesc = trim((string) ($postSeo['meta_description'] ?? ''));
     $hbSeoPreviewSlug = trim((string) $postSlug);
+    // The post's actual public URL — resolved server-side from
+    // config('heisenberg.seo.url_template') or the host's PostUrlResolver binding. Used in the
+    // preview crumb, the slug-prefix hint, and the canonical-URL placeholder so the author
+    // always sees their host's real domain, never the legacy "yoursite.com" placeholder.
+    $hbSeoPublicUrl = trim((string) $postPublicUrl);
+    $hbSeoHasRealUrl = $hbSeoPublicUrl !== '' && ! str_contains($hbSeoPublicUrl, '/editor/');
+    $hbSeoCanonicalPlaceholder = $hbSeoHasRealUrl ? $hbSeoPublicUrl : __('heisenberg::editor.panel_seo_social.seo_canonical_ph');
+    $hbSeoCrumbPrefix = $hbSeoHasRealUrl ? $hbSeoPublicUrl : str_replace(':slug', $hbSeoPreviewSlug, __('heisenberg::editor.panel_seo_social.seo_url_slug_prefix'));
 @endphp
 <div data-hb-panel-seo
     data-hb-post-id="{{ $postId ?? '' }}"
@@ -149,8 +158,8 @@
     data-hb-seo-unavailable="{{ __('heisenberg::editor.panel_seo_social.score_unavailable') }}"
     data-hb-seo-preview-title-ph="{{ __('heisenberg::editor.panel_seo_social.seo_preview_title') }}"
     data-hb-seo-preview-desc-ph="{{ __('heisenberg::editor.panel_seo_social.seo_preview_desc') }}"
-    data-hb-seo-preview-prefix="{{ __('heisenberg::editor.panel_seo_social.seo_url_slug_prefix') }}"
-    data-hb-seo-url-placeholder="{{ __('heisenberg::editor.panel_seo_social.seo_url_slug_value') }}"
+    data-hb-seo-preview-prefix="{{ $hbSeoCrumbPrefix }}"
+    data-hb-seo-url-placeholder="{{ $hbSeoPreviewSlug !== '' ? $hbSeoPreviewSlug : __('heisenberg::editor.panel_seo_social.seo_url_slug_value') }}"
     {{ $attributes->merge(['class' => 'hb-panel-seo']) }}>
     <x-heisenberg::ui.panel-tabs :items="[['label' => __('heisenberg::editor.panel_seo_social.tab_seo')], ['label' => __('heisenberg::editor.panel_seo_social.tab_social')]]" :active-index="0" />
 
@@ -190,7 +199,7 @@
 
         <div class="hb-seo-field">
             <div class="hb-seo-preview">
-                <span class="hb-seo-preview__crumb" data-hb-seo-preview-crumb>{{ str_replace(':slug', $hbSeoPreviewSlug !== '' ? $hbSeoPreviewSlug : __('heisenberg::editor.panel_seo_social.seo_url_slug_value'), __('heisenberg::editor.panel_seo_social.seo_url_slug_prefix')) }}</span>
+                <span class="hb-seo-preview__crumb" data-hb-seo-preview-crumb>{{ $hbSeoCrumbPrefix }}</span>
                 <span class="hb-seo-preview__title" data-hb-seo-preview-title>{{ $hbSeoPreviewTitle !== '' ? $hbSeoPreviewTitle : __('heisenberg::editor.panel_seo_social.seo_preview_title') }}</span>
                 <span class="hb-seo-preview__desc" data-hb-seo-preview-desc>{{ $hbSeoPreviewDesc !== '' ? $hbSeoPreviewDesc : __('heisenberg::editor.panel_seo_social.seo_preview_desc') }}</span>
             </div>
@@ -230,7 +239,7 @@
 
         <div class="hb-seo-field">
             <span class="hb-seo-field__label hb-seo-field__label--muted">{{ __('heisenberg::editor.panel_seo_social.seo_canonical') }}</span>
-            <x-heisenberg::ui.input data-hb-seo-field="canonical_url" :value="$postSeo['canonical_url']" :placeholder="__('heisenberg::editor.panel_seo_social.seo_canonical_ph')" width="100%" :disabled="$hbSeoDisabled" />
+            <x-heisenberg::ui.input data-hb-seo-field="canonical_url" :value="$postSeo['canonical_url']" :placeholder="$hbSeoCanonicalPlaceholder" width="100%" :disabled="$hbSeoDisabled" />
         </div>
         </div>
         <x-heisenberg::ui.custom-scrollbar container="[data-hb-panel-seo-seo-scroll]" />

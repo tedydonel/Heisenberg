@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Heisenberg\Services;
 
+use Heisenberg\Contracts\PostUrlResolver;
 use Heisenberg\Models\Post;
 use Heisenberg\Models\PublicFile;
 use Heisenberg\Models\SeoMeta;
@@ -63,6 +64,10 @@ class SeoAnalyzer
      * @param array{meta_title?:string,meta_description?:string,focus_keyphrase?:string,slug?:string,canonical?:string,robots?:string,og_image?:string} $overrides
      * @return array{score:int,rating:string,checks:list<array<string,mixed>>}
      */
+    public function __construct(private PostUrlResolver $urlResolver)
+    {
+    }
+
     public function analyze(Post $post, string $locale, array $overrides = []): array
     {
         $locale = LocaleConfig::isValid($locale) ? $locale : LocaleConfig::default();
@@ -80,6 +85,11 @@ class SeoAnalyzer
         $canonical = $this->resolve($overrides, 'canonical', (string) ($seo?->canonical_url ?? ''));
         $robots = $this->resolve($overrides, 'robots', (string) ($seo?->robots ?: 'index, follow'));
         $ogImage = $this->resolve($overrides, 'og_image', (string) ($seo?->og_image ?? ''));
+
+        // The host's expected URL for this post — resolved through PostUrlResolver so the
+        // host's url_template config / custom resolver binding / per-locale map all apply.
+        // Used by the canonical-check below as the "expected" URL for mismatch detection.
+        $expectedUrl = $this->urlResolver->url($post);
 
         $content = $this->extractContent($post, $locale);
 
@@ -99,7 +109,7 @@ class SeoAnalyzer
             $this->internalLinkCheck($content['links']),
             $this->outboundLinkCheck($content['links']),
             $this->slugQualityCheck($slug),
-            $this->canonicalCheck($canonical),
+            $this->canonicalCheck($canonical, $expectedUrl),
             $this->indexableCheck($post, $robots),
             $this->ogImageCheck($ogImage),
             $this->readabilityCheck($content['plainText'], $content['wordCount'], $locale),
@@ -341,17 +351,26 @@ class SeoAnalyzer
         return $this->check('slug-quality', 'pass', 'Slug is short and clean.');
     }
 
-    private function canonicalCheck(string $canonical): array
+    private function canonicalCheck(string $canonical, ?string $expectedUrl = null): array
     {
         if ($canonical === '') {
             return $this->check('canonical', 'na', 'No canonical URL set — the page canonicalizes to itself.');
         }
 
         $valid = preg_match('#^https?://#i', $canonical) === 1 && filter_var($canonical, FILTER_VALIDATE_URL) !== false;
+        if (! $valid) {
+            return $this->check('canonical', 'warn', "Canonical URL doesn't look like a valid absolute URL.");
+        }
 
-        return $valid
-            ? $this->check('canonical', 'pass', 'Canonical URL is set.')
-            : $this->check('canonical', 'warn', "Canonical URL doesn't look like a valid absolute URL.");
+        // Compare against the host's resolved URL pattern (PostUrlResolver). Mismatch is a
+        // warn, not a fail — the canonical might point to an aggregation page or a translated
+        // variant legitimately. The author's signal: "your canonical says X but your blog
+        // routes this to Y" — easy to spot, easy to fix.
+        if ($expectedUrl !== null && $canonical !== '' && $expectedUrl !== '' && $canonical !== $expectedUrl) {
+            return $this->check('canonical', 'warn', "Canonical URL doesn't match the host's URL pattern for this post (expected {$expectedUrl}).", ['canonical' => $canonical, 'expected' => $expectedUrl]);
+        }
+
+        return $this->check('canonical', 'pass', 'Canonical URL is set.');
     }
 
     private function indexableCheck(Post $post, string $robots): array

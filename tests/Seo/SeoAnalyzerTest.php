@@ -30,7 +30,7 @@ class SeoAnalyzerTest extends TestCase
 
     private function analyzer(): SeoAnalyzer
     {
-        return new SeoAnalyzer();
+        return new SeoAnalyzer(new \Heisenberg\Services\SeoUrlResolver());
     }
 
     private function makePost(array $attrs = []): Post
@@ -390,16 +390,34 @@ class SeoAnalyzerTest extends TestCase
 
     public function test_canonical_pass_when_empty_or_valid_warn_when_malformed(): void
     {
-        $post = $this->makePost();
+        // Configure the host's URL template so the resolver returns the same URL the test's
+        // canonical points to — otherwise the new "canonical matches expected URL" check warns.
+        $this->app['config']->set('heisenberg.seo.url_template', 'https://example.com/{slug}');
+        $post = $this->makePost(); // default slug 'a-great-post-about-widgets'
 
         $empty = $this->analyzer()->analyze($post, 'en', ['canonical' => '']);
         $this->assertSame('na', $this->checkById($empty, 'canonical')['status']);
 
-        $valid = $this->analyzer()->analyze($post, 'en', ['canonical' => 'https://example.com/post']);
+        // The canonical matches the host's resolved URL exactly — pass.
+        $valid = $this->analyzer()->analyze($post, 'en', ['canonical' => 'https://example.com/a-great-post-about-widgets']);
         $this->assertSame('pass', $this->checkById($valid, 'canonical')['status']);
 
         $malformed = $this->analyzer()->analyze($post, 'en', ['canonical' => 'not a url']);
         $this->assertSame('warn', $this->checkById($malformed, 'canonical')['status']);
+    }
+
+    public function test_canonical_warns_when_host_url_pattern_disagrees(): void
+    {
+        // Host's resolver says one URL, the author set a different canonical — the analyzer
+        // warns so the SEO score reflects the mismatch and the panel surfaces it in the checklist.
+        $this->app['config']->set('heisenberg.seo.url_template', 'https://example.com/blog/{slug}');
+        $post = $this->makePost(['slug' => 'post']); // resolved URL: https://example.com/blog/post
+
+        $result = $this->analyzer()->analyze($post, 'en', ['canonical' => 'https://aggregator.example.com/featured']);
+        $check = $this->checkById($result, 'canonical');
+        $this->assertSame('warn', $check['status']);
+        $this->assertArrayHasKey('expected', $check['params']);
+        $this->assertSame('https://example.com/blog/post', $check['params']['expected']);
     }
 
     public function test_indexable_fails_only_for_published_noindex_posts(): void

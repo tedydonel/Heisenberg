@@ -228,6 +228,11 @@ final class EditorController
             // postSeo()'s own docblock for the accessor-fallback rationale.
             'postSlug' => (string) $model->slug,
             'postSeo' => $this->postSeo($model),
+            // The SEO panel's preview crumb + canonical-URL placeholder read from the host's
+            // PostUrlResolver (config('heisenberg.seo.url_template') or its own resolver binding) —
+            // never a hardcoded "yoursite.com" string — so the author sees the URL their actual
+            // blog routes will publish under.
+            'postPublicUrl' => app(\Heisenberg\Contracts\PostUrlResolver::class)->url($model),
             // Seeds the Summary's schedule/publish-date <input type="datetime-local"> pair, each
             // of which expects a timezone-less "Y-m-d\TH:i" — a bare ISO offset string won't
             // populate the widget.

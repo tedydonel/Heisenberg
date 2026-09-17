@@ -26,6 +26,7 @@
             :post-id="$postId ?? null"
             :post-title="$postTitle ?? ''"
             :post-slug="$postSlug ?? ''"
+            :post-public-url="$postPublicUrl ?? ''"
             :post-seo="$postSeo ?? null"
             :seo-analyze-url-template="$postSeoAnalyzeUrlTemplate ?? ''" />
         @endif
