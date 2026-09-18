@@ -10,7 +10,7 @@
         </div>
 
         @if ($documentType !== 'email')
-        <x-heisenberg::ui.disclosure-row icon="image" :label="__('heisenberg::editor.inspector.post_featured_image')" chevron="down" />
+        <x-heisenberg::ui.disclosure-row icon="image" :label="__('heisenberg::editor.inspector.post_featured_image')" chevron="down" persist-key="post-featured-image" />
         <div class="hb-post-dropzone-wrap" data-hb-disclosure-body data-hb-featured-field
             @if ((string) $postFeaturedImageUrlTemplate !== '') data-hb-featured-image-update-url-template="{{ $postFeaturedImageUrlTemplate }}" @endif>
             <button type="button" class="hb-post-dropzone" data-hb-featured-trigger aria-haspopup="dialog" aria-label="{{ __('heisenberg::editor.inspector.post_featured_set') }}" @if ($postFeaturedImage !== null) hidden @endif>
@@ -50,7 +50,7 @@
         </div>
         @endif
 
-        <x-heisenberg::ui.disclosure-row icon="file-text" :label="__('heisenberg::editor.inspector.post_summary')" chevron="down" />
+        <x-heisenberg::ui.disclosure-row icon="file-text" :label="__('heisenberg::editor.inspector.post_summary')" chevron="down" persist-key="post-summary" />
         <div data-hb-disclosure-body>
             @php $hbStatusRow = collect($postMeta)->firstWhere('key', 'status'); @endphp
             @php $hbUrlRow = collect($postMeta)->firstWhere('key', 'url'); @endphp
@@ -187,8 +187,8 @@
         </div>
         <x-heisenberg::live.revisions-dialog />
 
-        <x-heisenberg::ui.disclosure-row icon="translate" :label="__('heisenberg::editor.inspector.post_translations')" chevron="down" />
-        <div class="hb-post-translations-body" data-hb-disclosure-body data-hb-post-translations-field>
+        <x-heisenberg::ui.disclosure-row icon="translate" :label="__('heisenberg::editor.inspector.post_translations')" chevron="down" :expanded="false" persist-key="post-translations" />
+        <div class="hb-post-translations-body" data-hb-disclosure-body data-hb-post-translations-field hidden>
             <div class="hb-post-translations-list" data-hb-post-translations-list>
                 @if ($postTranslations === null)
                     @foreach ($contentLocales as $hbLocale)
@@ -227,8 +227,8 @@
         </div>
 
         @if ($documentType !== 'email')
-        <x-heisenberg::ui.disclosure-row icon="chat-circle" :label="__('heisenberg::editor.inspector.post_discussion')" chevron="down" />
-        <div class="hb-post-discussion-body" data-hb-disclosure-body data-hb-post-discussion-field
+        <x-heisenberg::ui.disclosure-row icon="chat-circle" :label="__('heisenberg::editor.inspector.post_discussion')" chevron="down" :expanded="false" persist-key="post-discussion" />
+        <div class="hb-post-discussion-body" data-hb-disclosure-body data-hb-post-discussion-field hidden
             data-hb-post-id="{{ $postId ?? '' }}"
             data-hb-discussion-url-template="{{ $postDiscussionUrlTemplate }}">
             <div class="hb-post-toggle-row">
@@ -240,8 +240,8 @@
         @endif
 
         @if ($documentType !== 'email')
-        <x-heisenberg::ui.disclosure-row icon="list-numbers" :label="__('heisenberg::editor.toc.title')" chevron="down" />
-        <div class="hb-post-toc-body" data-hb-disclosure-body data-hb-post-toc-field>
+        <x-heisenberg::ui.disclosure-row icon="list-numbers" :label="__('heisenberg::editor.toc.title')" chevron="down" :expanded="false" persist-key="post-toc" />
+        <div class="hb-post-toc-body" data-hb-disclosure-body data-hb-post-toc-field hidden>
             <span class="hb-post-toc-summary" data-hb-post-toc-summary>
                 {{ count($postTocEntries) > 0
                     ? str_replace(':count', (string) count($postTocEntries), __('heisenberg::editor.toc.summary_count'))

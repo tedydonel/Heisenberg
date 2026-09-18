@@ -54,8 +54,8 @@
             <span class="hb-post-taxonomy-hint" data-hb-post-taxonomy-hint @if ($postId !== null) hidden @endif>{{ __('heisenberg::editor.inspector.post_taxonomy_needs_save') }}</span>
         </div>
 
-        <x-heisenberg::ui.disclosure-row icon="layout" :label="__('heisenberg::editor.inspector.post_page_layout')" chevron="down" />
-        <div class="hb-post-layout-body" data-hb-disclosure-body data-hb-post-layout-field
+        <x-heisenberg::ui.disclosure-row icon="layout" :label="__('heisenberg::editor.inspector.post_page_layout')" chevron="down" :expanded="false" persist-key="post-page-layout" />
+        <div class="hb-post-layout-body" data-hb-disclosure-body data-hb-post-layout-field hidden
             data-hb-post-id="{{ $postId ?? '' }}"
             data-hb-layout-url-template="{{ $postLayoutUrlTemplate }}">
             <div class="hb-post-layout-row">

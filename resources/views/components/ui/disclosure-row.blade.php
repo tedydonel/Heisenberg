@@ -21,10 +21,12 @@
                 const body = row.nextElementSibling;
                 const persistKey = row.dataset.hbPersistKey || null;
 
-                if (persistKey) {
-                    const stored = readPersisted(persistKey);
-                    if (stored !== null) setState(row, body, stored === 'true');
-                }
+                // First paint: a stored choice wins; otherwise honor a row declared
+                // expanded="false" — the markup keeps the body visible so content is
+                // not lost if this script never runs, and it is collapsed here.
+                const stored = persistKey ? readPersisted(persistKey) : null;
+                if (stored !== null) setState(row, body, stored === 'true');
+                else if (row.getAttribute('aria-expanded') === 'false') setState(row, body, false);
 
                 row.addEventListener('click', () => {
                     const expanded = row.getAttribute('aria-expanded') === 'true';

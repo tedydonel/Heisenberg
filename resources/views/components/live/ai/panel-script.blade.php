@@ -61,6 +61,21 @@
                 let conversationId = null;
                 let history = [];
 
+                // The conversation lives server-side (ensureConversation/saveTurn);
+                // sessionStorage only remembers WHICH one was open, so a refresh can
+                // re-open it instead of dropping the user back on an empty thread.
+                // Key is lazy: the post id may only land later via hb:post-id.
+                const SESSION_KEY = () => 'hb:ai:conversation:' + postId();
+                const rememberedConversation = () => {
+                    try { return window.sessionStorage.getItem(SESSION_KEY()) || ''; } catch (e) { return ''; }
+                };
+                const rememberConversation = (id) => {
+                    try {
+                        if (id) window.sessionStorage.setItem(SESSION_KEY(), String(id));
+                        else window.sessionStorage.removeItem(SESSION_KEY());
+                    } catch (e) { }
+                };
+
                 const postId = () => root.dataset.postId || '';
                 document.addEventListener('hb:post-id', (event) => {
                     const id = event.detail && event.detail.id != null ? String(event.detail.id) : '';
@@ -265,6 +280,7 @@
                     lastPrompt = '';
                     conversationId = null;
                     history = [];
+                    rememberConversation(null);
                     setBusy(false);
                 };
 
@@ -284,9 +300,10 @@
                             const last = collapsed.filter((m) => m.role === 'user').pop();
                             lastPrompt = last ? last.content : '';
                             emptyEl.hidden = collapsed.length > 0;
+                            rememberConversation(id);
                             scrollToEnd();
                         })
-                        .catch(() => addNote(msg('msgHistoryError'), true));
+                        .catch(() => { rememberConversation(null); addNote(msg('msgHistoryError'), true); });
                 });
 
                 const setBusy = (busy) => {
@@ -641,6 +658,15 @@
                 });
 
                 autoGrow();
+
+                // Refresh survival: re-open the conversation this session had on
+                // screen. The thread is rendered from the server's stored messages,
+                // so nothing the user sent is lost — only the streaming state, which
+                // cannot survive a reload.
+                const remembered = rememberedConversation();
+                if (remembered && convUrl) {
+                    document.dispatchEvent(new CustomEvent('hb:ai-open-conversation', { detail: { id: remembered } }));
+                }
             });
         };
         if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', boot, { once: true });
