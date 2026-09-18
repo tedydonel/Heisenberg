@@ -42,17 +42,6 @@
         overflow: hidden;
     }
 
-    .hb-sidebar__brand,
-    .hb-navitem span:not(.hb-navitem__icon) {
-        transition: opacity var(--hb-panel-anim-ms, 280ms) var(--hb-panel-anim-ease, cubic-bezier(.22, .61, .36, 1)), visibility 0s linear 0s;
-    }
-    .hb-editor--sidebar-closed .hb-sidebar__brand,
-    .hb-editor--sidebar-closed .hb-navitem span:not(.hb-navitem__icon) {
-        opacity: 0;
-        visibility: hidden;
-        transition-delay: 0s, var(--hb-panel-anim-ms, 280ms);
-    }
-    .hb-editor--sidebar-closed .hb-navitem { justify-content: center; }
 </style>
 <script nonce="{{ heisenberg_csp_nonce() }}">
     (() => {
@@ -67,8 +56,11 @@
             const selector = PANEL_SELECTOR[panelKey];
             if (!selector) return;
             const shell = document.querySelector('.hb-editor');
-            if (shell && shell.classList.contains('hb-editor--panel-closed')) {
-                if (window.hbSetPanelState) window.hbSetPanelState(shell, 'panel', true);
+            if (shell && window.hbSetPanelState) {
+                if (window.matchMedia('(max-width: 1024px)').matches) {
+                    window.hbSetPanelState(shell, 'sidebar', false);
+                }
+                window.hbSetPanelState(shell, 'panel', true);
             }
             Object.values(PANEL_SELECTOR).forEach((sel) => {
                 const panel = document.querySelector(sel);

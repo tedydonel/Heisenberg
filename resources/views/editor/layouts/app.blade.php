@@ -21,33 +21,27 @@
                     const value = localStorage.getItem(`hb-editor:${key}-state`);
                     return value === null ? fallback : value === 'open';
                 };
-                const panelOpen = storedOpen('panel', true);
+                const sidebarOpen = storedOpen('sidebar', true);
+                const panelOpen = storedOpen('panel', !narrow);
                 const inspectorOpen = storedOpen('inspector', !narrow);
 
-                /* Restore only the state classes. The live controller owns all
-                   later transitions and interactions; this runs before paint. */
-                panelKeys.forEach((key) => {
-                    const open = key === 'sidebar' ? (narrow ? true : storedOpen('sidebar', true)) : key === 'panel' ? panelOpen : inspectorOpen;
-                    shell.classList.toggle(`hb-editor--${key}-closed`, !open);
-                    if (narrow && key !== 'sidebar') {
-                        shell.classList.toggle(`hb-editor--${key}-open`, open);
-                    }
-                });
+                /* Restore only state classes before paint. On narrow screens
+                   the sidebar, left panel, and inspector are one drawer group. */
+                const initial = { sidebar: sidebarOpen, panel: panelOpen, inspector: inspectorOpen };
+                let activeDrawer = null;
                 if (narrow) {
-                    /* Legacy storage can contain both drawers open. Keep the
-                       left drawer as the deterministic winner before paint. */
-                    const activeDrawer = panelOpen ? 'panel' : inspectorOpen ? 'inspector' : null;
-                    if (activeDrawer === 'panel') {
-                        shell.classList.remove('hb-editor--inspector-open');
-                        shell.classList.add('hb-editor--inspector-closed');
-                        localStorage.setItem('hb-editor:inspector-state', 'closed');
-                    } else if (activeDrawer === 'inspector') {
-                        shell.classList.remove('hb-editor--panel-open');
-                        shell.classList.add('hb-editor--panel-closed');
-                        localStorage.setItem('hb-editor:panel-state', 'closed');
+                    activeDrawer = sidebarOpen ? 'sidebar' : panelOpen ? 'panel' : inspectorOpen ? 'inspector' : null;
+                    if (activeDrawer) {
+                        panelKeys.forEach((key) => { initial[key] = key === activeDrawer; });
+                        shell.dataset.hbActiveDrawer = activeDrawer;
                     }
-                    if (activeDrawer) shell.dataset.hbActiveDrawer = activeDrawer;
                 }
+                panelKeys.forEach((key) => {
+                    const open = initial[key];
+                    shell.classList.toggle(`hb-editor--${key}-closed`, !open);
+                    if (narrow) shell.classList.toggle(`hb-editor--${key}-open`, open);
+                    if (narrow && key !== activeDrawer) localStorage.setItem(`hb-editor:${key}-state`, 'closed');
+                });
                 if (localStorage.getItem('hb-editor:theme') === 'dark') {
                     shell.classList.add('hb-editor--dark');
                 }

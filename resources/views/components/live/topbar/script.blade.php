@@ -1,7 +1,7 @@
 <script nonce="{{ heisenberg_csp_nonce() }}">
     (() => {
         const hbIsNarrow = () => window.matchMedia('(max-width: 1024px)').matches;
-        const HB_DRAWER_KEYS = ['panel', 'inspector'];
+        const HB_DRAWER_KEYS = ['sidebar', 'panel', 'inspector'];
 
         /* Single source of truth for all shell open/close behavior. CSS only
            animates these state classes; no component is allowed to invent a
@@ -9,7 +9,6 @@
         const hbSetPanelState = (shell, key, open, persist = true) => {
             if (!shell || !['sidebar', ...HB_DRAWER_KEYS].includes(key)) return;
             const narrow = hbIsNarrow();
-            if (narrow && key === 'sidebar') open = true;
             if (narrow && open && HB_DRAWER_KEYS.includes(key)) {
                 HB_DRAWER_KEYS.filter((other) => other !== key).forEach((other) => {
                     shell.classList.remove(`hb-editor--${other}-open`);
@@ -25,7 +24,7 @@
             if (narrow && HB_DRAWER_KEYS.includes(key)) {
                 shell.classList.toggle(`hb-editor--${key}-open`, open);
             }
-            if (persist && !(narrow && key === 'sidebar')) {
+            if (persist) {
                 localStorage.setItem(`hb-editor:${key}-state`, open ? 'open' : 'closed');
             }
         };
@@ -388,7 +387,7 @@
                     scrim.addEventListener('click', () => {
                         const shell = scrim.closest('.hb-editor');
                         if (!shell) return;
-                        ['panel', 'inspector'].forEach((key) => {
+                        ['sidebar', 'panel', 'inspector'].forEach((key) => {
                             if (shell.classList.contains(`hb-editor--${key}-open`)) hbSetPanelState(shell, key, false);
                         });
                     });
