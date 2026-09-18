@@ -61,7 +61,7 @@
         color: var(--hb-text-secondary); cursor: pointer;
     }
     .hb-foot-chip:hover { color: var(--hb-text-primary); }
-    .hb-foot-chip[aria-pressed="true"] { color: var(--hb-accent); font-weight: 600; }
+    .hb-foot-chip[aria-pressed="true"] { color: var(--hb-accent); }
 
     .hb-locale { display: inline-flex; }
     .hb-locale__menu {
