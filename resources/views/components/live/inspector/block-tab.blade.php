@@ -1,5 +1,5 @@
     <div class="hb-inspector__block-content" data-hb-inspector-block-content @if ($panelActiveIndex !== 1) hidden @endif>
-        <div class="hb-inspector__header">
+        <div class="hb-inspector__header" data-hb-block-header hidden>
             <div class="hb-inspector__title-row">
                 <span class="hb-inspector__icon" aria-hidden="true" data-hb-block-icon-default>
                     @include('heisenberg::components.ui.icon', ['name' => $blockIcon, 'size' => 22])
@@ -15,7 +15,7 @@
         </div>
 
         <div class="hb-inspector__empty" data-hb-block-empty>
-            <p>{{ __('heisenberg::editor.common.no_block_empty_panel') }}</p>
+            <p>{{ __('heisenberg::editor.common.no_block_selected_title') }}</p>
         </div>
 
         <div class="hb-inspector__populated" data-hb-block-populated hidden>

@@ -26,7 +26,6 @@ return [
         'no_title' => 'No Title',
         'no_block_selected_title' => 'No block selected',
         'no_block_selected_desc' => 'Select a block in the canvas to edit its settings.',
-        'no_block_empty_panel' => 'Select a block on the canvas to see its settings here.',
         'untitled_post' => 'Untitled post',
         'add_block' => 'Add block',
         'send' => 'Send',

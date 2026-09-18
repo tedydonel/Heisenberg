@@ -202,8 +202,10 @@
             });
         });
         showBlockIcon(inspector, name || '');
+        const header = inspector.querySelector('[data-hb-block-header]');
         const empty = inspector.querySelector('[data-hb-block-empty]');
         const populated = inspector.querySelector('[data-hb-block-populated]');
+        if (header) header.hidden = false;
         if (empty) empty.hidden = true;
         if (populated) populated.hidden = false;
         if (name && model) showBlockPanels(inspector, name, model);
@@ -213,8 +215,11 @@
         const inspector = document.querySelector('[data-hb-inspector]');
         if (!inspector) return;
         showBlockIcon(inspector, '');
+        const blockContent = inspector.querySelector('[data-hb-inspector-block-content]');
+        const header = blockContent ? blockContent.querySelector('[data-hb-block-header]') : null;
         const empty = inspector.querySelector('[data-hb-block-empty]');
         const populated = inspector.querySelector('[data-hb-block-populated]');
+        if (header) header.hidden = true;
         if (empty) empty.hidden = false;
         if (populated) populated.hidden = true;
     });

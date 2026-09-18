@@ -27,7 +27,6 @@ return [
         'no_title' => 'Sans titre',
         'no_block_selected_title' => 'Aucun bloc sélectionné',
         'no_block_selected_desc' => 'Sélectionnez un bloc dans la zone de dessin pour modifier ses paramètres.',
-        'no_block_empty_panel' => 'Sélectionnez un bloc dans la zone de dessin pour voir ses paramètres ici.',
         'untitled_post' => 'Article sans titre',
         'add_block' => 'Ajouter un bloc',
         'send' => 'Envoyer',

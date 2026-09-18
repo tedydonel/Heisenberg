@@ -3,25 +3,24 @@
     --hb-editor-sidebar-w: 180px;
     --hb-editor-panel-w: 240px;
     --hb-editor-inspector-w: 260px;
+    --hb-panel-anim-ms: 280ms;
+    --hb-panel-anim-ease: cubic-bezier(.22, .61, .36, 1);
     grid-template-columns: var(--hb-editor-sidebar-w) var(--hb-editor-panel-w) 1fr var(--hb-editor-inspector-w);
     grid-template-rows: 32px 1fr 32px;
     width: 100%;
     height: 100dvh;
     overflow: hidden;
     font-family: var(--hb-font-sans, Rubik, sans-serif);
-    transition: grid-template-columns .15s ease;
+    transition: grid-template-columns var(--hb-panel-anim-ms) var(--hb-panel-anim-ease);
 }
+
+/* --- Panel collapse (column widths animate via grid-template-columns above) --- */
 .hb-editor--sidebar-collapsed { --hb-editor-sidebar-w: 0px; }
+.hb-editor--panel-collapsed { --hb-editor-panel-w: 0px; }
+.hb-editor--inspector-collapsed { --hb-editor-inspector-w: 0px; }
 @media (max-width: 767px) {
     .hb-editor--sidebar-collapsed { --hb-editor-sidebar-w: 52px; }
 }
-.hb-editor--panel-collapsed { --hb-editor-panel-w: 0px; }
-.hb-editor--panel-collapsed .hb-sidepanel { display: none; }
-.hb-editor--inspector-collapsed { --hb-editor-inspector-w: 0px; }
-.hb-editor--inspector-collapsed .hb-inspector { display: none; }
-
-.hb-editor--booting, .hb-editor--booting * { transition: none !important; }
-.hb-editor--booting { visibility: hidden; }
 
 .hb-editor__topbar { grid-column: 1 / -1; grid-row: 1; }
 .hb-editor__sidebar { grid-column: 1; grid-row: 2; }
@@ -31,3 +30,73 @@
 .hb-editor__inspector { grid-column: 4; grid-row: 2; overflow: hidden; min-height: 0; }
 .hb-editor__footer { grid-column: 1 / -1; grid-row: 3; }
 body { margin: 0; }
+
+/* --- Open/close choreography ---------------------------------------------
+   The grid columns animate; the panels fade + slide inside the space that
+   opens/closes around them. Visibility flips only after the collapse
+   finishes so panels stay painted during the whole animation. ---------- */
+.hb-editor__sidebar,
+.hb-editor__panel > *,
+.hb-editor__inspector {
+    min-width: 0;
+    transform: translateX(0);
+    opacity: 1;
+    visibility: visible;
+    transition:
+        opacity var(--hb-panel-anim-ms) var(--hb-panel-anim-ease),
+        transform var(--hb-panel-anim-ms) var(--hb-panel-anim-ease),
+        visibility 0s linear 0s;
+}
+
+/* The inspector root declares a fixed width in its own stylesheet; track the
+   animated column instead so it clips (instead of overlapping the canvas). */
+.hb-editor .hb-editor__inspector {
+    width: auto;
+}
+
+.hb-editor--sidebar-collapsed .hb-editor__sidebar,
+.hb-editor--panel-collapsed .hb-editor__sidebar {
+    transform: translateX(-24px);
+}
+.hb-editor--panel-collapsed .hb-editor__panel > * {
+    transform: translateX(-24px);
+}
+.hb-editor--inspector-collapsed .hb-editor__inspector {
+    transform: translateX(24px);
+}
+
+.hb-editor--panel-collapsed .hb-editor__sidebar,
+.hb-editor--panel-collapsed .hb-editor__panel > *,
+.hb-editor--panel-collapsed .hb-editor__inspector,
+.hb-editor--inspector-collapsed .hb-editor__sidebar,
+.hb-editor--inspector-collapsed .hb-editor__panel > *,
+.hb-editor--inspector-collapsed .hb-editor__inspector {
+    opacity: 0;
+    transition-delay: 0s, 0s, var(--hb-panel-anim-ms);
+}
+.hb-editor--panel-collapsed .hb-editor__panel > *,
+.hb-editor--inspector-collapsed .hb-inspector {
+    visibility: hidden;
+}
+
+/* Desktop: a collapsed sidebar hides completely. On phones (<768px) it stays
+   visible as a 52px icon rail, so no hide animation there. */
+@media (min-width: 768px) {
+    .hb-editor--sidebar-collapsed .hb-editor__sidebar {
+        opacity: 0;
+        transition-delay: 0s, 0s, var(--hb-panel-anim-ms);
+    }
+}
+
+.hb-editor--booting, .hb-editor--booting * { transition: none !important; }
+.hb-editor--booting { visibility: hidden; }
+
+@media (prefers-reduced-motion: reduce) {
+    .hb-editor,
+    .hb-editor__sidebar,
+    .hb-editor__panel > *,
+    .hb-editor__inspector {
+        transition-duration: 1ms;
+        transition-delay: 0s !important;
+    }
+}

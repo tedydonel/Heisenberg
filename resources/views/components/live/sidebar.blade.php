@@ -42,9 +42,15 @@
         overflow: hidden;
     }
 
+    .hb-sidebar__brand,
+    .hb-navitem span:not(.hb-navitem__icon) {
+        transition: opacity var(--hb-panel-anim-ms, 280ms) var(--hb-panel-anim-ease, cubic-bezier(.22, .61, .36, 1)), visibility 0s linear 0s;
+    }
     .hb-editor--sidebar-collapsed .hb-sidebar__brand,
     .hb-editor--sidebar-collapsed .hb-navitem span:not(.hb-navitem__icon) {
-        display: none;
+        opacity: 0;
+        visibility: hidden;
+        transition-delay: 0s, var(--hb-panel-anim-ms, 280ms);
     }
     .hb-editor--sidebar-collapsed .hb-navitem { justify-content: center; }
 </style>

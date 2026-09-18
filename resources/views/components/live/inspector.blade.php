@@ -3,7 +3,8 @@
     .hb-inspector {
         display: flex;
         flex-direction: column;
-        width: 260px;
+        width: 100%;
+        min-width: 0;
         height: 100%;
         background: var(--hb-bg);
         border-left: 1px solid var(--hb-border);
@@ -51,10 +52,13 @@
         padding: var(--hb-space-3, 12px);
         text-align: center;
         font-family: var(--hb-font-sans, Rubik, sans-serif);
-        font-size: var(--hb-fs-sm, 12px);
+        font-size: var(--hb-fs-md, 14px);
+        font-weight: 500;
         color: var(--hb-text-muted);
     }
     .hb-inspector__empty[hidden] { display: none; }
+    .hb-inspector__empty p { margin: 0; }
+    .hb-inspector__header[hidden] { display: none; }
 
     .hb-post-title {
         display: flex;
