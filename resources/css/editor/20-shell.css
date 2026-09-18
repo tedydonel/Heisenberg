@@ -80,7 +80,7 @@ body { margin: 0; }
 
 /* Narrow screens use a permanent icon rail and two mutually exclusive
    drawers. The canvas never reflows when a drawer opens or closes. */
-@media (max-width: 1023px) {
+@media (max-width: 1024px) {
     .hb-editor {
         grid-template-columns: var(--hb-editor-rail-w) 0px 1fr 0px;
     }

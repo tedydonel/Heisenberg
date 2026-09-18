@@ -16,7 +16,7 @@
                 const shell = document.currentScript.parentElement;
                 shell.classList.add('hb-editor--booting');
                 const panelKeys = ['sidebar', 'panel', 'inspector'];
-                const narrow = window.matchMedia('(max-width: 1023px)').matches;
+                const narrow = window.matchMedia('(max-width: 1024px)').matches;
                 const storedOpen = (key, fallback = true) => {
                     const value = localStorage.getItem(`hb-editor:${key}-state`);
                     return value === null ? fallback : value === 'open';
