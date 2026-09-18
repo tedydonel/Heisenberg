@@ -25,14 +25,19 @@
                     shell.classList.add('hb-editor--dark');
                 }
 
+                /* Narrow screens use drawer mode (see 20-shell.css): the icon rail
+                   always stays visible, so never persist/collapse it here; drawers
+                   just render closed by their own persisted flag. */
                 if (window.matchMedia('(max-width: 1023px)').matches) {
-                    const openKeys = panelKeys.filter((key) => !shell.classList.contains(`hb-editor--${key}-collapsed`));
-                    if (openKeys.length > 1) {
-                        panelKeys.filter((key) => key !== openKeys[0]).forEach((key) => {
-                            shell.classList.add(`hb-editor--${key}-collapsed`);
-                            localStorage.setItem(`hb-editor:${key}-collapsed`, 'true');
-                        });
-                    }
+                    shell.classList.remove('hb-editor--sidebar-collapsed');
+                    /* Drawers default to closed on narrow screens; they only
+                       open via --*-open (set here when restored open, and by
+                       hbSetPanelCollapsed on toggle). */
+                    ['panel', 'inspector'].forEach((key) => {
+                        const open = localStorage.getItem(`hb-editor:${key}-collapsed`) === 'false';
+                        shell.classList.toggle(`hb-editor--${key}-collapsed`, !open);
+                        shell.classList.toggle(`hb-editor--${key}-open`, open);
+                    });
                 }
             })();
         </script>

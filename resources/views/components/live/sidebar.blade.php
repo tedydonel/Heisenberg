@@ -70,8 +70,11 @@
             if (shell && shell.classList.contains('hb-editor--panel-collapsed')) {
                 if (window.hbSetPanelCollapsed) window.hbSetPanelCollapsed(shell, 'panel', false);
                 else shell.classList.remove('hb-editor--panel-collapsed');
+                /* Narrow screens: the panel opens as a drawer over the canvas —
+                   the inspector drawer yields, but the icon rail is permanent
+                   chrome and never closes. */
                 if (window.matchMedia('(max-width: 1023px)').matches && window.hbSetPanelCollapsed) {
-                    ['sidebar', 'inspector'].forEach((key) => window.hbSetPanelCollapsed(shell, key, true));
+                    window.hbSetPanelCollapsed(shell, 'inspector', true);
                 }
             }
             Object.values(PANEL_SELECTOR).forEach((sel) => {

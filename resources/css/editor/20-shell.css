@@ -10,17 +10,17 @@
     width: 100%;
     height: 100dvh;
     overflow: hidden;
+    position: relative;
     font-family: var(--hb-font-sans, Rubik, sans-serif);
     transition: grid-template-columns var(--hb-panel-anim-ms) var(--hb-panel-anim-ease);
 }
 
-/* --- Panel collapse (column widths animate via grid-template-columns above) --- */
+/* --- Panel collapse (column widths animate via grid-template-columns above) ---
+   Each key only touches its own variable: no collapsed state may affect any
+   other panel's column, width, opacity or transform. */
 .hb-editor--sidebar-collapsed { --hb-editor-sidebar-w: 0px; }
 .hb-editor--panel-collapsed { --hb-editor-panel-w: 0px; }
 .hb-editor--inspector-collapsed { --hb-editor-inspector-w: 0px; }
-@media (max-width: 767px) {
-    .hb-editor--sidebar-collapsed { --hb-editor-sidebar-w: 52px; }
-}
 
 .hb-editor__topbar { grid-column: 1 / -1; grid-row: 1; }
 .hb-editor__sidebar { grid-column: 1; grid-row: 2; }
@@ -32,9 +32,9 @@
 body { margin: 0; }
 
 /* --- Open/close choreography ---------------------------------------------
-   The grid columns animate; the panels fade + slide inside the space that
-   opens/closes around them. Visibility flips only after the collapse
-   finishes so panels stay painted during the whole animation. ---------- */
+   The grid columns animate; the panel inside fades + slides within the space
+   that opens/closes around it. Visibility flips only after the collapse
+   finishes so panels stay painted during the whole animation. */
 .hb-editor__sidebar,
 .hb-editor__panel > *,
 .hb-editor__inspector {
@@ -54,40 +54,87 @@ body { margin: 0; }
     width: auto;
 }
 
-.hb-editor--sidebar-collapsed .hb-editor__sidebar,
-.hb-editor--panel-collapsed .hb-editor__sidebar {
-    transform: translateX(-24px);
-}
-.hb-editor--panel-collapsed .hb-editor__panel > * {
-    transform: translateX(-24px);
-}
-.hb-editor--inspector-collapsed .hb-editor__inspector {
-    transform: translateX(24px);
-}
+.hb-editor--sidebar-collapsed .hb-editor__sidebar { transform: translateX(-24px); }
+.hb-editor--panel-collapsed .hb-editor__panel > * { transform: translateX(-24px); }
+.hb-editor--inspector-collapsed .hb-editor__inspector { transform: translateX(24px); }
 
-.hb-editor--panel-collapsed .hb-editor__sidebar,
+.hb-editor--sidebar-collapsed .hb-editor__sidebar,
 .hb-editor--panel-collapsed .hb-editor__panel > *,
-.hb-editor--panel-collapsed .hb-editor__inspector,
-.hb-editor--inspector-collapsed .hb-editor__sidebar,
-.hb-editor--inspector-collapsed .hb-editor__panel > *,
 .hb-editor--inspector-collapsed .hb-editor__inspector {
     opacity: 0;
     transition-delay: 0s, 0s, var(--hb-panel-anim-ms);
 }
-.hb-editor--panel-collapsed .hb-editor__panel > *,
-.hb-editor--inspector-collapsed .hb-inspector {
-    visibility: hidden;
+.hb-editor--panel-collapsed .hb-editor__panel > * { visibility: hidden; }
+.hb-editor--inspector-collapsed .hb-editor__inspector { visibility: hidden; }
+
+/* Shared scrim behind whichever drawer is open on narrow screens. Declared at
+   the top level (not inside the media query) so it is never an unstyled,
+   click-blocking grid item on desktop: it stays inert and fully transparent
+   there. */
+.hb-editor__scrim {
+    position: absolute;
+    inset: 0;
+    z-index: 2;
+    background: rgba(0, 0, 0, .32);
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity var(--hb-panel-anim-ms) var(--hb-panel-anim-ease);
 }
 
-/* Desktop: a collapsed sidebar hides completely. On phones (<768px) it stays
-   visible as a 52px icon rail, so no hide animation there. */
-@media (min-width: 768px) {
-    .hb-editor--sidebar-collapsed .hb-editor__sidebar {
-        opacity: 0;
-        transition-delay: 0s, 0s, var(--hb-panel-anim-ms);
+/* --- Narrow screens (< 1024px): drawer mode -------------------------------
+   Matches the JS breakpoint in topbar/script.blade.php (hbIsNarrow) and the
+   boot script in editor/layouts/app.blade.php.
+   The icon rail always stays visible; the left panel and the inspector slide
+   over the canvas as full-height drawers with a scrim; they no longer resize
+   the canvas (position: absolute), so closing one never re-flows the other. */
+@media (max-width: 1023px) {
+    .hb-editor {
+        grid-template-columns: 52px 0px 1fr 0px;
+    }
+    .hb-editor--sidebar-collapsed { --hb-editor-sidebar-w: 52px; }
+    .hb-editor__sidebar {
+        z-index: 2;
+    }
+    .hb-editor__panel,
+    .hb-editor__inspector {
+        position: absolute;
+        top: 32px;
+        bottom: 32px;
+        z-index: 3;
+        box-shadow: 0 8px 32px rgba(0, 0, 0, .18);
+        transition: transform var(--hb-panel-anim-ms) var(--hb-panel-anim-ease),
+            visibility 0s linear 0s;
+    }
+    .hb-editor__panel { left: 52px; }
+    .hb-editor__inspector { right: 0; }
+    .hb-editor__panel > *,
+    .hb-editor__inspector > * {
+        max-width: 100%;
+    }
+    /* Drawers are always "open"; the closed state is a translate off-screen. */
+    .hb-editor--panel-collapsed .hb-editor__panel,
+    .hb-editor--inspector-collapsed .hb-editor__inspector {
+        transform: translateX(-105%);
+        visibility: hidden;
+        transition-delay: 0s, var(--hb-panel-anim-ms);
+    }
+    .hb-editor--inspector-collapsed .hb-editor__inspector {
+        transform: translateX(105%);
+    }
+    .hb-editor--panel-collapsed .hb-editor__panel > *,
+    .hb-editor--inspector-collapsed .hb-editor__inspector {
+        opacity: 1;
+        transform: none;
+        transition-delay: 0s;
+    }
+    .hb-editor--panel-open .hb-editor__scrim,
+    .hb-editor--inspector-open .hb-editor__scrim {
+        opacity: 1;
+        pointer-events: auto;
     }
 }
 
+/* --- Boot: no transition flash while restoring persisted state. */
 .hb-editor--booting, .hb-editor--booting * { transition: none !important; }
 .hb-editor--booting { visibility: hidden; }
 
@@ -95,7 +142,8 @@ body { margin: 0; }
     .hb-editor,
     .hb-editor__sidebar,
     .hb-editor__panel > *,
-    .hb-editor__inspector {
+    .hb-editor__inspector,
+    .hb-editor__scrim {
         transition-duration: 1ms;
         transition-delay: 0s !important;
     }

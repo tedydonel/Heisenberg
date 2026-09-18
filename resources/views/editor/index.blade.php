@@ -13,6 +13,7 @@
         :document-type="$hbDocumentType"
         :email-preview-url-template="$emailPreviewUrlTemplate ?? ''"
         :email-export-url-template="$emailExportUrlTemplate ?? ''" />
+    <div class="hb-editor__scrim" data-hb-scrim hidden></div>
     <x-heisenberg::live.sidebar class="hb-editor__sidebar" :document-type="$hbDocumentType" />
     <div class="hb-editor__panel">
         <x-heisenberg::live.panel-components-blocks :registry="$paletteBlocks ?? $registry" />

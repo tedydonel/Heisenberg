@@ -1,10 +1,16 @@
 <script nonce="{{ heisenberg_csp_nonce() }}">
     (() => {
-        const HB_PANEL_KEYS = ['sidebar', 'panel', 'inspector'];
         const hbIsNarrow = () => window.matchMedia('(max-width: 1023px)').matches;
+        /* One collapsed flag per panel — a panel's open/close never touches
+           another panel's state. On narrow screens (drawer mode, see
+           20-shell.css) the icon rail is permanent chrome: its flag is never
+           written, and drawers get a companion --open class that drives the
+           shared scrim. */
         window.hbSetPanelCollapsed = (shell, key, collapsed) => {
+            if (key === 'sidebar' && hbIsNarrow()) return;
             shell.classList.toggle(`hb-editor--${key}-collapsed`, collapsed);
             localStorage.setItem(`hb-editor:${key}-collapsed`, collapsed ? 'true' : 'false');
+            if (hbIsNarrow()) shell.classList.toggle(`hb-editor--${key}-open`, !collapsed);
         };
 
                 let hbPostId = null;
@@ -354,12 +360,28 @@
                     const key = btn.dataset.hbToggle;
                     const opening = shell.classList.contains(`hb-editor--${key}-collapsed`);
                     window.hbSetPanelCollapsed(shell, key, !opening);
+                    /* Drawers are mutually exclusive on narrow screens: opening
+                       one closes the other. The icon rail is untouched — it
+                       stays visible either way. */
                     if (opening && hbIsNarrow()) {
-                        HB_PANEL_KEYS.filter((k) => k !== key).forEach((other) => window.hbSetPanelCollapsed(shell, other, true));
+                        ['panel', 'inspector'].filter((k) => k !== key).forEach((other) => window.hbSetPanelCollapsed(shell, other, true));
                     }
                 });
                 btn.__hbToggle = true;
             });
+            if (!document.__hbScrimWired) {
+                document.__hbScrimWired = true;
+                document.querySelectorAll('[data-hb-scrim]').forEach((scrim) => {
+                    scrim.hidden = false;
+                    scrim.addEventListener('click', () => {
+                        const shell = scrim.closest('.hb-editor');
+                        if (!shell) return;
+                        ['panel', 'inspector'].forEach((key) => {
+                            if (shell.classList.contains(`hb-editor--${key}-open`)) window.hbSetPanelCollapsed(shell, key, true);
+                        });
+                    });
+                });
+            }
             document.querySelectorAll('[data-hb-theme-toggle]').forEach((btn) => {
                 if (btn.__hbThemeToggle) return;
                 btn.addEventListener('click', () => {
