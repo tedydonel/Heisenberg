@@ -33,12 +33,20 @@
                         shell.classList.toggle(`hb-editor--${key}-open`, open);
                     }
                 });
-                if (narrow && panelOpen && inspectorOpen) {
-                    /* Legacy storage can contain both drawers open. Keep one
-                       deterministic winner instead of rendering both. */
-                    shell.classList.remove('hb-editor--inspector-open', 'hb-editor--inspector-closed');
-                    shell.classList.add('hb-editor--inspector-closed');
-                    localStorage.setItem('hb-editor:inspector-state', 'closed');
+                if (narrow) {
+                    /* Legacy storage can contain both drawers open. Keep the
+                       left drawer as the deterministic winner before paint. */
+                    const activeDrawer = panelOpen ? 'panel' : inspectorOpen ? 'inspector' : null;
+                    if (activeDrawer === 'panel') {
+                        shell.classList.remove('hb-editor--inspector-open');
+                        shell.classList.add('hb-editor--inspector-closed');
+                        localStorage.setItem('hb-editor:inspector-state', 'closed');
+                    } else if (activeDrawer === 'inspector') {
+                        shell.classList.remove('hb-editor--panel-open');
+                        shell.classList.add('hb-editor--panel-closed');
+                        localStorage.setItem('hb-editor:panel-state', 'closed');
+                    }
+                    if (activeDrawer) shell.dataset.hbActiveDrawer = activeDrawer;
                 }
                 if (localStorage.getItem('hb-editor:theme') === 'dark') {
                     shell.classList.add('hb-editor--dark');

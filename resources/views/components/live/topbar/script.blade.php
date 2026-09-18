@@ -16,6 +16,10 @@
                     shell.classList.add(`hb-editor--${other}-closed`);
                     if (persist) localStorage.setItem(`hb-editor:${other}-state`, 'closed');
                 });
+                shell.dataset.hbActiveDrawer = key;
+            }
+            if (narrow && !open && shell.dataset.hbActiveDrawer === key) {
+                delete shell.dataset.hbActiveDrawer;
             }
             shell.classList.toggle(`hb-editor--${key}-closed`, !open);
             if (narrow && HB_DRAWER_KEYS.includes(key)) {
