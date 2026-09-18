@@ -1,17 +1,31 @@
 <script nonce="{{ heisenberg_csp_nonce() }}">
     (() => {
         const hbIsNarrow = () => window.matchMedia('(max-width: 1023px)').matches;
-        /* One collapsed flag per panel — a panel's open/close never touches
-           another panel's state. On narrow screens (drawer mode, see
-           20-shell.css) the icon rail is permanent chrome: its flag is never
-           written, and drawers get a companion --open class that drives the
-           shared scrim. */
-        window.hbSetPanelCollapsed = (shell, key, collapsed) => {
-            if (key === 'sidebar' && hbIsNarrow()) return;
-            shell.classList.toggle(`hb-editor--${key}-collapsed`, collapsed);
-            localStorage.setItem(`hb-editor:${key}-collapsed`, collapsed ? 'true' : 'false');
-            if (hbIsNarrow()) shell.classList.toggle(`hb-editor--${key}-open`, !collapsed);
+        const HB_DRAWER_KEYS = ['panel', 'inspector'];
+
+        /* Single source of truth for all shell open/close behavior. CSS only
+           animates these state classes; no component is allowed to invent a
+           second collapse vocabulary or manipulate another panel directly. */
+        const hbSetPanelState = (shell, key, open, persist = true) => {
+            if (!shell || !['sidebar', ...HB_DRAWER_KEYS].includes(key)) return;
+            const narrow = hbIsNarrow();
+            if (narrow && key === 'sidebar') open = true;
+            if (narrow && open && HB_DRAWER_KEYS.includes(key)) {
+                HB_DRAWER_KEYS.filter((other) => other !== key).forEach((other) => {
+                    shell.classList.remove(`hb-editor--${other}-open`);
+                    shell.classList.add(`hb-editor--${other}-closed`);
+                    if (persist) localStorage.setItem(`hb-editor:${other}-state`, 'closed');
+                });
+            }
+            shell.classList.toggle(`hb-editor--${key}-closed`, !open);
+            if (narrow && HB_DRAWER_KEYS.includes(key)) {
+                shell.classList.toggle(`hb-editor--${key}-open`, open);
+            }
+            if (persist && !(narrow && key === 'sidebar')) {
+                localStorage.setItem(`hb-editor:${key}-state`, open ? 'open' : 'closed');
+            }
         };
+        window.hbSetPanelState = hbSetPanelState;
 
                 let hbPostId = null;
         let hbContentVersion = 0;
@@ -358,14 +372,8 @@
                     const shell = btn.closest('.hb-editor');
                     if (!shell) return;
                     const key = btn.dataset.hbToggle;
-                    const opening = shell.classList.contains(`hb-editor--${key}-collapsed`);
-                    window.hbSetPanelCollapsed(shell, key, !opening);
-                    /* Drawers are mutually exclusive on narrow screens: opening
-                       one closes the other. The icon rail is untouched — it
-                       stays visible either way. */
-                    if (opening && hbIsNarrow()) {
-                        ['panel', 'inspector'].filter((k) => k !== key).forEach((other) => window.hbSetPanelCollapsed(shell, other, true));
-                    }
+                    const opening = shell.classList.contains(`hb-editor--${key}-closed`);
+                    hbSetPanelState(shell, key, opening);
                 });
                 btn.__hbToggle = true;
             });
@@ -377,7 +385,7 @@
                         const shell = scrim.closest('.hb-editor');
                         if (!shell) return;
                         ['panel', 'inspector'].forEach((key) => {
-                            if (shell.classList.contains(`hb-editor--${key}-open`)) window.hbSetPanelCollapsed(shell, key, true);
+                            if (shell.classList.contains(`hb-editor--${key}-open`)) hbSetPanelState(shell, key, false);
                         });
                     });
                 });
@@ -412,12 +420,12 @@
                     const shell = btn.closest('.hb-editor'); if (!shell) return;
                     const nav = document.querySelector('[data-hb-panel-nav]');
                     const navShowing = nav && !nav.hidden;
-                    const collapsed = shell.classList.contains('hb-editor--panel-collapsed');
-                    if (navShowing && !collapsed) {
-                        window.hbSetPanelCollapsed(shell, 'panel', true);
+                    const closed = shell.classList.contains('hb-editor--panel-closed');
+                    if (navShowing && !closed) {
+                        hbSetPanelState(shell, 'panel', false);
                         return;
                     }
-                    window.hbSetPanelCollapsed(shell, 'panel', false);
+                    hbSetPanelState(shell, 'panel', true);
                     document.querySelectorAll('[data-hb-nav]').forEach((n) => {
                         n.classList.remove('hb-navitem--active');
                         n.setAttribute('aria-current', 'false');

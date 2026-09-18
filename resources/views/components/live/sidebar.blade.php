@@ -46,13 +46,13 @@
     .hb-navitem span:not(.hb-navitem__icon) {
         transition: opacity var(--hb-panel-anim-ms, 280ms) var(--hb-panel-anim-ease, cubic-bezier(.22, .61, .36, 1)), visibility 0s linear 0s;
     }
-    .hb-editor--sidebar-collapsed .hb-sidebar__brand,
-    .hb-editor--sidebar-collapsed .hb-navitem span:not(.hb-navitem__icon) {
+    .hb-editor--sidebar-closed .hb-sidebar__brand,
+    .hb-editor--sidebar-closed .hb-navitem span:not(.hb-navitem__icon) {
         opacity: 0;
         visibility: hidden;
         transition-delay: 0s, var(--hb-panel-anim-ms, 280ms);
     }
-    .hb-editor--sidebar-collapsed .hb-navitem { justify-content: center; }
+    .hb-editor--sidebar-closed .hb-navitem { justify-content: center; }
 </style>
 <script nonce="{{ heisenberg_csp_nonce() }}">
     (() => {
@@ -67,15 +67,8 @@
             const selector = PANEL_SELECTOR[panelKey];
             if (!selector) return;
             const shell = document.querySelector('.hb-editor');
-            if (shell && shell.classList.contains('hb-editor--panel-collapsed')) {
-                if (window.hbSetPanelCollapsed) window.hbSetPanelCollapsed(shell, 'panel', false);
-                else shell.classList.remove('hb-editor--panel-collapsed');
-                /* Narrow screens: the panel opens as a drawer over the canvas —
-                   the inspector drawer yields, but the icon rail is permanent
-                   chrome and never closes. */
-                if (window.matchMedia('(max-width: 1023px)').matches && window.hbSetPanelCollapsed) {
-                    window.hbSetPanelCollapsed(shell, 'inspector', true);
-                }
+            if (shell && shell.classList.contains('hb-editor--panel-closed')) {
+                if (window.hbSetPanelState) window.hbSetPanelState(shell, 'panel', true);
             }
             Object.values(PANEL_SELECTOR).forEach((sel) => {
                 const panel = document.querySelector(sel);
@@ -125,12 +118,7 @@
                 const btn = stored ? document.querySelector('[data-hb-nav="' + stored.replace(/"/g, '\\"') + '"]') : null;
                 if (btn && stored !== 'cb:0') {
                     const shell = document.querySelector('.hb-editor');
-                    const wasCollapsed = !!(shell && shell.classList.contains('hb-editor--panel-collapsed'));
                     activateNav(btn, false);
-                    if (wasCollapsed && shell) {
-                        if (window.hbSetPanelCollapsed) window.hbSetPanelCollapsed(shell, 'panel', true);
-                        else shell.classList.add('hb-editor--panel-collapsed');
-                    }
                 }
             }
         };

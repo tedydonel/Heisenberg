@@ -581,7 +581,7 @@ class EditorRendersTest extends TestCase
     {
         $html = $this->get('/editor')->getContent();
 
-        $this->assertStringContainsString("hbSetPanelCollapsed(shell, 'panel', false)", $html);
+        $this->assertStringContainsString("hbSetPanelState(shell, 'panel', true)", $html);
         $this->assertStringContainsString('hb-editor:active-nav', $html);
     }
 

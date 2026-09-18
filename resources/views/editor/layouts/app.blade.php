@@ -16,28 +16,32 @@
                 const shell = document.currentScript.parentElement;
                 shell.classList.add('hb-editor--booting');
                 const panelKeys = ['sidebar', 'panel', 'inspector'];
+                const narrow = window.matchMedia('(max-width: 1023px)').matches;
+                const storedOpen = (key, fallback = true) => {
+                    const value = localStorage.getItem(`hb-editor:${key}-state`);
+                    return value === null ? fallback : value === 'open';
+                };
+                const panelOpen = storedOpen('panel', true);
+                const inspectorOpen = storedOpen('inspector', !narrow);
+
+                /* Restore only the state classes. The live controller owns all
+                   later transitions and interactions; this runs before paint. */
                 panelKeys.forEach((key) => {
-                    if (localStorage.getItem(`hb-editor:${key}-collapsed`) === 'true') {
-                        shell.classList.add(`hb-editor--${key}-collapsed`);
+                    const open = key === 'sidebar' ? (narrow ? true : storedOpen('sidebar', true)) : key === 'panel' ? panelOpen : inspectorOpen;
+                    shell.classList.toggle(`hb-editor--${key}-closed`, !open);
+                    if (narrow && key !== 'sidebar') {
+                        shell.classList.toggle(`hb-editor--${key}-open`, open);
                     }
                 });
+                if (narrow && panelOpen && inspectorOpen) {
+                    /* Legacy storage can contain both drawers open. Keep one
+                       deterministic winner instead of rendering both. */
+                    shell.classList.remove('hb-editor--inspector-open', 'hb-editor--inspector-closed');
+                    shell.classList.add('hb-editor--inspector-closed');
+                    localStorage.setItem('hb-editor:inspector-state', 'closed');
+                }
                 if (localStorage.getItem('hb-editor:theme') === 'dark') {
                     shell.classList.add('hb-editor--dark');
-                }
-
-                /* Narrow screens use drawer mode (see 20-shell.css): the icon rail
-                   always stays visible, so never persist/collapse it here; drawers
-                   just render closed by their own persisted flag. */
-                if (window.matchMedia('(max-width: 1023px)').matches) {
-                    shell.classList.remove('hb-editor--sidebar-collapsed');
-                    /* Drawers default to closed on narrow screens; they only
-                       open via --*-open (set here when restored open, and by
-                       hbSetPanelCollapsed on toggle). */
-                    ['panel', 'inspector'].forEach((key) => {
-                        const open = localStorage.getItem(`hb-editor:${key}-collapsed`) === 'false';
-                        shell.classList.toggle(`hb-editor--${key}-collapsed`, !open);
-                        shell.classList.toggle(`hb-editor--${key}-open`, open);
-                    });
                 }
             })();
         </script>
