@@ -72,6 +72,21 @@ class McpToolRegistry
      */
     public const SURFACE_EXTERNAL = 'external';
 
+    /**
+     * Layout guidance appended to every tool that accepts authored content
+     * (write_canvas, create_post, update_post) — and restated on describe_block,
+     * where agents read the `innerBlocks.orientation` field. This is a
+     * hand-maintained copy of the shipped contracts (columns/column.json), so
+     * keep it in lockstep with resources/blocks: without it, agents authoring
+     * pages reliably reached for `columns` when they meant stacked content
+     * (or wrapped everything in horizontal rows), producing side-by-side
+     * layouts where vertical stacking was intended.
+     */
+    private const LAYOUT_GUIDANCE = 'Layout: vertical stacking (content flowing top to bottom) is the NORMAL case and needs no container — just emit sibling blocks in order. '
+        . 'Use a columns block ONLY when sibling content must truly sit SIDE BY SIDE in one row (e.g. a text block next to an image block); its children are column blocks, one per side-by-side slot, and the row wraps on narrow screens. '
+        . 'column (singular) and group are containers for a vertical stack of children and must not be used to lay content out side by side. '
+        . 'A container can still be flipped with supports.layout.direction (row = side by side, column = stacked), but the block choice already carries the right default.';
+
     public function __construct(
         private BlockRegistryService $registry,
         private BlocksPayloadService $payload,
@@ -215,7 +230,7 @@ class McpToolRegistry
             ],
 
             'describe_block' => [
-                'description' => 'Full contract for one or more blocks: attributes (with types, defaults and enums) and the style supports each accepts. Pass `names` (a list) to batch several contracts in one call instead of one describe_block round trip per block — cheaper than calling this once per block when authoring something with a handful of different types.',
+                'description' => 'Full contract for one or more blocks: attributes (with types, defaults and enums) and the style supports each accepts. Pass `names` (a list) to batch several contracts in one call instead of one describe_block round trip per block — cheaper than calling this once per block when authoring something with a handful of different types. The returned `innerBlocks.orientation` is how the block stacks its children: "vertical" = one column, top to bottom (the default for most content); "horizontal" = one row, side by side.',
                 'tier' => self::TIER_READ,
                 'inputSchema' => $this->schema([
                     'name' => ['type' => 'string', 'description' => 'Contract name or bare slug, e.g. "heisenberg/heading" or "heading".'],
@@ -329,7 +344,8 @@ class McpToolRegistry
                     . 'mode="append" is refused while translating — tell the user to switch to the home locale '
                     . 'to add new blocks. Nothing is saved to the database — the user reviews and saves. The '
                     . 'code is validated against the live block contracts; on a parse error nothing is applied '
-                    . 'and the error names the line to fix.',
+                    . 'and the error names the line to fix. '
+                    . self::LAYOUT_GUIDANCE,
                 'tier' => self::TIER_AUTHORS,
                 'surface' => self::SURFACE_EDITOR,
                 'inputSchema' => $this->schema([
@@ -441,7 +457,7 @@ class McpToolRegistry
             ],
 
             'create_post' => [
-                'description' => 'Create a post. Supply content as `code` (Heisenberg shortcode — preferred) or `blocks` (raw block JSON). Content is validated against the live block contracts and sanitized exactly as the editor does. Pass `type: "email"` to author an email document instead of a blog/page post (docs/email-system.md §3) — same authoring path, draft-only posture unchanged; render it with the EmailRenderer service or the bundled HeisenbergMailable, this tool never sends anything.',
+                'description' => 'Create a post. Supply content as `code` (Heisenberg shortcode — preferred) or `blocks` (raw block JSON). Content is validated against the live block contracts and sanitized exactly as the editor does. Pass `type: "email"` to author an email document instead of a blog/page post (docs/email-system.md §3) — same authoring path, draft-only posture unchanged; render it with the EmailRenderer service or the bundled HeisenbergMailable, this tool never sends anything. ' . self::LAYOUT_GUIDANCE . '.',
                 'tier' => self::TIER_AUTHORS,
                 'surface' => self::SURFACE_EXTERNAL,
                 'inputSchema' => $this->schema([
@@ -460,7 +476,7 @@ class McpToolRegistry
             ],
 
             'update_post' => [
-                'description' => 'Replace an existing post\'s title, slug, excerpt, locale and/or content. This is the direct code path: get_post gives you the current content as shortcode, you edit it, and pass the FULL updated document back as `code` — the whole content tree is replaced. Pass the content_version from get_post to detect a concurrent edit.',
+                'description' => 'Replace an existing post\'s title, slug, excerpt, locale and/or content. This is the direct code path: get_post gives you the current content as shortcode, you edit it, and pass the FULL updated document back as `code` — the whole content tree is replaced. Pass the content_version from get_post to detect a concurrent edit. ' . self::LAYOUT_GUIDANCE . '.',
                 'tier' => self::TIER_AUTHORS,
                 'surface' => self::SURFACE_EXTERNAL,
                 'inputSchema' => $this->schema([

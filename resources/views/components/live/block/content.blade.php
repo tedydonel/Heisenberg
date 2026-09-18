@@ -18,6 +18,36 @@
                     <x-heisenberg::ui.number-stepper :value="$field['value'] ?? 0"
                         :min="$field['min'] ?? null" :max="$field['max'] ?? null" :step="$field['step'] ?? 1"
                         data-hb-control="{{ $field['key'] ?? '' }}" data-hb-control-kind="attributes" data-hb-control-type="number" />
+                @elseif (($field['type'] ?? 'text') === 'media')
+                    {{-- Media-attribute control (e.g. the image block's `url`): a preview + Choose button that opens the media library dialog, exactly like the Post tab's Featured Image field. The value itself is written through the same setAttribute path as every other control — see media-field-behavior. --}}
+                    <div class="hb-mediafield" data-hb-media-field data-hb-media-attribute="{{ $field['key'] ?? '' }}">
+                        <button type="button" class="hb-mediafield__trigger" data-hb-media-trigger aria-haspopup="dialog">
+                            <span class="hb-mediafield__icon" aria-hidden="true">
+                                @include('heisenberg::components.ui.icon', ['name' => 'image', 'size' => 28])
+                            </span>
+                            <span class="hb-mediafield__label">{{ __('heisenberg::editor.media.choose_image') }}</span>
+                        </button>
+                        <div class="hb-mediafield__preview" data-hb-media-preview hidden title="{{ __('heisenberg::editor.media.replace_image') }}">
+                            <img class="hb-mediafield__img" data-hb-media-img alt="">
+                            <button type="button" class="hb-mediafield__remove" data-hb-media-remove aria-label="{{ __('heisenberg::editor.media.remove_image') }}" hidden>
+                                @include('heisenberg::components.ui.icon', ['name' => 'trash', 'size' => 14])
+                            </button>
+                        </div>
+                        @php
+                            $hbMediaSelectUrl = \Illuminate\Support\Facades\Route::has('media.select') ? route('media.select') : null;
+                            $hbMediaUploadUrl = \Illuminate\Support\Facades\Route::has('media.upload') ? route('media.upload') : null;
+                        @endphp
+                        <x-heisenberg::live.media.media-dialog
+                            data-hb-media-dialog
+                            hidden
+                            :scrim="true"
+                            tab="library"
+                            accept="image/*"
+                            :title="__('heisenberg::editor.media.select_image')"
+                            :select-url="$hbMediaSelectUrl"
+                            :upload-url="$hbMediaUploadUrl"
+                        />
+                    </div>
                 @else
                     <x-heisenberg::ui.input :value="$field['value'] ?? ''"
                         data-hb-control="{{ $field['key'] ?? '' }}" data-hb-control-kind="attributes" data-hb-control-type="{{ $field['type'] ?? 'text' }}" />
@@ -84,5 +114,30 @@
     .hb-ihint--warning { color: var(--hb-danger); }
     .hb-ihint[hidden] { display: none; }
     [data-hb-control="anchor"].hb-input--warning { border-color: var(--hb-danger); }
+    .hb-mediafield { display: flex; flex-direction: column; gap: 6px; }
+    .hb-mediafield__trigger {
+        display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px;
+        width: 100%; padding: 14px 0; box-sizing: border-box;
+        border: 1px dashed var(--hb-border-strong); border-radius: var(--hb-radius-md, 5px);
+        background: var(--hb-bg-subtle); color: var(--hb-text-muted); font: inherit; cursor: pointer;
+    }
+    .hb-mediafield__trigger:hover { color: var(--hb-text-primary); border-color: var(--hb-border-focus); }
+    .hb-mediafield__trigger[hidden] { display: none; }
+    .hb-mediafield__preview {
+        position: relative; height: 94px; width: 100%;
+        border-radius: var(--hb-radius-md, 5px); overflow: hidden;
+        background: var(--hb-bg-subtle); border: 1px solid var(--hb-border-strong);
+    }
+    .hb-mediafield__preview[hidden] { display: none; }
+    .hb-mediafield__img { width: 100%; height: 100%; object-fit: cover; display: block; cursor: pointer; }
+    .hb-mediafield__remove {
+        position: absolute; top: 6px; right: 6px;
+        display: inline-flex; align-items: center; justify-content: center;
+        width: 24px; height: 24px; border: 0; border-radius: 4px;
+        background: rgba(10, 10, 10, .55); color: #fff; cursor: pointer;
+    }
+    .hb-mediafield__remove:hover { background: var(--hb-danger); }
+    .hb-mediafield__remove[hidden] { display: none; }
 </style>
 @endonce
+@include('heisenberg::components.live.inspector.media-field-behavior')

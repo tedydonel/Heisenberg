@@ -19,7 +19,7 @@
             "default": "",
             "sanitize": "url",
             "control": {
-                "type": "text",
+                "type": "media",
                 "section": "settings",
                 "placeholder": "https://…"
             }

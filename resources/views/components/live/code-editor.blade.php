@@ -71,7 +71,7 @@
         position: absolute; inset: 0; overflow: hidden;
         pointer-events: none; color: var(--hb-code-body);
     }
-    .hb-codeview__hl .t { color: var(--hb-code-tag); font-weight: 600; }
+    .hb-codeview__hl .t { color: var(--hb-code-tag); }
     .hb-codeview__hl .a { color: var(--hb-code-attr); }
     .hb-codeview__hl .o { color: var(--hb-code-op); }
     .hb-codeview__hl .s { color: var(--hb-code-str); }
