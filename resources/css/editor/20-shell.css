@@ -3,7 +3,6 @@
     --hb-editor-sidebar-w: 180px;
     --hb-editor-panel-w: 240px;
     --hb-editor-inspector-w: 260px;
-    --hb-editor-rail-w: 52px;
     --hb-editor-topbar-h: 32px;
     --hb-editor-footer-h: 32px;
     --hb-panel-anim-ms: 280ms;
@@ -25,7 +24,7 @@
 .hb-editor--inspector-closed { --hb-editor-inspector-w: 0px; }
 
 .hb-editor__topbar { grid-column: 1 / -1; grid-row: 1; z-index: 40; }
-.hb-editor__sidebar { grid-column: 1; grid-row: 2; }
+.hb-editor__sidebar { grid-column: 1; grid-row: 2; min-width: 0; }
 .hb-editor__panel { grid-column: 2; grid-row: 2; overflow: hidden; }
 .hb-editor__panel > [hidden] { display: none; }
 .hb-editor__canvas { grid-column: 3; grid-row: 2; position: relative; background: var(--hb-bg-subtle); overflow: hidden; }
@@ -65,47 +64,49 @@ body { margin: 0; }
 
 /* The inspector component has its own fixed width on some screens; the grid
    track is the source of truth on desktop. */
-.hb-editor .hb-editor__inspector { width: auto; }
+.hb-editor .hb-editor__inspector { width: auto; box-sizing: border-box; }
 
 .hb-editor__scrim {
-    position: absolute;
-    inset: 0;
-    z-index: 20;
-    background: rgba(0, 0, 0, .32);
-    opacity: 0;
-    pointer-events: none;
-    transition: opacity var(--hb-panel-anim-ms) var(--hb-panel-anim-ease);
+    display: none;
 }
-.hb-editor__scrim[hidden] { display: block; }
 
-/* Narrow screens use a permanent icon rail and two mutually exclusive
-   drawers. The canvas never reflows when a drawer opens or closes. */
+/* Narrow screens use full-width drawers. The canvas never reflows when a
+   drawer opens or closes, and the drawers never cover the footer. */
 @media (max-width: 1024px) {
     .hb-editor {
-        grid-template-columns: var(--hb-editor-rail-w) 0px 1fr 0px;
+        grid-template-columns: 0px 0px 1fr 0px;
     }
-    .hb-editor--sidebar-closed { --hb-editor-sidebar-w: var(--hb-editor-rail-w); }
-    .hb-editor__sidebar {
-        z-index: 30;
-        width: var(--hb-editor-rail-w);
-    }
+    .hb-editor__sidebar,
     .hb-editor__panel,
     .hb-editor__inspector {
         position: fixed;
         top: var(--hb-editor-topbar-h);
         bottom: var(--hb-editor-footer-h);
         z-index: 30;
-        width: min(240px, calc(100vw - var(--hb-editor-rail-w)));
+        box-sizing: border-box;
+        height: auto;
+        max-height: calc(100dvh - var(--hb-editor-topbar-h) - var(--hb-editor-footer-h));
+        overflow: hidden;
         box-shadow: none;
         transition:
             opacity var(--hb-panel-anim-ms) var(--hb-panel-anim-ease),
             transform var(--hb-panel-anim-ms) var(--hb-panel-anim-ease),
             visibility 0s linear 0s;
     }
-    .hb-editor__panel { left: var(--hb-editor-rail-w); }
+    .hb-editor__sidebar {
+        left: 0;
+        width: min(280px, 100vw);
+    }
+    .hb-editor__panel {
+        left: 0;
+        width: min(280px, 100vw);
+    }
     .hb-editor__inspector {
         right: 0;
-        width: min(260px, calc(100vw - var(--hb-editor-rail-w)));
+        width: min(320px, 100vw);
+    }
+    .hb-editor--sidebar-closed .hb-editor__sidebar {
+        transform: translate3d(-105%, 0, 0);
     }
     .hb-editor--panel-closed .hb-editor__panel {
         transform: translate3d(-105%, 0, 0);
@@ -113,21 +114,19 @@ body { margin: 0; }
     .hb-editor--inspector-closed .hb-editor__inspector {
         transform: translate3d(105%, 0, 0);
     }
-    /* Defensive visual guard for stale state from an older build: even if
-       both drawer flags exist, the active drawer always wins. */
+    /* Defensive visual guard for stale state from an older build: only the
+       active drawer may be visible on a narrow screen. */
+    .hb-editor[data-hb-active-drawer="sidebar"] .hb-editor__panel,
+    .hb-editor[data-hb-active-drawer="sidebar"] .hb-editor__inspector,
+    .hb-editor[data-hb-active-drawer="panel"] .hb-editor__sidebar,
     .hb-editor[data-hb-active-drawer="panel"] .hb-editor__inspector,
-    .hb-editor[data-hb-active-drawer="inspector"] .hb-editor__panel,
-    .hb-editor--panel-open .hb-editor__inspector,
-    .hb-editor--inspector-open .hb-editor__panel {
+    .hb-editor[data-hb-active-drawer="inspector"] .hb-editor__sidebar,
+    .hb-editor[data-hb-active-drawer="inspector"] .hb-editor__panel {
         opacity: 0;
         pointer-events: none;
         visibility: hidden;
     }
-    .hb-editor--panel-open .hb-editor__scrim,
-    .hb-editor--inspector-open .hb-editor__scrim {
-        opacity: 1;
-        pointer-events: auto;
-    }
+    .hb-editor__scrim { display: none !important; }
 }
 
 /* No transition flash while the synchronous boot script restores state. */
