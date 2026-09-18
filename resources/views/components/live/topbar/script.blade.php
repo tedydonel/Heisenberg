@@ -1,6 +1,6 @@
 <script nonce="{{ heisenberg_csp_nonce() }}">
     (() => {
-        const hbIsNarrow = () => window.matchMedia('(max-width: 1023px)').matches;
+        const hbIsNarrow = () => window.matchMedia('(max-width: 1024px)').matches;
         const HB_DRAWER_KEYS = ['panel', 'inspector'];
 
         /* Single source of truth for all shell open/close behavior. CSS only
