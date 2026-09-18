@@ -105,8 +105,14 @@ body { margin: 0; }
         transition: transform var(--hb-panel-anim-ms) var(--hb-panel-anim-ease),
             visibility 0s linear 0s;
     }
-    .hb-editor__panel { left: 52px; }
-    .hb-editor__inspector { right: 0; }
+    .hb-editor__panel {
+        left: 52px;
+        width: min(240px, calc(100vw - 52px));
+    }
+    .hb-editor__inspector {
+        right: 0;
+        width: min(260px, calc(100vw - 52px));
+    }
     .hb-editor__panel > *,
     .hb-editor__inspector > * {
         max-width: 100%;
