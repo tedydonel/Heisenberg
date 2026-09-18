@@ -4,6 +4,8 @@
     --hb-editor-panel-w: 240px;
     --hb-editor-inspector-w: 260px;
     --hb-editor-rail-w: 52px;
+    --hb-editor-topbar-h: 32px;
+    --hb-editor-footer-h: 32px;
     --hb-panel-anim-ms: 280ms;
     --hb-panel-anim-ease: cubic-bezier(.22, .61, .36, 1);
     grid-template-columns: var(--hb-editor-sidebar-w) var(--hb-editor-panel-w) 1fr var(--hb-editor-inspector-w);
@@ -89,12 +91,12 @@ body { margin: 0; }
     }
     .hb-editor__panel,
     .hb-editor__inspector {
-        position: absolute;
-        top: 32px;
-        bottom: 32px;
+        position: fixed;
+        top: var(--hb-editor-topbar-h);
+        bottom: var(--hb-editor-footer-h);
         z-index: 30;
         width: min(240px, calc(100vw - var(--hb-editor-rail-w)));
-        box-shadow: 0 8px 32px rgba(0, 0, 0, .18);
+        box-shadow: none;
         transition:
             opacity var(--hb-panel-anim-ms) var(--hb-panel-anim-ease),
             transform var(--hb-panel-anim-ms) var(--hb-panel-anim-ease),
@@ -110,6 +112,16 @@ body { margin: 0; }
     }
     .hb-editor--inspector-closed .hb-editor__inspector {
         transform: translate3d(105%, 0, 0);
+    }
+    /* Defensive visual guard for stale state from an older build: even if
+       both drawer flags exist, the active drawer always wins. */
+    .hb-editor[data-hb-active-drawer="panel"] .hb-editor__inspector,
+    .hb-editor[data-hb-active-drawer="inspector"] .hb-editor__panel,
+    .hb-editor--panel-open .hb-editor__inspector,
+    .hb-editor--inspector-open .hb-editor__panel {
+        opacity: 0;
+        pointer-events: none;
+        visibility: hidden;
     }
     .hb-editor--panel-open .hb-editor__scrim,
     .hb-editor--inspector-open .hb-editor__scrim {
