@@ -3,6 +3,7 @@
     --hb-editor-sidebar-w: 180px;
     --hb-editor-panel-w: 240px;
     --hb-editor-inspector-w: 260px;
+    --hb-editor-rail-w: 52px;
     --hb-panel-anim-ms: 280ms;
     --hb-panel-anim-ease: cubic-bezier(.22, .61, .36, 1);
     grid-template-columns: var(--hb-editor-sidebar-w) var(--hb-editor-panel-w) 1fr var(--hb-editor-inspector-w);
@@ -15,14 +16,13 @@
     transition: grid-template-columns var(--hb-panel-anim-ms) var(--hb-panel-anim-ease);
 }
 
-/* --- Panel collapse (column widths animate via grid-template-columns above) ---
-   Each key only touches its own variable: no collapsed state may affect any
-   other panel's column, width, opacity or transform. */
-.hb-editor--sidebar-collapsed { --hb-editor-sidebar-w: 0px; }
-.hb-editor--panel-collapsed { --hb-editor-panel-w: 0px; }
-.hb-editor--inspector-collapsed { --hb-editor-inspector-w: 0px; }
+/* The controller owns these three state classes. A closed region keeps its
+   layout track animated while its contents leave smoothly and become inert. */
+.hb-editor--sidebar-closed { --hb-editor-sidebar-w: 0px; }
+.hb-editor--panel-closed { --hb-editor-panel-w: 0px; }
+.hb-editor--inspector-closed { --hb-editor-inspector-w: 0px; }
 
-.hb-editor__topbar { grid-column: 1 / -1; grid-row: 1; }
+.hb-editor__topbar { grid-column: 1 / -1; grid-row: 1; z-index: 40; }
 .hb-editor__sidebar { grid-column: 1; grid-row: 2; }
 .hb-editor__panel { grid-column: 2; grid-row: 2; overflow: hidden; }
 .hb-editor__panel > [hidden] { display: none; }
@@ -31,16 +31,13 @@
 .hb-editor__footer { grid-column: 1 / -1; grid-row: 3; }
 body { margin: 0; }
 
-/* --- Open/close choreography ---------------------------------------------
-   The grid columns animate; the panel inside fades + slides within the space
-   that opens/closes around it. Visibility flips only after the collapse
-   finishes so panels stay painted during the whole animation. */
 .hb-editor__sidebar,
-.hb-editor__panel > *,
+.hb-editor__panel,
 .hb-editor__inspector {
     min-width: 0;
-    transform: translateX(0);
+    min-height: 0;
     opacity: 1;
+    transform: translate3d(0, 0, 0);
     visibility: visible;
     transition:
         opacity var(--hb-panel-anim-ms) var(--hb-panel-anim-ease),
@@ -48,90 +45,71 @@ body { margin: 0; }
         visibility 0s linear 0s;
 }
 
-/* The inspector root declares a fixed width in its own stylesheet; track the
-   animated column instead so it clips (instead of overlapping the canvas). */
-.hb-editor .hb-editor__inspector {
-    width: auto;
-}
-
-.hb-editor--sidebar-collapsed .hb-editor__sidebar { transform: translateX(-24px); }
-.hb-editor--panel-collapsed .hb-editor__panel > * { transform: translateX(-24px); }
-.hb-editor--inspector-collapsed .hb-editor__inspector { transform: translateX(24px); }
-
-.hb-editor--sidebar-collapsed .hb-editor__sidebar,
-.hb-editor--panel-collapsed .hb-editor__panel > *,
-.hb-editor--inspector-collapsed .hb-editor__inspector {
+.hb-editor--sidebar-closed .hb-editor__sidebar,
+.hb-editor--panel-closed .hb-editor__panel {
     opacity: 0;
+    transform: translate3d(-24px, 0, 0);
+    pointer-events: none;
+    visibility: hidden;
     transition-delay: 0s, 0s, var(--hb-panel-anim-ms);
 }
-.hb-editor--panel-collapsed .hb-editor__panel > * { visibility: hidden; }
-.hb-editor--inspector-collapsed .hb-editor__inspector { visibility: hidden; }
+.hb-editor--inspector-closed .hb-editor__inspector {
+    opacity: 0;
+    transform: translate3d(24px, 0, 0);
+    pointer-events: none;
+    visibility: hidden;
+    transition-delay: 0s, 0s, var(--hb-panel-anim-ms);
+}
 
-/* Shared scrim behind whichever drawer is open on narrow screens. Declared at
-   the top level (not inside the media query) so it is never an unstyled,
-   click-blocking grid item on desktop: it stays inert and fully transparent
-   there. */
+/* The inspector component has its own fixed width on some screens; the grid
+   track is the source of truth on desktop. */
+.hb-editor .hb-editor__inspector { width: auto; }
+
 .hb-editor__scrim {
     position: absolute;
     inset: 0;
-    z-index: 2;
+    z-index: 20;
     background: rgba(0, 0, 0, .32);
     opacity: 0;
     pointer-events: none;
     transition: opacity var(--hb-panel-anim-ms) var(--hb-panel-anim-ease);
 }
+.hb-editor__scrim[hidden] { display: block; }
 
-/* --- Narrow screens (< 1024px): drawer mode -------------------------------
-   Matches the JS breakpoint in topbar/script.blade.php (hbIsNarrow) and the
-   boot script in editor/layouts/app.blade.php.
-   The icon rail always stays visible; the left panel and the inspector slide
-   over the canvas as full-height drawers with a scrim; they no longer resize
-   the canvas (position: absolute), so closing one never re-flows the other. */
+/* Narrow screens use a permanent icon rail and two mutually exclusive
+   drawers. The canvas never reflows when a drawer opens or closes. */
 @media (max-width: 1023px) {
     .hb-editor {
-        grid-template-columns: 52px 0px 1fr 0px;
+        grid-template-columns: var(--hb-editor-rail-w) 0px 1fr 0px;
     }
-    .hb-editor--sidebar-collapsed { --hb-editor-sidebar-w: 52px; }
+    .hb-editor--sidebar-closed { --hb-editor-sidebar-w: var(--hb-editor-rail-w); }
     .hb-editor__sidebar {
-        z-index: 2;
+        z-index: 30;
+        width: var(--hb-editor-rail-w);
     }
     .hb-editor__panel,
     .hb-editor__inspector {
         position: absolute;
         top: 32px;
         bottom: 32px;
-        z-index: 3;
+        z-index: 30;
+        width: min(240px, calc(100vw - var(--hb-editor-rail-w)));
         box-shadow: 0 8px 32px rgba(0, 0, 0, .18);
-        transition: transform var(--hb-panel-anim-ms) var(--hb-panel-anim-ease),
+        transition:
+            opacity var(--hb-panel-anim-ms) var(--hb-panel-anim-ease),
+            transform var(--hb-panel-anim-ms) var(--hb-panel-anim-ease),
             visibility 0s linear 0s;
     }
-    .hb-editor__panel {
-        left: 52px;
-        width: min(240px, calc(100vw - 52px));
-    }
+    .hb-editor__panel { left: var(--hb-editor-rail-w); }
     .hb-editor__inspector {
         right: 0;
-        width: min(260px, calc(100vw - 52px));
+        width: min(260px, calc(100vw - var(--hb-editor-rail-w)));
     }
-    .hb-editor__panel > *,
-    .hb-editor__inspector > * {
-        max-width: 100%;
+    .hb-editor--panel-closed .hb-editor__panel {
+        transform: translate3d(-105%, 0, 0);
     }
-    /* Drawers are always "open"; the closed state is a translate off-screen. */
-    .hb-editor--panel-collapsed .hb-editor__panel,
-    .hb-editor--inspector-collapsed .hb-editor__inspector {
-        transform: translateX(-105%);
-        visibility: hidden;
-        transition-delay: 0s, var(--hb-panel-anim-ms);
-    }
-    .hb-editor--inspector-collapsed .hb-editor__inspector {
-        transform: translateX(105%);
-    }
-    .hb-editor--panel-collapsed .hb-editor__panel > *,
-    .hb-editor--inspector-collapsed .hb-editor__inspector {
-        opacity: 1;
-        transform: none;
-        transition-delay: 0s;
+    .hb-editor--inspector-closed .hb-editor__inspector {
+        transform: translate3d(105%, 0, 0);
     }
     .hb-editor--panel-open .hb-editor__scrim,
     .hb-editor--inspector-open .hb-editor__scrim {
@@ -140,14 +118,15 @@ body { margin: 0; }
     }
 }
 
-/* --- Boot: no transition flash while restoring persisted state. */
-.hb-editor--booting, .hb-editor--booting * { transition: none !important; }
+/* No transition flash while the synchronous boot script restores state. */
+.hb-editor--booting,
+.hb-editor--booting * { transition: none !important; }
 .hb-editor--booting { visibility: hidden; }
 
 @media (prefers-reduced-motion: reduce) {
     .hb-editor,
     .hb-editor__sidebar,
-    .hb-editor__panel > *,
+    .hb-editor__panel,
     .hb-editor__inspector,
     .hb-editor__scrim {
         transition-duration: 1ms;
