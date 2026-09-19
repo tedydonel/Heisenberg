@@ -503,7 +503,7 @@ class EditorPrompt
     {
         return <<<TXT
         TOOL DISCIPLINE
-        - The document arrives on every turn — never ask the user to paste it.
+        - The document arrives on every turn. Never ask the user to paste it.
         - Authoring request → call write_canvas immediately; close with a one-line note.
         - Block contracts are complete — do NOT call describe_block to verify them.
         - Icons exception: `icon` is a "<set>/<slug>" from a large library. Call search_icons;
