@@ -243,7 +243,7 @@ class EditingLocaleTest extends TestCase
         // Inspector controls (setAttribute — the one write path handleControlEvent uses).
         $this->assertStringContainsString('model.attributes[resolveAttrKey(model.name, key)] = value;', $html);
         // Canvas contenteditable / rich-text commit.
-        $this->assertStringContainsString("model.attributes[resolveAttrKey(model.name, ce.getAttribute('data-hb-rt'))] = ce.innerHTML;", $html);
+        $this->assertStringContainsString("model.attributes[resolveAttrKey(model.name, ce.getAttribute('data-hb-rt'))] = serializedEmailValue(ce);", $html);
         // Code view: a plain `attr="value"` write and the rich-text body write.
         $this->assertStringContainsString('window.hbEditor.resolveAttrKey(model.name, name)', $html);
         $this->assertStringContainsString('window.hbEditor.resolveAttrKey(frame.model.name, rich)', $html);
