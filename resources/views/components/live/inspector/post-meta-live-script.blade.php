@@ -30,7 +30,7 @@
 
                 const updateEmailSummaryMetrics = () => {
                     const subjectEl = document.querySelector('[data-hb-post-meta-value="subject"]');
-                    const blocksEl = document.querySelector('[data-hb-post-meta-value="blocks"]');
+                    const blocksEl = document.querySelector('[data-hb-post-meta-value="email_blocks"]');
                     const variablesEl = document.querySelector('[data-hb-post-meta-value="variables"]');
                     if (!subjectEl && !blocksEl && !variablesEl) return;
 

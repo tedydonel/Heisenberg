@@ -348,7 +348,7 @@ final class EditorController
                     'value' => $subject !== '' ? $subject : '—',
                 ],
                 [
-                    'key' => 'blocks',
+                    'key' => 'email_blocks',
                     'label' => (string) __('heisenberg::editor.inspector.summary_email_blocks'),
                     'value' => (string) $blocks->count(),
                 ],
