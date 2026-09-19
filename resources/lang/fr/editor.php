@@ -341,6 +341,7 @@ return [
         'post_featured_remove' => 'Retirer l’image à la une',
         'post_summary' => 'Résumé',
         'email_summary' => 'Résumé de l’e-mail',
+        'email_variables_heading' => 'Variables de l’e-mail',
         'summary_email_subject' => 'Objet',
         'summary_email_blocks' => 'Blocs de contenu',
         'summary_email_variables' => 'Variables utilisées',

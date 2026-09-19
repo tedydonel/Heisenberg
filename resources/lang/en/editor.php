@@ -342,6 +342,7 @@ return [
         'post_featured_remove' => 'Remove featured image',
         'post_summary' => 'Summary',
         'email_summary' => 'Email summary',
+        'email_variables_heading' => 'Email variables',
         'summary_email_subject' => 'Subject',
         'summary_email_blocks' => 'Content blocks',
         'summary_email_variables' => 'Variables used',

@@ -57,7 +57,9 @@
             @php $hbScheduledNow = ($hbStatusRow['raw'] ?? 'draft') === 'scheduled'; @endphp
             @php $hbPublishedDisplay = $postPublishedAt ? date('M j, Y, h:i A', strtotime($postPublishedAt)) : null; @endphp
             @php $hbScheduleDisplay = $postScheduledAt ? date('M j, Y, h:i A', strtotime($postScheduledAt)) : null; @endphp
-            <div class="hb-post-meta" data-hb-post-meta>
+            <div class="hb-post-meta" data-hb-post-meta
+                data-hb-document-type="{{ $documentType }}"
+                data-hb-slug-prefix="{{ $documentType === 'email' ? ('/' . (trim((string) config('heisenberg.email.route_prefix', 'emails'), '/') ?: 'emails') . '/') : '/' }}">
                 @foreach ($postMeta as $row)
                     <div class="hb-post-meta__row @if ($row['key'] === 'publish') hb-post-publish-row @endif"
                         @if ($row['key'] === 'publish') data-hb-post-publish-row @if ($hbScheduledNow) hidden @endif @endif>
@@ -149,22 +151,20 @@
                 </div>
             </div>
 
+            @if ($documentType !== 'email')
             <hr class="hb-post-divider">
             <div class="hb-post-toggles">
-                @if ($documentType !== 'email')
                 <div class="hb-post-toggle-row">
                     <span class="hb-post-toggle-row__label">{{ __('heisenberg::editor.inspector.post_pending_review') }}</span>
                     <x-heisenberg::ui.toggle :on="$postPendingReview" name="post-pending-review" />
                 </div>
-                @endif
-                @if ($documentType !== 'email')
                 <div class="hb-post-toggle-row">
                     <span class="hb-post-toggle-row__label">{{ __('heisenberg::editor.inspector.post_stick_top') }}</span>
                     <x-heisenberg::ui.toggle :on="$postStickToTop" name="post-stick-top" />
                 </div>
-                @endif
             </div>
             <hr class="hb-post-divider">
+            @endif
             <x-heisenberg::ui.disclosure-row icon="arrow-counter-clockwise" :label="__('heisenberg::editor.revisions.title')" chevron="none"
                 data-hb-revisions-open
                 :data-hb-post-id="$postId ?? ''"

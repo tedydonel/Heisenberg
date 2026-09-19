@@ -37,7 +37,11 @@
         const walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT);
         const nodes = [];
         let node;
-        while ((node = walker.nextNode())) nodes.push(node);
+        while ((node = walker.nextNode())) {
+            if (!node.parentElement || !node.parentElement.closest('.hb-email-variable-token')) {
+                nodes.push(node);
+            }
+        }
         nodes.forEach((textNode) => {
             const value = textNode.nodeValue || '';
             const re = /\{\{\s*([a-z][a-z0-9_]*(?:\.[a-z][a-z0-9_]*)*)\s*\}\}/g;
@@ -57,7 +61,11 @@
                 last = match.index + match[0].length;
             }
             if (!found) return;
-            if (last < value.length) fragment.appendChild(document.createTextNode(value.slice(last)));
+            if (last < value.length) {
+                fragment.appendChild(document.createTextNode(value.slice(last)));
+            } else {
+                fragment.appendChild(document.createTextNode('\u200B'));
+            }
             textNode.parentNode.replaceChild(fragment, textNode);
         });
     }
@@ -67,7 +75,7 @@
             const text = document.createTextNode('{' + '{ ' + chip.getAttribute('data-hb-email-variable') + ' }' + '}');
             chip.replaceWith(text);
         });
-        return clone.innerHTML;
+        return clone.innerHTML.replace(/\u200B/g, '');
     }
 
     const homeLocale = DATA.postLocale || 'en';
@@ -725,15 +733,32 @@
         const walker = document.createTreeWalker(ce, NodeFilter.SHOW_TEXT);
         let remaining = caret.offset, node = walker.nextNode(), target = null, targetOffset = 0;
         while (node) {
+            const isInsideChip = node.parentElement && node.parentElement.closest('.hb-email-variable-token');
             const len = node.textContent.length;
-            if (remaining <= len) { target = node; targetOffset = remaining; break; }
+            if (remaining <= len) {
+                if (isInsideChip) {
+                    const chip = node.parentElement.closest('.hb-email-variable-token');
+                    let next = chip.nextSibling;
+                    if (!next || next.nodeType !== Node.TEXT_NODE) {
+                        const spacer = document.createTextNode('\u200B');
+                        chip.parentNode.insertBefore(spacer, next);
+                        next = spacer;
+                    }
+                    target = next;
+                    targetOffset = next.nodeValue === '\u200B' ? 1 : 0;
+                } else {
+                    target = node;
+                    targetOffset = remaining;
+                }
+                break;
+            }
             remaining -= len;
             node = walker.nextNode();
         }
         try {
             const range = document.createRange();
             const sel = window.getSelection();
-            if (target) range.setStart(target, targetOffset); else range.selectNodeContents(ce);
+            if (target) range.setStart(target, Math.min(targetOffset, target.textContent.length)); else range.selectNodeContents(ce);
             range.collapse(true);
             sel.removeAllRanges();
             sel.addRange(range);

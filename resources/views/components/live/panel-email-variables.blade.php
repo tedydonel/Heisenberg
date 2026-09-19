@@ -1,16 +1,30 @@
 @props(['entries' => []])
 <div data-hb-email-variables-panel data-hb-panel-email-variables {{ $attributes->merge(['class' => 'hb-panel-email-variables']) }}>
-    <div class="hb-panel-email-variables__heading">Email variables</div>
-    @forelse ($entries as $entry)
-        @php($token = '{' . '{ ' . $entry['key'] . ' }' . '}')
-        <button type="button" class="hb-panel-email-variables__item" data-hb-email-variable
-            data-hb-email-variable-key="{{ $entry['key'] }}" title="{{ $entry['description'] }}">
-            <span>{{ $entry['label'] }}</span>
-            <code>{{ $token }}</code>
-        </button>
-    @empty
-        <p class="hb-panel-email-variables__empty">The host has not supplied any email variables.</p>
-    @endforelse
+    <div class="hb-panel-email-variables__header">
+        <span class="hb-panel-email-variables__heading">{{ __('heisenberg::editor.inspector.email_variables_heading') }}</span>
+    </div>
+    <div class="hb-panel-email-variables__body" data-hb-panel-email-variables-body>
+        <div class="hb-panel-email-variables__list">
+            @forelse ($entries as $entry)
+                @php($token = '{' . '{ ' . $entry['key'] . ' }' . '}')
+                <button type="button" class="hb-panel-email-variables__item" data-hb-email-variable
+                    data-hb-email-variable-key="{{ $entry['key'] }}" title="{{ $entry['description'] }}">
+                    <span class="hb-panel-email-variables__label">{{ $entry['label'] }}</span>
+                    <code>{{ $token }}</code>
+                </button>
+            @empty
+                <p class="hb-panel-email-variables__empty">The host has not supplied any email variables.</p>
+            @endforelse
+        </div>
+    </div>
+    <x-heisenberg::ui.custom-scrollbar container="[data-hb-panel-email-variables-body]" />
+
+    <div class="hb-email-variable-autocomplete" data-hb-email-variable-autocomplete hidden role="listbox">
+        <div class="hb-email-variable-autocomplete__scroll" data-hb-email-var-popup-scroll>
+            <div class="hb-email-variable-autocomplete__list" data-hb-email-var-popup-list></div>
+        </div>
+        <x-heisenberg::ui.custom-scrollbar container="[data-hb-email-var-popup-scroll]" />
+    </div>
 </div>
 <script nonce="{{ heisenberg_csp_nonce() }}">
 (() => {
@@ -39,40 +53,58 @@
         if (!activeTarget || !activeRange) return;
         activeTarget.focus();
         const range = activeRange.cloneRange();
+        const textToInsert = open + ' ' + key + ' ' + close + ' ';
         try {
             if (range.startContainer.nodeType === Node.TEXT_NODE && range.startOffset >= activeTokenLength) {
                 range.setStart(range.startContainer, range.startOffset - activeTokenLength);
                 range.deleteContents();
-                range.insertNode(document.createTextNode(open + ' ' + key + ' ' + close));
-                range.collapse(false);
+                const node = document.createTextNode(textToInsert);
+                range.insertNode(node);
+                range.setStart(node, node.length);
+                range.collapse(true);
                 const selection = window.getSelection();
                 selection.removeAllRanges();
                 selection.addRange(range);
             } else {
-                document.execCommand('insertText', false, open + ' ' + key + ' ' + close);
+                document.execCommand('insertText', false, textToInsert);
             }
         } catch (error) {
-            document.execCommand('insertText', false, open + ' ' + key + ' ' + close);
+            document.execCommand('insertText', false, textToInsert);
         }
         activeTarget.dispatchEvent(new InputEvent('input', { bubbles: true }));
         hide();
     };
 
     const ensurePopup = () => {
-        if (popup) return popup;
-        popup = document.createElement('div');
-        popup.className = 'hb-email-variable-autocomplete';
-        popup.hidden = true;
-        popup.setAttribute('role', 'listbox');
-        popup.dataset.hbEmailVariableAutocomplete = '';
-        document.body.appendChild(popup);
-        return popup;
+        let el = document.querySelector('[data-hb-email-variable-autocomplete]');
+        if (el) {
+            popup = el;
+            return el;
+        }
+        const panel = document.querySelector('[data-hb-panel-email-variables]');
+        if (panel) {
+            el = panel.querySelector('[data-hb-email-variable-autocomplete]');
+            if (el) {
+                popup = el;
+                return el;
+            }
+        }
+        el = document.createElement('div');
+        el.className = 'hb-email-variable-autocomplete';
+        el.hidden = true;
+        el.setAttribute('role', 'listbox');
+        el.dataset.hbEmailVariableAutocomplete = '';
+        el.innerHTML = '<div class="hb-email-variable-autocomplete__scroll" data-hb-email-var-popup-scroll><div class="hb-email-variable-autocomplete__list" data-hb-email-var-popup-list></div></div>';
+        document.body.appendChild(el);
+        popup = el;
+        return el;
     };
 
     const show = (target, range, query, tokenLength) => {
-        const matches = variables().filter((entry) => entry.key.toLowerCase().startsWith(query.toLowerCase())).slice(0, 8);
+        const matches = variables().filter((entry) => entry.key.toLowerCase().startsWith(query.toLowerCase())).slice(0, 12);
         const menu = ensurePopup();
-        menu.replaceChildren();
+        const list = menu.querySelector('[data-hb-email-var-popup-list]') || menu;
+        list.replaceChildren();
         if (!matches.length) {
             hide();
             return;
@@ -88,12 +120,13 @@
             button.innerHTML = '<strong>' + entry.label.replace(/[&<>]/g, (char) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;' }[char])) + '</strong><code>' + open + ' ' + entry.key + ' ' + close + '</code>';
             button.addEventListener('mousedown', (event) => event.preventDefault());
             button.addEventListener('click', () => insert(entry.key));
-            menu.appendChild(button);
+            list.appendChild(button);
         });
         const rect = range.getBoundingClientRect();
         menu.style.left = Math.max(8, rect.left) + 'px';
         menu.style.top = (rect.bottom + 6) + 'px';
         menu.hidden = false;
+        document.dispatchEvent(new CustomEvent('hb:refresh'));
     };
 
     const update = (event) => {
@@ -122,7 +155,7 @@
                 const target = active && active.matches('.hb-ce[data-hb-rt]') ? active : document.querySelector('.hb-ce[data-hb-rt]');
                 if (!key || !target) return;
                 target.focus();
-                document.execCommand('insertText', false, open + ' ' + key + ' ' + close);
+                document.execCommand('insertText', false, open + ' ' + key + ' ' + close + ' ');
                 target.dispatchEvent(new InputEvent('input', { bubbles: true }));
                 hide();
             });
@@ -137,19 +170,150 @@
         });
     };
     if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', boot, { once: true }); else boot();
+    document.addEventListener('hb:refresh', boot);
 })();
 </script>
 <style nonce="{{ heisenberg_csp_nonce() }}">
-.hb-panel-email-variables { padding: 12px; display:flex; flex-direction:column; gap:8px; overflow:auto; }
-.hb-email-variable-token { display:inline-block; padding:1px 5px; margin:0 1px; border:1px solid #1d4ed8; border-radius:4px; background:#1e3a8a; color:#fff; font:600 0.9em/1.3 var(--hb-font-mono, ui-monospace, monospace); }
-.hb-panel-email-variables__heading { font-weight:600; font-size:12px; color:var(--hb-text-primary); }
-.hb-panel-email-variables__item { display:flex; flex-direction:column; align-items:flex-start; gap:3px; border:1px solid var(--hb-border); border-radius:6px; background:var(--hb-bg); padding:8px; text-align:left; cursor:pointer; }
-.hb-panel-email-variables__item:hover { border-color:var(--hb-accent, #3D68F5); }
-.hb-panel-email-variables__item code { color:var(--hb-text-muted); font-size:11px; }
-.hb-panel-email-variables__empty { color:var(--hb-text-muted); font-size:12px; line-height:1.4; }
-.hb-email-variable-autocomplete { position:fixed; z-index:9999; min-width:210px; max-width:280px; max-height:240px; overflow:auto; padding:4px; border:1px solid var(--hb-border); border-radius:8px; background:var(--hb-bg, #fff); box-shadow:0 8px 24px rgba(0,0,0,.18); }
-.hb-email-variable-autocomplete__item { display:flex; width:100%; flex-direction:column; align-items:flex-start; gap:2px; border:0; border-radius:5px; background:transparent; padding:7px 8px; text-align:left; cursor:pointer; }
-.hb-email-variable-autocomplete__item:hover, .hb-email-variable-autocomplete__item:focus { background:color-mix(in srgb, var(--hb-accent, #3D68F5) 12%, transparent); outline:none; }
-.hb-email-variable-autocomplete__item strong { color:var(--hb-text-primary); font-size:12px; }
-.hb-email-variable-autocomplete__item code { color:var(--hb-text-muted); font-size:11px; }
+.hb-panel-email-variables {
+    display: flex;
+    flex-direction: column;
+    width: 240px;
+    height: 100%;
+    background: var(--hb-bg);
+    border-right: 1px solid var(--hb-border);
+    flex: none;
+    position: relative;
+    overflow: hidden;
+}
+.hb-panel-email-variables__header {
+    padding: 16px 14px 10px;
+    flex: none;
+}
+.hb-panel-email-variables__heading {
+    font-family: var(--hb-font-sans, Rubik, sans-serif);
+    font-weight: 600;
+    font-size: var(--hb-fs-sm, 12px);
+    color: var(--hb-text-primary);
+    text-transform: uppercase;
+    letter-spacing: .5px;
+}
+.hb-panel-email-variables__body {
+    flex: 1 1 auto;
+    min-height: 0;
+    overflow-y: auto;
+    position: relative;
+    padding: 0 12px 16px;
+}
+.hb-panel-email-variables__list {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+.hb-panel-email-variables__item {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 3px;
+    border: 1px solid var(--hb-border);
+    border-radius: var(--hb-radius-md, 6px);
+    background: var(--hb-bg-subtle, var(--hb-bg));
+    padding: 8px 10px;
+    text-align: left;
+    cursor: pointer;
+    font-family: var(--hb-font-sans, Rubik, sans-serif);
+    transition: border-color .12s ease, background-color .12s ease;
+}
+.hb-panel-email-variables__item:hover {
+    border-color: var(--hb-accent, #3D68F5);
+    background: var(--hb-surface-hover);
+}
+.hb-panel-email-variables__label {
+    font-size: var(--hb-fs-sm, 12px);
+    font-weight: 500;
+    color: var(--hb-text-primary);
+}
+.hb-panel-email-variables__item code {
+    color: var(--hb-text-muted);
+    font-family: var(--hb-font-mono, monospace);
+    font-size: 11px;
+}
+.hb-panel-email-variables__empty {
+    color: var(--hb-text-muted);
+    font-size: var(--hb-fs-sm, 12px);
+    line-height: 1.4;
+    padding: 12px 4px;
+}
+.hb-email-variable-token {
+    display: inline-flex;
+    align-items: center;
+    vertical-align: baseline;
+    user-select: none;
+    -webkit-user-select: none;
+    cursor: default;
+    padding: 1px 6px;
+    margin: 0 2px;
+    border: 1px solid var(--hb-border-strong, #3D68F5);
+    border-radius: var(--hb-radius-sm, 4px);
+    background: var(--hb-bg-muted, color-mix(in srgb, var(--hb-accent, #3D68F5) 15%, transparent));
+    color: var(--hb-text-primary);
+    font-family: var(--hb-font-sans, Rubik, sans-serif);
+    font-size: var(--hb-fs-sm, 12px);
+    font-weight: 500;
+    line-height: 1.4;
+}
+.hb-email-variable-autocomplete {
+    position: fixed;
+    z-index: 9999;
+    width: 240px;
+    max-height: 220px;
+    border: 1px solid var(--hb-border);
+    border-radius: var(--hb-radius-md, 8px);
+    background: var(--hb-bg, #fff);
+    box-shadow: var(--hb-shadow-lg, 0 8px 24px rgba(0,0,0,.18));
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+}
+.hb-email-variable-autocomplete__scroll {
+    flex: 1 1 auto;
+    min-height: 0;
+    max-height: 220px;
+    overflow-y: auto;
+    padding: 4px;
+    position: relative;
+}
+.hb-email-variable-autocomplete__list {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+}
+.hb-email-variable-autocomplete__item {
+    display: flex;
+    width: 100%;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 2px;
+    border: 0;
+    border-radius: var(--hb-radius-sm, 5px);
+    background: transparent;
+    padding: 7px 8px;
+    text-align: left;
+    cursor: pointer;
+    font-family: var(--hb-font-sans, Rubik, sans-serif);
+}
+.hb-email-variable-autocomplete__item:hover,
+.hb-email-variable-autocomplete__item:focus {
+    background: color-mix(in srgb, var(--hb-accent, #3D68F5) 12%, transparent);
+    outline: none;
+}
+.hb-email-variable-autocomplete__item strong {
+    color: var(--hb-text-primary);
+    font-size: 12px;
+    font-weight: 500;
+}
+.hb-email-variable-autocomplete__item code {
+    color: var(--hb-text-muted);
+    font-family: var(--hb-font-mono, monospace);
+    font-size: 11px;
+}
 </style>

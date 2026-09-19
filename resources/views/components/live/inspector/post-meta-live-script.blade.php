@@ -19,9 +19,58 @@
 
                 const hbSlugMarkers = () => Array.from(document.querySelectorAll('[data-hb-post-slug-input]'));
                 const hbSlugInputEl = (marker) => (marker.matches('input') ? marker : marker.querySelector('input'));
+                const slugPrefix = () => {
+                    const meta = document.querySelector('[data-hb-post-meta]');
+                    return (meta && meta.dataset.hbSlugPrefix) || '/';
+                };
                 const updateSlugRowText = (value) => {
                     const trigger = document.querySelector('[data-hb-post-popup-trigger="slug"]');
-                    if (trigger) trigger.textContent = value ? '/' + value : '—';
+                    if (trigger) trigger.textContent = value ? slugPrefix() + value : '—';
+                };
+
+                const updateEmailSummaryMetrics = () => {
+                    const subjectEl = document.querySelector('[data-hb-post-meta-value="subject"]');
+                    const blocksEl = document.querySelector('[data-hb-post-meta-value="blocks"]');
+                    const variablesEl = document.querySelector('[data-hb-post-meta-value="variables"]');
+                    if (!subjectEl && !blocksEl && !variablesEl) return;
+
+                    if (subjectEl) {
+                        const titleEl = document.querySelector('.hb-page__title[data-hb-title]') || document.querySelector('.hb-post-title__input[data-hb-title]');
+                        const titleVal = (titleEl ? (titleEl.tagName === 'INPUT' ? titleEl.value : titleEl.textContent) : '').trim();
+                        subjectEl.textContent = titleVal !== '' ? titleVal : '—';
+                    }
+
+                    if (blocksEl) {
+                        const count = window.hbEditor && window.hbEditor.getDoc ? window.hbEditor.getDoc().blocks.length : document.querySelectorAll('.hb-page__blocks > .hb-blk[data-block]').length;
+                        blocksEl.textContent = String(count);
+                    }
+
+                    if (variablesEl) {
+                        const usedVars = new Set();
+                        document.querySelectorAll('[data-hb-email-variable]').forEach((chip) => {
+                            const key = chip.dataset.hbEmailVariable || chip.getAttribute('data-hb-email-variable');
+                            if (key) usedVars.add(key.trim());
+                        });
+                        const varRegex = /\{\{\s*([a-z][a-z0-9_]*(?:\.[a-z][a-z0-9_]*)*)\s*\}\}/gi;
+                        if (window.hbEditor && window.hbEditor.getDoc) {
+                            try {
+                                const rawJson = JSON.stringify(window.hbEditor.getDoc().blocks || []);
+                                let m;
+                                while ((m = varRegex.exec(rawJson)) !== null) {
+                                    if (m[1]) usedVars.add(m[1].trim());
+                                }
+                            } catch (e) {}
+                        } else {
+                            document.querySelectorAll('.hb-ce[data-hb-rt]').forEach((ce) => {
+                                const text = ce.textContent || '';
+                                let m;
+                                while ((m = varRegex.exec(text)) !== null) {
+                                    if (m[1]) usedVars.add(m[1].trim());
+                                }
+                            });
+                        }
+                        variablesEl.textContent = String(usedVars.size);
+                    }
                 };
 
                 const publishedRoot = () => document.querySelector('[data-hb-post-published-input]');
@@ -311,7 +360,26 @@
                         const input = hbSlugInputEl(marker);
                         if (input) input.disabled = false;
                     });
+                    updateEmailSummaryMetrics();
                 });
+
+                document.addEventListener('hb:refresh', updateEmailSummaryMetrics);
+                document.addEventListener('hb:blocks-changed', updateEmailSummaryMetrics);
+                document.addEventListener('hb:doc-title', updateEmailSummaryMetrics);
+                document.addEventListener('hb:post-saved', updateEmailSummaryMetrics);
+                document.addEventListener('input', (event) => {
+                    const target = event.target;
+                    if (!target) return;
+                    if (target.closest && (target.closest('[data-hb-title]') || target.closest('.hb-ce[data-hb-rt]') || target.closest('.hb-page__blocks'))) {
+                        updateEmailSummaryMetrics();
+                    }
+                }, true);
+
+                if (document.readyState === 'loading') {
+                    document.addEventListener('DOMContentLoaded', updateEmailSummaryMetrics, { once: true });
+                } else {
+                    updateEmailSummaryMetrics();
+                }
             })();
         </script>
         @endonce
