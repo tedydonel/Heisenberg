@@ -47,6 +47,15 @@
                             :select-url="$hbMediaSelectUrl"
                             :upload-url="$hbMediaUploadUrl"
                         />
+                        <div class="hb-mediafield__url" style="margin-top: 6px;">
+                            <x-heisenberg::ui.input
+                                :value="$field['value'] ?? ''"
+                                placeholder="https://… (or paste image link)"
+                                data-hb-control="{{ $field['key'] ?? '' }}"
+                                data-hb-control-kind="attributes"
+                                data-hb-control-type="text"
+                            />
+                        </div>
                     </div>
                 @else
                     <x-heisenberg::ui.input :value="$field['value'] ?? ''"
