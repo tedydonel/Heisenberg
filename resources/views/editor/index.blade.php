@@ -35,7 +35,8 @@
             :model-options="$aiModelOptions ?? []"
             :active-model="$aiActiveModel ?? null"
             :locale="app()->getLocale()"
-            :post-id="$postId ?? null" />
+            :post-id="$postId ?? null"
+            :document-type="$hbDocumentType" />
         <x-heisenberg::live.panel-navigator hidden :registry="$registry" />
         @if ($hbDocumentType === 'email')
             <x-heisenberg::live.panel-email-variables :entries="$emailVariables ?? []" hidden />

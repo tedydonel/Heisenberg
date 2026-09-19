@@ -170,7 +170,7 @@
 @include('heisenberg::components.live.ai.panel-script')
 @endonce
 
-@props(['streamUrl' => null, 'conversationsUrl' => null, 'suggestUrl' => null, 'modelOptions' => [], 'activeModel' => null, 'locale' => 'en', 'postId' => null])
+@props(['streamUrl' => null, 'conversationsUrl' => null, 'suggestUrl' => null, 'modelOptions' => [], 'activeModel' => null, 'locale' => 'en', 'postId' => null, 'documentType' => 'post'])
 @php
     $toolCards = [
         ['icon' => 'sparkle', 'label' => __('heisenberg::editor.panel_ai_tools.tool_generate_title')],
@@ -188,6 +188,7 @@
     data-suggest-url="{{ $suggestUrl }}"
     data-locale="{{ $locale }}"
     data-post-id="{{ $postId }}"
+    data-document-type="{{ $documentType }}"
     data-msg-thinking="{{ __('heisenberg::editor.panel_ai_tools.ai_thinking') }}"
     data-msg-thinking-label="{{ __('heisenberg::editor.panel_ai_tools.ai_thinking_label') }}"
     data-msg-thought-for="{{ __('heisenberg::editor.panel_ai_tools.ai_thought_for') }}"

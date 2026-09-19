@@ -4,7 +4,7 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <meta name="csrf-token" content="{{ csrf_token() }}">
-    <title>{{ trim((string) ($postTitle ?? '')) !== '' ? $postTitle : __('heisenberg::editor.canvas.ph_untitled_post') }}</title>
+    <title>{{ trim((string) ($postTitle ?? '')) !== '' ? $postTitle : __((($documentType ?? 'post') === 'email') ? 'heisenberg::editor.canvas.ph_untitled_email' : 'heisenberg::editor.canvas.ph_untitled_post') }}</title>
     <link rel="icon" type="image/svg+xml" href="{{ route('heisenberg.editor.asset.logo') }}">
     <link rel="stylesheet" href="{{ route('heisenberg.editor.asset.css') }}" nonce="{{ heisenberg_csp_nonce() }}">
 </head>

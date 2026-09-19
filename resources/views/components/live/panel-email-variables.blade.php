@@ -107,7 +107,7 @@
         before.selectNodeContents(target);
         before.setEnd(range.startContainer, range.startOffset);
         const text = before.toString();
-        const match = text.match(new RegExp('\\\\{\\\\{\\\\s*([a-z0-9_.]*)$', 'i'));
+        const match = text.match(/\{\{\s*([a-z0-9_.]*)$/i);
         if (!match) return hide();
         show(target, range, match[1], match[0].length);
     };

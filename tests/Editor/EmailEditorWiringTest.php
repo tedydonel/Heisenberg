@@ -47,6 +47,14 @@ class EmailEditorWiringTest extends TestCase
         $html = $this->get('/editor/email')->assertOk()->getContent();
 
         $this->assertStringContainsString('hb-canvas--email', $html);
+        $this->assertStringContainsString('Untitled email', $html);
+        $this->assertStringContainsString('EMAIL SUBJECT', $html);
+        $this->assertStringContainsString('data-document-type="email"', $html);
+        $this->assertStringContainsString('Email summary', $html);
+        $this->assertStringContainsString('Subject', $html);
+        $this->assertStringContainsString('Content blocks', $html);
+        $this->assertStringContainsString('Variables used', $html);
+        $this->assertStringNotContainsString('data-hb-post-status data-hb-post-popup-trigger="status"', $html);
     }
 
     public function test_an_existing_email_posts_editor_page_carries_the_email_canvas_class(): void
@@ -169,8 +177,8 @@ class EmailEditorWiringTest extends TestCase
         $html = $this->get('/editor/email')->getContent();
 
         $this->assertStringContainsString('data-hb-post-translations-field', $html);
-        $this->assertStringContainsString('data-hb-post-status', $html);
         $this->assertStringContainsString('data-hb-post-popup-trigger="slug"', $html);
+        $this->assertStringContainsString(__('heisenberg::editor.inspector.summary_email_subject'), $html);
     }
 
     /**

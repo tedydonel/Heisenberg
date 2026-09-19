@@ -330,12 +330,35 @@ final class EditorController
         ];
 
         // An email document has no lifecycle of its own — when a campaign sends is host
-        // business, not Heisenberg's — so the Summary only ever shows the email's own URL.
-        // Status / publish date / schedule date are post concepts and stop here. The slug
-        // popup (the only Summary interaction that survives) is generic enough to render
-        // against the URL row alone.
+        // business, not Heisenberg's — so the Summary uses authoring metrics instead of
+        // post-only status/publish controls. The subject is the document title, while the
+        // content and variable counts are read-only snapshots of the saved document.
         if ($documentType === 'email') {
-            return [$urlRow];
+            $locale = (string) ($model?->locale ?: LocaleConfig::default());
+            $subject = $model !== null ? trim((string) $model->title($locale)) : '';
+            $blocks = $model?->blocks ?? collect();
+            $serialized = json_encode($blocks->pluck('content')->all(), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) ?: '';
+            preg_match_all('/\\{\\{\\s*([a-z][a-z0-9_]*(?:\\.[a-z][a-z0-9_]*)*)\\s*\\}\\}/i', $serialized, $matches);
+            $variableCount = count(array_unique($matches[1] ?? []));
+
+            return [
+                [
+                    'key' => 'subject',
+                    'label' => (string) __('heisenberg::editor.inspector.summary_email_subject'),
+                    'value' => $subject !== '' ? $subject : '—',
+                ],
+                [
+                    'key' => 'blocks',
+                    'label' => (string) __('heisenberg::editor.inspector.summary_email_blocks'),
+                    'value' => (string) $blocks->count(),
+                ],
+                [
+                    'key' => 'variables',
+                    'label' => (string) __('heisenberg::editor.inspector.summary_email_variables'),
+                    'value' => (string) $variableCount,
+                ],
+                $urlRow,
+            ];
         }
 
         $currentStatus = (string) ($model?->status ?? 'draft');

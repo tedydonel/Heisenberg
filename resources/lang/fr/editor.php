@@ -332,11 +332,18 @@ return [
         'post_title_eyebrow' => 'TITRE DE L’ARTICLE',
         'post_title_placeholder' => 'Article sans titre',
         'post_title_label' => 'Titre de l’article',
+        'email_subject_eyebrow' => 'OBJET DE L’E-MAIL',
+        'email_subject_placeholder' => 'E-mail sans titre',
+        'email_subject_label' => 'Objet de l’e-mail',
         'post_featured_image' => 'Image à la une',
         'post_featured_set' => 'Définir l’image à la une',
         'post_featured_replace' => 'Remplacer l’image à la une',
         'post_featured_remove' => 'Retirer l’image à la une',
         'post_summary' => 'Résumé',
+        'email_summary' => 'Résumé de l’e-mail',
+        'summary_email_subject' => 'Objet',
+        'summary_email_blocks' => 'Blocs de contenu',
+        'summary_email_variables' => 'Variables utilisées',
         'summary_status' => 'Statut',
         'summary_publish' => 'Publication',
         'summary_url' => 'URL',
@@ -652,6 +659,7 @@ return [
     // Zone de dessin (live/canvas.blade.php).
     'canvas' => [
         'ph_untitled_post' => 'Article sans titre',
+        'ph_untitled_email' => 'E-mail sans titre',
     ],
 
     // Sélecteur de couleur (live/pickers/color-picker.blade.php).

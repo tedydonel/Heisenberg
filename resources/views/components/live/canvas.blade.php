@@ -11,7 +11,7 @@
     data-hb-locale-labels="{{ json_encode($contentLocaleLabels) }}">
     <div class="hb-page" style="--hb-page-padding-x: {{ (int) $pagePaddingX }}px; --hb-page-padding-y: {{ (int) $pagePaddingY }}px;">
         <span class="hb-page__locale-badge" data-hb-editing-locale-badge>{{ $contentLocaleLabels[$postLocale] ?? strtoupper($postLocale) }}</span>
-        <h1 class="hb-page__title" contenteditable="true" spellcheck="false" data-ph="{{ __('heisenberg::editor.canvas.ph_untitled_post') }}" data-hb-title>{{ $title }}</h1>
+        <h1 class="hb-page__title" contenteditable="true" spellcheck="false" data-ph="{{ __($documentType === 'email' ? 'heisenberg::editor.canvas.ph_untitled_email' : 'heisenberg::editor.canvas.ph_untitled_post') }}" data-hb-title>{{ $title }}</h1>
         <div class="hb-page__blocks" data-hb-add-label="{{ __('heisenberg::editor.common.add_block') }}">
             <button type="button" class="hb-appender" data-hb-insert aria-label="{{ __('heisenberg::editor.common.add_block') }}">
                 @include('heisenberg::components.ui.icon', ['name' => 'plus', 'size' => 16])
@@ -25,7 +25,7 @@
             const setVal = (el, v) => { if (el.tagName === 'INPUT') el.value = v; else el.textContent = v; };
             const markEmpty = (el) => { if (el.isContentEditable) el.classList.toggle('is-empty', val(el) === ''); };
             let syncing = false;
-            const fallbackTitle = @json(__('heisenberg::editor.canvas.ph_untitled_post'));
+            const fallbackTitle = @json(__($documentType === 'email' ? 'heisenberg::editor.canvas.ph_untitled_email' : 'heisenberg::editor.canvas.ph_untitled_post'));
             const setDocTitle = (v) => { document.title = v.trim() !== '' ? v : fallbackTitle; };
             const localeLabels = () => { try { return JSON.parse(document.querySelector('[data-hb-canvas]')?.dataset.hbLocaleLabels || '{}') || {}; } catch (e) { return {}; } };
             const applyLocaleBadge = (locale) => {

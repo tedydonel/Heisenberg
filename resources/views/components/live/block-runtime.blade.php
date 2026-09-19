@@ -40,7 +40,7 @@
         while ((node = walker.nextNode())) nodes.push(node);
         nodes.forEach((textNode) => {
             const value = textNode.nodeValue || '';
-            const re = new RegExp(String.raw`\\{\\{\\s*([a-z][a-z0-9_]*(?:\\.[a-z][a-z0-9_]*)*)\\s*\\}\\}`, 'g');
+            const re = /\{\{\s*([a-z][a-z0-9_]*(?:\.[a-z][a-z0-9_]*)*)\s*\}\}/g;
             let match; let last = 0; const fragment = document.createDocumentFragment(); let found = false;
             while ((match = re.exec(value))) {
                 const definition = emailVariableToken(match[1]);
@@ -1667,6 +1667,11 @@
             const model = findModel(blk.getAttribute('data-block'));
             if (!model) return;
             model.attributes[resolveAttrKey(model.name, ce.getAttribute('data-hb-rt'))] = serializedEmailValue(ce);
+            if (document.querySelector('[data-hb-canvas][data-hb-document-type="email"]')) {
+                const caret = captureCaret(blk);
+                decorateEmailVariables(ce);
+                restoreCaret(blk, caret);
+            }
             document.dispatchEvent(new CustomEvent('hb:blocks-changed'));
         });
 

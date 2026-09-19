@@ -1,11 +1,11 @@
       <div class="hb-inspector__post-body" data-hb-inspector-post-body>
         <div class="hb-post-title">
-            <span class="hb-post-title__eyebrow">{{ __('heisenberg::editor.inspector.post_title_eyebrow') }}</span>
+            <span class="hb-post-title__eyebrow">{{ __($documentType === 'email' ? 'heisenberg::editor.inspector.email_subject_eyebrow' : 'heisenberg::editor.inspector.post_title_eyebrow') }}</span>
             <span class="hb-post-title__row">
                 <span class="hb-post-title__icon" aria-hidden="true">
                     @include('heisenberg::components.ui.icon', ['name' => 'note', 'size' => 15])
                 </span>
-                <input type="text" class="hb-post-title__input" data-hb-title value="{{ $postTitle }}" placeholder="{{ __('heisenberg::editor.inspector.post_title_placeholder') }}" aria-label="{{ __('heisenberg::editor.inspector.post_title_label') }}">
+                <input type="text" class="hb-post-title__input" data-hb-title value="{{ $postTitle }}" placeholder="{{ __($documentType === 'email' ? 'heisenberg::editor.inspector.email_subject_placeholder' : 'heisenberg::editor.inspector.post_title_placeholder') }}" aria-label="{{ __($documentType === 'email' ? 'heisenberg::editor.inspector.email_subject_label' : 'heisenberg::editor.inspector.post_title_label') }}">
             </span>
         </div>
 
@@ -50,7 +50,7 @@
         </div>
         @endif
 
-        <x-heisenberg::ui.disclosure-row icon="file-text" :label="__('heisenberg::editor.inspector.post_summary')" chevron="down" persist-key="post-summary" />
+        <x-heisenberg::ui.disclosure-row icon="file-text" :label="__($documentType === 'email' ? 'heisenberg::editor.inspector.email_summary' : 'heisenberg::editor.inspector.post_summary')" chevron="down" persist-key="post-summary" />
         <div data-hb-disclosure-body>
             @php $hbStatusRow = collect($postMeta)->firstWhere('key', 'status'); @endphp
             @php $hbUrlRow = collect($postMeta)->firstWhere('key', 'url'); @endphp

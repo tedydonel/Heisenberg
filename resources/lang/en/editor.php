@@ -333,11 +333,18 @@ return [
         'post_title_eyebrow' => 'POST TITLE',
         'post_title_placeholder' => 'Untitled post',
         'post_title_label' => 'Post title',
+        'email_subject_eyebrow' => 'EMAIL SUBJECT',
+        'email_subject_placeholder' => 'Untitled email',
+        'email_subject_label' => 'Email subject',
         'post_featured_image' => 'Featured image',
         'post_featured_set' => 'Set featured image',
         'post_featured_replace' => 'Replace featured image',
         'post_featured_remove' => 'Remove featured image',
         'post_summary' => 'Summary',
+        'email_summary' => 'Email summary',
+        'summary_email_subject' => 'Subject',
+        'summary_email_blocks' => 'Content blocks',
+        'summary_email_variables' => 'Variables used',
         'summary_status' => 'Status',
         'summary_publish' => 'Publish',
         'summary_url' => 'URL',
@@ -656,6 +663,7 @@ return [
     // Canvas (live/canvas.blade.php).
     'canvas' => [
         'ph_untitled_post' => 'Untitled post',
+        'ph_untitled_email' => 'Untitled email',
     ],
 
     // Colour picker (live/pickers/color-picker.blade.php).
