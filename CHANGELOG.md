@@ -6,7 +6,36 @@ All notable changes to this project are documented here. The format is based on
 
 ## [Unreleased]
 
-## [0.0.5] - 2026-08-27
+## [0.0.7] - 2026-09-19
+
+### Added
+
+- **Internet Search Tool (`search_web`).** AI assistant and MCP clients can now search the web for up-to-date information, news articles, and direct image links with dimensions and attribution across DuckDuckGo, Openverse, Wikimedia Commons, and Wikipedia.
+- **Image URL input in Inspector.** Added an external image link input field on the image block (`heisenberg/image`) Content tab, fully synchronized with block attributes and the Media Library dialog.
+
+### Changed
+
+- **AI prompt compression.** Compressed the core editor system prompt by ~27% (~3,800 characters) to optimize response latency and token usage without losing layout discipline or translation rules.
+
+### Fixed
+
+- Fixed dynamic scheduled date handling in timezone roundtrip test suite.
+- Namespaced email document summary metric to `email_blocks` to avoid collisions with legacy post summary rows.
+
+## [0.0.6] - 2026-09-19
+
+### Added
+
+- **SEO & Social Live Previews.** Wired end-to-end SEO and Social panel with live Facebook and X preview cards and rounded circular SEO score progress bar.
+
+### Changed
+
+- Updated AI layout guidance to default to vertical stacking for container blocks (group/column).
+
+### Fixed
+
+- Restored standard `x` close icons across the application layout.
+- Cleaned up documentation, updated email system integration instructions, and removed em-dash usage.
 
 ### Fixed
 
