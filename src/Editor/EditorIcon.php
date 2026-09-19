@@ -96,7 +96,6 @@ final class EditorIcon
         // Lucide slug used by resources/blocks/paragraph/paragraph.json's `icon` — no Phosphor
         // icon is literally named "pilcrow", but its own "paragraph" glyph is the same concept.
         'pilcrow'                => 'paragraph',
-        'x'                      => 'x-logo',
         'x-logo'                 => 'x-logo',
         'x-logo-bold'            => 'x-logo',
         'twitter'                => 'x-logo',
