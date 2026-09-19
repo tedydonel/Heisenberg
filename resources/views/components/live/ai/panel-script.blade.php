@@ -345,6 +345,7 @@
                     if (title) base.title = (title.value || title.textContent || '').trim();
                     if (window.hbEditor && window.hbEditor.getEditingLocale) base.editingLocale = window.hbEditor.getEditingLocale();
                     if (window.hbEditor && window.hbEditor.getHomeLocale) base.homeLocale = window.hbEditor.getHomeLocale();
+                    base.documentType = root.dataset.documentType || document.querySelector('[data-hb-canvas]')?.dataset.documentType || 'post';
                     return base;
                 };
 

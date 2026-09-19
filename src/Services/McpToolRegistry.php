@@ -94,6 +94,7 @@ class McpToolRegistry
         private ShortcodeParser $parser,
         private ShortcodeSerializer $serializer,
         private ThemeRepository $themes,
+        private EmailVariableCatalog $emailVariables,
         private PostPolicy $postPolicy,
         private TranslationStatusService $translationStatus,
         private IconLibraryService $icons,
@@ -271,6 +272,13 @@ class McpToolRegistry
 
                     return $found;
                 },
+            ],
+
+            'list_email_variables' => [
+                'description' => 'List the host-defined email personalization variables available to the current email editor. Returns metadata only (key, label, description, group); never recipient values. Use only these exact keys when authoring email content.',
+                'tier' => self::TIER_READ,
+                'inputSchema' => $this->schema([]),
+                'handler' => fn (array $args): array => ['variables' => $this->emailVariables->definitions()],
             ],
 
             /**

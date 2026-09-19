@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Heisenberg\Ai;
 
 use Heisenberg\Services\BlockRegistryService;
+use Heisenberg\Services\EmailVariableCatalog;
 use Heisenberg\Services\ShortcodeDialect;
 use Heisenberg\Services\ThemeRepository;
 
@@ -45,11 +46,12 @@ class EditorPrompt
     public function __construct(
         private BlockRegistryService $registry,
         private ThemeRepository $theme,
+        private ?EmailVariableCatalog $emailVariables = null,
     ) {
     }
 
     /** Everything the model needs to own the page from message 1. */
-    public function system(): string
+    public function system(array $context = []): string
     {
         $identity = $this->identity();
         $dialect = $this->dialect();
@@ -58,6 +60,7 @@ class EditorPrompt
         $discipline = $this->toolDiscipline();
         $locales = $this->locales();
         $seo = $this->seo();
+        $emailVariables = $this->emailVariablesForContext($context);
 
         return <<<PROMPT
         {$identity}
@@ -79,6 +82,8 @@ class EditorPrompt
         {$locales}
 
         {$seo}
+
+        {$emailVariables}
 
         Rules:
         - Body text may contain inline HTML (<strong>, <em>, <a href="...">). Block-level HTML may not.
@@ -562,6 +567,34 @@ class EditorPrompt
         same sequence, text only, no add/remove/reorder/id/url/media change, mode="replace" only,
         positions must match exactly.
         TXT;
+    }
+
+    /**
+     * Email-only authoring context. The catalog contains metadata only — never recipient values.
+     * A post editor must not receive this section because the same tokens have no meaning there.
+     */
+    private function emailVariablesForContext(array $context): string
+    {
+        if (($context['documentType'] ?? 'post') !== 'email') {
+            return '';
+        }
+
+        $definitions = $this->emailVariables?->definitions() ?? [];
+        if ($definitions === []) {
+            return "EMAIL PERSONALIZATION\nThis is an email document, but no host-defined email variables are registered.";
+        }
+
+        $lines = array_map(static function (array $definition): string {
+            $key = $definition['key'];
+            $label = $definition['label'];
+            $description = $definition['description'] !== '' ? ': ' . $definition['description'] : '';
+
+            return "- {{ {$key} }} — {$label}{$description}";
+        }, $definitions);
+
+        return "EMAIL PERSONALIZATION\nThis is an email document. These are the registered authoring variables; use only these exact tokens in email text:\n"
+            . implode("\n", $lines)
+            . "\nNever invent recipient values, substitute values yourself, or expose runtime data. Keep the literal token in the authored email.";
     }
 
     /** §7 — SEO/social metadata + score, and media metadata (docs/seo-system.md §6). */

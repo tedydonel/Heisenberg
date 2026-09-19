@@ -398,7 +398,7 @@ class AiController
 
         return new AiRequest(
             messages: $messages,
-            system: $prompt->system(),
+            system: $prompt->system($context),
             model: $model?->id,
             // Effort rides on the MODEL, not on one global setting: a small local
             // model has no use for `xhigh` and a reasoning model is wasted at `low`.

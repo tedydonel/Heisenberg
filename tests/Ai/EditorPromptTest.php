@@ -6,6 +6,7 @@ namespace Heisenberg\Tests\Ai;
 
 use Heisenberg\Ai\EditorPrompt;
 use Heisenberg\Services\BlockRegistryService;
+use Heisenberg\Services\EmailVariableCatalog;
 use Heisenberg\Services\ShortcodeDialect;
 use Heisenberg\Services\ThemeRepository;
 use Heisenberg\Tests\TestCase;
@@ -34,6 +35,41 @@ class EditorPromptTest extends TestCase
         $this->assertStringContainsString('Heisenberg', $system);
         $this->assertStringContainsString('AI panel', $system);
         $this->assertStringContainsString('shortcode', $system);
+    }
+
+    public function test_email_system_prompt_lists_only_registered_email_variables(): void
+    {
+        config(['heisenberg.email.variables' => [
+            ['key' => 'user.email', 'label' => 'Email address', 'description' => 'Recipient address'],
+            ['key' => 'unsubscribe_url', 'label' => 'Unsubscribe URL', 'description' => 'Safe unsubscribe link'],
+        ]]);
+
+        $prompt = new EditorPrompt(
+            app(BlockRegistryService::class),
+            app(ThemeRepository::class),
+            app(EmailVariableCatalog::class),
+        );
+        $system = $prompt->system(['documentType' => 'email']);
+
+        $this->assertStringContainsString('EMAIL PERSONALIZATION', $system);
+        $this->assertStringContainsString('{{ user.email }}', $system);
+        $this->assertStringContainsString('{{ unsubscribe_url }}', $system);
+        $this->assertStringContainsString('Never invent recipient values', $system);
+    }
+
+    public function test_post_system_prompt_does_not_include_email_variable_context(): void
+    {
+        config(['heisenberg.email.variables' => [
+            ['key' => 'user.email', 'label' => 'Email address'],
+        ]]);
+
+        $prompt = new EditorPrompt(
+            app(BlockRegistryService::class),
+            app(ThemeRepository::class),
+            app(EmailVariableCatalog::class),
+        );
+
+        $this->assertStringNotContainsString('EMAIL PERSONALIZATION', $prompt->system(['documentType' => 'post']));
     }
 
     public function test_system_prompt_documents_every_registered_block_with_its_attributes(): void
