@@ -235,7 +235,7 @@ class EditorPromptTest extends TestCase
         $system = $this->prompt()->system();
 
         $this->assertLessThan(
-            14300,
+            13500,
             strlen($system),
             'system prompt has grown past its size budget — tighten it before adding more'
         );
