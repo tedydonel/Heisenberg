@@ -1,6 +1,6 @@
 <script nonce="{{ heisenberg_csp_nonce() }}">
     (() => {
-        const hbIsNarrow = () => window.matchMedia('(max-width: 1024px)').matches;
+        const hbIsNarrow = () => window.matchMedia('(max-width: 1200px)').matches;
         const HB_DRAWER_KEYS = ['sidebar', 'panel', 'inspector'];
 
         /* Single source of truth for all shell open/close behavior. CSS only
@@ -502,7 +502,7 @@
                 });
             };
             const setDeviceMenu = (open) => {
-                document.querySelectorAll('.hb-topbar__devsel-menu').forEach((m) => { m.hidden = !open; });
+                document.querySelectorAll('.hb-topbar__devsel-menu:not(.hb-topbar__exportsel-menu)').forEach((m) => { m.hidden = !open; });
                 document.querySelectorAll('[data-hb-device-toggle]').forEach((t) => t.setAttribute('aria-expanded', open ? 'true' : 'false'));
             };
             document.querySelectorAll('[data-hb-device-toggle]').forEach((btn) => {

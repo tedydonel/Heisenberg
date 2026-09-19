@@ -5,7 +5,10 @@
     .hb-panel-cb__content[hidden] { display: none; }
     .hb-panel-cb__body { flex: 1 1 auto; min-height: 0; overflow: hidden; position: relative; display: flex; flex-direction: column; }
     .hb-panel-cb__scroll { flex: 1 1 auto; min-height: 0; overflow: hidden; padding: var(--hb-space-3, 12px); }
+    .hb-panel-cb__blocks-scroll { display: flex; flex-direction: column; }
     .hb-panel-cb__grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+    .hb-panel-cb__blocks-grid { flex: 1 1 auto; min-height: 100%; }
+    .hb-panel-cb__blocks-grid .hb-panel-cb__empty { grid-column: 1 / -1; display: flex; align-items: center; justify-content: center; min-height: 100%; padding: 0 12px; }
     .hb-panel-cb__card { position: relative; }
     .hb-panel-cb__card-del { position: absolute; top: 4px; right: 4px; width: 22px; height: 22px;
         display: none; align-items: center; justify-content: center;
@@ -136,8 +139,8 @@
         <x-heisenberg::ui.search-field :placeholder="__('heisenberg::editor.panel_components_blocks.search_blocks')"
             data-hb-filter="[data-hb-panel-cb-blocks]" data-hb-filter-item="[data-hb-saved-block]" />
         <div class="hb-panel-cb__body" data-hb-patterns-body>
-            <div class="hb-panel-cb__scroll" data-hb-panel-cb-blocks-scroll>
-                <div class="hb-panel-cb__grid" data-hb-patterns-grid data-empty-label="{{ __('heisenberg::editor.panel_components_blocks.empty_blocks') }}">
+            <div class="hb-panel-cb__scroll hb-panel-cb__blocks-scroll" data-hb-panel-cb-blocks-scroll>
+                <div class="hb-panel-cb__grid hb-panel-cb__blocks-grid" data-hb-patterns-grid data-empty-label="{{ __('heisenberg::editor.panel_components_blocks.empty_blocks') }}">
                     @forelse ($patterns as $pattern)
                         <div class="hb-panel-cb__card" data-hb-saved-block="{{ (int) $pattern['id'] }}"
                             data-hb-pattern-name="{{ $pattern['name'] }}" title="{{ $pattern['name'] }}">

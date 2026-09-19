@@ -106,9 +106,23 @@ This is the entire author-facing model:
   whatever it already uses for templated mail), and ships the result through its own
   transport — Laravel mail, an ESP API, a queue worker, a third-party service.
 
-There is no Heisenberg-side concept of "registered variables", "formatters", "samples",
-"runtime contexts", or "batch generation" — none of that. Heisenberg renders the document;
-the host owns everything that happens before send.
+Heisenberg does not own variable values, formatters, users, or substitution. A host may provide
+metadata in `config('heisenberg.email.variables')` so the builder can recognize and label tokens.
+Each entry has a `key` plus optional `label`, `description`, and `group`, for example:
+
+```php
+'email' => [
+    'variables' => [
+        ['key' => 'user.first_name', 'label' => 'First name', 'group' => 'User'],
+        ['key' => 'unsubscribe_url', 'label' => 'Unsubscribe URL', 'group' => 'Links'],
+    ],
+],
+```
+
+This metadata is editor-only. Heisenberg stores and exports the literal `{{ user.first_name }}`
+text unchanged; the host platform decides what the token means and how to substitute it at send
+time. Unknown or malformed metadata is ignored, and an email builder visually marks only tokens
+listed by the host.
 
 ### 6.2 Why the renderer never URL-encodes or otherwise mangles the tokens
 
@@ -151,10 +165,10 @@ to raise, no `heisenberg.roles.email.generate` tier to add a user to.
 
 Subscriber management, campaign **sending**/scheduling/tracking, SMTP configuration inside
 Heisenberg, open/click analytics, MJML interop, per-client conditional comments beyond the
-minimal Outlook shims the shell needs, **and the entire variable / formatter / batch
-infrastructure that used to live in this package** (registry, interpolator, sample contexts,
-admin batch ZIP, email-only authoring picker). All of those concerns live on the host side of
-the seam.
+minimal Outlook shims the shell needs, and variable values, formatters, recipient contexts,
+substitution, and batch sending. The optional variable metadata list and editor-only visual
+markers are the only Heisenberg-side variable surface; all runtime meaning and delivery remain
+on the host side of the seam.
 
 For the bundled Mailable / preview / single-document HTML+EML export, see
 `src/Mail/HeisenbergMailable.php` and `src/Http/Controllers/EmailPreviewController.php`.

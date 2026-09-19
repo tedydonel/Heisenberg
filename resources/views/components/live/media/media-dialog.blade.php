@@ -47,8 +47,14 @@
         )).filter((el) => el.offsetParent !== null);
 
         const openDialog = (scrim, returnFocusEl) => {
-            scrim.hidden = false;
             scrim.__hbReturnFocus = returnFocusEl || document.activeElement;
+            scrim.__hbReturnOwner = scrim.__hbReturnFocus?.closest?.('[data-hb-media-field], [data-hb-featured-field]') || null;
+            if (scrim.parentNode !== document.body) {
+                scrim.__hbPortalParent = scrim.parentNode;
+                scrim.__hbPortalNext = scrim.nextSibling;
+                document.body.appendChild(scrim);
+            }
+            scrim.hidden = false;
             hbOpenMediaScrim = scrim;
             const dialog = scrim.querySelector('.hb-mediadialog');
             const lib = scrim.querySelector('[data-hb-medialib]');
@@ -59,9 +65,15 @@
         const closeDialog = (scrim) => {
             if (!scrim || scrim.hidden) return;
             scrim.hidden = true;
+            if (scrim.__hbPortalParent) {
+                scrim.__hbPortalParent.insertBefore(scrim, scrim.__hbPortalNext && scrim.__hbPortalNext.parentNode === scrim.__hbPortalParent ? scrim.__hbPortalNext : null);
+                scrim.__hbPortalParent = null;
+                scrim.__hbPortalNext = null;
+            }
             if (hbOpenMediaScrim === scrim) hbOpenMediaScrim = null;
             const back = scrim.__hbReturnFocus;
             scrim.__hbReturnFocus = null;
+            scrim.__hbReturnOwner = null;
             if (back && document.contains(back)) back.focus();
         };
 
@@ -177,8 +189,11 @@
 
             dialog.addEventListener('hb:media-pick', (event) => {
                 const scrim = dialog.closest('.hb-mediadialog__scrim');
+                const owner = scrim?.__hbReturnOwner || null;
                 if (scrim) closeDialog(scrim);
-                dialog.dispatchEvent(new CustomEvent('hb:media-select', { bubbles: true, detail: event.detail }));
+                const selected = new CustomEvent('hb:media-select', { bubbles: true, detail: event.detail });
+                dialog.dispatchEvent(selected);
+                if (owner) owner.dispatchEvent(new CustomEvent('hb:media-select', { bubbles: true, detail: event.detail }));
             });
 
             wireUpload(dialog);

@@ -3,7 +3,8 @@
     .hb-sidebar {
         display: flex;
         flex-direction: column;
-        width: 100%;
+        width: 180px !important;
+        max-width: 180px !important;
         height: 100%;
         background: var(--hb-bg);
         border-right: 1px solid var(--hb-border);
@@ -38,6 +39,7 @@
         flex-direction: column;
         gap: 1px;
         width: 100%;
+        max-width: 180px;
         padding: var(--hb-space-2, 8px);
         overflow: hidden;
     }
@@ -50,6 +52,7 @@
             seo: '[data-hb-panel-seo]',
             style: '[data-hb-panel-style]',
             ai: '[data-hb-panel-ai]',
+            vars: '[data-hb-panel-email-variables]',
             nav: '[data-hb-panel-nav]',
         };
         const showPanel = (panelKey, tabIndex) => {
@@ -69,6 +72,9 @@
             const target = document.querySelector(selector);
             if (!target) return;
             target.hidden = false;
+            document.dispatchEvent(new CustomEvent('hb:panel-shown', {
+                detail: { panel: panelKey, tab: Number(tabIndex) || 0 },
+            }));
             document.dispatchEvent(new CustomEvent('hb:refresh'));
             requestAnimationFrame(() => document.dispatchEvent(new CustomEvent('hb:refresh')));
             const tablist = target.querySelector('[data-hb-tablist]');
@@ -81,22 +87,45 @@
 
         const NAV_STORE = 'hb-editor:active-nav';
 
+        const setActiveNav = (panelKey, tabIndex, persist = false) => {
+            const value = panelKey + ':' + Number(tabIndex || 0);
+            const btn = document.querySelector('[data-hb-nav="' + value + '"]');
+            document.querySelectorAll('[data-hb-nav]').forEach((other) => {
+                const active = !!btn && other === btn;
+                other.classList.toggle('hb-navitem--active', active);
+                other.setAttribute('aria-current', active ? 'true' : 'false');
+            });
+            if (persist && btn) {
+                try { localStorage.setItem(NAV_STORE, value); } catch (e) { }
+            }
+        };
+
         const activateNav = (btn, persist) => {
             const [panelKey, tabIndex] = (btn.dataset.hbNav || '').split(':');
             if (!PANEL_SELECTOR[panelKey]) return;
-
-            document.querySelectorAll('[data-hb-nav]').forEach((other) => {
-                other.classList.toggle('hb-navitem--active', other === btn);
-                other.setAttribute('aria-current', other === btn ? 'true' : 'false');
-            });
-
-            if (persist) {
-                try { localStorage.setItem(NAV_STORE, btn.dataset.hbNav || ''); } catch (e) { }
-            }
+            setActiveNav(panelKey, tabIndex, persist);
             showPanel(panelKey, tabIndex);
         };
 
         const boot = () => {
+            if (!document.__hbNavPanelSync) {
+                document.__hbNavPanelSync = true;
+                document.addEventListener('hb:panel-shown', (event) => {
+                    const detail = event.detail || {};
+                    setActiveNav(detail.panel || '', detail.tab || 0);
+                });
+                document.addEventListener('change', (event) => {
+                    const tablist = event.target.closest && event.target.closest('[data-hb-tablist]');
+                    if (!tablist || !event.detail) return;
+                    const panel = tablist.closest('[data-hb-panel-cb], [data-hb-panel-seo], [data-hb-panel-style], [data-hb-panel-ai], [data-hb-panel-nav]');
+                    if (!panel) return;
+                    const panelKey = panel.hasAttribute('data-hb-panel-cb') ? 'cb'
+                        : panel.hasAttribute('data-hb-panel-seo') ? 'seo'
+                        : panel.hasAttribute('data-hb-panel-style') ? 'style'
+                        : panel.hasAttribute('data-hb-panel-ai') ? 'ai' : 'nav';
+                    setActiveNav(panelKey, event.detail.index || 0);
+                });
+            }
             document.querySelectorAll('[data-hb-nav]').forEach((btn) => {
                 if (btn.__hbNavWired) return;
                 btn.__hbNavWired = true;
@@ -133,6 +162,9 @@
         ['icon' => 'palette-fill', 'label' => __('heisenberg::editor.sidebar.nav_style'), 'panel' => 'style', 'tab' => 0],
         ['icon' => 'swatches-fill', 'label' => __('heisenberg::editor.sidebar.nav_themes'), 'panel' => 'style', 'tab' => 1],
         ['icon' => 'magic-wand-fill', 'label' => __('heisenberg::editor.sidebar.nav_ai'), 'panel' => 'ai', 'tab' => 0],
+        ...($documentType === 'email' ? [
+            ['icon' => 'brackets-curly', 'label' => 'Variables', 'panel' => 'vars', 'tab' => 0],
+        ] : []),
         ['icon' => 'wrench-fill', 'label' => __('heisenberg::editor.sidebar.nav_tools'), 'panel' => 'ai', 'tab' => 1],
     ];
 @endphp

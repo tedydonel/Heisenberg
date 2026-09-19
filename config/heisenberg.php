@@ -170,6 +170,34 @@ return [
     'email' => [
         'routes'              => true,
         'route_prefix'        => 'emails',
+
+        // Optional metadata supplied by the host platform. Heisenberg uses this only to
+        // identify and visually distinguish placeholders while editing; it never resolves,
+        // stores, formats, or associates variable values. See docs/email-system.md §6.1.
+        // Each entry is: key, label, description, and optional group.
+        // Local demo metadata so the email builder can be exercised without a host application.
+        // Replace this list with the host platform's definitions in production; Heisenberg only
+        // uses it to identify and visually distinguish placeholders while editing.
+        'variables' => [
+            [
+                'key' => 'user.first_name',
+                'label' => 'First name',
+                'description' => 'The recipient’s first name',
+                'group' => 'User',
+            ],
+            [
+                'key' => 'user.email',
+                'label' => 'Email address',
+                'description' => 'The recipient’s email address',
+                'group' => 'User',
+            ],
+            [
+                'key' => 'unsubscribe_url',
+                'label' => 'Unsubscribe URL',
+                'description' => 'The recipient’s unsubscribe link',
+                'group' => 'Links',
+            ],
+        ],
     ],
     'css_prefix'   => 'hb',           // emitted CSS class/var prefix (gtc-block -> hb-block)
     'components'   => [

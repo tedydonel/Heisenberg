@@ -37,6 +37,9 @@
             :locale="app()->getLocale()"
             :post-id="$postId ?? null" />
         <x-heisenberg::live.panel-navigator hidden :registry="$registry" />
+        @if ($hbDocumentType === 'email')
+            <x-heisenberg::live.panel-email-variables :entries="$emailVariables ?? []" hidden />
+        @endif
     </div>
     <div class="hb-editor__canvas">
         <x-heisenberg::live.canvas :title="$postTitle ?? ''" :page-padding-x="$postPagePaddingX ?? 56" :page-padding-y="$postPagePaddingY ?? 56"
@@ -136,7 +139,8 @@
     <x-heisenberg::live.ai.ai-history-dialog />
 
     <x-heisenberg::live.block-runtime :registry="$registry" :blocks-css="$blocksCss" :registry-hash="$registryHash ?? ''"
-        :post-id="$postId ?? null" :post-locale="$postLocale ?? 'en'" :content-locales="$contentLocales ?? ['en', 'fr']" />
+        :post-id="$postId ?? null" :post-locale="$postLocale ?? 'en'" :content-locales="$contentLocales ?? ['en', 'fr']"
+        :email-variables="$emailVariables ?? []" />
 
     @if (! empty($initialBlocks))
         <script nonce="{{ heisenberg_csp_nonce() }}">

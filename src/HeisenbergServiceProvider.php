@@ -266,6 +266,7 @@ class HeisenbergServiceProvider extends ServiceProvider
             $app['config']->get('heisenberg.theme_path'),
         ));
         $this->app->singleton(\Heisenberg\Services\FontCatalogService::class, fn () => new \Heisenberg\Services\FontCatalogService());
+        $this->app->singleton(\Heisenberg\Services\EmailVariableCatalog::class, fn () => new \Heisenberg\Services\EmailVariableCatalog());
 
         // docs/email-system.md §5 — beside BlockRenderer, never replacing it; same singleton
         // posture as the rest of this graph (both its own dependencies are already singletons).

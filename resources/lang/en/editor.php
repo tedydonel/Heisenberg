@@ -451,7 +451,7 @@ return [
         'card_image' => 'Image',
         'card_divider' => 'Divider',
         'card_button' => 'Button',
-        'empty_blocks' => 'No saved blocks yet. Pick a container on the canvas and use the toolbar’s save icon to save its composition here.',
+        'empty_blocks' => 'Coming soon.',
     ],
 
     // User-saved reusable blocks ("patterns", live/panel-components-blocks.blade.php,

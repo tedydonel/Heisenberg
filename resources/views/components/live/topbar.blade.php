@@ -11,14 +11,14 @@
         border-bottom: 1px solid var(--hb-border);
     }
     .hb-topbar__zone { display: flex; align-items: center; gap: 2px; height: 100%; }
-    .hb-topbar__zone--left { padding: 0 10px; }
+    .hb-topbar__zone--left { padding: 0; }
     .hb-topbar__zone--center {
         position: absolute;
         left: 50%;
         top: 50%;
         transform: translate(-50%, -50%);
     }
-    .hb-topbar__zone--right { padding: 2px var(--hb-space-3, 12px); }
+    .hb-topbar__zone--right { padding: 2px 0; }
     .hb-topbar__btn {
         display: inline-flex;
         align-items: center;
@@ -104,6 +104,19 @@
     .hb-topbar__langsel-opt.is-on { color: var(--hb-text-primary); font-weight: 500; }
     .hb-topbar__langsel-opt__check { width: 12px; height: 12px; flex: none; color: var(--hb-accent); display: inline-flex; visibility: hidden; }
     .hb-topbar__langsel-opt.is-on .hb-topbar__langsel-opt__check { visibility: visible; }
+    @media (max-width: 1024px) {
+        .hb-topbar { display: flex; justify-content: space-between; }
+        .hb-topbar__zone { min-width: 0; gap: 2px; justify-content: flex-start; }
+        .hb-topbar__zone--left,
+        .hb-topbar__zone--right { padding-left: 0; padding-right: 0; }
+        .hb-topbar__zone--center { position: static; transform: none; margin-left: auto; margin-right: auto; }
+        .hb-topbar__btn { width: 25px; height: 28px; flex: 0 0 25px; max-width: 30px; }
+        .hb-topbar__btn--sm { width: 24px; height: 26px; }
+        .hb-topbar__lang { width: 25px; padding: 0; gap: 0; }
+        .hb-topbar__lang-label { display: none; }
+        .hb-topbar__save { height: 26px; padding-left: 7px; padding-right: 7px; font-size: 11px; }
+        .hb-topbar__zone > .hb-divider { margin: 0 1px; }
+    }
 </style>
 @include('heisenberg::components.live.topbar.script')
 @endonce

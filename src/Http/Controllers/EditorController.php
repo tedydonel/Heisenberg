@@ -13,6 +13,7 @@ use Heisenberg\Services\AiProviderRegistry;
 use Heisenberg\Services\AiSettingsRepository;
 use Heisenberg\Services\BlockRegistryService;
 use Heisenberg\Services\FontCatalogService;
+use Heisenberg\Services\EmailVariableCatalog;
 use Heisenberg\Services\SavedThemeRepository;
 use Heisenberg\Services\ThemeRepository;
 use Heisenberg\Services\TranslationStatusService;
@@ -40,13 +41,13 @@ final class EditorController
      * (docs/email-system.md §6), so that query form redirects to it rather than rendering a
      * second, differently-addressed email editor: one document type, one URL.
      */
-    public function index(Request $request, BlockRegistryService $registry, ThemeRepository $themes, SavedThemeRepository $savedThemes, FontCatalogService $fonts): View|RedirectResponse
+    public function index(Request $request, BlockRegistryService $registry, ThemeRepository $themes, SavedThemeRepository $savedThemes, FontCatalogService $fonts, EmailVariableCatalog $emailVariables): View|RedirectResponse
     {
         if ($this->documentType($request->query('type')) === 'email') {
             return redirect()->route('heisenberg.editor.email.new');
         }
 
-        return $this->blankDocument('post', $request, $registry, $themes, $savedThemes, $fonts);
+        return $this->blankDocument('post', $request, $registry, $themes, $savedThemes, $fonts, $emailVariables);
     }
 
     /**
@@ -55,12 +56,12 @@ final class EditorController
      * create-only `type` handling) — which is what gates the palette down to the email-safe
      * blocks, narrows the canvas to the 600px shell, and gives the Post tab its email shape.
      */
-    public function newEmail(Request $request, BlockRegistryService $registry, ThemeRepository $themes, SavedThemeRepository $savedThemes, FontCatalogService $fonts): View
+    public function newEmail(Request $request, BlockRegistryService $registry, ThemeRepository $themes, SavedThemeRepository $savedThemes, FontCatalogService $fonts, EmailVariableCatalog $emailVariables): View
     {
-        return $this->blankDocument('email', $request, $registry, $themes, $savedThemes, $fonts);
+        return $this->blankDocument('email', $request, $registry, $themes, $savedThemes, $fonts, $emailVariables);
     }
 
-    private function blankDocument(string $documentType, Request $request, BlockRegistryService $registry, ThemeRepository $themes, SavedThemeRepository $savedThemes, FontCatalogService $fonts): View
+    private function blankDocument(string $documentType, Request $request, BlockRegistryService $registry, ThemeRepository $themes, SavedThemeRepository $savedThemes, FontCatalogService $fonts, EmailVariableCatalog $emailVariables): View
     {
         // The editor is one big server-rendered component tree; the FIRST render
         // after a view-cache rebuild compiles/loads hundreds of Blade views and
@@ -113,6 +114,7 @@ final class EditorController
             // contractsFor('email')) once this document is one — filtered SERVER-SIDE, never by
             // client JS re-reading the full registry. See paletteBlocks()'s own docblock.
             'paletteBlocks' => $this->paletteBlocks($registry, $shared['registry'], $documentType),
+            'emailVariables' => $documentType === 'email' ? $emailVariables->definitions() : [],
         ]));
     }
 
@@ -125,13 +127,13 @@ final class EditorController
      * it back in the surface the split exists to keep it out of. A redirect rather than a 404
      * because this is a link people already hold — a saved bookmark, a row in a host's admin list.
      */
-    public function show(Request $request, BlockRegistryService $registry, ThemeRepository $themes, SavedThemeRepository $savedThemes, FontCatalogService $fonts, string $post): View|RedirectResponse
+    public function show(Request $request, BlockRegistryService $registry, ThemeRepository $themes, SavedThemeRepository $savedThemes, FontCatalogService $fonts, EmailVariableCatalog $emailVariables, string $post): View|RedirectResponse
     {
         $model = $this->openable($request, $post);
 
         return $model->type === 'email'
             ? redirect()->route('heisenberg.editor.email.show', ['post' => $model->getKey()])
-            : $this->openDocument($model, $request, $registry, $themes, $savedThemes, $fonts);
+            : $this->openDocument($model, $request, $registry, $themes, $savedThemes, $fonts, $emailVariables);
     }
 
     /**
@@ -139,12 +141,12 @@ final class EditorController
      * plain post asked for here redirects back to the post surface, so each document is reachable
      * at exactly one authoring URL no matter which one a link points at.
      */
-    public function showEmail(Request $request, BlockRegistryService $registry, ThemeRepository $themes, SavedThemeRepository $savedThemes, FontCatalogService $fonts, string $post): View|RedirectResponse
+    public function showEmail(Request $request, BlockRegistryService $registry, ThemeRepository $themes, SavedThemeRepository $savedThemes, FontCatalogService $fonts, EmailVariableCatalog $emailVariables, string $post): View|RedirectResponse
     {
         $model = $this->openable($request, $post);
 
         return $model->type === 'email'
-            ? $this->openDocument($model, $request, $registry, $themes, $savedThemes, $fonts)
+            ? $this->openDocument($model, $request, $registry, $themes, $savedThemes, $fonts, $emailVariables)
             : redirect()->route('heisenberg.editor.show', ['post' => $model->getKey()]);
     }
 
@@ -168,7 +170,7 @@ final class EditorController
     }
 
     /** Renders the editor shell around an already-resolved, already-authorized document. */
-    private function openDocument(Post $model, Request $request, BlockRegistryService $registry, ThemeRepository $themes, SavedThemeRepository $savedThemes, FontCatalogService $fonts): View
+    private function openDocument(Post $model, Request $request, BlockRegistryService $registry, ThemeRepository $themes, SavedThemeRepository $savedThemes, FontCatalogService $fonts, EmailVariableCatalog $emailVariables): View
     {
         if (PHP_SAPI !== 'cli') {
             @set_time_limit(120); // same cold-render headroom as index()
@@ -246,6 +248,7 @@ final class EditorController
             // See index()'s own note — filtered server-side to the email surface once this
             // document is one.
             'paletteBlocks' => $this->paletteBlocks($registry, $shared['registry'], $documentType),
+            'emailVariables' => $documentType === 'email' ? $emailVariables->definitions() : [],
         ]));
     }
 

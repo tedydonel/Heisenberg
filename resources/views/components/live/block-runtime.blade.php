@@ -1,6 +1,6 @@
 
 
-@props(['registry' => [], 'blocksCss' => '', 'registryHash' => '', 'postId' => null, 'postLocale' => 'en', 'contentLocales' => ['en', 'fr']])
+@props(['registry' => [], 'blocksCss' => '', 'registryHash' => '', 'postId' => null, 'postLocale' => 'en', 'contentLocales' => ['en', 'fr'], 'emailVariables' => []])
 
 
 
@@ -17,6 +17,7 @@
         postId: @json($postId),
         postLocale: @json($postLocale),
         contentLocales: @json($contentLocales),
+        emailVariables: @json($emailVariables),
     });
 </script>
 
@@ -25,6 +26,49 @@
 (() => {
     const DATA = window.__hbEditor || {};
     const REGISTRY = DATA.registry || {};
+    const EMAIL_VARIABLES = {};
+    (Array.isArray(DATA.emailVariables) ? DATA.emailVariables : []).forEach((entry) => {
+        if (entry && entry.key) EMAIL_VARIABLES[String(entry.key)] = entry;
+    });
+
+    function emailVariableToken(key) { return EMAIL_VARIABLES[key] || null; }
+    function decorateEmailVariables(root) {
+        if (!root || !Object.keys(EMAIL_VARIABLES).length) return;
+        const walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT);
+        const nodes = [];
+        let node;
+        while ((node = walker.nextNode())) nodes.push(node);
+        nodes.forEach((textNode) => {
+            const value = textNode.nodeValue || '';
+            const re = new RegExp(String.raw`\\{\\{\\s*([a-z][a-z0-9_]*(?:\\.[a-z][a-z0-9_]*)*)\\s*\\}\\}`, 'g');
+            let match; let last = 0; const fragment = document.createDocumentFragment(); let found = false;
+            while ((match = re.exec(value))) {
+                const definition = emailVariableToken(match[1]);
+                if (!definition) continue;
+                found = true;
+                if (match.index > last) fragment.appendChild(document.createTextNode(value.slice(last, match.index)));
+                const chip = document.createElement('span');
+                chip.className = 'hb-email-variable-token';
+                chip.contentEditable = 'false';
+                chip.dataset.hbEmailVariable = match[1];
+                chip.title = definition.description || match[1];
+                chip.textContent = definition.label || match[1];
+                fragment.appendChild(chip);
+                last = match.index + match[0].length;
+            }
+            if (!found) return;
+            if (last < value.length) fragment.appendChild(document.createTextNode(value.slice(last)));
+            textNode.parentNode.replaceChild(fragment, textNode);
+        });
+    }
+    function serializedEmailValue(element) {
+        const clone = element.cloneNode(true);
+        clone.querySelectorAll('[data-hb-email-variable]').forEach((chip) => {
+            const text = document.createTextNode('{' + '{ ' + chip.getAttribute('data-hb-email-variable') + ' }' + '}');
+            chip.replaceWith(text);
+        });
+        return clone.innerHTML;
+    }
 
     const homeLocale = DATA.postLocale || 'en';
     const CONTENT_LOCALES = Array.isArray(DATA.contentLocales) && DATA.contentLocales.length ? DATA.contentLocales : [homeLocale];
@@ -497,6 +541,7 @@
             span.setAttribute('data-hb-rt', node.attribute || '');
             span.setAttribute('data-ph', 'Write something…');
             span.innerHTML = (val == null ? '' : String(val));
+            if (document.querySelector('[data-hb-canvas][data-hb-document-type="email"]')) decorateEmailVariables(span);
             return span;
         }
 
@@ -1621,7 +1666,7 @@
             if (!blk) return;
             const model = findModel(blk.getAttribute('data-block'));
             if (!model) return;
-            model.attributes[resolveAttrKey(model.name, ce.getAttribute('data-hb-rt'))] = ce.innerHTML;
+            model.attributes[resolveAttrKey(model.name, ce.getAttribute('data-hb-rt'))] = serializedEmailValue(ce);
             document.dispatchEvent(new CustomEvent('hb:blocks-changed'));
         });
 

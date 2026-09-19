@@ -448,7 +448,7 @@ return [
         'card_image' => 'Image',
         'card_divider' => 'Séparateur',
         'card_button' => 'Bouton',
-        'empty_blocks' => 'Aucun bloc enregistré. Sélectionnez un conteneur sur le canvas et utilisez l’icône Enregistrer de la barre d’outils pour sauvegarder sa composition ici.',
+        'empty_blocks' => 'Bientôt disponible.'
     ],
 
     // Blocs réutilisables sauvegardés (« patterns », panneau Blocs, popover d'enregistrement).

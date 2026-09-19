@@ -38,7 +38,6 @@ body { margin: 0; }
     min-width: 0;
     min-height: 0;
     opacity: 1;
-    transform: translate3d(0, 0, 0);
     visibility: visible;
     transition:
         opacity var(--hb-panel-anim-ms) var(--hb-panel-anim-ease),
@@ -49,14 +48,12 @@ body { margin: 0; }
 .hb-editor--sidebar-closed .hb-editor__sidebar,
 .hb-editor--panel-closed .hb-editor__panel {
     opacity: 0;
-    transform: translate3d(-24px, 0, 0);
     pointer-events: none;
     visibility: hidden;
     transition-delay: 0s, 0s, var(--hb-panel-anim-ms);
 }
 .hb-editor--inspector-closed .hb-editor__inspector {
     opacity: 0;
-    transform: translate3d(24px, 0, 0);
     pointer-events: none;
     visibility: hidden;
     transition-delay: 0s, 0s, var(--hb-panel-anim-ms);
@@ -72,7 +69,7 @@ body { margin: 0; }
 
 /* Narrow screens use full-width drawers. The canvas never reflows when a
    drawer opens or closes, and the drawers never cover the footer. */
-@media (max-width: 1024px) {
+@media (max-width: 1200px) {
     .hb-editor {
         grid-template-columns: 0px 0px 1fr 0px;
     }
@@ -90,29 +87,38 @@ body { margin: 0; }
         box-shadow: none;
         transition:
             opacity var(--hb-panel-anim-ms) var(--hb-panel-anim-ease),
-            transform var(--hb-panel-anim-ms) var(--hb-panel-anim-ease),
+            left var(--hb-panel-anim-ms) var(--hb-panel-anim-ease),
+            right var(--hb-panel-anim-ms) var(--hb-panel-anim-ease),
             visibility 0s linear 0s;
     }
     .hb-editor__sidebar {
         left: 0;
-        width: min(280px, 100vw);
+        width: min(180px, calc(100vw - 24px)) !important;
+        max-width: 180px !important;
     }
     .hb-editor__panel {
         left: 0;
-        width: min(280px, 100vw);
+        width: min(240px, calc(100vw - 24px)) !important;
+        max-width: 240px !important;
     }
     .hb-editor__inspector {
         right: 0;
-        width: min(320px, 100vw);
+        width: min(260px, calc(100vw - 24px)) !important;
+        max-width: 260px !important;
     }
     .hb-editor--sidebar-closed .hb-editor__sidebar {
-        transform: translate3d(-105%, 0, 0);
+        left: calc(-1 * min(180px, calc(100vw - 24px)));
     }
     .hb-editor--panel-closed .hb-editor__panel {
-        transform: translate3d(-105%, 0, 0);
+        left: calc(-1 * min(240px, calc(100vw - 24px)));
     }
     .hb-editor--inspector-closed .hb-editor__inspector {
-        transform: translate3d(105%, 0, 0);
+        right: calc(-1 * min(260px, calc(100vw - 24px)));
+    }
+    .hb-editor--sidebar-closed .hb-editor__sidebar,
+    .hb-editor--panel-closed .hb-editor__panel,
+    .hb-editor--inspector-closed .hb-editor__inspector {
+        transition-delay: 0s, 0s, 0s, var(--hb-panel-anim-ms);
     }
     /* Defensive visual guard for stale state from an older build: only the
        active drawer may be visible on a narrow screen. */
