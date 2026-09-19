@@ -1,49 +1,28 @@
-# Email system — design & build plan
+# Email system - design & build plan
 
-Status: **as-built** (2026-08-12 — the editor + renderer waves landed and verified; 2026-09-17 — the
-host-integration layer was removed, see §6). Companion docs: `docs/block-schema.md` (contracts
-grow an email surface), `docs/content-translation.md` (emails translate like posts).
+Status: **as-built** (2026-08-12: the editor + renderer waves landed and verified; 2026-09-17: the host-integration layer was removed, see §6). Companion docs: `docs/block-schema.md` (contracts grow an email surface), `docs/content-translation.md` (emails translate like posts).
 
 ## 1. The decision: one builder, two render targets
 
-Emails are authored in THE SAME editor with the same block engine — a separate email builder would
-duplicate the inspector, media library, AI assistant, revisions, translations and Code view for no
-authoring benefit. What differs is the OUTPUT: email clients (Outlook renders with Word's engine) allow
-no flexbox/grid, no CSS custom properties, no external stylesheets, no animations — table-based markup
-with inline styles at ~600px is the only reliable target. So the system is: a restricted, email-safe
-block palette feeding a dedicated `EmailRenderer`, beside the existing web pipeline.
+Emails are authored in THE SAME editor with the same block engine - a separate email builder would duplicate the inspector, media library, AI assistant, revisions, translations and Code view for no authoring benefit. What differs is the OUTPUT: email clients (Outlook renders with Word's engine) allow no flexbox/grid, no CSS custom properties, no external stylesheets, no animations - table-based markup with inline styles at ~600px is the only reliable target. So the system is: a restricted, email-safe block palette feeding a dedicated `EmailRenderer`, beside the existing web pipeline.
 
 ## 2. Self-contained output (owner decision)
 
-A built email **embeds everything — no URL paths for assets**:
+A built email **embeds everything - no URL paths for assets**:
 
-- **Images ride as CID MIME attachments** (`cid:` references), never remote URLs and never base64
-  data-URIs (Gmail/Outlook strip those). The render result carries an embeds manifest; the bundled
-  Mailable attaches each part. Embedded images display even with remote-image blocking on and make no
-  callback to the host.
-- The renderer embeds the email-appropriate **variant** of each image (the widest ≤600px variant,
-  falling back to the original only when no variant exists) — originals would bloat the message and
-  Gmail clips large mails.
-- **Fonts cannot be attached**: theme font tokens resolve to email-safe stacks
-  (`Arial, Helvetica, sans-serif` class of fallbacks derived from the theme's families).
-- **All CSS is inlined**; the only `<style>` block is a small head section for client hacks/dark-mode
-  hints that inlining cannot express.
+- **Images ride as CID MIME attachments** (`cid:` references), never remote URLs and never base64 data-URIs (Gmail/Outlook strip those). The render result carries an embeds manifest; the bundled Mailable attaches each part. Embedded images display even with remote-image blocking on and make no callback to the host.
+- The renderer embeds the email-appropriate **variant** of each image (the widest ≤600px variant, falling back to the original only when no variant exists) - originals would bloat the message and Gmail clips large mails.
+- **Fonts cannot be attached**: theme font tokens resolve to email-safe stacks (`Arial, Helvetica, sans-serif` class of fallbacks derived from the theme's families).
+- **All CSS is inlined**; the only `<style>` block is a small head section for client hacks/dark-mode hints that inlining cannot express.
 - **Hyperlinks are not assets**: buttons/anchors keep their `href`s. Only loaded resources are embedded.
 
 ## 3. Email documents
 
-An email is a post row with `type = 'email'` (new `type` string column on the posts table, default
-`'post'`). That buys revisions, autosave, locking, translations (split-row, shared slug) and AI
-authoring for free. Consequences, enforced in code:
+An email is a post row with `type = 'email'` (new `type` string column on the posts table, default `'post'`). That buys revisions, autosave, locking, translations (split-row, shared slug) and AI authoring for free. Consequences, enforced in code:
 
-- Emails NEVER appear in: the sitemap, the public translations API's guest surface only-if-published
-  logic still applies but hosts querying posts for blogs must scope — the package adds
-  `scopePosts($q)` / `scopeEmails($q)` and uses `posts()` itself everywhere IT lists content
-  (sitemap, MCP `list_posts` gains a `type` arg defaulting to 'post').
-- Lifecycle: same statuses; "published" for an email simply means "ready to send" — sending is the
-  host's act, not a Heisenberg state.
-- Comments/TOC/SEO panels are meaningless for emails; the editor hides them for `type = 'email'`
-  (wave E3).
+- Emails NEVER appear in: the sitemap, the public translations API's guest surface only-if-published logic still applies but hosts querying posts for blogs must scope - the package adds `scopePosts($q)` / `scopeEmails($q)` and uses `posts()` itself everywhere IT lists content (sitemap, MCP `list_posts` gains a `type` arg defaulting to 'post').
+- Lifecycle: same statuses; "published" for an email simply means "ready to send" - sending is the host's act, not a Heisenberg state.
+- Comments/TOC/SEO panels are meaningless for emails; the editor hides them for `type = 'email'` (wave E3).
 
 ## 4. Contract surface: `email` render section
 
@@ -55,60 +34,36 @@ A block opts into the email palette by declaring an `email` section in its contr
 }
 ```
 
-- Presence of `email` = the block appears in the email palette; absence = it does not. Initial
-  email-safe set: heading, paragraph, image, button, separator, group (as a full-width table section),
-  columns/column (rendered as table cells, capped at 2–3 columns), list, quote. Excluded: embed, icon
-  (webfont/SVG dependency — revisit), and every animation/hover capability (ignored by the email
-  renderer even if authored).
-- `BlockContractValidator` validates the section (template shape identical to `render.template`
-  rules); `BlockRegistryService` exposes surface filtering (`contractsFor('email')`).
+- Presence of `email` = the block appears in the email palette; absence = it does not. Initial email-safe set: heading, paragraph, image, button, separator, group (as a full-width table section), columns/column (rendered as table cells, capped at 2-3 columns), list, quote. Excluded: embed, icon (webfont/SVG dependency), and every animation/hover capability (ignored by the email renderer even if authored).
+- `BlockContractValidator` validates the section (template shape identical to `render.template` rules); `BlockRegistryService` exposes surface filtering (`contractsFor('email')`).
 
 ## 5. `EmailRenderer` (beside `BlockRenderer`, never replacing it)
 
-`render(Post $email, string $locale): EmailRenderResult` where the result is
-`{html, text, subject, embeds: [{cid, path, mime}], sizeBytes}`:
+`render(Post $email, string $locale): EmailRenderResult` where the result is `{html, text, subject, embeds: [{cid, path, mime}], sizeBytes}`:
 
 1. Renders each block's `email.template` through the SAME substitution/sanitization engine.
 2. Resolves every theme token to its literal value (no `var()` in output); fonts to stacks (§2).
-3. Wraps content in the canonical shell: 100%-width background table → centered 600px content table,
-   theme background/text colors applied literally.
+3. Wraps content in the canonical shell: 100%-width background table -> centered 600px content table, theme background/text colors applied literally.
 4. Rewrites every image source to a `cid:` reference and records the embed (variant selection per §2).
 5. Inlines all styles; leaves only the minimal head `<style>` (§2).
-6. Generates the plain-text alternative from the block tree (headings, paragraphs, list markers,
-   button label + URL in parentheses).
+6. Generates the plain-text alternative from the block tree (headings, paragraphs, list markers, button label + URL in parentheses).
 7. `subject` = the email's `title($locale)`.
 
 ## 6. Host seam (Heisenberg renders; the HOST sends and substitutes)
 
-The author writes an email document exactly like a post — blocks, media, translations, revisions,
-publish lifecycle. `EmailRenderer::render()` produces a self-contained MIME-shaped payload
-(`{html, text, subject, embeds, sizeBytes}`) ready to hand to any mailer. The bundled
-`HeisenbergMailable` is the convenience seam for Laravel's mailer; a host that ships its own
-mailer consumes `EmailRenderResult` directly.
+The author writes an email document exactly like a post - blocks, media, translations, revisions, publish lifecycle. `EmailRenderer::render()` produces a self-contained MIME-shaped payload (`{html, text, subject, embeds, sizeBytes}`) ready to hand to any mailer. The bundled `HeisenbergMailable` is the convenience seam for Laravel's mailer; a host that ships its own mailer consumes `EmailRenderResult` directly.
 
 ### 6.1 Placeholders are the author's job, the host's job, never Heisenberg's
 
-The author writes `{{ variable_name }}` placeholders directly into the email's text — in headings,
-paragraphs, button labels, button URLs, alt text, anywhere a block accepts text. **Heisenberg
-does not substitute them.** The renderer passes every `{{ … }}` token through verbatim into
-`html`, `text`, and `subject`. The host's own newsletter / mailing-list integration reads the
-rendered text and substitutes real values at send time, the same way it would for any templated
-outbound mail.
+The author writes `{{ variable_name }}` placeholders directly into the email's text - in headings, paragraphs, button labels, button URLs, alt text, anywhere a block accepts text. **Heisenberg does not substitute them.** The renderer passes every `{{ ... }}` token through verbatim into `html`, `text`, and `subject`. The host's own newsletter / mailing-list integration reads the rendered text and substitutes real values at send time, the same way it would for any templated outbound mail.
 
 This is the entire author-facing model:
 
 - Author types `Hi {{ user.first_name }}` in a heading block.
-- `EmailRenderer::render()` produces HTML containing the literal `Hi {{ user.first_name }}` —
-  the `EmailRenderResult` is byte-for-byte identical to what the author typed, with every other
-  block-level transformation (image → cid, theme tokens inlined, shell wrapping, plain-text
-  generation) applied normally.
-- The host reads that rendered text, runs its own substitution (`str_replace`, regex, Blade,
-  whatever it already uses for templated mail), and ships the result through its own
-  transport — Laravel mail, an ESP API, a queue worker, a third-party service.
+- `EmailRenderer::render()` produces HTML containing the literal `Hi {{ user.first_name }}` - the `EmailRenderResult` is byte-for-byte identical to what the author typed, with every other block-level transformation (image -> cid, theme tokens inlined, shell wrapping, plain-text generation) applied normally.
+- The host reads that rendered text, runs its own substitution (`str_replace`, regex, Blade, whatever it already uses for templated mail), and ships the result through its own transport - Laravel mail, an ESP API, a queue worker, a third-party service.
 
-Heisenberg does not own variable values, formatters, users, or substitution. A host may provide
-metadata in `config('heisenberg.email.variables')` so the builder can recognize and label tokens.
-Each entry has a `key` plus optional `label`, `description`, and `group`, for example:
+Heisenberg does not own variable values, formatters, users, or substitution. A host may provide metadata in `config('heisenberg.email.variables')` so the builder can recognize and label tokens. Each entry has a `key` plus optional `label`, `description`, and `group`, for example:
 
 ```php
 'email' => [
@@ -119,56 +74,24 @@ Each entry has a `key` plus optional `label`, `description`, and `group`, for ex
 ],
 ```
 
-This metadata is editor-only. Heisenberg stores and exports the literal `{{ user.first_name }}`
-text unchanged; the host platform decides what the token means and how to substitute it at send
-time. Unknown or malformed metadata is ignored, and an email builder visually marks only tokens
-listed by the host.
+This metadata is editor-only. Heisenberg stores and exports the literal `{{ user.first_name }}` text unchanged; the host platform decides what the token means and how to substitute it at send time. Unknown or malformed metadata is ignored, and an email builder visually marks only tokens listed by the host.
 
 ### 6.2 Why the renderer never URL-encodes or otherwise mangles the tokens
 
-PHP's `DOMDocument::saveHTML()` normalizes `href` and `src` attribute values through
-`rawurlencode` semantics — turning `{{ unsubscribe_url }}` into `{{%20unsubscribe_url%20}}`
-silently. That would mangle any placeholder the author put inside a URL field (a button's
-`url` attribute is the most common case) and make the host's substitution step impossible.
+PHP's `DOMDocument::saveHTML()` normalizes `href` and `src` attribute values through `rawurlencode` semantics - turning `{{ unsubscribe_url }}` into `{{%20unsubscribe_url%20}}` silently. That would mangle any placeholder the author put inside a URL field (a button's `url` attribute is the most common case) and make the host's substitution step impossible.
 
-`EmailRenderer::inlineStyles()` therefore short-circuits the DOMDocument round-trip entirely
-when the rendered HTML contains any `{{` token. The email shell's only `<style>` rule is the
-columns-block mobile `@media` query, which `CssToInlineStyles` never actually inlines anyway
-(its own `doCleanup()` strips media queries from the inlined output and leaves them in the
-retained `<style>` tag) — so the only thing the round-trip was doing for placeholder-bearing
-emails was the URL-mangling damage. When placeholders are present, the renderer skips the
-round-trip and just appends the Outlook/iOS client-hack CSS to the shell's `<style>` tag by
-regex, identical to what the library would do after `convert()`.
+`EmailRenderer::inlineStyles()` therefore short-circuits the DOMDocument round-trip entirely when the rendered HTML contains any `{{` token. The email shell's only `<style>` rule is the columns-block mobile `@media` query, which `CssToInlineStyles` never actually inlines anyway (its own `doCleanup()` strips media queries from the inlined output and leaves them in the retained `<style>` tag) - so the only thing the round-trip was doing for placeholder-bearing emails was the URL-mangling damage. When placeholders are present, the renderer skips the round-trip and just appends the Outlook/iOS client-hack CSS to the shell's `<style>` tag by regex, identical to what the library would do after `convert()`.
 
-The behaviour for token-free emails is unchanged — they still go through the full
-`CssToInlineStyles::convert()` round-trip exactly as before.
+The behaviour for token-free emails is unchanged - they still go through the full `CssToInlineStyles::convert()` round-trip exactly as before.
 
 ### 6.3 What the host owns
 
-Same posture as users/comments-before-native: no subscriber lists, no campaign scheduling, no
-SMTP config in Heisenberg. No `RoleGate` tier for batch generation — the route does not exist.
-No `PostPolicy::generateEmailBatch` ability. No admin POST endpoint that produces a zip of N
-personalized files. No `examples/EmailVariables/` starter pack. None of those concerns are
-Heisenberg's, and adding them back later means adding them on top of this surface, not under
-it.
+Same posture as users/comments-before-native: no subscriber lists, no campaign scheduling, no SMTP config in Heisenberg. No `RoleGate` tier for batch generation - the route does not exist. No `PostPolicy::generateEmailBatch` ability. No admin POST endpoint that produces a zip of N personalized files. No `examples/EmailVariables/` starter pack. None of those concerns are Heisenberg's, and adding them back later means adding them on top of this surface, not under it.
 
-A host that needs to send to N recipients wires that into its own application — reads the email
-post (`Post::query()->emails()->where('type', 'email')->where('status', 'published')`), calls
-`EmailRenderer::render($post, $locale)` once per recipient with whatever substitution logic
-it owns, hands the resulting `EmailRenderResult` to whatever mailer it already uses. A host
-that wants a CSV-driven batch export writes that as a Laravel artisan command in its own
-codebase; the command reads the email, iterates its recipient list, and ships. No
-`Heisenberg\Services\EmailBatchExporter` to bind, no `config('heisenberg.email.batch_max_recipients')`
-to raise, no `heisenberg.roles.email.generate` tier to add a user to.
+A host that needs to send to N recipients wires that into its own application - reads the email post (`Post::query()->emails()->where('type', 'email')->where('status', 'published')`), calls `EmailRenderer::render($post, $locale)` once per recipient with whatever substitution logic it owns, hands the resulting `EmailRenderResult` to whatever mailer it already uses. A host that wants a CSV-driven batch export writes that as a Laravel artisan command in its own codebase; the command reads the email, iterates its recipient list, and ships.
 
 ## 7. Out of scope (recorded) & cross-references
 
-Subscriber management, campaign **sending**/scheduling/tracking, SMTP configuration inside
-Heisenberg, open/click analytics, MJML interop, per-client conditional comments beyond the
-minimal Outlook shims the shell needs, and variable values, formatters, recipient contexts,
-substitution, and batch sending. The optional variable metadata list and editor-only visual
-markers are the only Heisenberg-side variable surface; all runtime meaning and delivery remain
-on the host side of the seam.
+Subscriber management, campaign **sending**/scheduling/tracking, SMTP configuration inside Heisenberg, open/click analytics, MJML interop, per-client conditional comments beyond the minimal Outlook shims the shell needs, and variable values, formatters, recipient contexts, substitution, and batch sending. The optional variable metadata list and editor-only visual markers are the only Heisenberg-side variable surface; all runtime meaning and delivery remain on the host side of the seam.
 
-For the bundled Mailable / preview / single-document HTML+EML export, see
-`src/Mail/HeisenbergMailable.php` and `src/Http/Controllers/EmailPreviewController.php`.
+For the bundled Mailable / preview / single-document HTML+EML export, see `src/Mail/HeisenbergMailable.php` and `src/Http/Controllers/EmailPreviewController.php`.

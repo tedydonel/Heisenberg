@@ -18,13 +18,6 @@
         </div>
     </div>
     <x-heisenberg::ui.custom-scrollbar container="[data-hb-panel-email-variables-body]" />
-
-    <div class="hb-email-variable-autocomplete" data-hb-email-variable-autocomplete hidden role="listbox">
-        <div class="hb-email-variable-autocomplete__scroll" data-hb-email-var-popup-scroll>
-            <div class="hb-email-variable-autocomplete__list" data-hb-email-var-popup-list></div>
-        </div>
-        <x-heisenberg::ui.custom-scrollbar container="[data-hb-email-var-popup-scroll]" />
-    </div>
 </div>
 <script nonce="{{ heisenberg_csp_nonce() }}">
 (() => {
@@ -34,19 +27,27 @@
     let activeTarget;
     let activeRange;
     let activeTokenLength = 0;
+    let highlightedIndex = 0;
 
-    const variables = () => Array.from(document.querySelectorAll('[data-hb-email-variable-key]'))
-        .map((button) => ({
-            key: button.getAttribute('data-hb-email-variable-key') || '',
-            label: button.querySelector('span')?.textContent || button.getAttribute('data-hb-email-variable-key') || '',
-        }))
-        .filter((entry, index, list) => entry.key && list.findIndex((item) => item.key === entry.key) === index);
+    const DATA = window.__hbEditor || {};
+    const getVariables = () => {
+        const fromData = Array.isArray(DATA.emailVariables) && DATA.emailVariables.length ? DATA.emailVariables : [];
+        if (fromData.length) return fromData;
+        return Array.from(document.querySelectorAll('[data-hb-email-variable-key]'))
+            .map((button) => ({
+                key: button.getAttribute('data-hb-email-variable-key') || '',
+                label: button.querySelector('span')?.textContent || button.getAttribute('data-hb-email-variable-key') || '',
+                description: button.getAttribute('title') || '',
+            }))
+            .filter((entry, index, list) => entry.key && list.findIndex((item) => item.key === entry.key) === index);
+    };
 
     const hide = () => {
         if (popup) popup.hidden = true;
         activeTarget = null;
         activeRange = null;
         activeTokenLength = 0;
+        highlightedIndex = 0;
     };
 
     const insert = (key) => {
@@ -76,32 +77,33 @@
     };
 
     const ensurePopup = () => {
-        let el = document.querySelector('[data-hb-email-variable-autocomplete]');
+        if (popup && popup.isConnected && popup.parentElement === document.body) return popup;
+        let el = document.querySelector('body > [data-hb-email-variable-autocomplete]');
         if (el) {
             popup = el;
             return el;
-        }
-        const panel = document.querySelector('[data-hb-panel-email-variables]');
-        if (panel) {
-            el = panel.querySelector('[data-hb-email-variable-autocomplete]');
-            if (el) {
-                popup = el;
-                return el;
-            }
         }
         el = document.createElement('div');
         el.className = 'hb-email-variable-autocomplete';
         el.hidden = true;
         el.setAttribute('role', 'listbox');
         el.dataset.hbEmailVariableAutocomplete = '';
-        el.innerHTML = '<div class="hb-email-variable-autocomplete__scroll" data-hb-email-var-popup-scroll><div class="hb-email-variable-autocomplete__list" data-hb-email-var-popup-list></div></div>';
+        el.innerHTML = '<div class="hb-email-variable-autocomplete__wrap"><div class="hb-email-variable-autocomplete__scroll" data-hb-email-var-popup-scroll><div class="hb-email-variable-autocomplete__list" data-hb-email-var-popup-list></div></div><div class="hb-custom-scrollbar" data-hb-custom-scrollbar data-hb-scroll-container="[data-hb-email-var-popup-scroll]" data-axis="y" data-smooth="0.06" data-wheel-multiplier="1" data-scrolling="false" data-dragging="false" aria-hidden="true"><div data-hb-scrollbar-thumb class="hb-custom-scrollbar__thumb"></div></div></div>';
         document.body.appendChild(el);
         popup = el;
         return el;
     };
 
     const show = (target, range, query, tokenLength) => {
-        const matches = variables().filter((entry) => entry.key.toLowerCase().startsWith(query.toLowerCase())).slice(0, 12);
+        const queryLower = (query || '').toLowerCase().trim();
+        const allVars = getVariables();
+        const matches = allVars.filter((entry) => {
+            if (!queryLower) return true;
+            const k = (entry.key || '').toLowerCase();
+            const l = (entry.label || '').toLowerCase();
+            return k.startsWith(queryLower) || k.includes(queryLower) || l.includes(queryLower);
+        }).slice(0, 12);
+
         const menu = ensurePopup();
         const list = menu.querySelector('[data-hb-email-var-popup-list]') || menu;
         list.replaceChildren();
@@ -112,26 +114,36 @@
         activeTarget = target;
         activeRange = range.cloneRange();
         activeTokenLength = tokenLength;
-        matches.forEach((entry) => {
+        highlightedIndex = 0;
+
+        matches.forEach((entry, idx) => {
             const button = document.createElement('button');
             button.type = 'button';
-            button.className = 'hb-email-variable-autocomplete__item';
+            button.className = 'hb-email-variable-autocomplete__item' + (idx === 0 ? ' is-highlighted' : '');
             button.setAttribute('role', 'option');
-            button.innerHTML = '<strong>' + entry.label.replace(/[&<>]/g, (char) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;' }[char])) + '</strong><code>' + open + ' ' + entry.key + ' ' + close + '</code>';
+            button.dataset.hbEmailVarKey = entry.key;
+            button.innerHTML = '<strong>' + (entry.label || entry.key).replace(/[&<>]/g, (char) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;' }[char])) + '</strong><code>' + open + ' ' + entry.key + ' ' + close + '</code>';
             button.addEventListener('mousedown', (event) => event.preventDefault());
-            button.addEventListener('click', () => insert(entry.key));
+            button.addEventListener('click', (event) => {
+                event.preventDefault();
+                insert(entry.key);
+            });
             list.appendChild(button);
         });
+
         const rect = range.getBoundingClientRect();
-        menu.style.left = Math.max(8, rect.left) + 'px';
-        menu.style.top = (rect.bottom + 6) + 'px';
+        const menuWidth = 240;
+        const left = Math.max(8, Math.min(window.innerWidth - menuWidth - 8, rect.left));
+        const top = (rect.bottom + 6);
+        menu.style.left = left + 'px';
+        menu.style.top = top + 'px';
         menu.hidden = false;
         document.dispatchEvent(new CustomEvent('hb:refresh'));
     };
 
     const update = (event) => {
-        const target = event.target;
-        if (!target.matches?.('.hb-ce[data-hb-rt]') || !target.isContentEditable) return hide();
+        const target = event.target ? (event.target.closest ? event.target.closest('.hb-ce[data-hb-rt]') : event.target) : null;
+        if (!target || !target.isContentEditable) return hide();
         const selection = window.getSelection();
         if (!selection || !selection.rangeCount || !selection.isCollapsed) return hide();
         const range = selection.getRangeAt(0);
@@ -166,8 +178,33 @@
             if (!event.target.closest('[data-hb-email-variable-autocomplete]')) hide();
         });
         document.addEventListener('keydown', (event) => {
-            if (event.key === 'Escape') hide();
-        });
+            if (!popup || popup.hidden) return;
+            const items = Array.from(popup.querySelectorAll('.hb-email-variable-autocomplete__item'));
+            if (!items.length) {
+                if (event.key === 'Escape') hide();
+                return;
+            }
+
+            if (event.key === 'ArrowDown') {
+                event.preventDefault();
+                highlightedIndex = (highlightedIndex + 1) % items.length;
+                items.forEach((item, i) => item.classList.toggle('is-highlighted', i === highlightedIndex));
+                items[highlightedIndex]?.scrollIntoView({ block: 'nearest' });
+            } else if (event.key === 'ArrowUp') {
+                event.preventDefault();
+                highlightedIndex = (highlightedIndex - 1 + items.length) % items.length;
+                items.forEach((item, i) => item.classList.toggle('is-highlighted', i === highlightedIndex));
+                items[highlightedIndex]?.scrollIntoView({ block: 'nearest' });
+            } else if (event.key === 'Enter' || event.key === 'Tab') {
+                if (items[highlightedIndex]) {
+                    event.preventDefault();
+                    const key = items[highlightedIndex].dataset.hbEmailVarKey;
+                    if (key) insert(key);
+                }
+            } else if (event.key === 'Escape') {
+                hide();
+            }
+        }, true);
     };
     if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', boot, { once: true }); else boot();
     document.addEventListener('hb:refresh', boot);
@@ -263,9 +300,9 @@
 }
 .hb-email-variable-autocomplete {
     position: fixed;
-    z-index: 9999;
+    z-index: 99999;
     width: 240px;
-    max-height: 220px;
+    max-height: 240px;
     border: 1px solid var(--hb-border);
     border-radius: var(--hb-radius-md, 8px);
     background: var(--hb-bg, #fff);
@@ -274,10 +311,21 @@
     flex-direction: column;
     overflow: hidden;
 }
+.hb-email-variable-autocomplete[hidden] {
+    display: none !important;
+}
+.hb-email-variable-autocomplete__wrap {
+    display: flex;
+    flex-direction: column;
+    flex: 1 1 auto;
+    min-height: 0;
+    position: relative;
+    overflow: hidden;
+}
 .hb-email-variable-autocomplete__scroll {
     flex: 1 1 auto;
     min-height: 0;
-    max-height: 220px;
+    max-height: 240px;
     overflow-y: auto;
     padding: 4px;
     position: relative;
@@ -302,7 +350,8 @@
     font-family: var(--hb-font-sans, Rubik, sans-serif);
 }
 .hb-email-variable-autocomplete__item:hover,
-.hb-email-variable-autocomplete__item:focus {
+.hb-email-variable-autocomplete__item:focus,
+.hb-email-variable-autocomplete__item.is-highlighted {
     background: color-mix(in srgb, var(--hb-accent, #3D68F5) 12%, transparent);
     outline: none;
 }
