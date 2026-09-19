@@ -66,6 +66,114 @@
     .hb-seo-dropzone-preview__btn--danger:hover { background: var(--hb-danger); }
 
     .hb-seo-social-preview { display: flex; flex-direction: column; gap: var(--hb-space-2, 8px); padding: var(--hb-space-3, 12px); flex: none; }
+    .hb-social-preview-group {
+        display: flex;
+        flex-direction: column;
+        border: 1px solid var(--hb-border);
+        border-radius: var(--hb-radius-md, 5px);
+        overflow: hidden;
+        background: var(--hb-surface);
+        transition: border-color .15s ease;
+    }
+    .hb-social-preview-group:hover {
+        border-color: var(--hb-border-strong);
+    }
+    .hb-socialpreviewrow {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        width: 100%;
+        height: 36px;
+        padding: 0 var(--hb-space-3, 12px);
+        border: 0;
+        background: transparent;
+        cursor: pointer;
+        text-align: left;
+        font: inherit;
+        color: inherit;
+    }
+    .hb-socialpreviewrow:focus-visible { outline: 2px solid var(--hb-border-focus); outline-offset: -2px; }
+    .hb-socialpreviewrow__left { display: inline-flex; align-items: center; gap: var(--hb-space-2, 8px); }
+    .hb-socialpreviewrow__logo { display: inline-flex; width: 16px; height: 16px; color: var(--hb-text-secondary); flex: none; }
+    .hb-socialpreviewrow__label { font-family: var(--hb-font-sans, Rubik, sans-serif); font-size: var(--hb-fs-sm, 12px); font-weight: 500; color: var(--hb-text-primary); }
+    .hb-socialpreviewrow__chevron { display: inline-flex; width: 13px; height: 13px; color: var(--hb-text-muted); flex: none; transition: transform .18s ease; }
+    .hb-social-preview-group[data-expanded="true"] .hb-socialpreviewrow__chevron { transform: rotate(90deg); }
+    .hb-social-preview-group[data-expanded="false"] .hb-social-card { display: none; }
+
+    .hb-social-card {
+        display: flex;
+        flex-direction: column;
+        border-top: 1px solid var(--hb-border);
+        background: var(--hb-bg-subtle);
+        overflow: hidden;
+        font-family: var(--hb-font-sans, Rubik, sans-serif);
+    }
+    .hb-social-card__media {
+        position: relative;
+        width: 100%;
+        height: 104px;
+        background: var(--hb-bg-muted);
+        overflow: hidden;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+    .hb-social-card__img {
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+        display: block;
+    }
+    .hb-social-card__placeholder {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        width: 100%;
+        height: 100%;
+        color: var(--hb-text-muted);
+        background: var(--hb-bg-muted);
+    }
+    .hb-social-card__body {
+        display: flex;
+        flex-direction: column;
+        gap: 3px;
+        padding: 8px 10px;
+    }
+    .hb-social-card__domain {
+        font-size: 10px;
+        color: var(--hb-text-muted);
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+        line-height: 1.2;
+    }
+    .hb-social-card--facebook .hb-social-card__domain {
+        text-transform: uppercase;
+        font-weight: 500;
+        letter-spacing: 0.3px;
+    }
+    .hb-social-card__title {
+        margin: 0;
+        font-size: 12px;
+        font-weight: 600;
+        line-height: 1.3;
+        color: var(--hb-text-primary);
+        display: -webkit-box;
+        -webkit-line-clamp: 2;
+        -webkit-box-orient: vertical;
+        overflow: hidden;
+    }
+    .hb-social-card__desc {
+        margin: 0;
+        font-size: 11px;
+        line-height: 1.35;
+        color: var(--hb-text-secondary);
+        display: -webkit-box;
+        -webkit-line-clamp: 2;
+        -webkit-box-orient: vertical;
+        overflow: hidden;
+    }
+
     .hb-seo-divider { border: 0; border-top: 1px solid var(--hb-border); width: 100%; margin: 0; flex: none; }
 
     .hb-seo-score { display: flex; align-items: center; gap: var(--hb-space-2, 8px); padding: var(--hb-space-3, 12px); border-bottom: 1px solid var(--hb-border); flex: none; transition: opacity .12s ease; }
@@ -84,11 +192,30 @@
         width: 40px;
         height: 40px;
         flex: none;
-        border-radius: 999px;
-        background: conic-gradient(var(--hb-seo-score-color, var(--hb-text-muted)) calc(var(--hb-seo-score-pct, 0) * 1%), var(--hb-bg-muted) 0);
     }
-    .hb-seo-score__ring::before { content: ''; position: absolute; inset: 3px; border-radius: 999px; background: var(--hb-bg); }
-    .hb-seo-score__value { position: relative; font-family: var(--hb-font-sans, Rubik, sans-serif); font-size: var(--hb-fs-sm, 12px); font-weight: 600; color: var(--hb-text-primary); }
+    .hb-seo-score__ring-svg {
+        position: absolute;
+        inset: 0;
+        width: 100%;
+        height: 100%;
+        transform: rotate(-90deg);
+    }
+    .hb-seo-score__ring-track {
+        stroke: var(--hb-bg-muted);
+    }
+    .hb-seo-score__ring-progress {
+        stroke: var(--hb-seo-score-color, var(--hb-text-muted));
+        stroke-linecap: round;
+        transition: stroke-dashoffset .35s ease, stroke .2s ease, opacity .2s ease;
+    }
+    .hb-seo-score__value {
+        position: relative;
+        font-family: var(--hb-font-sans, Rubik, sans-serif);
+        font-size: var(--hb-fs-sm, 12px);
+        font-weight: 600;
+        color: var(--hb-text-primary);
+        z-index: 1;
+    }
     .hb-seo-score__info { display: flex; flex-direction: column; gap: 3px; min-width: 0; }
     .hb-seo-score__rating { display: inline-block; width: fit-content; font-family: var(--hb-font-sans, Rubik, sans-serif); font-size: var(--hb-fs-xs, 11px); font-weight: 600; color: var(--hb-seo-score-color, var(--hb-text-muted)); }
     .hb-seo-score__status { font-family: var(--hb-font-sans, Rubik, sans-serif); font-size: var(--hb-fs-xs, 11px); color: var(--hb-text-muted); }
@@ -104,7 +231,12 @@
                 const social = root.querySelector('[data-hb-panel-seo-social]');
                 tabs?.addEventListener('change', (event) => {
                     if (seo) seo.hidden = event.detail.index !== 0;
-                    if (social) social.hidden = event.detail.index !== 1;
+                    if (social) {
+                        social.hidden = event.detail.index !== 1;
+                        if (!social.hidden && typeof root.__hbRefreshSocialPreviews === 'function') {
+                            root.__hbRefreshSocialPreviews();
+                        }
+                    }
                 });
                 root.__hbPanelSeo = true;
             });
@@ -148,6 +280,7 @@
     $hbSeoHasRealUrl = $hbSeoPublicUrl !== '' && ! str_contains($hbSeoPublicUrl, '/editor/');
     $hbSeoCanonicalPlaceholder = $hbSeoHasRealUrl ? $hbSeoPublicUrl : __('heisenberg::editor.panel_seo_social.seo_canonical_ph');
     $hbSeoCrumbPrefix = $hbSeoHasRealUrl ? $hbSeoPublicUrl : str_replace(':slug', $hbSeoPreviewSlug, __('heisenberg::editor.panel_seo_social.seo_url_slug_prefix'));
+    $hbSeoDomain = $hbSeoHasRealUrl ? (parse_url($hbSeoPublicUrl, PHP_URL_HOST) ?: 'yoursite.com') : 'yoursite.com';
 @endphp
 <div data-hb-panel-seo
     data-hb-post-id="{{ $postId ?? '' }}"
@@ -159,6 +292,7 @@
     data-hb-seo-preview-title-ph="{{ __('heisenberg::editor.panel_seo_social.seo_preview_title') }}"
     data-hb-seo-preview-desc-ph="{{ __('heisenberg::editor.panel_seo_social.seo_preview_desc') }}"
     data-hb-seo-preview-prefix="{{ $hbSeoCrumbPrefix }}"
+    data-hb-seo-domain="{{ $hbSeoDomain }}"
     data-hb-seo-url-placeholder="{{ $hbSeoPreviewSlug !== '' ? $hbSeoPreviewSlug : __('heisenberg::editor.panel_seo_social.seo_url_slug_value') }}"
     {{ $attributes->merge(['class' => 'hb-panel-seo']) }}>
     <x-heisenberg::ui.panel-tabs :items="[['label' => __('heisenberg::editor.panel_seo_social.tab_seo')], ['label' => __('heisenberg::editor.panel_seo_social.tab_social')]]" :active-index="0" />
@@ -168,6 +302,10 @@
 
         <div class="hb-seo-score" data-hb-seo-score>
             <div class="hb-seo-score__ring" data-hb-seo-score-ring aria-hidden="true">
+                <svg class="hb-seo-score__ring-svg" viewBox="0 0 40 40" width="40" height="40">
+                    <circle class="hb-seo-score__ring-track" cx="20" cy="20" r="16" fill="none" stroke-width="3" />
+                    <circle class="hb-seo-score__ring-progress" data-hb-seo-score-circle cx="20" cy="20" r="16" fill="none" stroke-width="3" stroke-dasharray="100.53" stroke-dashoffset="100.53" opacity="0" />
+                </svg>
                 <span class="hb-seo-score__value" data-hb-seo-score-value>—</span>
             </div>
             <div class="hb-seo-score__info">
@@ -292,10 +430,10 @@
             <x-heisenberg::ui.text-area data-hb-seo-field="og_description" :value="$postSeo['og_description']" :placeholder="__('heisenberg::editor.panel_seo_social.social_description_ph')" width="100%" height="56px" :disabled="$hbSeoDisabled" />
         </div>
 
-        <div class="hb-seo-social-preview">
-            <x-heisenberg::ui.social-preview-row logo="facebook-logo-bold" :label="__('heisenberg::editor.panel_seo_social.social_facebook')" />
-            <x-heisenberg::ui.social-preview-row logo="twitter-logo-bold" :label="__('heisenberg::editor.panel_seo_social.social_x')" />
-            <x-heisenberg::ui.social-preview-row logo="linkedin-logo-bold" :label="__('heisenberg::editor.panel_seo_social.social_linkedin')" />
+        <div class="hb-seo-social-preview" data-hb-seo-social-previews>
+            <x-heisenberg::ui.social-preview-row network="facebook" logo="facebook-logo-bold" :label="__('heisenberg::editor.panel_seo_social.social_facebook')" :expanded="true" />
+            <x-heisenberg::ui.social-preview-row network="x" logo="x-logo" :label="__('heisenberg::editor.panel_seo_social.social_x')" :expanded="false" />
+            <x-heisenberg::ui.social-preview-row network="linkedin" logo="linkedin-logo-bold" :label="__('heisenberg::editor.panel_seo_social.social_linkedin')" :expanded="false" />
         </div>
         </div>
         <x-heisenberg::ui.custom-scrollbar container="[data-hb-panel-seo-social-scroll]" />
@@ -380,6 +518,67 @@
                 const ogDialog = ogField ? ogField.querySelector('[data-hb-seo-og-dialog]') : null;
                 const ogMarker = ogField ? ogField.querySelector('[data-hb-seo-field="og_image"]') : null;
 
+                const refreshSocialPreviews = () => {
+                    const ogTitleMarker = root.querySelector('[data-hb-seo-field="og_title"]');
+                    const ogDescMarker = root.querySelector('[data-hb-seo-field="og_description"]');
+                    const metaTitleMarker = root.querySelector('[data-hb-seo-field="meta_title"]');
+                    const metaDescMarker = root.querySelector('[data-hb-seo-field="meta_description"]');
+
+                    const ogTitleInput = ogTitleMarker ? hbSeoFieldEl(ogTitleMarker) : null;
+                    const ogDescInput = ogDescMarker ? hbSeoFieldEl(ogDescMarker) : null;
+                    const metaTitleInput = metaTitleMarker ? hbSeoFieldEl(metaTitleMarker) : null;
+                    const metaDescInput = metaDescMarker ? hbSeoFieldEl(metaDescMarker) : null;
+
+                    const docTitleEl = document.querySelector('[data-hb-title]');
+                    const docTitle = docTitleEl ? (docTitleEl.tagName === 'INPUT' ? docTitleEl.value : (docTitleEl.textContent || '')).trim() : '';
+
+                    const featuredImgEl = document.querySelector('[data-hb-featured-img]');
+                    const featuredUrlInput = document.querySelector('[data-hb-featured-image-url]');
+                    const featuredUrl = (featuredUrlInput && featuredUrlInput.value) || (featuredImgEl && featuredImgEl.getAttribute('src')) || '';
+
+                    const ogImageUrl = (ogMarker && ogMarker.value) || '';
+                    const activeImageUrl = ogImageUrl || featuredUrl;
+
+                    const rawDomain = (root.dataset.hbSeoDomain || '').trim() || (window.location && window.location.hostname) || 'yoursite.com';
+                    const domainClean = rawDomain.replace(/^https?:\/\//i, '').split('/')[0];
+
+                    const finalTitle = (ogTitleInput && ogTitleInput.value.trim()) ||
+                                       (metaTitleInput && metaTitleInput.value.trim()) ||
+                                       docTitle ||
+                                       (root.dataset.hbSeoPreviewTitlePh || 'Your Post Title');
+
+                    const finalDesc = (ogDescInput && ogDescInput.value.trim()) ||
+                                      (metaDescInput && metaDescInput.value.trim()) ||
+                                      (root.dataset.hbSeoPreviewDescPh || '');
+
+                    root.querySelectorAll('[data-hb-social-card]').forEach((card) => {
+                        const network = card.dataset.hbSocialCard;
+                        const imgEl = card.querySelector('[data-hb-social-preview-img]');
+                        const phEl = card.querySelector('[data-hb-social-preview-img-ph]');
+                        const titleEl = card.querySelector('[data-hb-social-preview-title]');
+                        const descEl = card.querySelector('[data-hb-social-preview-desc]');
+                        const domainEl = card.querySelector('[data-hb-social-preview-domain]');
+
+                        if (imgEl && phEl) {
+                            if (activeImageUrl) {
+                                imgEl.src = activeImageUrl;
+                                imgEl.hidden = false;
+                                phEl.hidden = true;
+                            } else {
+                                imgEl.removeAttribute('src');
+                                imgEl.hidden = true;
+                                phEl.hidden = false;
+                            }
+                        }
+                        if (titleEl) titleEl.textContent = finalTitle;
+                        if (descEl) descEl.textContent = finalDesc;
+                        if (domainEl) {
+                            domainEl.textContent = network === 'facebook' ? domainClean.toUpperCase() : domainClean.toLowerCase();
+                        }
+                    });
+                };
+                root.__hbRefreshSocialPreviews = refreshSocialPreviews;
+
                 const refreshOgPreview = () => {
                     if (!ogPreview || !ogImg || !ogTrigger || !ogMarker) return;
                     const url = ogMarker.value || '';
@@ -392,7 +591,20 @@
                         ogPreview.hidden = true;
                         ogTrigger.hidden = false;
                     }
+                    refreshSocialPreviews();
                 };
+
+                // Accordion wiring for social preview cards
+                root.querySelectorAll('[data-hb-social-group]').forEach((group) => {
+                    const btn = group.querySelector('[data-hb-social-toggle]');
+                    if (!btn || btn.__hbBound) return;
+                    btn.__hbBound = true;
+                    btn.addEventListener('click', () => {
+                        const isExpanded = group.dataset.expanded === 'true';
+                        group.dataset.expanded = isExpanded ? 'false' : 'true';
+                        btn.setAttribute('aria-expanded', isExpanded ? 'false' : 'true');
+                    });
+                });
 
                 const announcePending = () => {
                     const current = currentValues();
@@ -406,12 +618,13 @@
 
                 const scoreEl = root.querySelector('[data-hb-seo-score]');
                 const scoreValueEl = root.querySelector('[data-hb-seo-score-value]');
-                const scoreRingEl = root.querySelector('[data-hb-seo-score-ring]');
+                const scoreCircleEl = root.querySelector('[data-hb-seo-score-circle]');
                 const scoreRatingEl = root.querySelector('[data-hb-seo-score-rating]');
                 const scoreStatusEl = root.querySelector('[data-hb-seo-score-status]');
                 const checklistEl = root.querySelector('[data-hb-seo-checklist]');
                 const checklistEmptyEl = root.querySelector('[data-hb-seo-checklist-empty]');
                 const checkProtoHost = root.querySelector('[data-hb-seo-check-prototypes]');
+                const C = 100.53;
 
                 const rowPrototype = (status) => {
                     if (!checkProtoHost) return null;
@@ -448,7 +661,10 @@
                 const showUnsaved = () => {
                     if (scoreEl) scoreEl.dataset.rating = 'unsaved';
                     if (scoreValueEl) scoreValueEl.textContent = '—';
-                    if (scoreRingEl) scoreRingEl.style.setProperty('--hb-seo-score-pct', '0');
+                    if (scoreCircleEl) {
+                        scoreCircleEl.style.strokeDashoffset = String(C);
+                        scoreCircleEl.style.opacity = '0';
+                    }
                     if (scoreRatingEl) scoreRatingEl.textContent = root.dataset.hbSeoSaveFirst || '';
                     if (scoreStatusEl) scoreStatusEl.hidden = true;
                     renderChecklist([]);
@@ -461,7 +677,15 @@
                     const rating = ['poor', 'needs-work', 'good', 'excellent'].indexOf(data && data.rating) !== -1 ? data.rating : 'poor';
                     if (scoreEl) scoreEl.dataset.rating = rating;
                     if (scoreValueEl) scoreValueEl.textContent = String(score);
-                    if (scoreRingEl) scoreRingEl.style.setProperty('--hb-seo-score-pct', String(score));
+                    if (scoreCircleEl) {
+                        if (score > 0) {
+                            scoreCircleEl.style.strokeDashoffset = String(C - (score / 100) * C);
+                            scoreCircleEl.style.opacity = '1';
+                        } else {
+                            scoreCircleEl.style.strokeDashoffset = String(C);
+                            scoreCircleEl.style.opacity = '0';
+                        }
+                    }
                     if (scoreRatingEl) scoreRatingEl.textContent = ratingLabels[rating] || rating;
                     if (scoreStatusEl) scoreStatusEl.hidden = true;
                     renderChecklist(data && data.checks);
@@ -525,6 +749,7 @@
                     if (!marker) return;
                     refreshCounts();
                     refreshPreview();
+                    refreshSocialPreviews();
                     announcePending();
                     scheduleAnalyze();
                 });
@@ -532,9 +757,11 @@
                     const marker = event.target.closest && event.target.closest('[data-hb-seo-field]');
                     if (!marker) return;
                     announcePending();
+                    refreshSocialPreviews();
                     scheduleAnalyze();
                 });
-                document.addEventListener('hb:doc-title', () => { refreshPreview(); scheduleAnalyze(); });
+                document.addEventListener('hb:doc-title', () => { refreshPreview(); refreshSocialPreviews(); scheduleAnalyze(); });
+                document.addEventListener('hb:featured-image-change', () => { refreshSocialPreviews(); });
                 document.addEventListener('input', (event) => {
                     if (event.target.closest && event.target.closest('[data-hb-post-slug-input]')) { refreshPreview(); scheduleAnalyze(); }
                 });
@@ -552,6 +779,7 @@
                         refreshOgPreview();
                         refreshCounts();
                         refreshPreview();
+                        refreshSocialPreviews();
                     }
                     runAnalyze();
                 });
@@ -565,6 +793,7 @@
                     });
                     if (ogTrigger) ogTrigger.disabled = false;
                     runAnalyze();
+                    refreshSocialPreviews();
                 });
 
                 new MutationObserver(() => {
@@ -577,6 +806,7 @@
                 refreshOgPreview();
                 refreshCounts();
                 refreshPreview();
+                refreshSocialPreviews();
                 if (!root.dataset.hbPostId) {
                     showUnsaved();
                 } else if (!root.hidden) {

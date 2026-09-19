@@ -217,4 +217,43 @@ class SeoPanelWiringTest extends TestCase
         $this->assertStringContainsString('seenKeys', $html);
         $this->assertStringContainsString("group + ' ' + check.status + ' ' + check.message", $html);
     }
+
+    public function test_the_seo_score_uses_an_svg_circular_progress_ring_with_rounded_caps(): void
+    {
+        $html = $this->blankEditorHtml();
+
+        $this->assertStringContainsString('data-hb-seo-score-ring', $html);
+        $this->assertStringContainsString('data-hb-seo-score-circle', $html);
+        $this->assertStringContainsString('stroke-linecap="round"', $html);
+        $this->assertStringContainsString('class="hb-seo-score__ring-svg"', $html);
+    }
+
+    public function test_the_social_tab_renders_facebook_x_and_linkedin_preview_cards(): void
+    {
+        $html = $this->blankEditorHtml();
+
+        $this->assertStringContainsString('data-hb-panel-seo-social', $html);
+        $this->assertStringContainsString('data-hb-seo-social-previews', $html);
+
+        // Network cards
+        $this->assertStringContainsString('data-hb-social-group="facebook"', $html);
+        $this->assertStringContainsString('data-hb-social-group="x"', $html);
+        $this->assertStringContainsString('data-hb-social-group="linkedin"', $html);
+
+        $this->assertStringContainsString('data-hb-social-card="facebook"', $html);
+        $this->assertStringContainsString('data-hb-social-card="x"', $html);
+        $this->assertStringContainsString('data-hb-social-card="linkedin"', $html);
+
+        // X branding: label "X" and icon "x-logo", not legacy twitter bird
+        $this->assertStringContainsString('data-icon-name="x-logo"', $html);
+        $this->assertStringContainsString(__('heisenberg::editor.panel_seo_social.social_x'), $html);
+        $this->assertStringNotContainsString('data-icon-name="twitter-logo-bold"', $html);
+
+        // Live preview fields
+        $this->assertStringContainsString('data-hb-social-preview-img', $html);
+        $this->assertStringContainsString('data-hb-social-preview-title', $html);
+        $this->assertStringContainsString('data-hb-social-preview-desc', $html);
+        $this->assertStringContainsString('data-hb-social-preview-domain', $html);
+    }
 }
+
