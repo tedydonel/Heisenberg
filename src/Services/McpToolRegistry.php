@@ -98,6 +98,7 @@ class McpToolRegistry
         private PostPolicy $postPolicy,
         private TranslationStatusService $translationStatus,
         private IconLibraryService $icons,
+        private ?WebSearchService $webSearch = null,
     ) {
     }
 
@@ -317,6 +318,29 @@ class McpToolRegistry
                         'total' => $found['total'],
                         'sets' => $this->icons->sets(),
                     ];
+                },
+            ],
+
+            'search_web' => [
+                'description' => 'Search the internet for up-to-date information, news, recent facts, or image links. '
+                    . 'Use `type: "text"` (default) to search web pages, articles and news. '
+                    . 'Use `type: "images"` to search for image URLs, dimensions, and image attribution to reference in heisenberg/image blocks or featured images.',
+                'tier' => self::TIER_READ,
+                'inputSchema' => $this->schema([
+                    'query' => ['type' => 'string', 'description' => 'Search query string, e.g. "latest tech news" or "mountain landscape photography".'],
+                    'type' => ['type' => 'string', 'description' => 'Search type: "text" (default) or "images".'],
+                    'limit' => ['type' => 'integer', 'description' => 'Maximum results to return (1-30, default 10).'],
+                ], ['query']),
+                'handler' => function (array $args): array {
+                    $query = trim((string) ($args['query'] ?? ''));
+                    if ($query === '') {
+                        throw new McpToolException('query is required for search_web.');
+                    }
+                    $type = (string) ($args['type'] ?? 'text');
+                    $limit = isset($args['limit']) ? (int) $args['limit'] : 10;
+                    $service = $this->webSearch ?? app(\Heisenberg\Services\WebSearchService::class);
+
+                    return $service->search($query, $type, $limit);
                 },
             ],
 

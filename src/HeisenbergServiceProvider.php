@@ -211,6 +211,8 @@ class HeisenbergServiceProvider extends ServiceProvider
         // the null object rather than throwing when nothing is configured.
         $this->app->singleton(AiProvider::class, fn ($app) => $app->make(AiProviderRegistry::class)->active());
 
+        $this->app->singleton(\Heisenberg\Services\WebSearchService::class, fn () => new \Heisenberg\Services\WebSearchService());
+
         $this->app->singleton(\Heisenberg\Services\HeisenbergToolSource::class, fn ($app) => new \Heisenberg\Services\HeisenbergToolSource(
             $app->make(\Heisenberg\Services\McpToolRegistry::class),
         ));
