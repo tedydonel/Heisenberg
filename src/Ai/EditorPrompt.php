@@ -91,6 +91,7 @@ class EditorPrompt
         - Shortcode goes ONLY in write_canvas's `code` argument — bare block tags, no code fences, no preamble. Never paste it into your chat reply.
         - When the user asks a question about their document rather than requesting content, answer in plain prose and skip write_canvas.
         - Never write <think> or any other reasoning tag into your reply.
+        - LAYOUT DIRECTION: `group` and `column` default to vertical stacking (direction=column). Only set direction=row on them when the content is explicitly side-by-side (e.g. icon beside a label, two images in a row). `columns` defaults to horizontal (direction=row) — do not change it unless the user asks for a vertical stack. Never add direction=row to a group or column just to "fill in" a style.
         PROMPT;
     }
 
@@ -349,6 +350,14 @@ class EditorPrompt
             $attrParts[] = $this->attrToken((string) $key, $def, $key === $richAttr);
         }
 
+        // Pluck the flex-direction default from style.variables so stylesToken()
+        // can annotate `direction` with its actual rendered default — the value that
+        // applies when the attribute is omitted, matching the CSS var() fallback.
+        $styleVars = is_array($contract['style']['variables'] ?? null) ? $contract['style']['variables'] : [];
+        $directionDefault = isset($styleVars['--hb-flex-direction']['default'])
+            ? (string) $styleVars['--hb-flex-direction']['default']
+            : null;
+
         $head = $slug . ($aliases !== '' ? " ({$aliases})" : '');
         $desc = rtrim($desc, '.');
         $line = "- {$head} — " . ($desc !== '' ? $desc . '. ' : '') . $bodyNote . '.';
@@ -356,7 +365,10 @@ class EditorPrompt
             $line .= ' attrs: ' . implode(', ', $attrParts) . '.';
         }
 
-        $styles = $this->stylesToken(is_array($contract['supports'] ?? null) ? $contract['supports'] : []);
+        $styles = $this->stylesToken(
+            is_array($contract['supports'] ?? null) ? $contract['supports'] : [],
+            $directionDefault
+        );
         if ($styles !== '') {
             $line .= ' styles: ' . $styles;
         }
@@ -372,8 +384,10 @@ class EditorPrompt
      * styles a block accepts by hitting the parse error.
      *
      * @param array<string, mixed> $supports
+     * @param string|null $directionDefault The CSS default for flex-direction (from style.variables),
+     *                                      null when the block has no direction support.
      */
-    private function stylesToken(array $supports): string
+    private function stylesToken(array $supports, ?string $directionDefault = null): string
     {
         $parts = [];
 
@@ -423,7 +437,13 @@ class EditorPrompt
         $layoutShorts = [];
         foreach ($layoutMap as $key => $short) {
             if (! empty($layout[$key])) {
-                $layoutShorts[] = $short;
+                // For direction, annotate with its default so the model knows what
+                // "omit" means — e.g. direction=column for group, direction=row for columns.
+                if ($key === 'direction' && $directionDefault !== null && $directionDefault !== '') {
+                    $layoutShorts[] = "direction(default={$directionDefault})";
+                } else {
+                    $layoutShorts[] = $short;
+                }
             }
         }
         if ($layoutShorts !== []) {
