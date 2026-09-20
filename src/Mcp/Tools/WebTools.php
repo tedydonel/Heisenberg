@@ -47,6 +47,26 @@ final class WebTools implements McpToolProvider
         $limit = isset($arguments['limit']) ? (int) $arguments['limit'] : 10;
         $service = $this->webSearch ?? app(WebSearchService::class);
 
-        return $service->search($query, $type, $limit);
+        $result = $service->search($query, $type, $limit);
+
+        // Every backend failed — no search actually happened. This must NEVER look like a
+        // clean zero-result answer: an isError result is the only signal strong enough to
+        // stop a model from quietly falling back to (possibly stale) training data. See
+        // WebSearchService::runWaterfall()'s docblock for the three states this collapses.
+        if (($result['all_failed'] ?? false) === true) {
+            $detail = (string) ($result['failure_detail'] ?? 'no backend responded');
+
+            throw new McpToolException(
+                "search_web FAILED — no web search was actually performed ({$detail}). "
+                . 'Do not answer from memory or training data for this query, especially anything '
+                . 'time-sensitive (news, prices, current rules/regulations, "latest"/"today"/a given '
+                . 'year). Tell the user the live search failed and ask them to retry, rather than '
+                . 'guessing from what you already know.'
+            );
+        }
+
+        unset($result['all_failed'], $result['failure_detail']);
+
+        return $result;
     }
 }

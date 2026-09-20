@@ -476,6 +476,22 @@ return [
         // Same file-backed pattern as theme_path / saved_themes_path above.
         'settings_path' => env('HEISENBERG_AI_SETTINGS_PATH'),
 
+        // The `search_web` MCP tool's backends (Heisenberg\Services\WebSearchService):
+        // DuckDuckGo + Wikipedia for text, Openverse + Wikimedia Commons for images — all
+        // free and key-free; Brave/Tavily are used INSTEAD when their env key is set. See
+        // that class's docblock for the 2026-09-20 empirical diagnosis behind these choices.
+        'web_search' => [
+            // TLS verification for every outbound search request. Defaults to TRUE
+            // (secure) and should stay true on any normal deployment. The ONLY reason to
+            // ever set this false is a machine whose PHP install has no CA bundle
+            // configured at all, so it cannot validate ANY HTTPS certificate (curl error
+            // 60 "unable to get local issuer certificate") — a local PHP/Windows
+            // packaging gap, not a Heisenberg or backend problem. Fixing the machine's CA
+            // bundle is the real fix; this flag exists only so a host stuck on such a
+            // machine isn't left with a permanently broken search tool.
+            'verify_ssl' => (bool) env('HEISENBERG_WEB_SEARCH_VERIFY_SSL', true),
+        ],
+
         'mcp' => [
             // Outbound — Heisenberg connects to other people's MCP servers and
             // offers their tools to the model. The server list lives in the

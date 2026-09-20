@@ -53,9 +53,15 @@ class WebSearchToolTest extends TestCase
 
     public function test_search_web_text_mode_returns_formatted_results(): void
     {
+        Http::preventStrayRequests();
         Http::fake([
-            'https://html.duckduckgo.com/html/' => Http::response(
-                '<div class="result__body"><a class="result__a" href="https://duckduckgo.com/l/?uddg=https%3A%2F%2Fexample.com%2Fnews">Breaking News Title</a><a class="result__snippet">This is the news snippet describing recent events.</a></div></div>',
+            // lite.duckduckgo.com replaced html.duckduckgo.com (the latter now serves a
+            // bot-check page to automated User-Agents) — see WebSearchService's docblock.
+            'https://lite.duckduckgo.com/lite/*' => Http::response(
+                // Single-quoted class attributes are deliberate: that is exactly how
+                // lite.duckduckgo.com emits them, and the parser's regex matches it literally.
+                '<a rel="nofollow" href="https://duckduckgo.com/l/?uddg=https%3A%2F%2Fexample.com%2Fnews" class=\'result-link\'>Breaking News Title</a>'
+                . '<td class=\'result-snippet\'>This is the news snippet describing recent events.</td>',
                 200
             ),
         ]);
@@ -76,6 +82,7 @@ class WebSearchToolTest extends TestCase
 
     public function test_search_web_images_mode_returns_image_links(): void
     {
+        Http::preventStrayRequests();
         Http::fake([
             'https://api.openverse.org/v1/images/*' => Http::response([
                 'results' => [
@@ -109,8 +116,9 @@ class WebSearchToolTest extends TestCase
 
     public function test_search_web_falls_back_to_wikipedia_when_duckduckgo_fails(): void
     {
+        Http::preventStrayRequests();
         Http::fake([
-            'https://html.duckduckgo.com/html/' => Http::response('Blocked', 403),
+            'https://lite.duckduckgo.com/lite/*' => Http::response('Blocked', 403),
             'https://en.wikipedia.org/w/api.php*' => Http::response([
                 'query' => [
                     'search' => [
