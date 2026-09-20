@@ -1,0 +1,51 @@
+{
+    "_comment": "Exercises: heading, paragraph, quote, list, separator, button — all of them email-safe blocks — plus {{ variable }} tokens and bilingual (_fr) attribute variants. Title itself carries a token to prove the subject line passes it through verbatim too.",
+    "title_en": "Weekly Update {{ user.first_name }}",
+    "title_fr": "Mise à jour hebdomadaire {{ user.first_name }}",
+    "slug": "core-text-and-variables",
+    "blocks": [
+        {
+            "name": "heisenberg/heading",
+            "attributes": {
+                "content": "Hello {{ user.first_name }}",
+                "content_fr": "Bonjour {{ user.first_name }}",
+                "level": 1
+            }
+        },
+        {
+            "name": "heisenberg/paragraph",
+            "attributes": {
+                "content": "Welcome to this week's roundup.",
+                "content_fr": "Bienvenue dans le résumé de cette semaine."
+            }
+        },
+        {
+            "name": "heisenberg/quote",
+            "attributes": {
+                "content": "Simplicity is the ultimate sophistication.",
+                "content_fr": "La simplicité est la sophistication suprême.",
+                "citation": "Leonardo da Vinci"
+            }
+        },
+        {
+            "name": "heisenberg/list",
+            "attributes": {
+                "content": "First item\nSecond item\nThird item",
+                "content_fr": "Premier élément\nDeuxième élément\nTroisième élément",
+                "ordered": false
+            }
+        },
+        {
+            "name": "heisenberg/separator",
+            "attributes": {}
+        },
+        {
+            "name": "heisenberg/button",
+            "attributes": {
+                "text": "Read more",
+                "text_fr": "Lire la suite",
+                "url": "https://example.com/{{ tracking_id }}"
+            }
+        }
+    ]
+}

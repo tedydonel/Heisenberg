@@ -1,0 +1,31 @@
+{
+    "_comment": "Exercises: image block twice — once with a media-library path (resolves to a PublicFile the loader creates, so EmailRenderer embeds it as a cid:), once with an external URL (no PublicFile match, left as a live remote URL per EmailRenderer::rewriteImages()'s documented best-effort posture). Bilingual caption on the media-library image.",
+    "title_en": "Photo Roundup",
+    "slug": "media-image-sources",
+    "blocks": [
+        {
+            "name": "heisenberg/image",
+            "attributes": {
+                "url": "/uploads/media/2026/07/photo.jpg",
+                "alt": "A media-library photo",
+                "alt_fr": "Une photo de la bibliothèque",
+                "caption": "From our library",
+                "caption_fr": "De notre bibliothèque"
+            },
+            "_mediaLibraryFixture": true
+        },
+        {
+            "name": "heisenberg/image",
+            "attributes": {
+                "url": "https://cdn.example.com/hero-external.jpg",
+                "alt": "External hero image"
+            }
+        },
+        {
+            "name": "heisenberg/paragraph",
+            "attributes": {
+                "content": "Two images above: one hosted in our media library, one external."
+            }
+        }
+    ]
+}

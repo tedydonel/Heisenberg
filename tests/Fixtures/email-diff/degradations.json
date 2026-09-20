@@ -1,0 +1,24 @@
+{
+    "_comment": "Exercises the two documented email-safe degradations: a gradient background (must degrade to its first colour stop — EmailRendererTest::test_a_gradient_background_degrades_to_its_first_stop_colour_in_email) and an align value (must be dropped entirely on the email surface — BlockTreeRenderer::resolveClass()'s docblock, docs/email-system.md §4). Both are supports-level, not attributes.",
+    "title_en": "Degradation Showcase",
+    "slug": "degradations-showcase",
+    "blocks": [
+        {
+            "name": "heisenberg/group",
+            "attributes": {},
+            "supports": {
+                "color": { "background": "linear-gradient(45deg, #ff0000 0%, #0000ff 100%)" },
+                "align": "center"
+            },
+            "innerBlocks": [
+                { "name": "heisenberg/paragraph", "attributes": { "content": "Inside a gradient, centered group." } }
+            ]
+        },
+        {
+            "name": "heisenberg/image",
+            "attributes": { "url": "/uploads/media/2026/07/photo2.jpg", "alt": "Aligned image" },
+            "supports": { "align": "center" },
+            "_mediaLibraryFixture": true
+        }
+    ]
+}

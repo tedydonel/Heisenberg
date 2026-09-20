@@ -1,0 +1,55 @@
+{
+    "_comment": "Exercises: group > columns > column nesting (four columns, so EmailRenderer::capColumns() must trim to MAX_EMAIL_COLUMNS = 3), plus embed and icon as top-level siblings — the two contracts with NO email section, which must render as nothing rather than crashing or leaking web markup.",
+    "title_en": "Nested Layout Test",
+    "slug": "nested-layout-test",
+    "blocks": [
+        {
+            "name": "heisenberg/group",
+            "attributes": {},
+            "innerBlocks": [
+                {
+                    "name": "heisenberg/columns",
+                    "attributes": { "columns": 4 },
+                    "innerBlocks": [
+                        {
+                            "name": "heisenberg/column",
+                            "attributes": {},
+                            "innerBlocks": [
+                                { "name": "heisenberg/paragraph", "attributes": { "content": "Column one text" } }
+                            ]
+                        },
+                        {
+                            "name": "heisenberg/column",
+                            "attributes": {},
+                            "innerBlocks": [
+                                { "name": "heisenberg/heading", "attributes": { "content": "Column two heading", "level": 3 } }
+                            ]
+                        },
+                        {
+                            "name": "heisenberg/column",
+                            "attributes": {},
+                            "innerBlocks": [
+                                { "name": "heisenberg/paragraph", "attributes": { "content": "Column three text" } }
+                            ]
+                        },
+                        {
+                            "name": "heisenberg/column",
+                            "attributes": {},
+                            "innerBlocks": [
+                                { "name": "heisenberg/paragraph", "attributes": { "content": "Column four text — should be capped out of the email surface" } }
+                            ]
+                        }
+                    ]
+                }
+            ]
+        },
+        {
+            "name": "heisenberg/embed",
+            "attributes": { "url": "https://www.youtube.com/watch?v=dQw4w9WgXcQ" }
+        },
+        {
+            "name": "heisenberg/icon",
+            "attributes": { "icon": "feather/star" }
+        }
+    ]
+}
