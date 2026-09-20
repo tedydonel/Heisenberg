@@ -10,6 +10,7 @@ use Heisenberg\Http\Controllers\HeisenbergPatternController;
 use Heisenberg\Http\Controllers\LocaleController;
 use Heisenberg\Http\Controllers\PostCategoryController;
 use Heisenberg\Http\Controllers\PostController;
+use Heisenberg\Http\Controllers\PostLiveController;
 use Heisenberg\Http\Controllers\PostRevisionsController;
 use Heisenberg\Http\Controllers\PostSettingsController;
 use Heisenberg\Http\Controllers\PostTagController;
@@ -47,6 +48,12 @@ Route::middleware(config('heisenberg.middleware.editor', ['web']))->group(functi
     Route::post('/editor/posts', [PostController::class, 'store'])->name('heisenberg.editor.posts.store');
     Route::put('/editor/posts/{post}', [PostController::class, 'update'])->whereNumber('post')->name('heisenberg.editor.posts.update');
     Route::get('/editor/posts/{post}', [PostController::class, 'show'])->whereNumber('post')->name('heisenberg.editor.posts.show');
+    // Live-refresh poll (docs: parity for externally-authored content, e.g. an MCP client's
+    // create_post/update_post/write_canvas) — an already-open editor tab hits this every few
+    // seconds for just the post's `content_version`; on a bump it re-fetches the full post via
+    // the SAME `heisenberg.editor.posts.show` route above. See PostLiveController's own docblock
+    // for why this is polling rather than SSE/broadcasting.
+    Route::get('/editor/posts/{post}/live-status', [PostLiveController::class, 'status'])->whereNumber('post')->name('heisenberg.editor.posts.live-status');
     // Move to trash / restore / trash listing (PostTrashController) — the "Move to trash" button
     // in the Post tab's Summary, and a standalone API for a host to build its own trash screen.
     // `/editor/posts/trashed` is a literal segment, never captured by the numeric {post} routes

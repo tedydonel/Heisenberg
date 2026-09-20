@@ -284,6 +284,20 @@ return [
         // read when `heisenberg.locales` is absent. Set `heisenberg.locales` instead; this key
         // has no effect once that one is present.
         'locales' => ['en', 'fr'],
+
+        // Live editor updates for externally-authored content (e.g. an MCP client's
+        // create_post/update_post/write_canvas) — an already-open editor tab polls
+        // PostLiveController::status() for the post's content_version and, on a bump, pulls in
+        // the new content the same way the in-editor AI assistant does (window.hbEditor.
+        // replaceDoc()). Polling, not SSE/broadcasting — see PostLiveController's docblock for
+        // why. `enabled` lets a host turn this off entirely (no route work needed — both the
+        // controller and the client-side poller read this same key); `interval_ms` is the poll
+        // period, clamped client- and server-side to a sane floor so a misconfigured tiny value
+        // can't hammer the server.
+        'live_refresh' => [
+            'enabled' => env('HEISENBERG_EDITOR_LIVE_REFRESH', true),
+            'interval_ms' => (int) env('HEISENBERG_EDITOR_LIVE_REFRESH_MS', 4000),
+        ],
     ],
 
     // Public media library (docs/media-library-backend-blueprint.md)

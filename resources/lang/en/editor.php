@@ -448,6 +448,16 @@ return [
         'email_size_warning' => 'Over 100 KB — Gmail may clip this email.',
     ],
 
+    // Externally-authored live update notice (live/editor-live-refresh.blade.php) — announces
+    // content saved elsewhere (e.g. via the MCP API) landing in an already-open editor tab.
+    'live_refresh' => [
+        'aria_notice' => 'External update notice',
+        'applied' => 'Updated with the latest content saved elsewhere.',
+        'available' => 'A newer version of this post was saved elsewhere.',
+        'load' => 'Load new version',
+        'dismiss' => 'Dismiss',
+    ],
+
     // Components/Blocks panel (live/panel-components-blocks.blade.php).
     'panel_components_blocks' => [
         'tab_components' => 'Components',

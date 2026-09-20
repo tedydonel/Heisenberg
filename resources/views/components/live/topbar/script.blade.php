@@ -116,6 +116,58 @@
             });
         };
 
+        // Minimal read/write bridge onto this closure's own save-state, for
+        // resources/views/components/live/editor-live-refresh.blade.php (live updates for
+        // externally-authored content, e.g. an MCP write) — deliberately NOT a second copy of
+        // this state: it reads hbContentVersion/hbDirty/hbSaveInFlight directly and, on a
+        // successful external sync, reuses the SAME hbTitleSaveExtra()/buildSavePayload()
+        // baseline-recompute hbPerformSave() itself uses, so the "byte-identical, skip the
+        // network round trip" autosave guard stays correct afterwards.
+        window.hbTopbarState = {
+            getContentVersion: () => hbContentVersion,
+            isDirty: () => hbDirty,
+            /**
+             * Does the local document ACTUALLY differ from what was last saved?
+             *
+             * hbDirty only means "something fired hb:blocks-changed" — a stray click into the
+             * canvas, a focus/blur, or a typed-then-undone edit all set it and nothing clears
+             * it until a save succeeds. Live-refresh used to gate on hbDirty alone, so one
+             * incidental keystroke put an open editor into notice-only mode FOREVER: external
+             * updates stopped applying, and if an autosave had meanwhile 409'd, the local edits
+             * could not be saved either — a dead end that looked like "live updates just
+             * stopped". This compares the same content payload the autosave guard uses against
+             * the last saved baseline, so only a REAL unsaved change blocks auto-apply.
+             */
+            hasUnsavedChanges: () => {
+                if (!hbDirty) return false;
+                if (hbLastSavedCore === null) return true;
+                if (!window.hbEditor || typeof window.hbEditor.buildSavePayload !== 'function') return true;
+                try {
+                    const core = JSON.stringify(Object.assign({}, window.hbEditor.buildSavePayload({}), hbTitleSaveExtra()));
+                    return core !== hbLastSavedCore;
+                } catch (e) {
+                    return true; // cannot prove it is unchanged — assume the author's work matters
+                }
+            },
+            isSaving: () => !!hbSaveInFlight,
+            // Called after the live-refresh listener has applied an externally-authored update
+            // via window.hbEditor.replaceDoc(): adopts the new content_version as our own
+            // baseline and clears the dirty/pending-autosave state that replaceDoc()'s own
+            // hb:blocks-changed event would otherwise set — the fetched content is already
+            // persisted server-side, so there is nothing here for autosave to write back.
+            acknowledgeExternalSync: (newVersion) => {
+                if (newVersion != null) hbContentVersion = newVersion;
+                clearTimeout(hbAutosaveTimer);
+                hbAutosaveTimer = null;
+                hbDirty = false;
+                hbConflicted = false;
+                if (window.hbEditor && typeof window.hbEditor.buildSavePayload === 'function') {
+                    hbLastSavedCore = JSON.stringify(Object.assign({}, window.hbEditor.buildSavePayload({}), hbTitleSaveExtra()));
+                }
+                hbEmitSaveState(hbHasPending() ? 'dirty' : 'saved');
+            },
+        };
+
         const hbSeed = () => {
             if (hbSeeded) return; hbSeeded = true;
             const root = document.querySelector('.hb-topbar');

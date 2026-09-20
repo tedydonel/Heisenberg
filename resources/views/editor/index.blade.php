@@ -143,6 +143,10 @@
         :post-id="$postId ?? null" :post-locale="$postLocale ?? 'en'" :content-locales="$contentLocales ?? ['en', 'fr']"
         :email-variables="$emailVariables ?? []" />
 
+    {{-- Live editor updates for externally-authored content (e.g. an MCP write) — see
+         resources/views/components/live/editor-live-refresh.blade.php's own docblock. --}}
+    @include('heisenberg::components.live.editor-live-refresh')
+
     @if (! empty($initialBlocks))
         <script nonce="{{ heisenberg_csp_nonce() }}">
             (() => {

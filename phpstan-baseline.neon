@@ -937,6 +937,12 @@ parameters:
 			path: src/Http/Controllers/PostController.php
 
 		-
+			message: '#^Access to an undefined property Heisenberg\\Models\\Post\:\:\$content_version\.$#'
+			identifier: property.notFound
+			count: 1
+			path: src/Http/Controllers/PostLiveController.php
+
+		-
 			message: '#^Access to an undefined property Heisenberg\\Models\\Post\:\:\$allow_comments\.$#'
 			identifier: property.notFound
 			count: 1

@@ -445,6 +445,16 @@ return [
         'email_size_warning' => 'Plus de 100 Ko — Gmail pourrait tronquer cet e-mail.',
     ],
 
+    // Avis de mise à jour externe (live/editor-live-refresh.blade.php) — signale un contenu
+    // enregistré ailleurs (par ex. via l’API MCP) qui arrive dans un onglet d’édition déjà ouvert.
+    'live_refresh' => [
+        'aria_notice' => 'Avis de mise à jour externe',
+        'applied' => 'Mis à jour avec le contenu le plus récent enregistré ailleurs.',
+        'available' => 'Une version plus récente de cet article a été enregistrée ailleurs.',
+        'load' => 'Charger la nouvelle version',
+        'dismiss' => 'Ignorer',
+    ],
+
     // Panneau Composants / Blocs (live/panel-components-blocks.blade.php).
     'panel_components_blocks' => [
         'tab_components' => 'Composants',
