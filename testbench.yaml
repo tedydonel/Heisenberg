@@ -27,6 +27,12 @@ env:
   # session state that survives between dev-server requests.
   - SESSION_DRIVER=file
   - CACHE_STORE=array
+  # Inbound MCP server, for exercising the demo host as an external agent would
+  # (docs/demo.md). OFF in the package default (config/heisenberg.php) because it
+  # is a write API; on here so `testbench serve` exposes POST /heisenberg/mcp.
+  # Token format is `token:tier` — tiers: read | authors | admins.
+  - HEISENBERG_MCP_SERVER=true
+  - HEISENBERG_MCP_TOKENS=live-demo-token:authors
 
 # Orchestra Workbench conventions (workbench/app, workbench/routes,
 # workbench/resources/views, workbench/database/seeders, ...) — this is the

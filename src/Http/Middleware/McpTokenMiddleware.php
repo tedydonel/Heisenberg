@@ -26,6 +26,23 @@ use Symfony\Component\HttpFoundation\Response;
  * - **Session-free.** This endpoint is mounted outside the `web` group on
  *   purpose (see routes/mcp.php), so there is no cookie, no CSRF token and no
  *   ambient user — the token is the entire identity.
+ *
+ * Two additions for MCP Streamable HTTP transport conformance
+ * (https://modelcontextprotocol.io/specification/2025-06-18/basic/transports#security-warning),
+ * both scoped to this class because they are properties of the *connection*,
+ * not of any one JSON-RPC method:
+ *
+ * - **`Origin` validation.** The spec: "Servers MUST validate the `Origin`
+ *   header on all incoming connections to prevent DNS rebinding attacks."
+ *   {@see originIsForeign()} for what "foreign" means here and why a bearer
+ *   token alone doesn't already cover this case.
+ * - **`WWW-Authenticate` on 401.** Bog-standard RFC 6750 bearer-auth
+ *   practice, not an MCP-specific requirement (Heisenberg's static
+ *   `token:tier` scheme is the spec's own "custom authentication" escape
+ *   hatch, not its OAuth-based Authorization framework — there is no
+ *   protected-resource metadata to advertise here). Costs nothing and lets a
+ *   conformant HTTP client distinguish "no credential was sent" from "the one
+ *   sent was rejected."
  */
 class McpTokenMiddleware
 {
@@ -35,19 +52,61 @@ class McpTokenMiddleware
             abort(404);
         }
 
-        $tier = $this->tierFor($this->presentedToken($request));
+        if ($this->originIsForeign($request)) {
+            return response()->json([
+                'jsonrpc' => '2.0',
+                'error' => ['code' => -32000, 'message' => 'Forbidden: cross-origin request'],
+                'id' => null,
+            ], 403);
+        }
+
+        $presented = $this->presentedToken($request);
+        $tier = $this->tierFor($presented);
         if ($tier === null) {
             return response()->json([
                 'jsonrpc' => '2.0',
                 'error' => ['code' => -32001, 'message' => 'Unauthorized'],
                 'id' => null,
-            ], 401);
+            ], 401)->header('WWW-Authenticate', $this->challenge($presented));
         }
 
         // The tools layer reads this; there is no other source of authority.
         $request->attributes->set('hb_mcp_tier', $tier);
 
         return $next($request);
+    }
+
+    /**
+     * Every real MCP HTTP client (curl, the TypeScript/Python SDKs, Claude
+     * Code) is a server-to-server caller and never sends an `Origin` header —
+     * only browsers do. So the check that matters is narrow: when an `Origin`
+     * IS present, it must name this same host. That closes exactly the gap a
+     * bearer token doesn't: a token that has leaked into a browser context
+     * (e.g. pasted into devtools, or held by a compromised extension) could
+     * otherwise be replayed from a malicious page via a same-site-cookie-free
+     * `fetch()`, which is precisely the DNS-rebinding-style shape the spec's
+     * security warning is about. A request with no `Origin` header at all
+     * passes through unconditionally.
+     */
+    private function originIsForeign(Request $request): bool
+    {
+        $origin = (string) $request->header('Origin', '');
+        if ($origin === '') {
+            return false;
+        }
+
+        $originHost = parse_url($origin, PHP_URL_HOST);
+
+        return ! is_string($originHost) || $originHost === ''
+            || ! hash_equals(strtolower($request->getHost()), strtolower($originHost));
+    }
+
+    /** RFC 6750 §3: `error="invalid_token"` only once a credential was actually presented. */
+    private function challenge(string $presented): string
+    {
+        return $presented === ''
+            ? 'Bearer realm="heisenberg-mcp"'
+            : 'Bearer realm="heisenberg-mcp", error="invalid_token"';
     }
 
     private function presentedToken(Request $request): string
