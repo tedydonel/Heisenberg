@@ -62,26 +62,36 @@ class EmailCoverageEditorTest extends TestCase
         ]);
     }
 
-    // ── palette / quick-inserter marking (item 2a: before placement) ───────────────────
+    // ── palette / quick-inserter (item 2a: before placement) ──────────────────────────
+    //
+    // The explanatory note that used to sit above the palette was removed at the owner's
+    // request (2026-09-20) — the palette already omits a block with no email template
+    // entirely (EditorController::paletteBlocks() filters on contractsFor('email')), and the
+    // document-level summary below still reports anything incompatible that is already in the
+    // document. What remains asserted here is that filtering itself: the email palette must
+    // not offer a block the send would silently drop.
 
-    public function test_a_blank_email_documents_palette_explains_the_two_missing_blocks(): void
+    public function test_the_email_palette_does_not_offer_blocks_with_no_email_template(): void
     {
+        $uncovered = app(EmailBlockCoverageService::class)->uncoveredBlockNames();
+        $this->assertNotEmpty($uncovered, 'expected at least one block with no email template');
+
         $html = $this->get('/editor/email')->assertOk()->getContent();
 
-        $this->assertElementExists($html, '[data-hb-email-uncovered-note]');
-        $this->assertElementHasAttribute($html, '[data-hb-email-uncovered-note]', 'data-count', '2');
-        $this->assertElementTextContains(
-            $html,
-            '[data-hb-email-uncovered-note]',
-            str_replace(':count', '2', __('heisenberg::editor.panel_components_blocks.email_uncovered_note'))
-        );
+        foreach ($uncovered as $name) {
+            $this->assertElementMissing($html, '[data-hb-insert-block="' . $name . '"]');
+        }
     }
 
-    public function test_a_plain_post_documents_palette_never_shows_the_email_note(): void
+    public function test_a_plain_post_palette_still_offers_every_block(): void
     {
+        $uncovered = app(EmailBlockCoverageService::class)->uncoveredBlockNames();
+
         $html = $this->get('/editor')->assertOk()->getContent();
 
-        $this->assertElementMissing($html, '[data-hb-email-uncovered-note]');
+        foreach ($uncovered as $name) {
+            $this->assertElementExists($html, '[data-hb-insert-block="' . $name . '"]');
+        }
     }
 
     // ── document-level summary (item 2b) ────────────────────────────────────────────────
