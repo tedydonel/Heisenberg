@@ -2,24 +2,44 @@
     Section: bootstrap & email variables.
 
     Owns: the DATA/REGISTRY snapshot read from window.__hbEditor (populated by the first
-    <script> block in the parent block-runtime.blade.php); the EMAIL_VARIABLES lookup and its
-    token helpers (emailVariableToken, decorateEmailVariables, serializedEmailValue) used to
-    render/round-trip "{{ variable }}" chips inside rich-text fields on email documents; and the
-    editing-locale bootstrap (homeLocale, CONTENT_LOCALES, editingLocale, currentPostId,
-    localeStorageKey/persistEditingLocale, the initEditingLocale IIFE that restores the last
-    locale from localStorage, and the hb:post-id listener that keeps currentPostId — and so the
-    localStorage key — in sync once a draft is first saved).
+    <script> block in the parent block-runtime.blade.php); DOCUMENT_TYPE/RENDER_SURFACE — the
+    canvas's own read of the SAME `data-hb-document-type` the server stamped onto
+    resources/views/components/live/canvas.blade.php's root, so the render tree walked below
+    (05-render-tree) picks the identical `render`/`email` surface {@see BlockTreeRenderer}/
+    {@see EmailRenderer} would use for THIS document (docs/email-system.md §4); the
+    EMAIL_VARIABLES lookup and its token helpers (emailVariableToken, decorateEmailVariables,
+    serializedEmailValue) used to render/round-trip "{{ variable }}" chips inside rich-text fields
+    on email documents; and the editing-locale bootstrap (homeLocale, CONTENT_LOCALES,
+    editingLocale, currentPostId, localeStorageKey/persistEditingLocale, the initEditingLocale IIFE
+    that restores the last locale from localStorage, and the hb:post-id listener that keeps
+    currentPostId — and so the localStorage key — in sync once a draft is first saved).
 
     Depends on: nothing from earlier partials (this is the first one); only the outer IIFE
-    closure and window.__hbEditor set by the surrounding block-runtime.blade.php.
+    closure, window.__hbEditor, and the canvas's own `[data-hb-canvas]` root (already in the DOM —
+    resources/views/editor/index.blade.php renders <x-heisenberg::live.canvas> before
+    <x-heisenberg::live.block-runtime> — by the time this synchronous inline <script> runs) set by
+    the surrounding block-runtime.blade.php.
 
-    Defines for later sections: DATA, REGISTRY, EMAIL_VARIABLES, emailVariableToken(),
-    decorateEmailVariables(), serializedEmailValue(), homeLocale, CONTENT_LOCALES,
-    editingLocale (let, reassigned by setEditingLocale() in 12-history-and-locale-switch),
-    currentPostId, localeStorageKey(), persistEditingLocale().
+    Defines for later sections: DATA, REGISTRY, DOCUMENT_TYPE, RENDER_SURFACE, EMAIL_VARIABLES,
+    emailVariableToken(), decorateEmailVariables(), serializedEmailValue(), homeLocale,
+    CONTENT_LOCALES, editingLocale (let, reassigned by setEditingLocale() in
+    12-history-and-locale-switch), currentPostId, localeStorageKey(), persistEditingLocale().
 --}}
     const DATA = window.__hbEditor || {};
     const REGISTRY = DATA.registry || {};
+
+    // A document never changes type (docs/email-system.md §3), so this is read once here rather
+    // than re-queried on every render call. `render` mirrors BlockTreeRenderer's default surface
+    // (web) — `email` is the only other value it or EmailRenderer ever use ($surface, that
+    // class's own docblock) — so 05-render-tree's renderNode()/renderBlockEl() walk the SAME
+    // `render.template`/`email.template` tree the real page/send would for this document, instead
+    // of always the web one regardless of what the document actually is.
+    const DOCUMENT_TYPE = (function () {
+        const canvas = document.querySelector('[data-hb-canvas]');
+        return (canvas && canvas.dataset.hbDocumentType) || 'post';
+    })();
+    const RENDER_SURFACE = DOCUMENT_TYPE === 'email' ? 'email' : 'render';
+
     const EMAIL_VARIABLES = {};
     (Array.isArray(DATA.emailVariables) ? DATA.emailVariables : []).forEach((entry) => {
         if (entry && entry.key) EMAIL_VARIABLES[String(entry.key)] = entry;

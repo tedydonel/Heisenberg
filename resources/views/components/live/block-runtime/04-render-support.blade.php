@@ -5,17 +5,23 @@
     icon fetch/cache pipeline (iconCache, iconPending, injectLibraryIcon — fetches an SVG from the
     icon library endpoint and caches it); styleDeclarations() (turns a contract's style.variables
     plus a model's attributes/supports/preview-state overrides into a sanitized inline `style`
-    string) and predicateMatches() (its conditional-classNames helper); safeUrl() (the
-    src/href/srcset/poster scheme allowlist); and the embed-URL recognizer (EMBED_SRC_PATTERN,
-    EMBED_FILE_SRC_PATTERN, EMBED_RULES and the embedStartSeconds/vimeoQueryHash/embedClean/
-    embedSrcFor/embedFileSrcFor pipeline that turns a pasted YouTube/Vimeo/etc. URL into a safe
-    embeddable iframe src — kept LOCKSTEP with BlockRenderer's server-side copies, see that
-    class's own comments) plus alignmentValuesFor().
+    string — its `surface` parameter degrades a validated gradient to its first colour stop for
+    `'email'`, mirroring {@see CssValueSanitizer::sanitizeCssValue()}'s own surface handling
+    exactly; the contract-level className/classNames/align skip for email is 05-render-tree's own
+    concern, not this function's) and predicateMatches() (its conditional-classNames helper);
+    safeUrl() (the src/href/srcset/poster scheme allowlist); and the embed-URL recognizer
+    (EMBED_SRC_PATTERN, EMBED_FILE_SRC_PATTERN, EMBED_RULES and the embedStartSeconds/
+    vimeoQueryHash/embedClean/embedSrcFor/embedFileSrcFor pipeline that turns a pasted YouTube/
+    Vimeo/etc. URL into a safe embeddable iframe src — kept LOCKSTEP with BlockRenderer's
+    server-side copies, see that class's own comments) plus alignmentValuesFor().
 
     Depends on: cssValueValid()/normalizeCssNumber() (03-style-sanitizers) for styleDeclarations();
-    dataGet() (03-style-sanitizers) for reading nested supports/attribute paths; DATA
-    (01-bootstrap-and-email-variables) for the icon URL template; REGISTRY (01-bootstrap-and-
-    email-variables) for alignmentValuesFor().
+    isSafeGradientValue()/firstGradientStopColor() (03-style-sanitizers) for styleDeclarations()'s
+    email gradient degrade; dataGet() (03-style-sanitizers) for reading nested supports/attribute
+    paths; DATA (01-bootstrap-and-email-variables) for the icon URL template; REGISTRY
+    (01-bootstrap-and-email-variables) for alignmentValuesFor(); RENDER_SURFACE
+    (01-bootstrap-and-email-variables) as styleDeclarations()'s default when a caller omits
+    `surface`.
 
     Defines for later sections: previewStates, iconCache, iconPending, injectLibraryIcon(),
     styleDeclarations(), predicateMatches(), safeUrl(), embedSrcFor(), embedFileSrcFor(),
@@ -51,7 +57,8 @@
             .catch(function () { delete iconPending[reference]; });
     }
 
-    function styleDeclarations(model, contract) {
+    function styleDeclarations(model, contract, surface) {
+        surface = surface || RENDER_SURFACE;
         const variables = contract && contract.style && contract.style.variables;
         if (!variables || typeof variables !== 'object') return '';
         const state = previewStates[model.id];
@@ -75,7 +82,12 @@
             const sanitizer = String(definition.sanitize || 'text');
             value = normalizeCssNumber(String(value).trim(), sanitizer);
             const fallback = normalizeCssNumber(definition.default == null ? '' : String(definition.default).trim(), sanitizer);
-            const safe = cssValueValid(value, sanitizer) ? value : (cssValueValid(fallback, sanitizer) ? fallback : '');
+            let safe = cssValueValid(value, sanitizer) ? value : (cssValueValid(fallback, sanitizer) ? fallback : '');
+            // §Bug A step 5 / CssValueSanitizer::sanitizeCssValue(): Outlook can't render a CSS
+            // gradient, so the email surface ships its first colour stop as a flat fallback
+            // instead — run on whatever ended up safe (value or fallback), so a gradient DEFAULT
+            // degrades exactly like an authored one.
+            if (safe !== '' && surface === 'email' && isSafeGradientValue(safe)) safe = firstGradientStopColor(safe);
             if (safe) {
 
 

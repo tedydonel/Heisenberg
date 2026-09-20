@@ -61,6 +61,15 @@ final class BlockViewData
                 'panels' => $block['panels'] ?? [],
                 'supports' => $block['supports'] ?? [],
                 'template' => $block['render']['template'] ?? null,
+                // The EMAIL surface's own template tree (docs/email-system.md §4) — `null` when
+                // the contract has no `email` section at all (embed, icon). Shipped alongside
+                // `template` (never replacing it — the web/`render` payload above is untouched)
+                // so the editor CANVAS can walk the same tree {@see BlockTreeRenderer}/
+                // {@see EmailRenderer} render from for an email document, instead of always
+                // showing the web tree regardless of which surface the document actually ships
+                // through. Only ~10 of 12 contracts carry one, so this is a bounded addition, not
+                // a second copy of the whole registry.
+                'emailTemplate' => $block['email']['template'] ?? null,
                 'innerBlocks' => $block['innerBlocks'] ?? ['enabled' => false],
                 'style' => [
                     'className' => (string) ($block['style']['className'] ?? ''),

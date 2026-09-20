@@ -11,7 +11,7 @@
     parent/save buttons based on the selected block's contract.
 
     Depends on: findModel()/wrapEl()/appenderEl()/doc (02-doc-model); newBlockModel()
-    (02-doc-model); renderBlockEl()/MAX_NESTING_DEPTH (05-render-tree); REGISTRY
+    (02-doc-model); renderBlockEl()/MAX_NESTING_DEPTH (05-render-tree); REGISTRY, RENDER_SURFACE
     (01-bootstrap-and-email-variables). insertBlock() also calls reRenderBlock()/selectById(),
     both defined later in 07-toolbar-and-selection — fine, since these are only invoked after
     the whole script has loaded.
@@ -161,7 +161,11 @@
         const c = REGISTRY[model.name] || {};
         const supports = c.supports || {};
         const show = (el, on) => { if (el) el.hidden = !on; };
-        show(tb.querySelector('[data-tb-group="format"]'), templateHasRichText(c.template));
+        // Gate against whichever template THIS document's surface actually renders (05-render-
+        // tree's RENDER_SURFACE) — a block whose email section has no rich-text node (list: plain
+        // text-lines only) must not offer the format toolbar while editing an email document, even
+        // though its web template does.
+        show(tb.querySelector('[data-tb-group="format"]'), templateHasRichText(RENDER_SURFACE === 'email' ? c.emailTemplate : c.template));
         const color = supports.color || {};
         show(tb.querySelector('[data-tb-popover="color"]'), !!(color.text || color.background));
         show(tb.querySelector('[data-tb-popover="align"]'), Array.isArray(supports.align) && supports.align.length > 0);

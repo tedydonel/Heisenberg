@@ -19,8 +19,28 @@
 --}}
     const TB_GAP = 2;
 
+    /**
+     * The rect the floating toolbar docks against.
+     *
+     * Two ways the obvious lookup yields a 0x0 box, both of which parked the toolbar at the top
+     * of the canvas instead of over the block: `.hb-blk--nested` is `display: contents` (CSS,
+     * 35-blocks.css) so the wrapper itself generates no box at all, and the EMAIL surface's
+     * templates carry no `data-block-id` (only `render` templates do), so the preferred lookup
+     * finds nothing and falls back to that boxless wrapper. Net effect: the toolbar "didn't
+     * appear" for anything inside a layout while editing an email. Fall back to the first
+     * descendant that actually has a box.
+     */
     function blockBox(blk) {
-        return (blk.querySelector(':scope > [data-block-id]') || blk).getBoundingClientRect();
+        const box = (blk.querySelector(':scope > [data-block-id]') || blk).getBoundingClientRect();
+        if (box.width !== 0 || box.height !== 0) return box;
+
+        const kids = blk.querySelectorAll('*');
+        for (let i = 0; i < kids.length; i++) {
+            const r = kids[i].getBoundingClientRect();
+            if (r.width > 0 || r.height > 0) return r;
+        }
+
+        return box;
     }
 
     function positionToolbar() {

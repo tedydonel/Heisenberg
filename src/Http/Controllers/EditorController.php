@@ -15,6 +15,7 @@ use Heisenberg\Models\Tag;
 use Heisenberg\Services\AiProviderRegistry;
 use Heisenberg\Services\AiSettingsRepository;
 use Heisenberg\Services\BlockRegistryService;
+use Heisenberg\Services\EmailBlockCoverageService;
 use Heisenberg\Services\EmailVariableCatalog;
 use Heisenberg\Services\FontCatalogService;
 use Heisenberg\Services\IconLibraryService;
@@ -347,11 +348,12 @@ final class EditorController
             $locale = (string) ($model?->locale ?: LocaleConfig::default());
             $subject = $model !== null ? trim((string) $model->title($locale)) : '';
             $blocks = $model?->blocks ?? collect();
-            $serialized = json_encode($blocks->pluck('content')->all(), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) ?: '';
+            $blockContents = $blocks->pluck('content')->all();
+            $serialized = json_encode($blockContents, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) ?: '';
             preg_match_all('/\\{\\{\\s*([a-z][a-z0-9_]*(?:\\.[a-z][a-z0-9_]*)*)\\s*\\}\\}/i', $serialized, $matches);
             $variableCount = count(array_unique($matches[1] ?? []));
 
-            return [
+            $rows = [
                 [
                     'key' => 'subject',
                     'label' => (string) __('heisenberg::editor.inspector.summary_email_subject'),
@@ -367,8 +369,40 @@ final class EditorController
                     'label' => (string) __('heisenberg::editor.inspector.summary_email_variables'),
                     'value' => (string) $variableCount,
                 ],
-                $urlRow,
             ];
+
+            // Silent-failure visibility (docs/email-system.md §4): a snapshot of the SAVED
+            // document, same "computed once at render time" posture as the two metrics above —
+            // never live-recomputed as the canvas changes, just like them. Two separate rows
+            // (never merged) because they carry different confidence: `dropped` is certain (no
+            // `email` template at all), `degraded` is a real but survivable difference.
+            $coverage = app(EmailBlockCoverageService::class)->documentSummary($blockContents);
+            if ($coverage['dropped_count'] > 0) {
+                $rows[] = [
+                    'key' => 'email_coverage_dropped',
+                    'label' => (string) __('heisenberg::editor.inspector.summary_email_dropped_label'),
+                    'value' => str_replace(
+                        ':count',
+                        (string) $coverage['dropped_count'],
+                        (string) __('heisenberg::editor.inspector.summary_email_dropped_value')
+                    ),
+                ];
+            }
+            if ($coverage['degraded_count'] > 0) {
+                $rows[] = [
+                    'key' => 'email_coverage_degraded',
+                    'label' => (string) __('heisenberg::editor.inspector.summary_email_degraded_label'),
+                    'value' => str_replace(
+                        ':count',
+                        (string) $coverage['degraded_count'],
+                        (string) __('heisenberg::editor.inspector.summary_email_degraded_value')
+                    ),
+                ];
+            }
+
+            $rows[] = $urlRow;
+
+            return $rows;
         }
 
         $currentStatus = (string) ($model?->status ?? 'draft');

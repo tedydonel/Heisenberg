@@ -16,7 +16,7 @@
     <div class="hb-editor__scrim" data-hb-scrim hidden></div>
     <x-heisenberg::live.sidebar class="hb-editor__sidebar" :document-type="$hbDocumentType" />
     <div class="hb-editor__panel">
-        <x-heisenberg::live.panel-components-blocks :registry="$paletteBlocks ?? $registry" />
+        <x-heisenberg::live.panel-components-blocks :registry="$paletteBlocks ?? $registry" :document-type="$hbDocumentType" />
         @if ($hbDocumentType !== 'email')
         <x-heisenberg::live.panel-seo-social hidden
             :post-id="$postId ?? null"
@@ -47,7 +47,7 @@
             :document-type="$hbDocumentType"
             :post-locale="$postLocale ?? 'en'" :content-locale-labels="$contentLocaleLabels ?? []" />
         <x-heisenberg::live.code-editor hidden />
-        <x-heisenberg::live.quick-inserter :registry="$paletteBlocks ?? $registry" />
+        <x-heisenberg::live.quick-inserter :registry="$paletteBlocks ?? $registry" :document-type="$hbDocumentType" />
         @php
             $hbBlockImageSelectUrl = \Illuminate\Support\Facades\Route::has('media.select') ? route('media.select') : null;
             $hbBlockImageUploadUrl = \Illuminate\Support\Facades\Route::has('media.upload') ? route('media.upload') : null;

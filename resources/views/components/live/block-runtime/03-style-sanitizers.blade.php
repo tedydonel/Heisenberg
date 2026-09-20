@@ -9,6 +9,10 @@
     the gradient/shadow parsers built on splitTopLevel, normalizeCssNumber, and the cssValueValid
     dispatcher keyed by a contract's declared `sanitize` name). This is the client-side mirror of
     BlockContractValidator's server-side allowlist (see that class's own comment pointing back here).
+    Also owns firstGradientStopColor() — the email-surface gradient degrade (a validated gradient's
+    FIRST colour stop, since Outlook cannot render `linear-gradient()`/`radial-gradient()`), the
+    client-side mirror of {@see CssValueSanitizer}'s own method of the same name; 04-render-support's
+    styleDeclarations() is the only caller.
 
     Depends on: nothing block-model-specific; these are pure functions over strings/values, plus
     subst()/dataGet() which read a model's attributes/supports (readAttr from 02-doc-model).
@@ -16,7 +20,7 @@
     Defines for later sections: truthy(), dataGet(), subst(), DYN_TAGS, resolveTag(),
     isSafeColorToken(), isSafeLengthSignedValue(), isSafeLinearPreamble(), isSafeRadialPreamble(),
     isSafeGradientStop(), isSafeGradientValue(), splitTopLevel(), isSafeShadowLayer(),
-    isSafeShadowValue(), normalizeCssNumber(), cssValueValid().
+    isSafeShadowValue(), normalizeCssNumber(), cssValueValid(), firstGradientStopColor().
 --}}
     function truthy(v) { return v !== '' && v !== 'false' && v !== '0'; }
     function dataGet(value, path) {
@@ -95,6 +99,26 @@
         if (isPreamble(parts[0])) parts.shift();
         if (parts.length < 2) return false;
         return parts.every(isSafeGradientStop);
+    }
+
+    /**
+     * The email degrade for an already-validated gradient (mirrors
+     * CssValueSanitizer::firstGradientStopColor() exactly): Outlook cannot render a CSS gradient,
+     * so the email surface substitutes the gradient's FIRST colour stop as a flat fallback rather
+     * than a value the client will just ignore. Scans comma-parts for the first one whose leading
+     * token is a safe colour — that skips the optional direction/shape preamble without
+     * re-deriving which gradient kind produced it. Returns '' (never the original gradient) if,
+     * somehow, no stop parses as a colour — callers only use the return value when it's non-empty.
+     */
+    function firstGradientStopColor(gradient) {
+        const m = /^(?:linear|radial)-gradient\((.*)\)$/is.exec(gradient);
+        if (!m) return '';
+        const parts = splitTopLevel(m[1], ',');
+        for (let i = 0; i < parts.length; i++) {
+            const tokens = splitTopLevel(parts[i].trim(), ' ').filter((t) => t !== '');
+            if (tokens.length && isSafeColorToken(tokens[0])) return tokens[0];
+        }
+        return '';
     }
 
     function splitTopLevel(value, delimiter) {

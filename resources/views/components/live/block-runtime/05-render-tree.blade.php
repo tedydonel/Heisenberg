@@ -5,21 +5,78 @@
     text-lines, inner-blocks, or a plain tag — into a live DOM node/fragment for a given block
     model + contract, recursing into children and innerBlocks); renderBlockEl() (wraps a
     rendered root in the .hb-blk container, stamps data-block/data-block-name/data-level, and
-    applies the image/icon empty-state decorations); and the two empty-state decorators
-    decorateIconBlock()/decorateImageBlock().
+    applies the image/icon empty-state decorations); the two empty-state decorators
+    decorateIconBlock()/decorateImageBlock(); and MAX_EMAIL_COLUMNS/emailInnerBlocksFor(), the
+    client-side mirror of EmailRenderer::capColumns()/assignColumnWidths().
+
+    Both renderNode() and renderBlockEl() take a `surface` argument (`'render'`|`'email'`,
+    defaulting to RENDER_SURFACE when a caller omits it — every existing call site in
+    06-selection-support/07-toolbar-and-selection/08-tree-ops/11-doc-replace-and-translation still
+    calls renderBlockEl(model[, depth]) unchanged) — the exact client-side mirror of
+    {@see BlockTreeRenderer}'s own `$surface` parameter (see that class's docblock): `'render'`
+    walks a contract's `render.template` (web, byte-for-byte what this file always produced);
+    `'email'` walks `email.template` instead, skips the contract-level className/classNames/align
+    injection (BlockTreeRenderer::resolveClass()'s own email carve-out), and degrades a gradient to
+    its first colour stop (styleDeclarations(), 04-render-support). A contract with no section for
+    the current surface renders EMPTY, not an error (renderBlockEl() returning null — embed/icon
+    have no `email` section at all; docs/email-system.md §4) — exactly {@see EmailRenderer}'s own
+    "skip, don't fail" posture.
 
     Depends on: subst()/resolveTag() (03-style-sanitizers); readAttr() (02-doc-model);
     styleDeclarations()/predicateMatches()/safeUrl()/injectLibraryIcon()/embedSrcFor()/
     embedFileSrcFor()/alignmentValuesFor() (04-render-support); decorateEmailVariables()
-    (01-bootstrap-and-email-variables) for rich-text nodes on email documents.
+    (01-bootstrap-and-email-variables) for rich-text nodes on the email surface; RENDER_SURFACE
+    (01-bootstrap-and-email-variables) as renderNode()/renderBlockEl()'s default `surface`.
 
-    Defines for later sections: MAX_NESTING_DEPTH, renderNode(), renderBlockEl(),
-    decorateIconBlock(), decorateImageBlock() — renderBlockEl() in particular is the workhorse
-    every tree mutation in 08-tree-ops calls to redraw a block after a model change.
+    Defines for later sections: MAX_NESTING_DEPTH, MAX_EMAIL_COLUMNS, emailInnerBlocksFor(),
+    renderNode(), renderBlockEl(), decorateIconBlock(), decorateImageBlock() — renderBlockEl() in
+    particular is the workhorse every tree mutation in 08-tree-ops calls to redraw a block after a
+    model change.
 --}}
     const MAX_NESTING_DEPTH = 20;
-    function renderNode(node, model, contract, isRoot, depth) {
+
+    // EmailRenderer::MAX_EMAIL_COLUMNS — the email surface never ships more than this many
+    // columns from a `columns` block (docs/email-system.md §4).
+    const MAX_EMAIL_COLUMNS = 3;
+
+    /**
+     * The email-surface mirror of EmailRenderer::capColumns()/assignColumnWidths(): a `columns`
+     * block's innerBlocks, capped at MAX_EMAIL_COLUMNS and stamped with the SAME synthetic
+     * `_emailColWidthPercent` attribute column.json's `email.template` substitutes into its root
+     * `width` — whole-percent widths summing to 100, the last column absorbing the rounding
+     * remainder. This is a container-specific transform (the generic inner-blocks primitive has
+     * no "first N children" concept — same reason EmailRenderer does it as a tree walk rather than
+     * something a contract's `email.template` could express on its own), so it is applied here,
+     * not inside the generic 'inner-blocks' case below, and ONLY when reading a `columns` block's
+     * children for the email surface.
+     *
+     * Returns freshly-cloned column MODELS — never mutates model.innerBlocks or any child's own
+     * `attributes` object — so every editing entry point (findModel()/locateBlock(), which every
+     * one of setAttribute()/moveBlock()/removeBlock()/drag-drop keys off a block's real id) still
+     * sees the actual document; only what gets DRAWN is affected. One consequence: a `columns`
+     * block with more than MAX_EMAIL_COLUMNS children on an email document renders (and is
+     * selectable/draggable) for its first 3 columns only on the canvas — matching what the real
+     * send ships — while the extra columns still exist in the document and reappear if the
+     * document's column count is ever reduced back through the inspector's Columns control.
+     */
+    function emailInnerBlocksFor(model) {
+        const inner = Array.isArray(model.innerBlocks) ? model.innerBlocks : [];
+        if (model.name.indexOf('/columns') === -1) return inner;
+        const capped = inner.slice(0, MAX_EMAIL_COLUMNS);
+        const count = capped.length;
+        if (!count) return capped;
+        const base = Math.floor(100 / count);
+        return capped.map(function (column, i) {
+            const percent = (i === count - 1 ? (100 - base * (count - 1)) : base) + '%';
+            return Object.assign({}, column, {
+                attributes: Object.assign({}, column.attributes || {}, { _emailColWidthPercent: percent }),
+            });
+        });
+    }
+
+    function renderNode(node, model, contract, isRoot, depth, surface) {
         depth = depth || 0;
+        surface = surface || RENDER_SURFACE;
         if (!node || typeof node !== 'object') return null;
         const cls = node.class || '';
         if ((typeof cls === 'string' && cls.indexOf('__picker') !== -1) || (node.attributes && node.attributes['data-image-picker'])) return null;
@@ -38,7 +95,7 @@
             span.setAttribute('data-hb-rt', node.attribute || '');
             span.setAttribute('data-ph', 'Write something…');
             span.innerHTML = (val == null ? '' : String(val));
-            if (document.querySelector('[data-hb-canvas][data-hb-document-type="email"]')) decorateEmailVariables(span);
+            if (surface === 'email') decorateEmailVariables(span);
             return span;
         }
 
@@ -74,10 +131,10 @@
 
         if (type === 'inner-blocks') {
             const frag = document.createDocumentFragment();
-            const inner = Array.isArray(model.innerBlocks) ? model.innerBlocks : [];
+            const inner = surface === 'email' ? emailInnerBlocksFor(model) : (Array.isArray(model.innerBlocks) ? model.innerBlocks : []);
             for (let i = 0; i < inner.length; i++) {
                 if (depth >= MAX_NESTING_DEPTH) break;
-                const el = renderBlockEl(inner[i], depth + 1);
+                const el = renderBlockEl(inner[i], depth + 1, surface);
                 if (el) frag.appendChild(el);
             }
 
@@ -94,18 +151,46 @@
             return frag;
         }
 
+        // Conditionally-unwrapped element — mirrors BlockTreeRenderer::renderNode()'s
+        // `omitTagWhenAttributeEmpty` handling exactly: `{ "omitTagWhenAttributeEmpty": "href",
+        // "tag": "a", ... }` renders children with NO wrapping element at all when that attribute
+        // resolves empty (e.g. the email image template's `<a>` around an `<img>` — an anchor with
+        // no `href` is dead markup). A generic node feature, not email-specific, so no surface
+        // gate here either — it just happens only the email templates author it today.
+        const unwrapAttribute = node.omitTagWhenAttributeEmpty;
+        if (typeof unwrapAttribute === 'string' && unwrapAttribute !== '') {
+            const unwrapVal = readAttr(model, unwrapAttribute);
+            if (String(unwrapVal == null ? '' : unwrapVal).trim() === '') {
+                const frag = document.createDocumentFragment();
+                const kids = node.children || [];
+                for (let i = 0; i < kids.length; i++) { const ch = renderNode(kids[i], model, contract, false, depth, surface); if (ch) frag.appendChild(ch); }
+                return frag;
+            }
+        }
+
         const el = document.createElement(resolveTag(node.tag || 'div', model, contract));
         if (node.class) { const c = subst(node.class, model); if (c) el.className = c; }
         if (isRoot && contract && contract.style) {
 
-            String(contract.style.className || '').split(/\s+/).forEach(function (t) { if (t) el.classList.add(t); });
-            const conditional = contract.style.classNames || [];
-            for (let ci = 0; ci < conditional.length; ci++) {
-                if (conditional[ci] && predicateMatches(conditional[ci].when, model, contract)) el.classList.add(conditional[ci].class);
+            // BlockTreeRenderer::resolveClass(): `surface === 'email'` skips the contract-level
+            // className/classNames/align injection entirely — `hb-supports`, `hb-ease-*`,
+            // `hb-flex-layout`, `hb-align-*` all name web-only CSS (interaction states, animation,
+            // flexbox) with no counterpart in an inbox. Email root classes are exactly what the
+            // `email.template` node itself authors (e.g. `hb-email-col`) via the plain `node.class`
+            // handling just above — nothing auto-appended. Web (`render`) is unchanged.
+            if (surface !== 'email') {
+                String(contract.style.className || '').split(/\s+/).forEach(function (t) { if (t) el.classList.add(t); });
+                const conditional = contract.style.classNames || [];
+                for (let ci = 0; ci < conditional.length; ci++) {
+                    if (conditional[ci] && predicateMatches(conditional[ci].when, model, contract)) el.classList.add(conditional[ci].class);
+                }
+                const alignment = model.supports && model.supports.align;
+                if (alignmentValuesFor(model.name).indexOf(alignment) >= 0) el.classList.add('hb-align-' + alignment);
             }
-            const alignment = model.supports && model.supports.align;
-            if (alignmentValuesFor(model.name).indexOf(alignment) >= 0) el.classList.add('hb-align-' + alignment);
-            const declarations = styleDeclarations(model, contract);
+            // The root inline style IS still materialized on email (BlockStyleCompiler::
+            // blockStyleDeclarations() runs for both surfaces — "harmless here", that method's own
+            // docblock) — only the gradient-degrade rule inside it differs per surface.
+            const declarations = styleDeclarations(model, contract, surface);
             if (declarations) el.setAttribute('style', declarations);
         }
         const attrs = node.attributes || {};
@@ -127,6 +212,26 @@
                     if (file !== '') el.setAttribute(an, file);
                     continue;
                 }
+
+                // Enum-mapped attribute: an `enumMap` token substitution (e.g. the heading email
+                // template's `attributes.level`), plus `cases` ("1": "…", …) and a `default` —
+                // mirrors BlockTreeRenderer::resolveAttributes()'s `enumMap`
+                // case exactly (the email heading template's per-level literal px sizing, since
+                // email clients can't be trusted with clamp()/a tag-selector cascade). The WHOLE
+                // value is chosen by matching enumMap's resolved token against `cases`, falling
+                // back to `default`.
+                if ('enumMap' in raw) {
+                    const key = subst(raw.enumMap, model);
+                    const cases = raw.cases && typeof raw.cases === 'object' ? raw.cases : {};
+                    const chosen = typeof cases[key] === 'string' ? cases[key] : String(raw.default == null ? '' : raw.default);
+                    let value = subst(chosen, model);
+                    if (an === 'src' || an === 'href' || an === 'srcset' || an === 'poster') {
+                        value = safeUrl(value);
+                        if (!value && (an === 'src' || an === 'srcset')) continue;
+                    }
+                    el.setAttribute(an, value);
+                    continue;
+                }
                 const omit = raw.omitWhenEmpty === true || raw.omitEmpty === true; raw = subst(raw.value || '', model); if (omit && raw === '') continue;
             } else { raw = subst(raw, model); }
             if (an === 'src' || an === 'href' || an === 'srcset' || an === 'poster') {
@@ -136,15 +241,41 @@
             el.setAttribute(an, raw);
         }
         const kids = node.children || [];
-        for (let i = 0; i < kids.length; i++) { const ch = renderNode(kids[i], model, contract, false, depth); if (ch) el.appendChild(ch); }
+        for (let i = 0; i < kids.length; i++) { const ch = renderNode(kids[i], model, contract, false, depth, surface); if (ch) el.appendChild(ch); }
         return el;
     }
 
-    function renderBlockEl(model, depth) {
+    function renderBlockEl(model, depth, surface) {
+        surface = surface || RENDER_SURFACE;
         const c = REGISTRY[model.name];
-        if (!c || !c.template) return null;
-        const root = renderNode(c.template, model, c, true, depth || 0);
+        if (!c) return null;
+        // BlockTreeRenderer::renderJsonBlock()'s `$contract[$surface]['template'] ?? null`: a
+        // block whose contract has no section for THIS surface renders EMPTY, not an error —
+        // embed/icon have no `email` section at all (docs/email-system.md §4).
+        const template = surface === 'email' ? c.emailTemplate : c.template;
+        if (!template) return null;
+        const root = renderNode(template, model, c, true, depth || 0, surface);
         if (!root) return null;
+
+        // A <div> is not valid inside a table row, and the email surface's `column` block roots
+        // at a <td>. Wrapping that in the usual <div class="hb-blk"> produced <tr><div><td>,
+        // which the browser lays out as a ZERO-SIZE box — so the block could be selected but
+        // dockToolbar() had a 0x0 rect to aim at and parked the floating toolbar at the top of
+        // the viewport, i.e. the toolbar "didn't appear" for anything inside a layout in an
+        // email. For table-structural roots, carry the block identity ON the root itself
+        // instead of wrapping it; every selector the editor uses keys off .hb-blk[data-block],
+        // so selection, drag and the inspector are unaffected.
+        const TABLE_ROOT_TAGS = ['TD', 'TH', 'TR', 'TBODY', 'THEAD', 'TFOOT'];
+        if (surface === 'email' && TABLE_ROOT_TAGS.indexOf(root.tagName) !== -1) {
+            root.classList.add('hb-blk');
+            if ((depth || 0) > 0) root.classList.add('hb-blk--nested');
+            root.setAttribute('data-block', model.id);
+            root.setAttribute('data-block-name', model.name);
+            decorateImageBlock(root, model);
+            decorateIconBlock(root, model);
+            return root;
+        }
+
         const wrap = document.createElement('div');
         wrap.className = (depth || 0) > 0 ? 'hb-blk hb-blk--nested' : 'hb-blk';
         wrap.setAttribute('data-block', model.id);
