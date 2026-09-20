@@ -118,6 +118,32 @@ abstract class TestCase extends Orchestra
     }
 
     /**
+     * Backport of `Illuminate\Foundation\Testing\Concerns\InteractsWithAuthentication
+     * ::actingAsGuest()`, which only exists on Laravel 12+ (added after Laravel 11.56 —
+     * confirmed absent from Laravel 11's copy of that trait). Tests use this instead of
+     * the framework method so they run unmodified on every supported Laravel: it needs a
+     * REAL guest (no acting-as user at all), not merely an ability-flag denial, and
+     * `actingAs()`/`be()` have no built-in opposite before the framework grew one. The
+     * body is copied verbatim from Laravel 12/13's implementation — both calls
+     * (`GuardHelpers::forgetUser()`, `AuthManager::shouldUse()`) already existed on
+     * Laravel 11, so this behaves identically to the native method where one exists and
+     * merely fills the gap where it doesn't.
+     *
+     * Declared `public` (not `protected`, unlike `withoutCsrfProtection()` above):
+     * where the native trait method already exists (Laravel 12+), PHP requires an
+     * override to keep its exact or wider visibility — the framework declares it
+     * `public`, so this must too, or every Laravel 12/13 lane fatals on class load.
+     */
+    public function actingAsGuest($guard = null): static
+    {
+        $this->app['auth']->guard($guard)->forgetUser();
+
+        $this->app['auth']->shouldUse($guard);
+
+        return $this;
+    }
+
+    /**
      * @return array<int, class-string>
      */
     protected function getPackageProviders($app): array

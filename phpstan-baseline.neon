@@ -1323,7 +1323,7 @@ parameters:
 		-
 			message: '#^Access to an undefined property Heisenberg\\Models\\Post\:\:\$type\.$#'
 			identifier: property.notFound
-			count: 1
+			count: 2
 			path: src/Mcp/Support/PostAccess.php
 
 		-
@@ -1883,6 +1883,12 @@ parameters:
 			identifier: booleanAnd.rightAlwaysTrue
 			count: 1
 			path: src/Services/BlockContractValidator.php
+
+		-
+			message: '#^Call to function is_array\(\) with array\<string, mixed\> will always evaluate to true\.$#'
+			identifier: function.alreadyNarrowedType
+			count: 1
+			path: src/Services/EmailBlockCoverageService.php
 
 		-
 			message: '#^Access to an undefined property Heisenberg\\Models\\PublicFile\:\:\$disk\.$#'
