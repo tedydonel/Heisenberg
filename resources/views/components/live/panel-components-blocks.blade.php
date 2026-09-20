@@ -18,6 +18,8 @@
     .hb-panel-cb__card-del:hover { color: var(--hb-ink, #111); border-color: var(--hb-ink, #111); }
     .hb-panel-cb__empty { padding: 24px 12px; text-align: center; color: var(--hb-muted, #6b6b6b);
         font-size: var(--hb-fs-sm, 12px); line-height: 1.45; }
+    .hb-panel-cb__email-note { margin: 0; padding: 8px var(--hb-space-3, 12px) 0; color: var(--hb-muted, #6b6b6b);
+        font-size: var(--hb-fs-sm, 12px); line-height: 1.4; }
 </style>
 <script nonce="{{ heisenberg_csp_nonce() }}">
     (() => {
@@ -94,6 +96,7 @@
     'patternsIndexUrl' => '',
     'patternsStoreUrl' => '',
     'patternsDestroyUrl' => '',
+    'documentType' => 'post',
 ])
 
 @php
@@ -111,6 +114,9 @@
             'block' => $blockName,
         ];
     }
+
+    // docs/email-system.md §4: this panel's own $registry is already filtered SERVER-SIDE to
+    // the email-safe subset (EditorController::paletteBlocks()) when $documentType is 'email' —
 @endphp
 <div data-hb-panel-cb {{ $attributes->merge(['class' => 'hb-panel-cb']) }}
     data-hb-patterns-index-url="{{ $patternsIndexUrl }}"

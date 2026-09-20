@@ -21,6 +21,8 @@
     .hb-qi__grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
     .hb-qi-disabled { opacity: .4; cursor: not-allowed; }
     .hb-qi-disabled:hover { background: var(--hb-bg); }
+    .hb-qi__email-note { margin: 0; padding: 8px var(--hb-space-3, 12px) 0; color: var(--hb-muted, #6b6b6b);
+        font-size: var(--hb-fs-sm, 12px); line-height: 1.4; }
     .hb-qi__footer {
         display: flex;
         padding: var(--hb-space-3, 12px);
@@ -171,6 +173,7 @@
 
 @props([
     'registry' => [],
+    'documentType' => 'post',
 ])
 
 @php

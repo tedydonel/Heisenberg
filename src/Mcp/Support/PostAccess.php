@@ -11,6 +11,7 @@ use Heisenberg\Mcp\Tools\RevisionTools;
 use Heisenberg\Mcp\Tools\TranslationTools;
 use Heisenberg\Models\Post;
 use Heisenberg\Models\Revision;
+use Heisenberg\Services\EmailBlockCoverageService;
 use Heisenberg\Services\McpToolException;
 use Heisenberg\Support\LocaleConfig;
 use Illuminate\Contracts\Auth\Authenticatable;
@@ -29,8 +30,10 @@ use Illuminate\Support\Facades\DB;
  */
 class PostAccess
 {
-    public function __construct(private ContentBlockPipeline $blocks)
-    {
+    public function __construct(
+        private ContentBlockPipeline $blocks,
+        private EmailBlockCoverageService $emailCoverage,
+    ) {
     }
 
     public function findPost(mixed $id): Post
@@ -159,14 +162,64 @@ class PostAccess
 
             $post->refresh();
 
-            return [
+            $result = [
                 'id' => $post->getKey(),
                 'title' => (string) ($post->title_en ?? ''),
                 'status' => (string) ($post->status ?? ''),
                 'content_version' => (int) $post->content_version,
                 'blocks' => $blocks === null ? null : count($blocks),
             ];
+
+            // docs/email-system.md §4: an agent authoring an email gets no other signal that a
+            // block it placed has no `email` template (renders as nothing) or degrades once
+            // sent (a gradient flattened, an alignment/conditional style skipped) — this is a
+            // WARNING, never a rejection, mirroring how WebTools reports a partial web-search
+            // failure (see WebSearchService::runWaterfall()'s own `warnings` key).
+            $warnings = $this->emailCoverageWarnings($post);
+            if ($warnings !== []) {
+                $result['warnings'] = $warnings;
+            }
+
+            return $result;
         });
+    }
+
+    /**
+     * Plain-English warnings (never localized — this is a tool RESULT read by a model, not
+     * a rendered page) about the document's CURRENT full content tree, once it is an email
+     * (docs/email-system.md §4). Reads the post's own saved blocks rather than the `$blocks`
+     * this call may or may not have replaced, so a title-only `update_post` still reports on
+     * whatever content the document already carries — not just what THIS call touched.
+     *
+     * @return list<string>
+     */
+    private function emailCoverageWarnings(Post $post): array
+    {
+        if ((string) $post->type !== 'email') {
+            return [];
+        }
+
+        $coverage = $this->emailCoverage->documentSummary($this->currentBlocks($post));
+        $warnings = [];
+
+        if ($coverage['dropped_count'] > 0) {
+            $warnings[] = sprintf(
+                'This email includes %d block(s) with no email template (%s) — %s will not appear at all in the sent email.',
+                $coverage['dropped_count'],
+                implode(', ', $coverage['dropped_names']),
+                $coverage['dropped_count'] === 1 ? 'it' : 'they'
+            );
+        }
+
+        if ($coverage['degraded_count'] > 0) {
+            $warnings[] = sprintf(
+                'This email includes %d block(s) that will render differently once sent (%s) — e.g. a gradient background flattened to one colour, or an alignment/conditional style the email surface does not apply.',
+                $coverage['degraded_count'],
+                implode(', ', $coverage['degraded_names'])
+            );
+        }
+
+        return $warnings;
     }
 
     /**

@@ -346,6 +346,15 @@ return [
         'summary_email_subject' => 'Subject',
         'summary_email_blocks' => 'Content blocks',
         'summary_email_variables' => 'Variables used',
+        // Email coverage warnings (docs/email-system.md §4, EmailBlockCoverageService) —
+        // a snapshot of the saved document, same posture as the three rows above. `dropped`
+        // is certain (the block has no `email` template at all, e.g. Icon/Embed); `degraded`
+        // is a real difference (a gradient flattened, an alignment/conditional style skipped)
+        // rather than a guess. Informational only — never blocks saving or sending.
+        'summary_email_dropped_label' => 'Not included',
+        'summary_email_dropped_value' => ':count block(s) will not appear in the sent email.',
+        'summary_email_degraded_label' => 'Renders differently',
+        'summary_email_degraded_value' => ':count block(s) may render differently in the sent email.',
         'summary_status' => 'Status',
         'summary_publish' => 'Publish',
         'summary_url' => 'URL',
@@ -470,6 +479,11 @@ return [
         'card_divider' => 'Divider',
         'card_button' => 'Button',
         'empty_blocks' => 'Coming soon.',
+        // Email authoring only (docs/email-system.md §4, EmailBlockCoverageService): explains
+        // why some registered blocks never appear here at all — their contract has no `email`
+        // template, so BlockTreeRenderer would render them as nothing. Shown once, above the
+        // grid, rather than on every card (the palette already excludes them entirely — see
+        // EditorController::paletteBlocks()) — this just names WHY they're missing.
     ],
 
     // User-saved reusable blocks ("patterns", live/panel-components-blocks.blade.php,
