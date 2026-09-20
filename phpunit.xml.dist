@@ -5,10 +5,26 @@
          colors="true"
          cacheDirectory=".phpunit.cache"
          failOnRisky="true"
-         failOnWarning="true">
+         failOnWarning="true"
+         defaultTestSuite="Heisenberg Test Suite">
     <testsuites>
         <testsuite name="Heisenberg Test Suite">
             <directory>tests</directory>
+            <!-- Not a real test: a utility that dumps the rendered /editor page to disk for
+                 the jsdom pipeline harness (tests/js/canvas-pipeline-harness.mjs,
+                 tests/js/shortcode-parity.mjs). It always skips unless HB_DUMP_PATH is set, so
+                 keeping it in the default suite just shows a permanent "skipped" in every run.
+                 It lives in its own testsuite below, run explicitly by the JS harness tooling. -->
+            <exclude>tests/Editor/DumpEditorHtmlTest.php</exclude>
+        </testsuite>
+        <!-- Invoked explicitly (never by a bare `phpunit`/`composer test` run; see
+             defaultTestSuite above) via the phpunit "testsuite" CLI option, e.g.:
+               HB_DUMP_PATH=/tmp/editor.html vendor/bin/phpunit
+                 -\-testsuite "JS Harness Fixtures"
+             (XML comments may not contain a literal double hyphen, hence the escaped
+             flag above; drop the backslash when actually running the command). -->
+        <testsuite name="JS Harness Fixtures">
+            <file>tests/Editor/DumpEditorHtmlTest.php</file>
         </testsuite>
     </testsuites>
     <source>

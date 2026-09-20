@@ -2,6 +2,7 @@
 
 declare(strict_types=1);
 
+use Heisenberg\Models\SeoMeta;
 use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\Schema;
@@ -21,7 +22,7 @@ use Illuminate\Support\Facades\Schema;
  *
  * `morphs('able')` gives `able_type`/`able_id` with a composite index; a unique index on the
  * same pair on top of that enforces "one SeoMeta row per entity" (`updateOrCreate` on
- * `able_type`/`able_id` is the only way a row is ever created — see {@see \Heisenberg\Models\SeoMeta}).
+ * `able_type`/`able_id` is the only way a row is ever created — see {@see SeoMeta}).
  */
 return new class extends Migration
 {

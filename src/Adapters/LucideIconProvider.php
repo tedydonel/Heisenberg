@@ -34,7 +34,7 @@ class LucideIconProvider implements IconProvider
 
         // 2. realpath() both the candidate and the root.
         $candidate = realpath($root . DIRECTORY_SEPARATOR . $slug . '.svg');
-        $realRoot  = realpath($root);
+        $realRoot = realpath($root);
         if ($candidate === false || $realRoot === false) {
             return null;
         }

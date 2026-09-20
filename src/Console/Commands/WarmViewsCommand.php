@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Heisenberg\Console\Commands;
 
+use Heisenberg\HeisenbergServiceProvider;
 use Illuminate\Console\Command;
 
 /**
@@ -14,7 +15,7 @@ use Illuminate\Console\Command;
  * the editor's `set_time_limit(120)` only partially mitigates (an upstream
  * php-fpm `request_terminate_timeout` still wins). `view:cache` is the
  * real fix: it compiles every view the Finder knows about — including the
- * heisenberg:: namespace registered via {@see \Heisenberg\HeisenbergServiceProvider}'s
+ * heisenberg:: namespace registered via {@see HeisenbergServiceProvider}'s
  * loadViewsFrom() — once at deploy time, so the runtime only loads.
  *
  * Thin wrapper around `view:cache` + a clear "what just happened" line so the

@@ -123,11 +123,13 @@
     </style>
     <style nonce="{{ heisenberg_csp_nonce() }}">{!! $blocksCss !!}</style>
     <style nonce="{{ heisenberg_csp_nonce() }}">{!! $stateCss ?? '' !!}</style>
-    <link rel="stylesheet" href="{{ route('heisenberg.editor.asset.animations') }}" nonce="{{ heisenberg_csp_nonce() }}" />
-    <link rel="stylesheet" href="{{ route('heisenberg.editor.asset.supports') }}" nonce="{{ heisenberg_csp_nonce() }}" />
+    <link rel="stylesheet" href="{{ route('heisenberg.editor.asset.animations', ['v' => \Heisenberg\Http\Controllers\EditorController::animationsAssetVersion()]) }}" nonce="{{ heisenberg_csp_nonce() }}" />
+    <link rel="stylesheet" href="{{ route('heisenberg.editor.asset.supports', ['v' => \Heisenberg\Http\Controllers\EditorController::supportsAssetVersion()]) }}" nonce="{{ heisenberg_csp_nonce() }}" />
 </head>
 <body>
+    @if ($previewBar ?? true)
     <div class="hb-preview-bar"><b>Preview</b><span>— sanitized public rendering; close this tab to return to the editor.</span></div>
+    @endif
     <main class="hb-preview-page">
         @if (($hasDoc ?? true) === false)
             <div style="padding:56px 16px;text-align:center;color:var(--muted,#9a9a9a);font-size:var(--fs-md,14px);line-height:1.6">

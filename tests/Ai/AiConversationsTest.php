@@ -5,8 +5,9 @@ declare(strict_types=1);
 namespace Heisenberg\Tests\Ai;
 
 use Heisenberg\Models\AiConversation;
-use Heisenberg\Tests\TestCase;
+use Heisenberg\Models\Post;
 use Heisenberg\Tests\Taxonomy\FakeActor;
+use Heisenberg\Tests\TestCase;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 
 /**
@@ -22,7 +23,7 @@ class AiConversationsTest extends TestCase
     protected function setUp(): void
     {
         parent::setUp();
-        $this->withoutMiddleware(\Illuminate\Foundation\Http\Middleware\ValidateCsrfToken::class);
+        $this->withoutCsrfProtection();
     }
 
     private function actingAsAuthor(int $id = 1): void
@@ -62,8 +63,8 @@ class AiConversationsTest extends TestCase
     {
         $this->actingAsAuthor();
 
-        $mine = \Heisenberg\Models\Post::create(['title_en' => 'Mine', 'status' => 'draft'])->getKey();
-        $theirs = \Heisenberg\Models\Post::create(['title_en' => 'Theirs', 'status' => 'draft'])->getKey();
+        $mine = Post::create(['title_en' => 'Mine', 'status' => 'draft'])->getKey();
+        $theirs = Post::create(['title_en' => 'Theirs', 'status' => 'draft'])->getKey();
 
         $unattached = $this->postJson('/editor/ai/conversations', [])->json('id');
         $this->postJson("/editor/ai/conversations/{$unattached}/messages", ['role' => 'user', 'content' => 'before the save']);

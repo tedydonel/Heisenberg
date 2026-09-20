@@ -1,3 +1,8 @@
+> **ARCHIVED — frozen as of 2026-08-06.** This checklist stopped being updated after that date;
+> ~170 commits and multiple subsystems (email builder, AI assistant, bidirectional MCP, threaded
+> comments, SEO, revisions, single-row bilingual content) have shipped since and are not reflected
+> below. Superseded by [`docs/STATUS.md`](../STATUS.md) — read that first for current state.
+
 # Heisenberg — Working TODO
 
 Iterative checklist. Tick items as they land — this file is the *plan*.

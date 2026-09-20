@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Heisenberg\Models;
 
+use App\Models\User;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
@@ -30,7 +31,7 @@ class AiConversation extends Model
 
     public function author(): BelongsTo
     {
-        return $this->belongsTo(config('heisenberg.user_model', \App\Models\User::class), 'author_id');
+        return $this->belongsTo(config('heisenberg.user_model', User::class), 'author_id');
     }
 
     public function messages(): HasMany

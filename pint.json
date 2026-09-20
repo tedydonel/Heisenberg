@@ -1,0 +1,21 @@
+{
+    "preset": "laravel",
+    "rules": {
+        "declare_strict_types": true,
+        "new_with_parentheses": false,
+        "concat_space": {
+            "spacing": "one"
+        },
+        "single_line_empty_body": false,
+        "phpdoc_align": {
+            "align": "left",
+            "spacing": 1
+        }
+    },
+    "exclude": [
+        "node_modules",
+        "storage",
+        "build",
+        "database/testbench.sqlite"
+    ]
+}

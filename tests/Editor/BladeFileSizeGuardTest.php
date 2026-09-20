@@ -75,10 +75,10 @@ class BladeFileSizeGuardTest extends TestCase
             "The following blade view(s) exceed %d bytes:\n%s\n\n" .
             "Livewire's SupportMorphAwareBladeCompilation runs a single regex over each compiled " .
             "view; once a compiled view gets large enough, PCRE's compiled-pattern size limit is " .
-            "exceeded and the page 500s with \"preg_match(): Compilation failed: regular expression " .
-            "is too large\" (this happened for real at resources/views/components/live/inspector.blade.php " .
-            "when it hit 202,393 bytes). Split the offending file into sibling partials/components " .
-            "instead of letting it grow past this ceiling.",
+            'exceeded and the page 500s with "preg_match(): Compilation failed: regular expression ' .
+            'is too large" (this happened for real at resources/views/components/live/inspector.blade.php ' .
+            'when it hit 202,393 bytes). Split the offending file into sibling partials/components ' .
+            'instead of letting it grow past this ceiling.',
             self::MAX_BYTES,
             implode("\n", $offenders)
         ));

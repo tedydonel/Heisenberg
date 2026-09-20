@@ -4,8 +4,13 @@ declare(strict_types=1);
 
 namespace Heisenberg\Tests\Ai;
 
-use Heisenberg\Tests\TestCase;
+use Heisenberg\Ai\AiRequest;
+use Heisenberg\Ai\AiResponse;
+use Heisenberg\Contracts\AiProvider;
+use Heisenberg\Services\AiSettingsRepository;
+use Heisenberg\Services\AiToolRunner;
 use Heisenberg\Tests\Taxonomy\FakeActor;
+use Heisenberg\Tests\TestCase;
 use Illuminate\Support\Facades\Http;
 
 /**
@@ -22,7 +27,7 @@ class AiCompletionEndpointTest extends TestCase
     protected function setUp(): void
     {
         parent::setUp();
-        $this->withoutMiddleware(\Illuminate\Foundation\Http\Middleware\ValidateCsrfToken::class);
+        $this->withoutCsrfProtection();
 
         $this->path = sys_get_temp_dir() . DIRECTORY_SEPARATOR . 'hb-ai-complete-' . uniqid('', true) . '.json';
         config([
@@ -38,7 +43,7 @@ class AiCompletionEndpointTest extends TestCase
         $_ENV['HB_TEST_ANTHROPIC'] = 'sk-ant-endpoint';
         $_SERVER['HB_TEST_ANTHROPIC'] = 'sk-ant-endpoint';
 
-        (new \Heisenberg\Services\AiSettingsRepository($this->path))->save([
+        (new AiSettingsRepository($this->path))->save([
             'providers' => [[
                 'id' => 'anthropic', 'label' => 'Anthropic', 'format' => 'anthropic',
                 'base_url' => 'https://api.anthropic.com', 'key_env' => 'HB_TEST_ANTHROPIC',
@@ -112,18 +117,19 @@ class AiCompletionEndpointTest extends TestCase
     {
         $this->app['env'] = 'local';
 
-        $this->app->bind(\Heisenberg\Services\AiToolRunner::class, function () {
-            return new class () extends \Heisenberg\Services\AiToolRunner {
+        $this->app->bind(AiToolRunner::class, function () {
+            return new class() extends AiToolRunner
+            {
                 public function __construct()
                 {
                 }
 
                 public function run(
-                    \Heisenberg\Contracts\AiProvider $provider,
-                    \Heisenberg\Ai\AiRequest $request,
+                    AiProvider $provider,
+                    AiRequest $request,
                     ?array $byName = null,
                     ?array $tools = null,
-                ): \Heisenberg\Ai\AiResponse {
+                ): AiResponse {
                     throw new \RuntimeException('tool loop blew up');
                 }
             };

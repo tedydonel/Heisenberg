@@ -12,9 +12,11 @@ use Heisenberg\Policies\PublicFilePolicy;
 use Heisenberg\Services\MediaLibraryService;
 use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Contracts\View\View;
+use Illuminate\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Validation\ValidationException;
 use Livewire\Component;
+use Livewire\Features\SupportFileUploads\TemporaryUploadedFile;
 use Livewire\WithFileUploads;
 use Throwable;
 
@@ -35,6 +37,22 @@ use Throwable;
  * controller uses (see authorizeMedia()), and MediaLibraryService::storeOne()
  * independently re-enforces the extension allow-list regardless of what
  * happens here (defense in depth).
+ *
+ * SECURITY (viewAny gap, fixed 2026-09-19): render() and select() used to
+ * expose the file list / a selected file's id to ANY actor with zero
+ * authorization at all — MediaLibraryController's HTTP twin authorizes
+ * `viewAny` on both its `index()` and `select()` actions, but this component
+ * had no equivalent check anywhere in its read path, only on the two
+ * mutations above. A caller unauthorized for `media.viewAny` (e.g. a
+ * genuinely anonymous visitor outside the local-dev bypass) could still page
+ * through and pick from the entire media library through this component.
+ * render() now authorizes `viewAny` before calling
+ * MediaLibraryService::paginate() and renders an empty grid with `$error`
+ * set instead of the real listing when it fails (never a raw 500 — the
+ * component has no "unauthorized" state of its own, so an empty paginator is
+ * the closest equivalent to "nothing to show you"). select() authorizes the
+ * same ability before dispatching `media-selected` — a pick is itself a way
+ * to read (and hand to a listener) which file lives at a given id.
  */
 class MediaLibrary extends Component
 {
@@ -44,7 +62,7 @@ class MediaLibrary extends Component
 
     public ?int $selectedId = null;
 
-    /** @var array<int, \Livewire\Features\SupportFileUploads\TemporaryUploadedFile> */
+    /** @var array<int, TemporaryUploadedFile> */
     public array $uploads = [];
 
     public ?string $error = null;
@@ -85,6 +103,14 @@ class MediaLibrary extends Component
 
     public function select(int $id): void
     {
+        try {
+            $this->authorizeMedia('viewAny');
+        } catch (AuthorizationException) {
+            $this->error = 'You are not authorized to view media.';
+
+            return;
+        }
+
         $this->selectedId = $id;
         $this->dispatch('media-selected', id: $id);
     }
@@ -134,6 +160,7 @@ class MediaLibrary extends Component
         $allowed = match ($ability) {
             'create' => $policy->create($actor),
             'delete' => $file !== null && $policy->delete($actor, $file),
+            'viewAny' => $policy->viewAny($actor),
             default => false,
         };
 
@@ -144,6 +171,21 @@ class MediaLibrary extends Component
 
     public function render(): View
     {
+        try {
+            $this->authorizeMedia('viewAny');
+        } catch (AuthorizationException) {
+            // Only set when nothing more specific (e.g. an upload/delete
+            // rejection) already explains itself — render() runs after every
+            // action, and an unauthorized actor's more specific error from
+            // updatedUploads()/remove() must not be clobbered by this generic
+            // one on the very next re-render.
+            $this->error ??= 'You are not authorized to view media.';
+
+            return view('heisenberg::livewire.media-library', [
+                'files' => new LengthAwarePaginator([], 0, 12),
+            ]);
+        }
+
         $files = app(MediaLibraryService::class)->paginate(
             ['search' => trim($this->search)],
             12,

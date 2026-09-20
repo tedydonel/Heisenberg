@@ -7,6 +7,7 @@ namespace Heisenberg\Console\Commands;
 use Heisenberg\Models\Comment;
 use Heisenberg\Models\Post;
 use Heisenberg\Models\SeoMeta;
+use Heisenberg\Models\TocEntry;
 use Heisenberg\Services\BlockRegistryService;
 use Heisenberg\Support\LocaleConfig;
 use Heisenberg\Support\LocalizedAttributes;
@@ -42,7 +43,7 @@ use Illuminate\Support\Facades\DB;
  *    §0), so losing it on merge would be a silent, unrecoverable content loss.
  *
  * **What is deliberately NOT folded, and is lost when the sibling row is removed**:
- *  - TOC entries ({@see \Heisenberg\Models\TocEntry}) — `label` has no `_<locale>` column yet
+ *  - TOC entries ({@see TocEntry}) — `label` has no `_<locale>` column yet
  *    (unlike title/excerpt/block attributes/SEO), so there is nowhere honest to fold a sibling's
  *    translated labels TO. The survivor keeps its own TOC untouched; the sibling's TOC rows are
  *    removed with it (`toc_entries.post_id` cascades on delete). This is a real, documented gap —
@@ -121,6 +122,7 @@ class MergeTranslationsCommand extends Command
                     'survivor_id' => $survivor->getKey(),
                     'reasons' => $conflicts,
                 ];
+
                 continue;
             }
 
@@ -133,6 +135,7 @@ class MergeTranslationsCommand extends Command
 
             if ($dryRun) {
                 $mergedGroups[] = $summary;
+
                 continue;
             }
 
@@ -198,6 +201,7 @@ class MergeTranslationsCommand extends Command
 
             if (count($siblingBlocks) !== count($blockContent)) {
                 $conflicts[] = "{$prefix}: block count differs (survivor " . count($blockContent) . ', sibling ' . count($siblingBlocks) . ')';
+
                 continue;
             }
 

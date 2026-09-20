@@ -5,20 +5,37 @@ declare(strict_types=1);
 namespace Heisenberg;
 
 use Heisenberg\Adapters\ConfigRoleGate;
-use Heisenberg\Adapters\NullAiProvider;
-use Heisenberg\Adapters\PhosphorIconProvider;
+use Heisenberg\Adapters\EncryptedFileCredentialStore;
+use Heisenberg\Adapters\LocalDevRoleGate;
+use Heisenberg\Adapters\NativeCommentProvider;
+use Heisenberg\Adapters\NativeSeoMetaProvider;
 use Heisenberg\Adapters\NullAuditSink;
 use Heisenberg\Adapters\NullMediaResolver;
+use Heisenberg\Adapters\NullPostViewsProvider;
+use Heisenberg\Adapters\NullRelatedPostsProvider;
 use Heisenberg\Adapters\NullVirusScanner;
+use Heisenberg\Adapters\PhosphorIconProvider;
+use Heisenberg\Console\Commands\BlocksVerifyCommand;
+use Heisenberg\Console\Commands\ConfigDiffCommand;
+use Heisenberg\Console\Commands\MergeTranslationsCommand;
+use Heisenberg\Console\Commands\TemplatesVerifyCommand;
+use Heisenberg\Console\Commands\WarmViewsCommand;
+use Heisenberg\Contracts\AiCredentialStore;
 use Heisenberg\Contracts\AiProvider;
 use Heisenberg\Contracts\AuditSink;
 use Heisenberg\Contracts\IconProvider;
 use Heisenberg\Contracts\McpClient;
 use Heisenberg\Contracts\MediaResolver;
+use Heisenberg\Contracts\PostCommentProvider;
+use Heisenberg\Contracts\PostSeoMetaProvider;
+use Heisenberg\Contracts\PostUrlResolver;
+use Heisenberg\Contracts\PostViewsProvider;
+use Heisenberg\Contracts\RelatedPostsProvider;
 use Heisenberg\Contracts\RoleGate;
+use Heisenberg\Contracts\SvgSanitizer;
 use Heisenberg\Contracts\VirusScanner;
-use Heisenberg\Services\AiProviderRegistry;
-use Heisenberg\Services\AiSettingsRepository;
+use Heisenberg\Http\Middleware\EditorLocaleMiddleware;
+use Heisenberg\Livewire\MediaLibrary;
 use Heisenberg\Models\Category;
 use Heisenberg\Models\Comment;
 use Heisenberg\Models\Post;
@@ -29,15 +46,32 @@ use Heisenberg\Policies\CommentPolicy;
 use Heisenberg\Policies\PostPolicy;
 use Heisenberg\Policies\PublicFilePolicy;
 use Heisenberg\Policies\TagPolicy;
+use Heisenberg\Services\AiProviderRegistry;
+use Heisenberg\Services\AiSettingsRepository;
+use Heisenberg\Services\AiToolRunner;
 use Heisenberg\Services\BlockContractValidator;
 use Heisenberg\Services\BlockRegistryService;
 use Heisenberg\Services\BlockRenderer;
 use Heisenberg\Services\BlocksPayloadService;
+use Heisenberg\Services\EmailRenderer;
+use Heisenberg\Services\EmailVariableCatalog;
+use Heisenberg\Services\FontCatalogService;
+use Heisenberg\Services\HeisenbergToolSource;
 use Heisenberg\Services\HtmlSanitizationService;
+use Heisenberg\Services\McpToolRegistry;
 use Heisenberg\Services\MediaLibraryService;
+use Heisenberg\Services\PostTemplateContractValidator;
+use Heisenberg\Services\PostTemplateRegistryService;
+use Heisenberg\Services\SeoUrlResolver;
+use Heisenberg\Services\ThemeRepository;
+use Heisenberg\Services\WebSearchService;
 use Heisenberg\Support\ConfigMerge;
+use Illuminate\Support\Facades\Blade;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Gate;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\ServiceProvider;
+use Livewire\Livewire;
 
 /**
  * Heisenberg's single auto-discovered service provider.
@@ -167,8 +201,21 @@ class HeisenbergServiceProvider extends ServiceProvider
             );
         });
 
+        // SvgSanitizer, UNLIKE every adapter above, has NO bundled default and
+        // is therefore only bound when a host actually names a class — see
+        // config('heisenberg.media.svg_sanitizer')'s docblock for why a
+        // permissive null implementation would defeat the entire point.
+        // MediaLibraryService receives null (via app()->bound() below) rather
+        // than a fallback instance when nothing is configured, and refuses
+        // every svg/svgz upload in that case.
+        $svgSanitizerClass = (string) $this->app['config']->get('heisenberg.media.svg_sanitizer', '');
+        if ($svgSanitizerClass !== '') {
+            $this->app->singleton(SvgSanitizer::class, fn ($app) => $app->make($svgSanitizerClass));
+        }
+
         $this->app->singleton(MediaLibraryService::class, fn ($app) => new MediaLibraryService(
             $app->make(VirusScanner::class),
+            $app->bound(SvgSanitizer::class) ? $app->make(SvgSanitizer::class) : null,
         ));
     }
 
@@ -192,10 +239,10 @@ class HeisenbergServiceProvider extends ServiceProvider
         // Where a UI-entered API key lives. Swappable so a host with a real
         // secrets manager can bind its own; the bundled store encrypts with the
         // app key and always lets an environment variable win.
-        $this->app->singleton(\Heisenberg\Contracts\AiCredentialStore::class, function ($app) {
+        $this->app->singleton(AiCredentialStore::class, function ($app) {
             $class = (string) $app['config']->get(
                 'heisenberg.ai.credential_store',
-                \Heisenberg\Adapters\EncryptedFileCredentialStore::class,
+                EncryptedFileCredentialStore::class,
             );
 
             return $app->make($class);
@@ -203,7 +250,7 @@ class HeisenbergServiceProvider extends ServiceProvider
 
         $this->app->singleton(AiProviderRegistry::class, fn ($app) => new AiProviderRegistry(
             $app->make(AiSettingsRepository::class),
-            $app->make(\Heisenberg\Contracts\AiCredentialStore::class),
+            $app->make(AiCredentialStore::class),
         ));
 
         // Resolves to the adapter for whichever MODEL is in use — the model
@@ -211,18 +258,18 @@ class HeisenbergServiceProvider extends ServiceProvider
         // the null object rather than throwing when nothing is configured.
         $this->app->singleton(AiProvider::class, fn ($app) => $app->make(AiProviderRegistry::class)->active());
 
-        $this->app->singleton(\Heisenberg\Services\WebSearchService::class, fn () => new \Heisenberg\Services\WebSearchService());
+        $this->app->singleton(WebSearchService::class, fn () => new WebSearchService());
 
-        $this->app->singleton(\Heisenberg\Services\HeisenbergToolSource::class, fn ($app) => new \Heisenberg\Services\HeisenbergToolSource(
-            $app->make(\Heisenberg\Services\McpToolRegistry::class),
+        $this->app->singleton(HeisenbergToolSource::class, fn ($app) => new HeisenbergToolSource(
+            $app->make(McpToolRegistry::class),
         ));
 
-        $this->app->singleton(\Heisenberg\Services\AiToolRunner::class, fn ($app) => new \Heisenberg\Services\AiToolRunner(
+        $this->app->singleton(AiToolRunner::class, fn ($app) => new AiToolRunner(
             // Resolved lazily: the MCP client binding throws when no adapter is
             // configured, and the runner is useful without one.
             $app->make(McpClient::class),
             $app->make(AiSettingsRepository::class),
-            $app->make(\Heisenberg\Services\HeisenbergToolSource::class),
+            $app->make(HeisenbergToolSource::class),
         ));
 
         $this->app->singleton(McpClient::class, function ($app) {
@@ -264,65 +311,161 @@ class HeisenbergServiceProvider extends ServiceProvider
             $app->make(BlockRegistryService::class),
         ));
 
-        $this->app->singleton(\Heisenberg\Services\ThemeRepository::class, fn ($app) => new \Heisenberg\Services\ThemeRepository(
+        $this->app->singleton(ThemeRepository::class, fn ($app) => new ThemeRepository(
             $app['config']->get('heisenberg.theme_path'),
         ));
-        $this->app->singleton(\Heisenberg\Services\FontCatalogService::class, fn () => new \Heisenberg\Services\FontCatalogService());
-        $this->app->singleton(\Heisenberg\Services\EmailVariableCatalog::class, fn () => new \Heisenberg\Services\EmailVariableCatalog());
+        $this->app->singleton(FontCatalogService::class, fn () => new FontCatalogService());
+        $this->app->singleton(EmailVariableCatalog::class, fn () => new EmailVariableCatalog());
 
         // docs/email-system.md §5 — beside BlockRenderer, never replacing it; same singleton
         // posture as the rest of this graph (both its own dependencies are already singletons).
-        $this->app->singleton(\Heisenberg\Services\EmailRenderer::class, fn ($app) => new \Heisenberg\Services\EmailRenderer(
+        $this->app->singleton(EmailRenderer::class, fn ($app) => new EmailRenderer(
             $app->make(BlockRenderer::class),
-            $app->make(\Heisenberg\Services\ThemeRepository::class),
+            $app->make(ThemeRepository::class),
         ));
     }
 
     public function boot(): void
-        {
-            $this->resolveDevSqlitePath();
-            $this->registerPublishing();
-            $this->registerResources();
-            $this->registerRoutes();
-            $this->registerMediaRoutes();
-            $this->registerCommentRoutes();
-            $this->registerTranslationRoutes();
-            $this->registerSeoRoutes();
-            $this->registerEmailRoutes();
-            $this->registerPublicRoutes();
-            $this->registerAiRoutes();
-            $this->registerMcpRoutes();
-            $this->registerPolicies();
-            $this->registerLivewireComponents();
-            $this->registerLocaleMiddleware();
-            $this->loadMigrationsFrom(__DIR__ . '/../database/migrations');
+    {
+        $this->maybeWarnAboutAnonymousLocalBypass();
+        $this->resolveDevSqlitePath();
+        $this->registerPublishing();
+        $this->registerResources();
+        $this->registerRoutes();
+        $this->registerMediaRoutes();
+        $this->registerCommentRoutes();
+        $this->registerTranslationRoutes();
+        $this->registerSeoRoutes();
+        $this->registerEmailRoutes();
+        $this->registerPublicRoutes();
+        $this->registerAiRoutes();
+        $this->registerMcpRoutes();
+        $this->registerPolicies();
+        $this->registerLivewireComponents();
+        $this->registerLocaleMiddleware();
+        $this->loadMigrationsFrom(__DIR__ . '/../database/migrations');
 
-            if ($this->app->runningInConsole()) {
-                $this->commands([
-                    \Heisenberg\Console\Commands\TemplatesVerifyCommand::class,
-                    \Heisenberg\Console\Commands\BlocksVerifyCommand::class,
-                    \Heisenberg\Console\Commands\ConfigDiffCommand::class,
-                    \Heisenberg\Console\Commands\MergeTranslationsCommand::class,
-                    \Heisenberg\Console\Commands\WarmViewsCommand::class,
-                ]);
-            }
-
-            // Later: scheduled commands (M4).
+        if ($this->app->runningInConsole()) {
+            $this->commands([
+                TemplatesVerifyCommand::class,
+                BlocksVerifyCommand::class,
+                ConfigDiffCommand::class,
+                MergeTranslationsCommand::class,
+                WarmViewsCommand::class,
+            ]);
         }
 
-        /**
-         * Register the EditorLocaleMiddleware globally so every web request reads
-         * `session('heisenberg.locale')` BEFORE the view renders, and calls
-         * App::setLocale() against it. Hosts that mount the editor with their own
-         * middleware stack should append this to their web group instead — see
-         * the middleware docblock for the contract.
-         */
-        protected function registerLocaleMiddleware(): void
-        {
-            // Pushed onto the global 'web' group (not a package group) so host apps sharing
-            // the session see a consistent locale on every page, not only /editor/*.
-            $this->app['router']->pushMiddlewareToGroup('web', \Heisenberg\Http\Middleware\EditorLocaleMiddleware::class);
+        // Later: scheduled commands (M4).
+    }
+
+    /**
+     * Boot-time gate for {@see self::warnAboutAnonymousLocalBypassIfActive()}:
+     * never log during the package's own (or a host's) unit test run, where
+     * `app()->environment('local')` is never true anyway (Testbench defaults
+     * to `testing`) but a host's test suite easily could set it, and where a
+     * warning fired on every single test's boot would be pure noise. Split
+     * into two methods specifically so the actual warning logic is directly
+     * callable — and testable — without needing to fake an entire non-test
+     * boot cycle (see tests/Security/AnonymousLocalBypassWarningTest.php).
+     */
+    protected function maybeWarnAboutAnonymousLocalBypass(): void
+    {
+        if ($this->app->runningUnitTests()) {
+            return;
         }
+
+        $this->warnAboutAnonymousLocalBypassIfActive();
+    }
+
+    /**
+     * Logs ONCE per boot (boot() runs once per request/command lifecycle,
+     * same as every other registration in this class) when the local-dev
+     * anonymous bypass (see {@see LocalDevRoleGate}) is
+     * actually live: `app()->environment('local')` AND
+     * `config('heisenberg.allow_anonymous_in_local')` are BOTH true, the
+     * exact same two-part condition LocalDevRoleGate itself re-checks on
+     * every authorization call. When both hold, `/editor` and its media
+     * library authorize EVERY request — including a fully anonymous one —
+     * with no login at all, which is the intended out-of-the-box developer
+     * experience but a severe misconfiguration anywhere a real visitor can
+     * reach the app.
+     *
+     * The wording escalates when `config('app.debug')` is false: a real
+     * local dev box almost always runs with APP_DEBUG=true, so
+     * APP_DEBUG=false alongside APP_ENV=local is a strong heuristic that
+     * this "local" label is wrong for the box it is actually running on
+     * (e.g. an env file copied verbatim into staging/production). This is a
+     * heuristic, not proof — the message says so — but it is exactly the
+     * kind of silent misconfiguration this warning exists to catch.
+     *
+     * `config('heisenberg.warn_anonymous_in_local')` silences ONLY this
+     * notice; it has no effect on the bypass itself (only
+     * `heisenberg.allow_anonymous_in_local` does).
+     */
+    public function warnAboutAnonymousLocalBypassIfActive(): void
+    {
+        if (! $this->app->environment('local')) {
+            return;
+        }
+
+        if (! (bool) $this->app['config']->get('heisenberg.allow_anonymous_in_local', true)) {
+            return;
+        }
+
+        if (! (bool) $this->app['config']->get('heisenberg.warn_anonymous_in_local', true)) {
+            return;
+        }
+
+        $message = 'Heisenberg: the local-dev anonymous authorization bypass is ACTIVE '
+            . "(app()->environment('local') is true and heisenberg.allow_anonymous_in_local is true) — "
+            . 'the editor (/editor) and its media library are treating EVERY request, including a fully '
+            . 'anonymous one with no login at all, as fully authorized. This is expected ONLY on a '
+            . "developer's own machine; it must NEVER be true anywhere a real visitor can reach this "
+            . 'application. Set HEISENBERG_ALLOW_ANONYMOUS_IN_LOCAL=false to disable the bypass, or '
+            . 'HEISENBERG_WARN_ANONYMOUS_IN_LOCAL=false to silence only this notice.';
+
+        // boot() runs on EVERY request — including each stylesheet hit — so an
+        // unthrottled warning is a line per request, which is exactly the noise
+        // that teaches people to stop reading it. Once an hour is enough for a
+        // dev box; the suspicious APP_DEBUG=false case repeats every 5 minutes.
+        // A cache backend that is down must not take boot down with it, so any
+        // failure just logs unthrottled.
+        $suspicious = ! (bool) $this->app['config']->get('app.debug', true);
+
+        try {
+            $firstInWindow = Cache::add('heisenberg:anonymous-bypass-warned', true, $suspicious ? 300 : 3600);
+        } catch (\Throwable) {
+            $firstInWindow = true;
+        }
+
+        if (! $firstInWindow) {
+            return;
+        }
+
+        if ($suspicious) {
+            $message = '[Heisenberg] POSSIBLE PRODUCTION MISCONFIGURATION: ' . $message . ' APP_DEBUG is '
+                . 'false, which a genuine local dev box rarely runs with — this combination (APP_ENV=local, '
+                . 'APP_DEBUG=false, anonymous editor access) strongly suggests this "local" label is wrong '
+                . 'for the environment this is actually running in. Verify APP_ENV immediately if this is '
+                . 'not a developer\'s own machine.';
+        }
+
+        Log::warning($message);
+    }
+
+    /**
+     * Register the EditorLocaleMiddleware globally so every web request reads
+     * `session('heisenberg.locale')` BEFORE the view renders, and calls
+     * App::setLocale() against it. Hosts that mount the editor with their own
+     * middleware stack should append this to their web group instead — see
+     * the middleware docblock for the contract.
+     */
+    protected function registerLocaleMiddleware(): void
+    {
+        // Pushed onto the global 'web' group (not a package group) so host apps sharing
+        // the session see a consistent locale on every page, not only /editor/*.
+        $this->app['router']->pushMiddlewareToGroup('web', EditorLocaleMiddleware::class);
+    }
 
     /**
      * Register the Editor's Livewire components. Guarded on the `livewire`
@@ -335,7 +478,7 @@ class HeisenbergServiceProvider extends ServiceProvider
             return;
         }
 
-        \Livewire\Livewire::component('heisenberg.media-library', \Heisenberg\Livewire\MediaLibrary::class);
+        Livewire::component('heisenberg.media-library', MediaLibrary::class);
     }
 
     /**
@@ -406,7 +549,7 @@ class HeisenbergServiceProvider extends ServiceProvider
      * Load the served-email routes (routes/email.php: a built email at its own slug, plus the
      * HTML/.eml export, docs/email-system.md §6.1). Same opt-out posture as the comments group
      * — a host that serves its own "view in browser" page sets `heisenberg.email.routes` false
-     * and calls {@see \Heisenberg\Services\EmailRenderer} directly. Turning it off also removes
+     * and calls {@see EmailRenderer} directly. Turning it off also removes
      * the redirect target of the editor's own preview/export buttons, which is why they 404
      * rather than render anything themselves: an email has ONE public address or none.
      */
@@ -423,7 +566,7 @@ class HeisenbergServiceProvider extends ServiceProvider
      * turning this on ships a turnkey public show route through BlockRenderer + the same
      * SEO/head/alternates/featured/comments pipeline the editor preview produces. A host
      * that wants a different URL shape (or their own template wrapper) keeps this off and
-     * binds their own route + view through the {@see \Heisenberg\Contracts\PostUrlResolver}
+     * binds their own route + view through the {@see PostUrlResolver}
      * seam + the published-template contract (docs/post-template-schema.md).
      */
     protected function registerPublicRoutes(): void
@@ -531,9 +674,9 @@ class HeisenbergServiceProvider extends ServiceProvider
         // `heisenberg.seo.url_resolver` controls every public URL Heisenberg emits (docs/seo-
         // system.md §5). SeoUrlResolver (the config('heisenberg.seo.url_template') string/map
         // logic) is the bundled default, same seam shape as media_resolver/role_gate above.
-        $this->app->singleton(\Heisenberg\Contracts\PostUrlResolver::class, function ($app) {
+        $this->app->singleton(PostUrlResolver::class, function ($app) {
             return $app->make(
-                (string) $app['config']->get('heisenberg.seo.url_resolver', \Heisenberg\Services\SeoUrlResolver::class)
+                (string) $app['config']->get('heisenberg.seo.url_resolver', SeoUrlResolver::class)
             );
         });
 
@@ -549,10 +692,10 @@ class HeisenbergServiceProvider extends ServiceProvider
         // See docs/post-template-schema.md for why these four are adapters and the other seven
         // template capabilities are rendered directly.
         foreach ([
-            \Heisenberg\Contracts\PostViewsProvider::class    => ['post_views_provider', \Heisenberg\Adapters\NullPostViewsProvider::class],
-            \Heisenberg\Contracts\PostCommentProvider::class  => ['comments_provider', \Heisenberg\Adapters\NativeCommentProvider::class],
-            \Heisenberg\Contracts\RelatedPostsProvider::class => ['related_posts_provider', \Heisenberg\Adapters\NullRelatedPostsProvider::class],
-            \Heisenberg\Contracts\PostSeoMetaProvider::class  => ['seo_meta_provider', \Heisenberg\Adapters\NativeSeoMetaProvider::class],
+            PostViewsProvider::class => ['post_views_provider', NullPostViewsProvider::class],
+            PostCommentProvider::class => ['comments_provider', NativeCommentProvider::class],
+            RelatedPostsProvider::class => ['related_posts_provider', NullRelatedPostsProvider::class],
+            PostSeoMetaProvider::class => ['seo_meta_provider', NativeSeoMetaProvider::class],
         ] as $contract => [$configKey, $default]) {
             $this->app->singleton($contract, fn ($app) => $app->make(
                 (string) $app['config']->get("heisenberg.post_template.{$configKey}", $default)
@@ -565,14 +708,14 @@ class HeisenbergServiceProvider extends ServiceProvider
         // the validator/registry pair the way TemplatesVerifyCommand does —
         // which is exactly what a host integration bench had to duplicate before
         // this binding existed (2026-08-10).
-        $this->app->singleton(\Heisenberg\Services\PostTemplateContractValidator::class, fn ($app) => new \Heisenberg\Services\PostTemplateContractValidator(
+        $this->app->singleton(PostTemplateContractValidator::class, fn ($app) => new PostTemplateContractValidator(
             (string) $app['config']->get('heisenberg.template_prefix', 'heisenberg'),
         ));
-        $this->app->singleton(\Heisenberg\Services\PostTemplateRegistryService::class, function ($app) {
+        $this->app->singleton(PostTemplateRegistryService::class, function ($app) {
             $root = $app['config']->get('heisenberg.template_root');
 
-            return new \Heisenberg\Services\PostTemplateRegistryService(
-                $app->make(\Heisenberg\Services\PostTemplateContractValidator::class),
+            return new PostTemplateRegistryService(
+                $app->make(PostTemplateContractValidator::class),
                 is_string($root) && $root !== '' ? $root : null,
             );
         });
@@ -592,9 +735,14 @@ class HeisenbergServiceProvider extends ServiceProvider
             __DIR__ . '/../config/heisenberg.php' => $this->app->configPath('heisenberg.php'),
         ], 'heisenberg-config');
 
+        // `resources/js` was removed from this list (2026-09-19): the package
+        // ships no JS assets directory at all (the editor's own JS lives under
+        // resources/views/... and is served through the existing
+        // /heisenberg-assets/*.css routes, see tests/Editor/*), so the entry
+        // published nothing but a missing-source warning on every `vendor:publish
+        // --tag=heisenberg-assets`. `resources/css` is real and stays.
         $this->publishes([
             __DIR__ . '/../resources/css' => $this->app->publicPath('vendor/heisenberg/css'),
-            __DIR__ . '/../resources/js' => $this->app->publicPath('vendor/heisenberg/js'),
         ], 'heisenberg-assets');
     }
 
@@ -608,7 +756,7 @@ class HeisenbergServiceProvider extends ServiceProvider
 
         $componentsDir = __DIR__ . '/../resources/views/components';
         if (is_dir($componentsDir)) {
-            \Illuminate\Support\Facades\Blade::anonymousComponentPath($componentsDir, 'heisenberg');
+            Blade::anonymousComponentPath($componentsDir, 'heisenberg');
         }
 
         $this->loadTranslationsFrom(__DIR__ . '/../resources/lang', 'heisenberg');

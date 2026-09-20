@@ -10,6 +10,7 @@ use Heisenberg\Ai\McpServer;
 use Heisenberg\Contracts\McpClient;
 use Heisenberg\Contracts\RoleGate;
 use Heisenberg\Services\AiSettingsRepository;
+use Heisenberg\Support\OutboundUrlGuard;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
@@ -58,6 +59,16 @@ class AiMcpController
                     ? "The environment variable {$server->authEnv} is not set."
                     : 'This server has no URL.',
             ], 422);
+        }
+
+        // Checked HERE too, not just inside HttpMcpClient: resolve() above
+        // accepts an INLINE url/auth_env pair for a server that was never
+        // saved (and therefore never ran through
+        // AiSettingsRepository::validateServers at all), and $this->mcp is a
+        // swappable contract — a future/host adapter is not guaranteed to
+        // re-check this itself.
+        if (($blocked = OutboundUrlGuard::reject($server->url)) !== null) {
+            return response()->json(['ok' => false, 'error' => $blocked], 422);
         }
 
         try {

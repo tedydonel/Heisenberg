@@ -5,8 +5,8 @@
 <h1 align="center">Heisenberg</h1>
 
 <p align="center">
-  A block-based content engine and bilingual blog backend for Laravel.<br>
-  Embed a Gutenberg-style editor, media library, taxonomy, post templates, email builder, and an AI writing assistant directly into any Laravel application.
+  An embeddable content + email engine for Laravel, with AI and MCP built in.<br>
+  Embed a Gutenberg-style editor, media library, taxonomy, post templates, a shared email builder, an AI writing assistant, and bidirectional MCP directly into any Laravel application — no build step, no theme system, no new user model.
 </p>
 
 <p align="center">
@@ -17,6 +17,19 @@
 </p>
 
 ---
+
+<p align="center">
+  <img src="docs/screenshots/editor-post-block-selected.png" alt="The Heisenberg block editor with a heading block selected and its inspector open" width="880">
+</p>
+
+<p align="center">
+  <img src="docs/screenshots/editor-email.png" alt="The email editor in dark mode, with personalization variable chips" width="432">
+  <img src="docs/screenshots/public-post-hero.png" alt="A published post rendered on a host application's blog page" width="432">
+</p>
+
+<p align="center">
+  <sub>The post editor, the email editor (same block engine), and a published post in a host app. Run it yourself: <a href="docs/demo.md">docs/demo.md</a>.</sub>
+</p>
 
 Heisenberg has **no users, no theme lock-in, and no frontend framework requirements**. Your application keeps its existing user models, routes, and page layouts. Heisenberg brings the rich editor at `/editor`, structured content models, and clean service contracts to integrate seamlessly into your stack.
 
@@ -145,7 +158,8 @@ In your controller, resolve `PostTemplateRegistryService` and render the body wi
 - **Media Library**: Drag-and-drop uploads, responsive variants, bilingual alt/caption metadata, and a virus scanning extension seam (`VirusScanner`).
 - **Visual and Code View**: Round-trip editing between visual canvas and a compact shortcode dialect.
 - **AI Writing Assistant & MCP**: Support for OpenAI, Anthropic, or OpenAI-compatible endpoints with streaming reasoning. Bidirectional MCP integration allows connecting external MCP tools or exposing Heisenberg as an MCP server.
-- **Localization**: Full English and French UI translations with split-row post translation workflows.
+- **Localization**: Full English and French UI translations. Content is bilingual-native — a
+  post is one row carrying both languages (not separate documents that drift apart).
 - **CSP Nonce Support**: Automatically integrates with `Vite::useCspNonce()` for strict Content Security Policies.
 
 ## Configuration
@@ -172,7 +186,11 @@ php artisan heisenberg:config-diff
 
 | Document | Description |
 |---|---|
-| [`docs/BLUEPRINT.md`](docs/BLUEPRINT.md) | Complete technical specification and architectural blueprint |
+| [`docs/STATUS.md`](docs/STATUS.md) | Current build status: what's shipped, what's in progress, known debt — updated every release |
+| [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) | System map of every subsystem as it exists today, with diagrams |
+| [`UPGRADING.md`](UPGRADING.md) | Per-version upgrade notes: schema, config, and behavior changes |
+| [`docs/ROADMAP.md`](docs/ROADMAP.md) | What has to be true before 0.1.0 and 1.0 |
+| [`docs/BLUEPRINT.md`](docs/BLUEPRINT.md) | Historical reconstruction spec for the block engine only (predates email/AI/MCP/comments/SEO) |
 | [`docs/email-system.md`](docs/email-system.md) | Email renderer, variable tokens, and authoring reference |
 | [`docs/block-schema.md`](docs/block-schema.md) | Writing and extending custom block contracts |
 | [`docs/post-template-schema.md`](docs/post-template-schema.md) | Schema reference for custom post templates |

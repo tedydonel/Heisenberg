@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace Heisenberg\Tests\Editor;
 
+use Heisenberg\Models\Post;
+use Heisenberg\Models\PublicFile;
 use Heisenberg\Services\BlockRegistryService;
 use Heisenberg\Tests\TestCase;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -442,10 +444,10 @@ class InspectorWiringTest extends TestCase
     public function test_a_post_with_a_featured_image_renders_the_preview_card_and_hides_the_placeholder(): void
     {
         $this->app['env'] = 'local';
-        $this->withoutMiddleware(\Illuminate\Foundation\Http\Middleware\ValidateCsrfToken::class);
+        $this->withoutCsrfProtection();
 
-        $post = \Heisenberg\Models\Post::create(['title_en' => 'X', 'status' => 'draft']);
-        $file = \Heisenberg\Models\PublicFile::create([
+        $post = Post::create(['title_en' => 'X', 'status' => 'draft']);
+        $file = PublicFile::create([
             'type' => 'jpg',
             'disk' => 'uploads',
             'stored_path' => 'media/2026/08/featured-' . uniqid('', true) . '.jpg',
@@ -475,9 +477,9 @@ class InspectorWiringTest extends TestCase
     public function test_a_post_without_a_featured_image_renders_the_placeholder_and_hides_the_preview_card(): void
     {
         $this->app['env'] = 'local';
-        $this->withoutMiddleware(\Illuminate\Foundation\Http\Middleware\ValidateCsrfToken::class);
+        $this->withoutCsrfProtection();
 
-        $post = \Heisenberg\Models\Post::create(['title_en' => 'X', 'status' => 'draft']);
+        $post = Post::create(['title_en' => 'X', 'status' => 'draft']);
 
         $html = $this->get("/editor/{$post->id}")->getContent();
 
@@ -502,7 +504,7 @@ class InspectorWiringTest extends TestCase
         $html = $this->editorHtml();
 
         $this->assertStringContainsString(
-            ".hb-post-meta__value--btn:not(:disabled):hover { color: var(--hb-editing); }",
+            '.hb-post-meta__value--btn:not(:disabled):hover { color: var(--hb-editing); }',
             $html,
         );
         $this->assertStringNotContainsString('.hb-post-meta__value--btn:hover { text-decoration: underline; }', $html);

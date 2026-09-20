@@ -4,7 +4,10 @@ declare(strict_types=1);
 
 namespace Heisenberg\Tests\Editor;
 
+use Heisenberg\Services\BlockContractValidator;
 use Heisenberg\Services\BlockRegistryService;
+use Heisenberg\Services\BlockRenderer;
+use Heisenberg\Tests\Support\AssertsHtmlStructure;
 use Heisenberg\Tests\TestCase;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 
@@ -22,9 +25,21 @@ use Illuminate\Foundation\Testing\RefreshDatabase;
  * to a single panel would pass even if the other panel wrongly rendered it too.
  *
  * RefreshDatabase: /editor reads the category table on every render — same note as EditorRendersTest.
+ *
+ * Structural-assertion note: this file used to count occurrences of literal markup strings
+ * (`'<span class="hb-section__title">Position</span>'`, `substr_count($html, 'data-hb-control="…"')`)
+ * and to pin exact inline-JS lines byte-for-byte. It now parses the response once (via
+ * AssertsHtmlStructure) and asserts DOM structure — an element exists / is missing / appears N
+ * times / carries an attribute — so a cosmetic reflow of style-panel.blade.php (attribute
+ * reordering, added wrapper whitespace) no longer forces an edit here. Genuine inline-JS business
+ * logic (compositing math, the outside-click allow-list, checkbox on/off encoding) is still
+ * asserted, but through assertInlineScriptContains()/assertInlineScriptMatches(), which scope the
+ * search to actual `<script>` bodies and tolerate reformatting (whitespace/line-wrapping) rather
+ * than pinning an exact line.
  */
 class StylePanelGatingTest extends TestCase
 {
+    use AssertsHtmlStructure;
     use RefreshDatabase;
 
     protected function setUp(): void
@@ -51,9 +66,16 @@ class StylePanelGatingTest extends TestCase
         return count(app(BlockRegistryService::class)->registry()['blocks']);
     }
 
+    /** Number of ELEMENTS carrying `data-hb-control="{$path}"` — a real DOM count, not a raw substring tally. */
     private function controlCount(string $html, string $path): int
     {
-        return substr_count($html, 'data-hb-control="' . $path . '"');
+        return $this->hbCount($html, '[data-hb-control="' . $path . '"]');
+    }
+
+    /** XPath for a `ui/panel-section` header's exact text — the one thing every section header shares. */
+    private function sectionTitle(string $title): string
+    {
+        return "//span[@class='hb-section__title' and normalize-space(text())='" . $title . "']";
     }
 
     /**
@@ -72,6 +94,7 @@ class StylePanelGatingTest extends TestCase
                 if ($value !== null && $value !== false) {
                     $count++;
                 }
+
                 continue;
             }
             $leaf = is_array($value) ? data_get($value, $feature) : null;
@@ -94,8 +117,8 @@ class StylePanelGatingTest extends TestCase
         $this->assertGreaterThan(0, $this->declaring('layout', 'gap'), 'containers declare layout.gap now');
         $this->assertSame($this->declaring('layout', 'gap'), $this->controlCount($html, 'layout.gap'));
         $this->assertSame($this->declaring('position', 'x'), $this->controlCount($html, 'position.x'));
-        $this->assertStringContainsString('<span class="hb-section__title">Position</span>', $html);
-        $this->assertStringContainsString('<span class="hb-section__title">Effects</span>', $html);
+        $this->assertElementExists($html, $this->sectionTitle('Position'));
+        $this->assertElementExists($html, $this->sectionTitle('Effects'));
     }
 
     public function test_supported_sections_render_once_per_declaring_block_type(): void
@@ -133,7 +156,7 @@ class StylePanelGatingTest extends TestCase
             $this->assertArrayHasKey('size', $supports);
         }
 
-        $this->assertStringContainsString('<span class="hb-section__title">Dimensions</span>', $html);
+        $this->assertElementExists($html, $this->sectionTitle('Dimensions'));
         $this->assertSame($this->declaring('size', 'width'), $this->controlCount($html, 'size.width'));
     }
 
@@ -163,11 +186,11 @@ class StylePanelGatingTest extends TestCase
         // a leak onto a text block's panel makes the count exceed declaring('border').
         $declarers = $this->declaring('border');
         $this->assertGreaterThan(0, $declarers, 'the container contracts declare border now');
-        $this->assertSame($declarers, substr_count($html, '<span class="hb-section__title">Stroke</span>'));
+        $this->assertSame($declarers, $this->hbCount($html, $this->sectionTitle('Stroke')));
 
         // Appearance is NOT gated on border alone — TODO 7.1 declared `appearance.opacity`, so it
         // renders for opacity even on a text block, with its four corner fields absent there.
-        $this->assertStringContainsString('<span class="hb-section__title">Appearance</span>', $html);
+        $this->assertElementExists($html, $this->sectionTitle('Appearance'));
         $this->assertSame($this->declaring('appearance', 'opacity'), $this->controlCount($html, 'appearance.opacity'));
 
         // Per-side/per-corner paths are the ones the fields actually write, and the contracts map
@@ -215,7 +238,9 @@ class StylePanelGatingTest extends TestCase
     public function test_gating_uses_the_same_truthiness_rule_as_the_toolbar(): void
     {
         // Asserted against the Blade SOURCE, not rendered output — the rule is server-side PHP
-        // and never reaches the browser.
+        // and never reaches the browser. Left as an exact (whitespace-normalized) source match
+        // deliberately: the two files sharing this EXACT expression, not merely an equivalent
+        // one, is the whole point of the test.
         $views = __DIR__ . '/../../resources/views/components/live';
         $panel = file_get_contents($views . '/block/style-panel.blade.php');
         $toolbar = file_get_contents($views . '/toolbar/block-toolbar.blade.php');
@@ -248,11 +273,11 @@ class StylePanelGatingTest extends TestCase
         $html = $this->editorHtml();
 
         // Fill and Appearance both trigger the colour picker, so it stays mounted.
-        $this->assertStringContainsString('data-hb-style-popup="color"', $html);
+        $this->assertElementExists($html, '[data-hb-style-popup="color"]');
         // Effects is the effect editor's only trigger; it renders now that effects.shadow is
         // declared and wired (TODO 7.1), so the editor is mounted with it.
-        $this->assertStringContainsString('data-hb-style-popup="effect"', $html);
-        $this->assertStringContainsString('data-hb-fx-blur', $html);
+        $this->assertElementExists($html, '[data-hb-style-popup="effect"]');
+        $this->assertElementExists($html, '[data-hb-fx-blur]');
     }
 
     public function test_typography_font_field_searches_the_live_catalog_not_a_static_list(): void
@@ -261,11 +286,14 @@ class StylePanelGatingTest extends TestCase
 
         // TODO 7.5. This was a ui/select with five literal families; the left sidebar's Style tab
         // already paged the vendored Google Fonts catalog properly, so this reuses that endpoint
-        // and contract rather than a second implementation.
-        $this->assertStringContainsString('data-hb-style-font-family', $html);
-        $this->assertStringContainsString('data-hb-control-type="combobox"', $html);
+        // and contract rather than a second implementation. Tied to the SAME element rather than
+        // two independent whole-page substring checks — the font-family field itself must be a
+        // combobox, not merely "a combobox exists somewhere".
+        $this->assertElementExists($html, '[data-hb-style-font-family]');
+        $this->assertElementHasAttribute($html, '[data-hb-style-font-family]', 'data-hb-control-type', 'combobox');
 
-        // The five hardcoded families are gone.
+        // The five hardcoded families are gone — this is checking for a leftover raw PHP array
+        // literal (never real markup), so it stays a plain substring check.
         foreach (['JetBrains Mono', 'Georgia'] as $family) {
             $this->assertStringNotContainsString(
                 "['value' => '{$family}'",
@@ -274,12 +302,17 @@ class StylePanelGatingTest extends TestCase
             );
         }
 
-        // Paged search wiring, same shape as panel-style-themes.
-        $this->assertStringContainsString('function hbSearchFonts(combobox, query)', $html);
-        $this->assertStringContainsString('function hbLoadMoreFonts(combobox, query)', $html);
-        $this->assertStringContainsString('__hbCombobox?.replaceOptions(list)', $html);
-        $this->assertStringContainsString('__hbCombobox?.appendOptions(list)', $html);
-        $this->assertStringContainsString("data-hb-fonts-search-url=\"" . route('heisenberg.editor.fonts.search') . '"', $html);
+        // Paged search wiring, same shape as panel-style-themes — real client behaviour with no
+        // server-rendered data to key off, so identifier-level (whitespace-tolerant) script
+        // assertions, scoped to actual <script> bodies rather than the whole page.
+        $this->assertInlineScriptContains($html, 'function hbSearchFonts(combobox, query)');
+        $this->assertInlineScriptContains($html, 'function hbLoadMoreFonts(combobox, query)');
+        $this->assertInlineScriptContains($html, '__hbCombobox?.replaceOptions(list)');
+        $this->assertInlineScriptContains($html, '__hbCombobox?.appendOptions(list)');
+
+        // The search URL is a real attribute on the inspector root — compared directly against
+        // route(), with no manual JSON-slash-escaping needed once it is read back through the DOM.
+        $this->assertElementHasAttribute($html, '[data-hb-inspector]', 'data-hb-fonts-search-url', route('heisenberg.editor.fonts.search'));
     }
 
     public function test_font_page_state_is_per_combobox_not_shared(): void
@@ -288,9 +321,10 @@ class StylePanelGatingTest extends TestCase
 
         // The Style panel is pre-rendered once per registered block type, so several font
         // comboboxes exist at once. A shared offset would make one field's scroll paginate
-        // another's results.
-        $this->assertStringContainsString('combobox.__hbFontPage = page', $html);
-        $this->assertStringContainsString('if (combobox.__hbFontPage !== page) return;', $html);
+        // another's results. Real client-side pagination state with no server data to key off —
+        // identifier-scoped script assertions.
+        $this->assertInlineScriptContains($html, 'combobox.__hbFontPage = page');
+        $this->assertInlineScriptContains($html, 'if (combobox.__hbFontPage !== page) return;');
     }
 
     public function test_contracts_opt_into_the_capability_sheet_and_map_its_generic_variables(): void
@@ -321,10 +355,14 @@ class StylePanelGatingTest extends TestCase
 
         // The route serving it (/heisenberg-assets/editor-supports.css) existed but no view ever
         // linked it, so every capability SupportsStyle implements was unreachable in the canvas
-        // regardless of what a contract declared. blocksCss now prepends it.
-        $this->assertStringContainsString('[data-block-id].hb-supports', $html);
-        $this->assertStringContainsString('--hb-text-align', $html);
-        $this->assertStringContainsString('--hb-opacity', $html);
+        // regardless of what a contract declared. blocksCss now prepends it. Scoped to the actual
+        // generated stylesheet element (#hb-blocks-css) rather than the whole page, so this can
+        // only pass because the capability rules are really IN that sheet.
+        $this->assertElementExists($html, '#hb-blocks-css');
+        $css = (string) $this->hbText($html, '#hb-blocks-css');
+        $this->assertStringContainsString('[data-block-id].hb-supports', $css);
+        $this->assertStringContainsString('--hb-text-align', $css);
+        $this->assertStringContainsString('--hb-opacity', $css);
     }
 
     public function test_typography_text_alignment_is_wired_and_distinct_from_block_alignment(): void
@@ -336,12 +374,12 @@ class StylePanelGatingTest extends TestCase
         // the TEXT inside the block. Both were decorative; the text pair is now wired.
         $this->assertSame($this->declaring('typography', 'textAlign'), $this->controlCount($html, 'typography.textAlign'));
         $this->assertSame($this->declaring('typography', 'textAlignVertical'), $this->controlCount($html, 'typography.textAlignVertical'));
-        $this->assertStringContainsString('data-hb-control-type="segmented"', $html);
+        $this->assertElementExists($html, '[data-hb-control-type="segmented"]');
 
         // Vertical alignment compiles through align-self, whose sanitizer is `align-3`
         // (start|center|end) — top/middle/bottom would fail validation and render nothing.
         foreach (['start', 'center', 'end'] as $value) {
-            $this->assertStringContainsString('data-hb-tab="' . $value . '"', $html);
+            $this->assertElementExists($html, '[data-hb-tab="' . $value . '"]');
         }
 
         // Labels distinguish the two, since both read as "alignment" otherwise.
@@ -354,9 +392,11 @@ class StylePanelGatingTest extends TestCase
         $html = $this->editorHtml();
 
         // A tablist always has one tab selected by default; for a control bound to an unset
-        // support that would read as a real choice the user never made.
-        $this->assertStringContainsString("if (type === 'segmented')", $html);
-        $this->assertStringContainsString("tab.dataset.hbTab === text && text !== '' ? 'true' : 'false'", $html);
+        // support that would read as a real choice the user never made. Real client logic with
+        // no server-rendered data attribute to key off — identifier/expression-scoped script
+        // assertions rather than a whole-page substring.
+        $this->assertInlineScriptContains($html, "if (type === 'segmented')");
+        $this->assertInlineScriptContains($html, "tab.dataset.hbTab === text && text !== '' ? 'true' : 'false'");
     }
 
     public function test_theme_variables_actually_resolve_in_the_editor(): void
@@ -366,8 +406,10 @@ class StylePanelGatingTest extends TestCase
         // Only preview.blade.php ever emitted ThemeRepository::css(), so in the editor every
         // `var(--hb-t-*)` reference resolved to nothing: the Style/Themes panel could save tokens
         // the canvas could not display, and binding a block style to one was pointless (TODO 7.6).
-        $this->assertStringContainsString('id="hb-theme-vars"', $html);
-        $this->assertStringContainsString('--hb-t-accent-1', $html);
+        // Scoped to the actual #hb-theme-vars element's own content.
+        $this->assertElementExists($html, '#hb-theme-vars');
+        $themeVars = (string) $this->hbText($html, '#hb-theme-vars');
+        $this->assertStringContainsString('--hb-t-accent-1', $themeVars);
     }
 
     public function test_variable_menu_is_mounted_in_the_inspector_with_real_theme_tokens(): void
@@ -377,32 +419,34 @@ class StylePanelGatingTest extends TestCase
         // live/pickers/variable-menu existed but was mounted only in the components gallery, and
         // its token list was a hardcoded array — wiring it without real tokens would offer names
         // that do not exist.
-        $this->assertStringContainsString('data-hb-style-popup="var-color"', $html);
-        $this->assertStringContainsString('data-hb-style-popup="var-number"', $html);
-        $this->assertStringContainsString('data-hb-varmenu', $html);
+        $this->assertElementExists($html, '[data-hb-style-popup="var-color"]');
+        $this->assertElementExists($html, '[data-hb-style-popup="var-number"]');
+        $this->assertElementExists($html, '[data-hb-varmenu]');
 
         // A row READS as the name the user gave the token in the Style tab and WRITES the CSS
         // reference. Passing ThemeRepository::tokens() straight through inverted this — that map
-        // is keyed by CSS reference, so every row rendered as "var(--hb-t-accent-1)".
-        $this->assertStringContainsString('data-vm-name="Accent"', $html);
-        $this->assertStringContainsString('data-vm-value="var(--hb-t-accent-1)"', $html);
-        $this->assertStringNotContainsString('data-vm-name="var(--hb-t-', $html);
+        // is keyed by CSS reference, so every row rendered as "var(--hb-t-accent-1)". Both
+        // attributes are asserted on the SAME element, which two independent substring checks
+        // could not guarantee.
+        $this->assertElementExists($html, '[data-vm-name="Accent"]');
+        $this->assertElementHasAttribute($html, '[data-vm-name="Accent"]', 'data-vm-value', 'var(--hb-t-accent-1)');
+        $this->assertElementMissing($html, '[data-vm-name^="var(--hb-t-"]');
 
         // Consumers must read detail.value (the reference), not detail.name (the label).
-        $this->assertStringContainsString('const value = event.detail?.value ?? event.detail?.name ?? \'\';', $html);
+        $this->assertInlineScriptContains($html, 'const value = event.detail?.value ?? event.detail?.name ?? \'\';');
     }
 
     public function test_style_text_fields_get_the_theme_variable_trigger_with_three_states(): void
     {
         $html = $this->editorHtml();
 
-        // TODO 7.7 — selection-all-fill at the right end of Block.style text fields.
-        $this->assertStringContainsString('data-hb-style-var-trigger', $html);
-        $this->assertStringContainsString('data-icon-name="selection-all-fill"', $html);
+        // TODO 7.7 — selection-all-fill at the right end of Block.style text fields. The icon
+        // must be INSIDE the trigger button, not merely present somewhere on the page.
+        $this->assertElementExists($html, '[data-hb-style-var-trigger] [data-icon-name="selection-all-fill"]');
 
-        // bound -> accent, unset -> muted, manual -> muted but hover-only.
-        $this->assertStringContainsString("if (v === '') return 'unset';", $html);
-        $this->assertStringContainsString("return /^var\\(\\s*--/.test(v) ? 'bound' : 'manual';", $html);
+        // bound -> accent, unset -> muted, manual -> muted but hover-only. Pure client logic.
+        $this->assertInlineScriptContains($html, "if (v === '') return 'unset';");
+        $this->assertInlineScriptContains($html, "return /^var\\(\\s*--/.test(v) ? 'bound' : 'manual';");
     }
 
     public function test_the_variable_trigger_is_scoped_to_the_style_sub_tab_only(): void
@@ -412,14 +456,20 @@ class StylePanelGatingTest extends TestCase
         // "only for the Block.style sub-tab" — the decorator reads the mounted style root, so
         // Content/Advanced/Post fields never receive it. A prop on ui/field would have put the
         // affordance on every field in the editor.
-        $this->assertStringContainsString('function hbDecorateVarTriggers(root)', $html);
-        $this->assertStringContainsString('[data-hb-style-var-prototype] [data-hb-style-var-trigger]', $html);
+        $this->assertInlineScriptContains($html, 'function hbDecorateVarTriggers(root)');
+        $this->assertInlineScriptContains($html, '[data-hb-style-var-prototype] [data-hb-style-var-trigger]');
 
-        // The prototype is the only occurrence rendered server-side; the rest are cloned at
-        // runtime, so exactly one trigger per Style panel exists in the delivered HTML.
+        // The prototype is the only occurrence rendered server-side WITHIN THE PROTOTYPE SLOT;
+        // the rest are cloned at runtime, so exactly one trigger per Style panel exists inside
+        // [data-hb-style-var-prototype]. (Each panel's default Fill/Stroke colour layer also
+        // server-renders its OWN var-trigger — block/color-layer.blade.php — which is real and
+        // expected; scoping to the prototype wrapper is what tells those apart, rather than the
+        // previous literal "aria-expanded immediately follows the trigger attribute" ordering
+        // trick, which happened to work only because the two triggers declare their attributes
+        // in a different order.)
         $this->assertSame(
             $this->blockCount(),
-            substr_count($html, 'data-hb-style-var-trigger aria-expanded'),
+            $this->hbCount($html, '[data-hb-style-var-prototype] [data-hb-style-var-trigger]'),
             'only the per-panel prototype should be server-rendered',
         );
     }
@@ -430,8 +480,8 @@ class StylePanelGatingTest extends TestCase
 
         // Writing via setSupport directly would bypass the linked-value handlers (spacing's
         // aggregate modes, the corner group), leaving those summaries stale.
-        $this->assertStringContainsString("input.dispatchEvent(new Event('input', { bubbles: true }))", $html);
-        $this->assertStringContainsString("input.dispatchEvent(new Event('change', { bubbles: true }))", $html);
+        $this->assertInlineScriptContains($html, "input.dispatchEvent(new Event('input', { bubbles: true }))");
+        $this->assertInlineScriptContains($html, "input.dispatchEvent(new Event('change', { bubbles: true }))");
     }
 
     public function test_the_variable_trigger_survives_the_outside_click_handler(): void
@@ -445,21 +495,22 @@ class StylePanelGatingTest extends TestCase
         // nothing at all. That is exactly what happened to data-hb-style-var-trigger.
         // The allow-list is the HB_STYLE_CHROME constant now, shared by the panel-scoped close
         // and the canvas-click close, so the trigger is pinned in the constant rather than in
-        // one inlined copy of it.
-        $this->assertMatchesRegularExpression(
-            "/const HB_STYLE_CHROME = '\[data-hb-style-popup\][^']*\[data-hb-style-var-trigger\][^']*';/",
+        // one inlined copy of it. Kept as a precise regex (this IS the security/behaviour-
+        // critical allow-list), but scoped to actual <script> bodies rather than the whole page.
+        $this->assertInlineScriptMatches(
             $html,
+            "/const HB_STYLE_CHROME = '\[data-hb-style-popup\][^']*\[data-hb-style-var-trigger\][^']*';/",
             'the var trigger must be in the outside-click allow-list, or its popup closes on open',
         );
-        $this->assertMatchesRegularExpression(
-            "/if \(!event\.target\.closest\(HB_STYLE_CHROME\)\) \{\s*closeStylePopups\(root\);/",
+        $this->assertInlineScriptMatches(
             $html,
+            "/if \(!event\.target\.closest\(HB_STYLE_CHROME\)\) \{\s*closeStylePopups\(root\);/",
         );
 
         // Its aria-expanded must be reset alongside the other triggers too.
-        $this->assertMatchesRegularExpression(
-            "/querySelectorAll\('\[data-hb-style-color-trigger\][^']*\[data-hb-style-var-trigger\][^']*'\)\.forEach/",
+        $this->assertInlineScriptMatches(
             $html,
+            "/querySelectorAll\('\[data-hb-style-color-trigger\][^']*\[data-hb-style-var-trigger\][^']*'\)\.forEach/",
         );
     }
 
@@ -470,9 +521,9 @@ class StylePanelGatingTest extends TestCase
         // hbVarMenuFor() routes to one of three names; a route with no mounted popup makes
         // showStylePopup() a silent no-op.
         foreach (['var-color', 'var-number', 'var-font'] as $menu) {
-            $this->assertStringContainsString('data-hb-style-popup="' . $menu . '"', $html, "{$menu} is routed to but not mounted");
+            $this->assertElementExists($html, '[data-hb-style-popup="' . $menu . '"]', "{$menu} is routed to but not mounted");
         }
-        $this->assertStringContainsString("if (/fontFamily$/i.test(path)) return 'var-font';", $html);
+        $this->assertInlineScriptContains($html, "if (/fontFamily$/i.test(path)) return 'var-font';");
     }
 
     public function test_the_font_clear_button_is_replaced_by_the_variable_trigger(): void
@@ -480,17 +531,17 @@ class StylePanelGatingTest extends TestCase
         $html = $this->editorHtml();
 
         // The `x` clear-font button is gone, per instruction, and its handler with it.
-        $this->assertStringNotContainsString('data-hb-style-clear-font', $html);
+        $this->assertElementMissing($html, '[data-hb-style-clear-font]');
 
         // Replaced in place by the trigger. It is a SIBLING of the combobox rather than a
         // descendant (a combobox owns its own trailing caret), so it names its target explicitly
         // — and that target must exist.
-        $this->assertStringContainsString('data-hb-style-var-for="typography.fontFamily"', $html);
-        $this->assertStringContainsString('data-hb-control="typography.fontFamily"', $html);
+        $this->assertElementExists($html, '[data-hb-style-var-for="typography.fontFamily"]');
+        $this->assertElementExists($html, '[data-hb-control="typography.fontFamily"]');
 
         // Clearing is preserved: each menu leads with a "Default" row whose emitted value is
-        // empty, so picking it writes '' exactly as the x did.
-        $this->assertMatchesRegularExpression('/data-vm-name="Default"\s+data-vm-value=""/', $html);
+        // empty, so picking it writes '' exactly as the x did. Both attributes on the SAME row.
+        $this->assertElementExists($html, '[data-vm-name="Default"][data-vm-value=""]');
     }
 
     public function test_a_combobox_bound_to_a_token_commits_through_its_own_api(): void
@@ -500,11 +551,11 @@ class StylePanelGatingTest extends TestCase
         // Writing a combobox's inner <input> is reverted on its next render, and the delegated
         // write handler ignores events whose target is not the combobox root — so the model
         // would never see the change either.
-        $this->assertStringContainsString("if (control.getAttribute('data-hb-control-type') === 'combobox') {", $html);
+        $this->assertInlineScriptContains($html, "if (control.getAttribute('data-hb-control-type') === 'combobox') {");
         // Two arguments, not one: the model gets the CSS reference, the field shows the
         // token's resolved value (integer or family name). Passing the reference as the label
         // made a bound field read as var(--hb-t-…).
-        $this->assertStringContainsString('control.__hbCombobox?.setValue(value, resolved);', $html);
+        $this->assertInlineScriptContains($html, 'control.__hbCombobox?.setValue(value, resolved);');
     }
 
     public function test_a_composed_shadow_survives_the_renderer(): void
@@ -513,7 +564,7 @@ class StylePanelGatingTest extends TestCase
         // supports.effects.shadow. This proves the composed shape actually renders rather than
         // being silently dropped by the `shadow` sanitizer — the failure mode that made every
         // other "wired" control in this phase look like it worked.
-        $html = app(\Heisenberg\Services\BlockRenderer::class)->renderBlock([
+        $html = app(BlockRenderer::class)->renderBlock([
             'id' => 'fx1',
             'name' => 'heisenberg/paragraph',
             'attributes' => ['content' => 'x'],
@@ -522,10 +573,16 @@ class StylePanelGatingTest extends TestCase
             'innerBlocks' => [],
         ], 'en');
 
-        $this->assertStringContainsString('--hb-shadow: 0px 8px 28px rgba(0, 0, 0, 0.14)', $html);
+        // Tied to the specific block's own `style` attribute, not merely present anywhere in the
+        // fragment — proves the declaration lands on THIS block's root, not a sibling.
+        $this->assertElementExists($html, '[data-block-id="fx1"]');
+        $style = (string) $this->hbAttr($html, '[data-block-id="fx1"]', 'style');
+        $this->assertStringContainsString('--hb-shadow: 0px 8px 28px rgba(0, 0, 0, 0.14)', $style);
 
-        // And a malformed one is refused rather than injected.
-        $bad = app(\Heisenberg\Services\BlockRenderer::class)->renderBlock([
+        // And a malformed one is refused rather than injected. Left as whole-fragment absence
+        // checks deliberately — a security/sanitization guarantee ("never anywhere in the
+        // output") should stay broad, not be narrowed to one element.
+        $bad = app(BlockRenderer::class)->renderBlock([
             'id' => 'fx2',
             'name' => 'heisenberg/paragraph',
             'attributes' => ['content' => 'x'],
@@ -563,7 +620,7 @@ class StylePanelGatingTest extends TestCase
         // The section mounts once per CONTAINER panel and never for a text block's.
         $this->assertSame(
             $containers,
-            substr_count($html, '<span class="hb-section__title">Flex Layout</span>'),
+            $this->hbCount($html, $this->sectionTitle('Flex Layout')),
         );
     }
 
@@ -573,20 +630,18 @@ class StylePanelGatingTest extends TestCase
 
         // supports.position.mode is sanitised as `position-mode` (static|relative|absolute), so
         // a plain boolean would be rejected and render nothing. The control declares the strings
-        // it writes for each state instead.
-        $this->assertMatchesRegularExpression(
-            '/data-hb-control="position\.mode"[^>]*data-hb-control-type="checkbox"/',
+        // it writes for each state instead. The combined attribute selector is order-independent,
+        // unlike the regex it replaces.
+        $this->assertElementExists($html, '[data-hb-control="position.mode"][data-hb-control-type="checkbox"]');
+        $this->assertElementExists($html, '[data-hb-control-on="absolute"]');
+        $this->assertInlineScriptContains(
             $html,
-        );
-        $this->assertStringContainsString('data-hb-control-on="absolute"', $html);
-        $this->assertStringContainsString(
             "raw = (on === null && off === null) ? checked : (checked ? (on ?? 'true') : (off ?? ''));",
-            $html,
         );
 
         // Off writes '' so the variable falls back to SupportsStyle's own default rather than
         // pinning an explicit `static` the user never chose.
-        $this->assertStringContainsString('data-hb-control-off=""', $html);
+        $this->assertElementExists($html, '[data-hb-control-off=""]');
     }
 
     public function test_alignment_section_mounts_only_for_contracts_declaring_align(): void
@@ -606,7 +661,7 @@ class StylePanelGatingTest extends TestCase
         $this->assertGreaterThanOrEqual(2, $declarers, 'group and columns declare align');
         $this->assertSame(
             $declarers,
-            preg_match_all('/data-hb-control="align"[^>]*data-hb-control-type="segmented"/', $html),
+            $this->hbCount($html, '[data-hb-control="align"][data-hb-control-type="segmented"]'),
         );
 
         $this->assertArrayNotHasKey('align', app(BlockRegistryService::class)->getBlock('heisenberg/heading')['supports']);
@@ -619,24 +674,25 @@ class StylePanelGatingTest extends TestCase
 
         // The editor emits #hb-theme-vars once at render time, so before this a token edit was
         // invisible until reload — and any block bound to that token appeared not to respond.
-        $this->assertStringContainsString('const applyThemeVars = () => {', $html);
-        $this->assertStringContainsString("document.getElementById('hb-theme-vars')", $html);
+        $this->assertElementExists($html, '#hb-theme-vars');
+        $this->assertInlineScriptContains($html, 'const applyThemeVars = () => {');
+        $this->assertInlineScriptContains($html, "document.getElementById('hb-theme-vars')");
 
         // Applied immediately rather than on the save debounce, so dragging a colour reads live.
-        $this->assertMatchesRegularExpression(
-            '/const scheduleSave = \(\) => \{\s*applyThemeVars\(\);/',
+        $this->assertInlineScriptMatches(
             $html,
+            '/const scheduleSave = \(\) => \{\s*applyThemeVars\(\);/',
         );
 
         // Must mirror ThemeRepository::css()'s prefix and font quoting, or preview and saved
         // render disagree.
-        $this->assertStringContainsString("'  --hb-t-' + token.name + ': ' + token.value + ';'", $html);
-        $this->assertStringContainsString("', sans-serif;'", $html);
+        $this->assertInlineScriptContains($html, "'  --hb-t-' + token.name + ': ' + token.value + ';'");
+        $this->assertInlineScriptContains($html, "', sans-serif;'");
     }
 
     public function test_fill_hug_clip_reach_the_rendered_block_as_classes(): void
     {
-        $renderer = app(\Heisenberg\Services\BlockRenderer::class);
+        $renderer = app(BlockRenderer::class);
 
         // These could NOT be supports. They are class-based capabilities in SupportsStyle —
         // `hb-size-fill-w` sets width:100%, which a bare custom property cannot express — and
@@ -651,12 +707,12 @@ class StylePanelGatingTest extends TestCase
             'innerBlocks' => [],
         ], 'en');
 
-        $this->assertStringContainsString('hb-size-fill-w', $on);
-        $this->assertStringContainsString('hb-size-clip', $on);
+        $this->assertElementExists($on, '[data-block-id="sz1"]');
+        $this->assertElementHasClass($on, '[data-block-id="sz1"]', 'hb-size-fill-w');
+        $this->assertElementHasClass($on, '[data-block-id="sz1"]', 'hb-size-clip');
         // SupportsStyle's rules are `[data-block-id].hb-supports.hb-size-*`, so the opt-in class
         // must be present too or the markers select nothing.
-        $this->assertStringContainsString('hb-supports', $on);
-        $this->assertStringContainsString('data-block-id="sz1"', $on);
+        $this->assertElementHasClass($on, '[data-block-id="sz1"]', 'hb-supports');
 
         // Unset means absent, not merely inert.
         $off = $renderer->renderBlock([
@@ -668,7 +724,7 @@ class StylePanelGatingTest extends TestCase
         ], 'en');
 
         foreach (['hb-size-fill-w', 'hb-size-fill-h', 'hb-size-hug-w', 'hb-size-hug-h', 'hb-size-clip'] as $marker) {
-            $this->assertStringNotContainsString($marker, $off);
+            $this->assertElementMissingClass($off, '[data-block-id="sz2"]', $marker);
         }
     }
 
@@ -678,19 +734,16 @@ class StylePanelGatingTest extends TestCase
 
         // classNames predicates compare with ===, so the string 'true' would never match and the
         // class would never appear. The checkbox type only stringifies when on/off are declared.
-        $this->assertStringContainsString(
+        $this->assertInlineScriptContains(
+            $html,
             "raw = (on === null && off === null) ? checked : (checked ? (on ?? 'true') : (off ?? ''));",
-            $html,
         );
-        $this->assertMatchesRegularExpression(
-            '/data-hb-control="fillWidth"[^>]*data-hb-control-kind="attributes"[^>]*data-hb-control-type="checkbox"/',
+        $this->assertElementExists(
             $html,
+            '[data-hb-control="fillWidth"][data-hb-control-kind="attributes"][data-hb-control-type="checkbox"]',
         );
         // No on/off attributes on the size boxes — that is what selects boolean mode.
-        $this->assertDoesNotMatchRegularExpression(
-            '/data-hb-control="fillWidth"[^>]*data-hb-control-on=/',
-            $html,
-        );
+        $this->assertElementMissingAttribute($html, '[data-hb-control="fillWidth"]', 'data-hb-control-on');
     }
 
     public function test_no_inert_control_renders_in_the_style_panel(): void
@@ -707,11 +760,11 @@ class StylePanelGatingTest extends TestCase
         // Stroke and Appearance's corners need `border` (7.2); the Flex Layout grid needs a
         // container (7.1) — so none of them should reach the page.
         //
-        // Scripts are stripped first: the handlers for these controls still exist and reference
-        // the same markers as SELECTOR STRINGS. Matching raw HTML finds those and reports a
-        // rendered control that is not there.
-        $markup = preg_replace('#<script\b[^>]*>.*?</script>#is', '', $html);
-
+        // Structural DOM queries only ever match REAL elements/attributes/classes — unlike a raw
+        // substring search, they cannot be fooled by the same marker appearing as a selector
+        // STRING inside a <script>'s text content, so the manual "strip <script> tags first" step
+        // this test used to need is no longer necessary.
+        //
         // This list shrinks as extracted controls get WIRED, never as they get replaced:
         // hb-agrid + hb-iradio left it 2026-08-06 (the Flex Layout grid writes
         // layout.justify×align, the radios layout.justify); stroke-sides and
@@ -724,17 +777,17 @@ class StylePanelGatingTest extends TestCase
         ];
 
         foreach ($inert as $marker => $what) {
-            $this->assertStringNotContainsString(
-                $marker,
-                $markup,
+            $this->assertElementMissing(
+                $html,
+                '.' . $marker,
                 "{$what} renders but writes nothing — it should be gated off or wired",
             );
         }
 
-        // Guard the guard: stripping must not have removed the panel itself, or this passes
-        // vacuously.
-        $this->assertStringContainsString('hb-blockstyle', $markup);
-        $this->assertStringContainsString('<span class="hb-section__title">Typography</span>', $markup);
+        // Guard the guard: the panel itself and a real section must still be present, or this
+        // passes vacuously.
+        $this->assertElementExists($html, '.hb-blockstyle');
+        $this->assertElementExists($html, $this->sectionTitle('Typography'));
     }
 
     public function test_a_bound_field_displays_the_token_value_not_its_css_reference(): void
@@ -744,24 +797,32 @@ class StylePanelGatingTest extends TestCase
         // Picking a token wrote var(--hb-t-…) straight into the field, so a bound control read as
         // its own CSS reference. The field now shows the VALUE (the integer the Style/Themes
         // panel holds, e.g. "16") while the model keeps the reference, split by data-hb-var-bound.
-        $this->assertStringContainsString('function hbVarLabelOf(root, ref)', $html);
-        $this->assertStringContainsString('function hbVarResolvedValue(root, ref)', $html);
-        $this->assertStringContainsString('data-hb-var-labels="{', $html);
-        $this->assertStringContainsString('data-hb-var-values="{', $html);
-        $this->assertStringContainsString('if (label) control.dataset.hbVarBound = value;', $html);
-        $this->assertStringContainsString('input.value = resolved;', $html);
+        $this->assertInlineScriptContains($html, 'function hbVarLabelOf(root, ref)');
+        $this->assertInlineScriptContains($html, 'function hbVarResolvedValue(root, ref)');
+
+        // The label/value maps are real JSON data islands on the Style panel's own root element —
+        // decoded and checked for shape, not merely "starts with a brace" as a raw substring.
+        $this->assertElementHasAttribute($html, '.hb-blockstyle', 'data-hb-var-labels');
+        $this->assertElementHasAttribute($html, '.hb-blockstyle', 'data-hb-var-values');
+        $labels = $this->hbDataJson($html, '.hb-blockstyle', 'data-hb-var-labels');
+        $values = $this->hbDataJson($html, '.hb-blockstyle', 'data-hb-var-values');
+        $this->assertIsArray($labels);
+        $this->assertIsArray($values);
+
+        $this->assertInlineScriptContains($html, 'if (label) control.dataset.hbVarBound = value;');
+        $this->assertInlineScriptContains($html, 'input.value = resolved;');
 
         // The write path must send the reference, never the displayed integer.
-        $this->assertStringContainsString('raw = el.dataset.hbVarBound || input.value;', $html);
+        $this->assertInlineScriptContains($html, 'raw = el.dataset.hbVarBound || input.value;');
 
         // The label/value maps have to survive reload and re-selection, so they are re-derived
         // on sync from the stored value rather than trusting a leftover attribute.
-        $this->assertStringContainsString('if (label) el.dataset.hbVarBound = ref;', $html);
+        $this->assertInlineScriptContains($html, 'if (label) el.dataset.hbVarBound = ref;');
 
         // The indicator reads the binding, not the visible text — a bound field displays an
         // integer, which would otherwise look like a hand-typed literal.
-        $this->assertStringContainsString("if (control.dataset.hbVarBound) {", $html);
-        $this->assertStringContainsString("button.dataset.hbVarState = 'bound';", $html);
+        $this->assertInlineScriptContains($html, 'if (control.dataset.hbVarBound) {');
+        $this->assertInlineScriptContains($html, "button.dataset.hbVarState = 'bound';");
     }
 
     public function test_typing_over_a_bound_field_breaks_the_binding(): void
@@ -774,13 +835,10 @@ class StylePanelGatingTest extends TestCase
         // Comparing to the resolved value was the old behaviour: a literal that happened to equal
         // the token's hex stayed bound, and a later theme change overwrote a value the user
         // thought they had typed literally (commit 5b7d19b2, "hex binding clarity").
-        $this->assertStringContainsString(
-            'const label = hbVarLabelOf(root, bound);',
+        $this->assertInlineScriptContains($html, 'const label = hbVarLabelOf(root, bound);');
+        $this->assertInlineScriptContains(
             $html,
-        );
-        $this->assertStringContainsString(
             "if (input && input.value !== '' && input.value !== label) {\n                delete control.dataset.hbVarBound;",
-            $html,
         );
     }
 
@@ -793,25 +851,25 @@ class StylePanelGatingTest extends TestCase
         // popup — two of the same glyph doing different things. The swatch now opens the picker
         // and the icon opens the variable popup, so the decorator's "already has a var trigger"
         // check skips the row and the duplicate disappears at its source.
-        $this->assertStringContainsString('class="hb-colorlayer__swatch"', $html);
+        $this->assertElementExists($html, '.hb-colorlayer__swatch');
         // Markup follows the .pen composition (Documents/head-ui.html): the swatch stays a
         // <span> and opacity stays text. Only hooks were added — an earlier pass rewrote both
-        // into form controls, which was a redesign rather than wiring.
-        $this->assertMatchesRegularExpression(
-            '/<span class="hb-colorlayer__swatch"[^>]*data-hb-style-color-trigger/s',
+        // into form controls, which was a redesign rather than wiring. Compound CSS selectors
+        // (tag + class + attribute, all on the SAME element) replace the old "class then later in
+        // the same tag an attribute" regex — order-independent and no longer sensitive to
+        // whatever Blade prints in between.
+        $this->assertElementExists(
             $html,
+            'span.hb-colorlayer__swatch[data-hb-style-color-trigger]',
             'the swatch must open the colour picker and remain a span',
         );
-        $this->assertMatchesRegularExpression(
-            '/class="hb-colorlayer__open"[^>]*data-hb-style-var-trigger/s',
+        $this->assertElementExists(
             $html,
+            '.hb-colorlayer__open[data-hb-style-var-trigger]',
             'the inline icon must open the theme-variable popup',
         );
         // The old wiring, where the icon was the picker trigger.
-        $this->assertDoesNotMatchRegularExpression(
-            '/class="hb-colorlayer__open"[^>]*data-hb-style-color-trigger/s',
-            $html,
-        );
+        $this->assertElementMissing($html, '.hb-colorlayer__open[data-hb-style-color-trigger]');
     }
 
     public function test_fill_and_stroke_composite_a_layer_stack(): void
@@ -820,24 +878,24 @@ class StylePanelGatingTest extends TestCase
 
         // Layers paint bottom-up, so the newest sits on top. CSS colour takes one value, so the
         // stack is flattened with source-over alpha compositing.
-        $this->assertStringContainsString('function hbCompositeLayers(layers)', $html);
-        $this->assertStringContainsString('const outA = a + out.a * (1 - a);', $html);
-        $this->assertStringContainsString("const HB_LAYER_PATHS = { fill: 'color.text', stroke: 'border.color' };", $html);
+        $this->assertInlineScriptContains($html, 'function hbCompositeLayers(layers)');
+        $this->assertInlineScriptContains($html, 'const outA = a + out.a * (1 - a);');
+        $this->assertInlineScriptContains($html, "const HB_LAYER_PATHS = { fill: 'color.text', stroke: 'border.color' };");
 
         // Both shapes are stored: the flattened colour the renderer already sanitizes, and the
         // raw stack so reopening a block restores every layer rather than just the result.
-        $this->assertStringContainsString("path.split('.')[0] + '.layers'", $html);
+        $this->assertInlineScriptContains($html, "path.split('.')[0] + '.layers'");
 
         // A per-row control hook would make each layer overwrite the same scalar, so the last row
         // would always win and stacking could never work.
-        $this->assertStringNotContainsString('data-hb-control="color.text"', $html);
-        $this->assertStringNotContainsString('data-hb-control="border.color"', $html);
+        $this->assertElementMissing($html, '[data-hb-control="color.text"]');
+        $this->assertElementMissing($html, '[data-hb-control="border.color"]');
 
         // Opacity is read per layer. It stays a DISPLAY span fed by the colour picker's alpha —
         // the picker already emits `a` on colorchange, so a second typed field for the same
         // number would be redundant, and the .pen composition has no such field.
-        $this->assertStringContainsString('data-hb-style-layer-opacity', $html);
-        $this->assertStringContainsString("row.querySelector('[data-hb-style-layer-opacity]')?.textContent", $html);
+        $this->assertElementExists($html, '[data-hb-style-layer-opacity]');
+        $this->assertInlineScriptContains($html, "row.querySelector('[data-hb-style-layer-opacity]')?.textContent");
     }
 
     public function test_the_trigger_state_styling_is_keyed_on_behaviour_not_a_class(): void
@@ -847,6 +905,8 @@ class StylePanelGatingTest extends TestCase
         // (.hb-colorlayer__open, placed by the .pen composition). Keying the STATE colours on
         // .hb-varbtn meant a layer's trigger never showed any state — selecting a token looked
         // like nothing had happened. Positioning stays class-scoped; the states are shared.
+        // This is a stylesheet (text/css), not markup — regex against the CSS text itself is
+        // already the right tool, not the DOM trait.
         $css = $this->get('/heisenberg-assets/editor.css')->getContent();
 
         foreach (['bound', 'unset', 'manual'] as $state) {
@@ -870,13 +930,13 @@ class StylePanelGatingTest extends TestCase
         // The swatch takes the REFERENCE, not a resolved hex: the theme's --hb-t-* properties are
         // on the page so the browser resolves it, and the swatch then tracks the token if its
         // value is later edited in the Style tab.
-        $this->assertStringContainsString("const swatch = control.querySelector('.hb-colorlayer__swatch');", $html);
-        $this->assertStringContainsString("swatch.style.background = value || 'transparent';", $html);
+        $this->assertInlineScriptContains($html, "const swatch = control.querySelector('.hb-colorlayer__swatch');");
+        $this->assertInlineScriptContains($html, "swatch.style.background = value || 'transparent';");
 
         // A layer carries no data-hb-control, so it has to be synced explicitly or its indicator
         // renders unstyled — including on a freshly added row.
-        $this->assertStringContainsString("root.querySelectorAll('[data-hb-control], .hb-colorlayer').forEach(hbSyncVarTrigger);", $html);
-        $this->assertStringContainsString("list.querySelectorAll('.hb-colorlayer').forEach(hbSyncVarTrigger);", $html);
+        $this->assertInlineScriptContains($html, "root.querySelectorAll('[data-hb-control], .hb-colorlayer').forEach(hbSyncVarTrigger);");
+        $this->assertInlineScriptContains($html, "list.querySelectorAll('.hb-colorlayer').forEach(hbSyncVarTrigger);");
     }
 
     public function test_state_section_is_never_contract_gated(): void
@@ -886,9 +946,9 @@ class StylePanelGatingTest extends TestCase
         // BlockRenderer::stateStylesCss() reads `supports.states` off the block INSTANCE, and
         // `states` is deliberately absent from BlockContractValidator::SUPPORT_KEYS — so no
         // contract can declare it and it must not be gated on one.
-        $this->assertStringContainsString('<span class="hb-section__title">State</span>', $html);
+        $this->assertElementExists($html, $this->sectionTitle('State'));
 
-        $reflection = new \ReflectionClass(\Heisenberg\Services\BlockContractValidator::class);
+        $reflection = new \ReflectionClass(BlockContractValidator::class);
         $keys = $reflection->getConstant('SUPPORT_KEYS');
         $this->assertIsArray($keys);
         $this->assertNotContains('states', $keys);

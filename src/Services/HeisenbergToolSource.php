@@ -4,6 +4,9 @@ declare(strict_types=1);
 
 namespace Heisenberg\Services;
 
+use Heisenberg\Ai\AiRequest;
+use Heisenberg\Policies\PostPolicy;
+
 /**
  * Heisenberg's own MCP tools, offered to the **editor's** assistant in-process.
  *
@@ -23,7 +26,7 @@ namespace Heisenberg\Services;
  * {@see McpToolRegistry::SURFACE_EDITOR} — passed on every call below. A human
  * is driving this surface (unlike the inbound MCP server, which stays
  * draft-only), so it is offered `set_post_status`, gated per-call by the same
- * {@see \Heisenberg\Policies\PostPolicy::transitionAllowed()} check the
+ * {@see PostPolicy::transitionAllowed()} check the
  * editor's own Publish button runs.
  */
 class HeisenbergToolSource
@@ -59,7 +62,7 @@ class HeisenbergToolSource
     }
 
     /**
-     * Tool definitions in the neutral shape {@see \Heisenberg\Ai\AiRequest::$tools} expects.
+     * Tool definitions in the neutral shape {@see AiRequest::$tools} expects.
      *
      * @return list<array{name: string, description: string, input_schema: array<string, mixed>}>
      */
@@ -78,7 +81,7 @@ class HeisenbergToolSource
     }
 
     /**
-     * @param  array<string, mixed> $arguments
+     * @param array<string, mixed> $arguments
      * @return array{content: string, isError: bool}
      */
     public function call(string $name, array $arguments): array

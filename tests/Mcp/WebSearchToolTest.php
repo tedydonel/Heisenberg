@@ -5,7 +5,6 @@ declare(strict_types=1);
 namespace Heisenberg\Tests\Mcp;
 
 use Heisenberg\Services\McpToolRegistry;
-use Heisenberg\Services\WebSearchService;
 use Heisenberg\Tests\TestCase;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Http;

@@ -4,6 +4,9 @@ declare(strict_types=1);
 
 namespace Heisenberg\Http\Controllers;
 
+use Heisenberg\Adapters\GuestActor;
+use Heisenberg\Adapters\LocalDevRoleGate;
+use Heisenberg\Contracts\RoleGate;
 use Heisenberg\Models\Pattern;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -25,15 +28,28 @@ use Illuminate\Validation\ValidationException;
  * controller never has to know what makes a valid model — the live runtime
  * owns that contract.
  *
- * Not gated on roles: a host that mounts the editor behind real auth
- * already widens `middleware.editor`; saving a pattern is a personal
- * authoring affordance, not a moderation surface, so a separate tier would
- * be the wrong granularity.
+ * Gated on the `authors` tier — the people who can author content at all —
+ * through the same RoleGate + LocalDevRoleGate local-only bypass every other
+ * editor write uses (see ThemeController's docblock for why the bypass
+ * exists). This used to be ungated on the theory that a host widens
+ * `middleware.editor`, but that stack defaults to bare `['web']` and every
+ * sibling controller carries its own check precisely because of that: left
+ * open, an anonymous visitor could write arbitrary JSON into this table and
+ * delete every pattern, in any environment. Patterns are install-wide (no
+ * owner column), so there is deliberately no per-owner rule on delete: anyone
+ * who may author may curate the shared library.
  */
 class HeisenbergPatternController
 {
-    public function index(): JsonResponse
+    /** Upper bound on one pattern's serialized `blocks` — it is stored verbatim. */
+    private const MAX_BLOCKS_BYTES = 512 * 1024;
+
+    public function index(Request $request): JsonResponse
     {
+        if ($denied = $this->denyUnlessAuthor($request)) {
+            return $denied;
+        }
+
         $patterns = Pattern::query()
             ->orderBy('name')
             ->get(['id', 'name', 'blocks', 'created_at', 'updated_at'])
@@ -50,6 +66,10 @@ class HeisenbergPatternController
 
     public function store(Request $request): JsonResponse
     {
+        if ($denied = $this->denyUnlessAuthor($request)) {
+            return $denied;
+        }
+
         $name = trim((string) $request->input('name', ''));
         if ($name === '') {
             throw ValidationException::withMessages(['name' => __('heisenberg::editor.patterns.name_required')]);
@@ -82,6 +102,10 @@ class HeisenbergPatternController
 
     public function destroy(Request $request): JsonResponse
     {
+        if ($denied = $this->denyUnlessAuthor($request)) {
+            return $denied;
+        }
+
         $id = (int) $request->input('id', 0);
         $pattern = $id > 0 ? Pattern::query()->find($id) : null;
         if (! $pattern) {
@@ -111,6 +135,23 @@ class HeisenbergPatternController
                 throw ValidationException::withMessages(['blocks' => __('heisenberg::editor.patterns.blocks_invalid_entry', ['index' => $i + 1])]);
             }
         }
+
+        if (strlen((string) json_encode($blocks)) > self::MAX_BLOCKS_BYTES) {
+            throw ValidationException::withMessages(['blocks' => __('heisenberg::editor.patterns.blocks_too_large')]);
+        }
+
         return array_values($blocks);
+    }
+
+    private function denyUnlessAuthor(Request $request): ?JsonResponse
+    {
+        $actor = $request->user() ?? new GuestActor();
+        $roleGate = new LocalDevRoleGate(app(RoleGate::class));
+
+        if (! $roleGate->is($actor, 'authors')) {
+            return response()->json(['errors' => ['You are not authorized to use saved patterns.']], 403);
+        }
+
+        return null;
     }
 }

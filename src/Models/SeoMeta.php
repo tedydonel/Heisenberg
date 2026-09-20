@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Heisenberg\Models;
 
+use Heisenberg\Adapters\NativeSeoMetaProvider;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\MorphTo;
 
@@ -18,7 +19,7 @@ use Illuminate\Database\Eloquent\Relations\MorphTo;
  * guarded-columns stance: a `Post` is saved through many different code paths with many
  * different partial payloads (autosave, block saves, status transitions, …), so guarding
  * columns and hand-picking what each path may touch is the safer default. A `SeoMeta` row has
- * exactly one write path — {@see \Heisenberg\Adapters\NativeSeoMetaProvider} /
+ * exactly one write path — {@see NativeSeoMetaProvider} /
  * `PostController::applySeo()` (Wave S2a) `updateOrCreate`-ing from a request already
  * validated against an explicit field whitelist — so there is nothing a blanket `$fillable`
  * list exposes that the validator didn't already allow through.

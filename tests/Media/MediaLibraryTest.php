@@ -5,20 +5,24 @@ declare(strict_types=1);
 namespace Heisenberg\Tests\Media;
 
 use Heisenberg\Contracts\RoleGate;
+use Heisenberg\Contracts\SvgSanitizer;
 use Heisenberg\Contracts\VirusScanner;
 use Heisenberg\Http\Requests\UploadPublicFileRequest;
 use Heisenberg\Models\PublicFile;
 use Heisenberg\Services\MediaLibraryService;
 use Heisenberg\Tests\Media\Fakes\FakeRoleGate;
+use Heisenberg\Tests\Media\Fakes\FakeSvgSanitizer;
 use Heisenberg\Tests\Media\Fakes\FakeUser;
 use Heisenberg\Tests\Media\Fakes\FakeVirusScanner;
 use Heisenberg\Tests\TestCase;
 use Illuminate\Database\Schema\Blueprint;
+use Illuminate\Filesystem\LocalFilesystemAdapter;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Validation\ValidationException;
 
 /**
  * Acceptance tests for the public media library backend
@@ -205,7 +209,7 @@ class MediaLibraryTest extends TestCase
             '<svg xmlns="http://www.w3.org/2000/svg"><script>alert(document.domain)</script></svg>',
         );
 
-        $this->expectException(\Illuminate\Validation\ValidationException::class);
+        $this->expectException(ValidationException::class);
 
         app(MediaLibraryService::class)->storeOne($svg);
     }
@@ -227,7 +231,120 @@ class MediaLibraryTest extends TestCase
         try {
             app(MediaLibraryService::class)->storeOne($svg);
             $this->fail('Expected storeOne() to reject a disallowed .svg extension.');
-        } catch (\Illuminate\Validation\ValidationException) {
+        } catch (ValidationException) {
+            // expected
+        }
+
+        $this->assertSame(0, PublicFile::count());
+        $this->assertSame([], Storage::disk('uploads')->allFiles());
+    }
+
+    // ── SVG guard (Heisenberg\Contracts\SvgSanitizer) ──────────────────────
+    //
+    // A host that explicitly ADDS 'svg' to heisenberg.media.extensions
+    // re-opens the door the two tests above rely on staying shut by default.
+    // These prove the second, independent gate: even with 'svg' allowed,
+    // MediaLibraryService still refuses the upload unless a real
+    // SvgSanitizer is bound, and only ever writes the SANITIZED bytes, never
+    // the raw upload, once one is.
+
+    public function test_svg_is_rejected_when_allowed_by_config_but_no_sanitizer_is_bound(): void
+    {
+        config(['heisenberg.media.extensions' => array_merge(PublicFile::TYPES, ['svg'])]);
+
+        $svg = UploadedFile::fake()->createWithContent(
+            'ok.svg',
+            '<svg xmlns="http://www.w3.org/2000/svg"><script>alert(document.domain)</script></svg>',
+        );
+
+        try {
+            app(MediaLibraryService::class)->storeOne($svg);
+            $this->fail('Expected storeOne() to reject svg with no SvgSanitizer bound.');
+        } catch (ValidationException) {
+            // expected
+        }
+
+        $this->assertSame(0, PublicFile::count());
+        $this->assertSame([], Storage::disk('uploads')->allFiles());
+    }
+
+    public function test_svg_is_sanitized_before_it_reaches_disk_once_a_sanitizer_is_bound(): void
+    {
+        config(['heisenberg.media.extensions' => array_merge(PublicFile::TYPES, ['svg'])]);
+        $this->app->singleton(SvgSanitizer::class, fn () => new FakeSvgSanitizer());
+        // MediaLibraryService is a singleton already resolved without the
+        // sanitizer during boot (registerMedia() runs before this override
+        // exists) — force it to rebuild against the fake now bound above.
+        $this->app->forgetInstance(MediaLibraryService::class);
+
+        $raw = '<svg xmlns="http://www.w3.org/2000/svg"><script>alert(document.domain)</script><circle r="5"/></svg>';
+        $svg = UploadedFile::fake()->createWithContent('ok.svg', $raw);
+
+        $file = app(MediaLibraryService::class)->storeOne($svg);
+
+        $this->assertSame('svg', $file->type);
+        Storage::disk('uploads')->assertExists($file->stored_path);
+
+        $stored = Storage::disk('uploads')->get($file->stored_path);
+        $this->assertStringNotContainsString('<script', $stored, 'the sanitized output, not the raw upload, must reach disk');
+        $this->assertStringContainsString('<circle', $stored, 'sanitization must not discard safe markup');
+    }
+
+    public function test_svgz_is_rejected_when_allowed_by_config_but_no_sanitizer_is_bound(): void
+    {
+        config(['heisenberg.media.extensions' => array_merge(PublicFile::TYPES, ['svgz'])]);
+
+        $svgz = UploadedFile::fake()->createWithContent(
+            'ok.svgz',
+            (string) gzencode('<svg xmlns="http://www.w3.org/2000/svg"><script>alert(1)</script></svg>'),
+        );
+
+        try {
+            app(MediaLibraryService::class)->storeOne($svgz);
+            $this->fail('Expected storeOne() to reject svgz with no SvgSanitizer bound.');
+        } catch (ValidationException) {
+            // expected
+        }
+
+        $this->assertSame(0, PublicFile::count());
+        $this->assertSame([], Storage::disk('uploads')->allFiles());
+    }
+
+    public function test_svgz_is_decompressed_sanitized_and_recompressed_once_a_sanitizer_is_bound(): void
+    {
+        config(['heisenberg.media.extensions' => array_merge(PublicFile::TYPES, ['svgz'])]);
+        $this->app->singleton(SvgSanitizer::class, fn () => new FakeSvgSanitizer());
+        $this->app->forgetInstance(MediaLibraryService::class);
+
+        $raw = '<svg xmlns="http://www.w3.org/2000/svg"><script>alert(1)</script><rect width="1" height="1"/></svg>';
+        $svgz = UploadedFile::fake()->createWithContent('ok.svgz', (string) gzencode($raw));
+
+        $file = app(MediaLibraryService::class)->storeOne($svgz);
+
+        $this->assertSame('svgz', $file->type);
+        $storedCompressed = Storage::disk('uploads')->get($file->stored_path);
+        $decompressed = gzdecode($storedCompressed);
+
+        $this->assertIsString($decompressed);
+        $this->assertStringNotContainsString('<script', $decompressed);
+        $this->assertStringContainsString('<rect', $decompressed);
+    }
+
+    public function test_an_svgz_that_inflates_past_the_cap_is_rejected_without_being_stored(): void
+    {
+        config(['heisenberg.media.extensions' => array_merge(PublicFile::TYPES, ['svgz'])]);
+        $this->app->singleton(SvgSanitizer::class, fn () => new FakeSvgSanitizer());
+        $this->app->forgetInstance(MediaLibraryService::class);
+
+        // ~11 MB of padding compresses to a few KB — well under the upload size limit,
+        // well over the 10 MB decompressed cap.
+        $bomb = '<svg xmlns="http://www.w3.org/2000/svg">' . str_repeat(' ', 11 * 1024 * 1024) . '</svg>';
+        $svgz = UploadedFile::fake()->createWithContent('bomb.svgz', (string) gzencode($bomb, 9));
+
+        try {
+            app(MediaLibraryService::class)->storeOne($svgz);
+            $this->fail('Expected storeOne() to reject an svgz that inflates past the cap.');
+        } catch (ValidationException) {
             // expected
         }
 
@@ -293,8 +410,7 @@ class MediaLibraryTest extends TestCase
         // partway through its loop: the small variant's bytes are written to
         // disk BEFORE the medium write throws.
         $existing = Storage::disk('uploads');
-        $decorated = new class($existing->getDriver(), $existing->getAdapter(), $existing->getConfig())
-            extends \Illuminate\Filesystem\LocalFilesystemAdapter
+        $decorated = new class($existing->getDriver(), $existing->getAdapter(), $existing->getConfig()) extends LocalFilesystemAdapter
         {
             public function put($path, $contents, $options = [])
             {
@@ -393,7 +509,7 @@ class MediaLibraryTest extends TestCase
     public function test_windows_illegal_and_control_characters_are_sanitized_out_of_the_stored_name(): void
     {
         $response = $this->postJson(route('media.upload'), [
-            'file' => UploadedFile::fake()->create("report: q1 * \"final\"? <draft>|v1.pdf", 10, 'application/pdf'),
+            'file' => UploadedFile::fake()->create('report: q1 * "final"? <draft>|v1.pdf', 10, 'application/pdf'),
         ]);
 
         $response->assertCreated();
@@ -401,7 +517,7 @@ class MediaLibraryTest extends TestCase
         $file = PublicFile::first();
         $this->assertNotNull($file);
         // original_name preserves exactly what the user uploaded...
-        $this->assertSame("report: q1 * \"final\"? <draft>|v1.pdf", $file->original_name);
+        $this->assertSame('report: q1 * "final"? <draft>|v1.pdf', $file->original_name);
         // ...but the name actually written to disk must be clean.
         foreach ([':', '*', '"', '<', '>', '|', '?'] as $illegal) {
             $this->assertStringNotContainsString($illegal, $file->stored_name);
@@ -450,7 +566,8 @@ class MediaLibraryTest extends TestCase
 
         try {
             foreach (['sub/evil.pdf', 'sub\\evil.pdf'] as $hostileName) {
-                $file = new class($tmpPath, $hostileName) extends UploadedFile {
+                $file = new class($tmpPath, $hostileName) extends UploadedFile
+                {
                     public function __construct(string $path, private readonly string $hostileName)
                     {
                         parent::__construct($path, 'benign.pdf', 'application/pdf', null, true);

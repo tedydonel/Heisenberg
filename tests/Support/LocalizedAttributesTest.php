@@ -5,11 +5,12 @@ declare(strict_types=1);
 namespace Heisenberg\Tests\Support;
 
 use Heisenberg\Support\LocalizedAttributes;
+use Heisenberg\Tests\M0\ConfigMergeTest;
 use PHPUnit\Framework\TestCase;
 
 /**
  * Pure array-logic tests for {@see LocalizedAttributes} (docs/content-translation.md §0) — no app
- * boot needed, same posture {@see \Heisenberg\Tests\M0\ConfigMergeTest} takes for its own
+ * boot needed, same posture {@see ConfigMergeTest} takes for its own
  * dependency-free Support class.
  */
 class LocalizedAttributesTest extends TestCase

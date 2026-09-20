@@ -40,7 +40,7 @@ interface McpClient
      * trusting the caller — this is the last gate before a third party's code
      * runs on our behalf.
      *
-     * @param  array<string, mixed> $arguments
+     * @param array<string, mixed> $arguments
      * @return array{content: string, isError: bool}
      */
     public function callTool(McpServer $server, string $tool, array $arguments): array;

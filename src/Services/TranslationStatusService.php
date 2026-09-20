@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Heisenberg\Services;
 
+use Heisenberg\Models\Block;
 use Heisenberg\Models\Post;
 use Heisenberg\Support\LocaleConfig;
 use Heisenberg\Support\LocalizedAttributes;
@@ -20,7 +21,7 @@ use Heisenberg\Support\LocalizedAttributes;
  * the same signal (Wave T2b), neither of which exists yet; this class is built now because the
  * completeness computation belongs on the model/service layer, not duplicated per consumer.
  *
- * @see \Heisenberg\Support\LocalizedAttributes for the per-attribute/per-block read primitives
+ * @see LocalizedAttributes for the per-attribute/per-block read primitives
  *   this class composes; @see \Heisenberg\Services\BlockRegistryService::translatableAttributes()
  *   for which attributes count per block type.
  *
@@ -126,7 +127,7 @@ class TranslationStatusService
      * that actually declare translatable attributes, paired with that attribute list — computed
      * once so `statuses()` doesn't re-walk the tree or re-hit the registry per locale.
      *
-     * @param iterable<\Heisenberg\Models\Block> $blockModels
+     * @param iterable<Block> $blockModels
      * @return list<array{block: array<string, mixed>, attributes: string[]}>
      */
     private function flattenTranslatable(iterable $blockModels): array

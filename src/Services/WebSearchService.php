@@ -14,14 +14,15 @@ use Illuminate\Support\Facades\Http;
 class WebSearchService
 {
     private const DEFAULT_TIMEOUT = 10;
+
     private const USER_AGENT = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36 (Heisenberg-AI-Search/1.0)';
 
     /**
      * Perform an internet search for web content, news, or image links.
      *
-     * @param  string $query The search query string
-     * @param  string $type  'text' for web pages/news or 'images' for image links
-     * @param  int    $limit Maximum results to return (1-30, default 10)
+     * @param string $query The search query string
+     * @param string $type 'text' for web pages/news or 'images' for image links
+     * @param int $limit Maximum results to return (1-30, default 10)
      * @return array{query: string, type: string, results: list<array<string, mixed>>, total: int}
      */
     public function search(string $query, string $type = 'text', int $limit = 10): array

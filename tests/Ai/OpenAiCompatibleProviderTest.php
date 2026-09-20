@@ -24,6 +24,19 @@ class OpenAiCompatibleProviderTest extends TestCase
 {
     private string $key = '';
 
+    protected function setUp(): void
+    {
+        parent::setUp();
+
+        // This suite's env is 'testing', not 'local' — OutboundUrlGuard's
+        // SSRF check (run before every complete()/stream()/discoverModels()
+        // call) would otherwise block the local Ollama-style base_url a few
+        // tests below deliberately use as a legitimate example. Opt private
+        // networks in for this suite rather than weakening the guard's
+        // actual (local-only) default.
+        config(['heisenberg.ai.outbound.allow_private_networks' => true]);
+    }
+
     private function setKey(string $value): void
     {
         $this->key = $value;
@@ -303,5 +316,59 @@ class OpenAiCompatibleProviderTest extends TestCase
 
         $this->assertTrue($response->isError());
         $this->assertStringNotContainsString('sk-test', (string) $response->error);
+    }
+
+    // ── SSRF guard (OutboundUrlGuard) — a custom OpenAI-compatible base_url
+    // can point ANYWHERE, so this is the one place it matters most. setUp()
+    // opts private networks in for this whole suite (the local-Ollama tests
+    // above rely on it), so these tests use the ALWAYS-blocked link-local/
+    // metadata range to prove the guard still bites regardless. ─────────────
+
+    public function test_a_cloud_metadata_base_url_is_rejected_even_though_this_suite_allows_private_networks(): void
+    {
+        $this->setKey('sk-test');
+        Http::fake();
+
+        $response = $this->provider(['base_url' => 'http://169.254.169.254'])->complete($this->request());
+
+        $this->assertTrue($response->isError());
+        $this->assertStringContainsString('link-local', (string) $response->error);
+        Http::assertNothingSent();
+    }
+
+    public function test_discovermodels_also_rejects_a_cloud_metadata_base_url(): void
+    {
+        $this->setKey('sk-test');
+        Http::fake();
+
+        $models = $this->provider(['base_url' => 'http://169.254.169.254'])->discoverModels();
+
+        $this->assertSame([], $models);
+        Http::assertNothingSent();
+    }
+
+    public function test_streaming_also_rejects_a_cloud_metadata_base_url(): void
+    {
+        $this->setKey('sk-test');
+        Http::fake();
+
+        $events = iterator_to_array($this->provider(['base_url' => 'http://169.254.169.254'])->stream($this->request()));
+
+        $this->assertSame(AiStreamEvent::ERROR, $events[0]->type);
+        $this->assertStringContainsString('link-local', $events[0]->text);
+        Http::assertNothingSent();
+    }
+
+    public function test_a_private_network_base_url_is_blocked_when_not_opted_in(): void
+    {
+        config(['heisenberg.ai.outbound.allow_private_networks' => false]);
+        $this->setKey('sk-test');
+        Http::fake();
+
+        $response = $this->provider(['base_url' => 'http://10.0.0.5'])->complete($this->request());
+
+        $this->assertTrue($response->isError());
+        $this->assertStringContainsString('private/internal address', (string) $response->error);
+        Http::assertNothingSent();
     }
 }

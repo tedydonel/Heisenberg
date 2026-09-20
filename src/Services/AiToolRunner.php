@@ -77,6 +77,7 @@ class AiToolRunner
                 $discovered = $this->mcp->listTools($server);
             } catch (\Throwable $e) {
                 $errors[] = "{$server->id}: {$e->getMessage()}";
+
                 continue;
             }
 
@@ -197,7 +198,7 @@ class AiToolRunner
      * attached: the assistant lost every platform tool the moment streaming was
      * on, and any turn that needed one ended with nothing to show for it.
      *
-     * @param  array<string, McpServer>|null $byName
+     * @param array<string, McpServer>|null $byName
      * @return iterable<AiStreamEvent>
      */
     public function stream(AiProvider $provider, AiRequest $request, ?array $byName = null, ?array $tools = null): iterable
@@ -274,6 +275,7 @@ class AiToolRunner
                     ]);
                     $messages[] = $result;
                     $results[] = $result;
+
                     continue;
                 }
 
@@ -303,6 +305,7 @@ class AiToolRunner
                     // Swallowed rather than forwarded — the tool_loop_exhausted
                     // frame below explains this better than a raw provider error would.
                     $finalFailed = true;
+
                     continue;
                 }
                 if ($event->type === AiStreamEvent::TOOL_USE) {
@@ -350,9 +353,9 @@ class AiToolRunner
 
     /**
      * @param array{id: string, name: string, arguments: array} $call
-     * @param array<string, McpServer>                          $byName
+     * @param array<string, McpServer> $byName
      * @param array<string, array{content: string, isError: bool}> $cache keyed
-     *        by name + normalized arguments, scoped to a single run()/stream() call
+     *                                                                    by name + normalized arguments, scoped to a single run()/stream() call
      */
     private function execute(array $call, array $byName, array &$cache): AiMessage
     {
@@ -379,8 +382,8 @@ class AiToolRunner
     }
 
     /**
-     * @param  array<string, mixed>     $arguments
-     * @param  array<string, McpServer> $byName
+     * @param array<string, mixed> $arguments
+     * @param array<string, McpServer> $byName
      * @return array{content: string, isError: bool}
      */
     private function runTool(string $name, array $arguments, array $byName): array
@@ -440,8 +443,8 @@ class AiToolRunner
     }
 
     /**
-     * @param  array<string, int|string> $a
-     * @param  array<string, int|string> $b
+     * @param array<string, int|string> $a
+     * @param array<string, int|string> $b
      * @return array<string, int>
      */
     private static function mergeUsage(array $a, array $b): array
@@ -458,7 +461,7 @@ class AiToolRunner
 
     /**
      * @param list<array{id: string, name: string, arguments: array}> $calls
-     * @param list<AiMessage>                                         $results
+     * @param list<AiMessage> $results
      */
     private function logRound(int $iteration, array $calls, array $results): void
     {

@@ -46,11 +46,11 @@ class McpServer
     public function toArray(): array
     {
         return [
-            'id'            => $this->id,
-            'label'         => $this->label,
-            'url'           => $this->url,
-            'auth_env'      => $this->authEnv,
-            'enabled'       => $this->enabled,
+            'id' => $this->id,
+            'label' => $this->label,
+            'url' => $this->url,
+            'auth_env' => $this->authEnv,
+            'enabled' => $this->enabled,
             'allowed_tools' => $this->allowedTools,
         ];
     }

@@ -8,6 +8,7 @@ use Heisenberg\Models\Post;
 use Heisenberg\Tests\Persistence\SkipsWhenMysqlUnreachable;
 use Heisenberg\Tests\TestCase;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Route;
 
 /**
  * Pins `config('heisenberg.comments.routes')` as the load-time opt-out for the whole
@@ -44,7 +45,7 @@ class CommentRoutesToggleTest extends TestCase
         $this->getJson('/editor/comments/data')->assertStatus(404);
 
         $this->assertFalse(
-            \Illuminate\Support\Facades\Route::has('heisenberg.comments.thread'),
+            Route::has('heisenberg.comments.thread'),
             'the thread route must not be registered when heisenberg.comments.routes is false'
         );
     }

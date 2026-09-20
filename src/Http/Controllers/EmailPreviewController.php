@@ -5,10 +5,13 @@ declare(strict_types=1);
 namespace Heisenberg\Http\Controllers;
 
 use Heisenberg\Adapters\GuestActor;
+use Heisenberg\Mail\HeisenbergMailable;
 use Heisenberg\Models\Post;
+use Heisenberg\Models\PublicFile;
 use Heisenberg\Services\EmailRenderer;
 use Heisenberg\Support\LocaleConfig;
 use Illuminate\Contracts\Auth\Authenticatable;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Gate;
@@ -148,7 +151,7 @@ class EmailPreviewController
      * with Symfony Mime from the REAL, cid-embedded render (never the preview variant) —
      * subject, text/plain, text/html, and every embed re-attached as an inline part keyed to the
      * exact `cid` already burned into the HTML, the identical pairing
-     * {@see \Heisenberg\Mail\HeisenbergMailable} does for a live send. Any `format` other than
+     * {@see HeisenbergMailable} does for a live send. Any `format` other than
      * the literal `eml` defaults to `html`.
      */
     private function exportModel(Request $request, Post $model, string $locale): BaseResponse
@@ -162,7 +165,7 @@ class EmailPreviewController
 
     /**
      * `EmailRenderer`'s `preview: true` swap ({@see EmailRenderer::rewriteImages()}) already
-     * replaces `cid:` with {@see \Heisenberg\Models\PublicFile::urlForPath()}'s output — a
+     * replaces `cid:` with {@see PublicFile::urlForPath()}'s output — a
      * root-relative `/uploads/...` path, correct for a browser tab on the same origin (show()
      * above) but NOT the "absolute, publicly-fetchable URL" an ESP ingesting raw HTML needs (no
      * page context to resolve a relative path against). {@see self::absolutizeImageUrls()}
@@ -194,7 +197,7 @@ class EmailPreviewController
     /**
      * Builds the message with `Symfony\Component\Mime\Email` directly (already on disk via
      * laravel/framework's mailer, no new dependency) rather than routing through
-     * {@see \Heisenberg\Mail\HeisenbergMailable} — that class is shaped for `Mail::send()`
+     * {@see HeisenbergMailable} — that class is shaped for `Mail::send()`
      * (it resolves the post by id in its own constructor and never exposes the raw string this
      * download needs), so the same embed-attaching pattern is repeated here directly on a bare
      * `SymfonyEmail`. `From` is set ONLY when a host has actually configured
@@ -311,7 +314,7 @@ class EmailPreviewController
         return $matches->firstWhere('locale', $locale) ?? $matches->first();
     }
 
-    /** @return \Illuminate\Database\Eloquent\Builder<Post> */
+    /** @return Builder<Post> */
     private function query()
     {
         /** @var class-string<Post> $class */

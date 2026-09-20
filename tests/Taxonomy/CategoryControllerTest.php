@@ -37,7 +37,7 @@ class CategoryControllerTest extends TestCase
         $this->skipIfMysqlUnreachable(); // checks reachability, then calls parent::setUp() itself
 
         $this->app['env'] = 'local';
-        $this->withoutMiddleware(\Illuminate\Foundation\Http\Middleware\ValidateCsrfToken::class);
+        $this->withoutCsrfProtection();
     }
 
     public function test_store_then_index_then_update_then_destroy_round_trips(): void

@@ -7,15 +7,20 @@ namespace Heisenberg\Http\Controllers;
 use Heisenberg\Adapters\GuestActor;
 use Heisenberg\Adapters\LocalDevRoleGate;
 use Heisenberg\Ai\AiMessage;
+use Heisenberg\Ai\AiModel;
 use Heisenberg\Ai\AiRequest;
+use Heisenberg\Ai\AiResponse;
 use Heisenberg\Ai\AiStreamEvent;
 use Heisenberg\Ai\EditorPrompt;
+use Heisenberg\Ai\ReasoningFilter;
 use Heisenberg\Contracts\AiCredentialStore;
 use Heisenberg\Contracts\RoleGate;
 use Heisenberg\Services\AiProviderRegistry;
 use Heisenberg\Services\AiSettingsRepository;
+use Heisenberg\Services\AiToolRunner;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Str;
 use Symfony\Component\HttpFoundation\StreamedResponse;
 
 /**
@@ -158,12 +163,12 @@ class AiController
         // raw 500 instead of the structured error shape every other failure on
         // this endpoint uses, so it gets the same try/catch treatment.
         try {
-            $response = app(\Heisenberg\Services\AiToolRunner::class)->run($provider, $aiRequest);
+            $response = app(AiToolRunner::class)->run($provider, $aiRequest);
         } catch (\Throwable $e) {
             report($e);
 
             return response()->json(
-                \Heisenberg\Ai\AiResponse::error(__('heisenberg::editor.ai.completion_failed'))->toArray(),
+                AiResponse::error(__('heisenberg::editor.ai.completion_failed'))->toArray(),
                 502,
             );
         }
@@ -171,8 +176,8 @@ class AiController
         // Several open-weight models emit their chain of thought inline as
         // <think>…</think>; that is serving-template behaviour, not something
         // prompting removes, so it is filtered at the boundary.
-        $response = new \Heisenberg\Ai\AiResponse(
-            text: \Heisenberg\Ai\ReasoningFilter::strip($response->text),
+        $response = new AiResponse(
+            text: ReasoningFilter::strip($response->text),
             toolCalls: $response->toolCalls,
             stopReason: $response->stopReason,
             model: $response->model,
@@ -217,16 +222,16 @@ class AiController
         // A compact replay — just the words, capped — is enough to ground the
         // suggestions without re-sending the whole document.
         $transcript = collect($history)
-            ->map(fn (AiMessage $m): string => ($m->role === AiMessage::ROLE_USER ? 'User: ' : 'Assistant: ') . \Illuminate\Support\Str::limit($m->content, 500))
+            ->map(fn (AiMessage $m): string => ($m->role === AiMessage::ROLE_USER ? 'User: ' : 'Assistant: ') . Str::limit($m->content, 500))
             ->implode("\n");
 
         $model = $this->resolveModel($request->input('model'));
         $suggestRequest = new AiRequest(
             messages: [AiMessage::user("The conversation so far:\n\n{$transcript}")],
-            system: "You propose what the user might ask the assistant next in a block-based page "
-                . "builder. Reply with ONLY a JSON array of exactly 3 suggestions, each a short "
+            system: 'You propose what the user might ask the assistant next in a block-based page '
+                . 'builder. Reply with ONLY a JSON array of exactly 3 suggestions, each a short '
                 . "imperative of at most 6 words, written in {$language}. Base them on where the "
-                . "conversation is going. No prose, no code fence, no keys — just the array.",
+                . 'conversation is going. No prose, no code fence, no keys — just the array.',
             model: $model?->id,
             effort: AiRequest::normalizeEffort('low'),
             maxTokens: 200,
@@ -252,7 +257,7 @@ class AiController
      */
     private function parseSuggestions(string $text): array
     {
-        $text = \Heisenberg\Ai\ReasoningFilter::strip($text);
+        $text = ReasoningFilter::strip($text);
         $start = strpos($text, '[');
         $end = strrpos($text, ']');
         if ($start === false || $end === false || $end <= $start) {
@@ -267,7 +272,7 @@ class AiController
         $out = [];
         foreach ($decoded as $item) {
             if (is_string($item) && trim($item) !== '') {
-                $out[] = \Illuminate\Support\Str::limit(trim($item), 60, '');
+                $out[] = Str::limit(trim($item), 60, '');
             }
             if (count($out) === 3) {
                 break;
@@ -342,7 +347,7 @@ class AiController
             // straight to the provider with no tools attached, which meant the
             // assistant silently lost every platform tool as soon as streaming was
             // on — and a turn that needed one ended with nothing to show.
-            $stream = app(\Heisenberg\Services\AiToolRunner::class)->stream($provider, $aiRequest);
+            $stream = app(AiToolRunner::class)->stream($provider, $aiRequest);
 
             $terminated = false;
             try {
@@ -412,7 +417,7 @@ class AiController
      * the configured active model. Only models the operator has configured can
      * be named, so this widens nothing — it just lets the chat's own picker win.
      */
-    private function resolveModel(?string $modelKey): ?\Heisenberg\Ai\AiModel
+    private function resolveModel(?string $modelKey): ?AiModel
     {
         $active = $this->settings->activeModel();
         if ($modelKey === null || $modelKey === '') {
@@ -420,7 +425,7 @@ class AiController
         }
 
         foreach ($this->settings->load()['models'] as $raw) {
-            $model = \Heisenberg\Ai\AiModel::fromArray($raw);
+            $model = AiModel::fromArray($raw);
             if ($model->key() === $modelKey && $model->enabled) {
                 return $model;
             }
@@ -469,18 +474,18 @@ class AiController
         $active = $this->settings->activeModel();
 
         return [
-            'settings'  => $settings,
+            'settings' => $settings,
             'providers' => $this->providers->describe(),
-            'presets'   => $this->providers->availablePresets(),
-            'formats'   => $this->providers->formats(),
-            'active'    => $active?->key(),
-            'tools'     => AiSettingsRepository::TOOLS,
-            'efforts'   => AiRequest::EFFORTS,
+            'presets' => $this->providers->availablePresets(),
+            'formats' => $this->providers->formats(),
+            'active' => $active?->key(),
+            'tools' => AiSettingsRepository::TOOLS,
+            'efforts' => AiRequest::EFFORTS,
             'mcp' => [
                 'client_enabled' => (bool) config('heisenberg.ai.mcp.client.enabled', false),
                 'server_enabled' => (bool) config('heisenberg.ai.mcp.server.enabled', false),
-                'server_path'    => (string) config('heisenberg.ai.mcp.server.path', 'heisenberg/mcp'),
-                'tokens_env'     => (string) config('heisenberg.ai.mcp.server.tokens_env', ''),
+                'server_path' => (string) config('heisenberg.ai.mcp.server.path', 'heisenberg/mcp'),
+                'tokens_env' => (string) config('heisenberg.ai.mcp.server.tokens_env', ''),
             ],
         ];
     }
@@ -488,7 +493,7 @@ class AiController
     private function denyUnlessAdmin(Request $request): ?JsonResponse
     {
         return $this->deny($request, 'admins', [
-            'saved'  => false,
+            'saved' => false,
             'errors' => ['You are not authorized to change the AI configuration.'],
         ]);
     }

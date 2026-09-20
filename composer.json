@@ -17,9 +17,12 @@
         "tijsverkoyen/css-to-inline-styles": "^2.2"
     },
     "require-dev": {
-        "orchestra/testbench": "^9.0 || ^10.0",
-        "phpunit/phpunit": "^10.5 || ^11.0",
-        "intervention/image": "^3.9"
+        "brianium/paratest": "^7.8",
+        "intervention/image": "^3.9",
+        "larastan/larastan": "^3.12",
+        "laravel/pint": "^1.13",
+        "orchestra/testbench": "^9.0 || ^10.0 || ^11.0",
+        "phpunit/phpunit": "^10.5 || ^11.0"
     },
     "suggest": {
         "spatie/laravel-activitylog": "Wire the AuditSink to Spatie activitylog (optional).",
@@ -48,11 +51,23 @@
         }
     },
     "scripts": {
-        "test": "phpunit"
+        "test": "phpunit",
+        "test:parallel": [
+            "@php vendor/bin/phpunit tests/M0/PackageSkeletonTest.php",
+            "paratest"
+        ],
+        "analyse": "phpstan analyse --memory-limit=1G",
+        "lint": "pint --test",
+        "format": "pint"
     },
     "config": {
         "sort-packages": true,
-        "preferred-install": "dist"
+        "preferred-install": "dist",
+        "policy": {
+            "advisories": {
+                "block": false
+            }
+        }
     },
     "minimum-stability": "stable",
     "prefer-stable": true

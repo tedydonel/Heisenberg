@@ -4,14 +4,17 @@ declare(strict_types=1);
 
 namespace Heisenberg\Tests\Templates;
 
+use Heisenberg\Services\BlockContractValidator;
+use Heisenberg\Services\BlockRegistryService;
 use Heisenberg\Services\PostTemplateContractValidator;
 use Heisenberg\Services\PostTemplateRegistryService;
+use Heisenberg\Tests\M1\ShippedContractsTest;
 use Heisenberg\Tests\TestCase;
 
 /**
  * Integration guard for the shipped `heisenberg/article` reference template
  * under resources/templates — mirrors
- * {@see \Heisenberg\Tests\M1\ShippedContractsTest} for post templates
+ * {@see ShippedContractsTest} for post templates
  * (docs/post-template-schema.md "Worked example").
  */
 class ReferenceTemplateTest extends TestCase
@@ -90,7 +93,7 @@ class ReferenceTemplateTest extends TestCase
         // BlockRegistryService's scan/hash (docs/post-template-schema.md
         // "Versioning and compatibility").
         $templateHash = $this->registry()->registry()['registryHash'];
-        $blockHash = (new \Heisenberg\Services\BlockRegistryService(new \Heisenberg\Services\BlockContractValidator('heisenberg')))->registry()['registryHash'];
+        $blockHash = (new BlockRegistryService(new BlockContractValidator('heisenberg')))->registry()['registryHash'];
 
         $this->assertNotSame($templateHash, $blockHash);
     }

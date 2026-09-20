@@ -470,6 +470,7 @@ return [
         'name_taken' => 'A block with that name already exists. Pick another.',
         'blocks_required' => 'The block content is missing.',
         'blocks_invalid_entry' => 'Block # :index is not a valid block.',
+        'blocks_too_large' => 'This pattern is too large to save.',
         'not_found' => 'That block no longer exists.',
         'save_dialog_title' => 'Save as block',
         'save_dialog_prompt' => 'Name this composition so you can drop it again from the Blocks tab.',

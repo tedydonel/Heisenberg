@@ -32,7 +32,7 @@ class TagControllerTest extends TestCase
         $this->skipIfMysqlUnreachable();
 
         $this->app['env'] = 'local';
-        $this->withoutMiddleware(\Illuminate\Foundation\Http\Middleware\ValidateCsrfToken::class);
+        $this->withoutCsrfProtection();
     }
 
     public function test_store_then_index_then_update_then_destroy_round_trips(): void

@@ -142,7 +142,7 @@ class ShortcodeSerializer
      * Supports leaves as serialized attribute strings, in canonical group order,
      * with state prefixes and box shorthands applied.
      *
-     * @param  array<string, mixed> $supports
+     * @param array<string, mixed> $supports
      * @return list<string>
      */
     private function supportAttributes(array $supports): array
@@ -204,6 +204,7 @@ class ShortcodeSerializer
             $collapsed = ShortcodeDialect::collapseBox($acc['sides'], $acc['box']['keys']);
             if ($collapsed !== null) {
                 $slots[$acc['at']] = $acc['statePrefix'] . $acc['shortName'] . '=' . ShortcodeDialect::fmtValue($collapsed);
+
                 continue;
             }
 
@@ -228,6 +229,7 @@ class ShortcodeSerializer
             }
             if (is_string($slot)) {
                 $out[] = $slot;
+
                 continue;
             }
             foreach ($slot['multi'] as $part) {
@@ -246,7 +248,7 @@ class ShortcodeSerializer
      * matching the JS side: PHP cannot tell `{}` from `[]` after a JSON decode,
      * and an empty-array supports leaf is meaningless either way.
      *
-     * @param array<string, mixed>            $node
+     * @param array<string, mixed> $node
      * @param list<array{0: string, 1: mixed}> $out
      */
     private function flattenSupports(array $node, string $prefix, array &$out): void
@@ -259,6 +261,7 @@ class ShortcodeSerializer
 
             if (is_array($value) && ($value === [] || ! array_is_list($value))) {
                 $this->flattenSupports($value, $path, $out);
+
                 continue;
             }
 
@@ -321,6 +324,7 @@ class ShortcodeSerializer
                 } else {
                     $current .= $token;
                 }
+
                 continue;
             }
             $current .= $token;

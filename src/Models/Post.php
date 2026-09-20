@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Heisenberg\Models;
 
+use Heisenberg\Adapters\NativeCommentProvider;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -275,7 +276,7 @@ class Post extends Model
 
     /**
      * The polymorphic SEO/meta row for this post (docs/seo-system.md §3, Wave S2a) — one row
-     * per `(able_type, able_id)`, {@see \Heisenberg\Models\SeoMeta}'s own unique index. `null`
+     * per `(able_type, able_id)`, {@see SeoMeta}'s own unique index. `null`
      * until the SEO/Social panel's first save creates it (PostController::applySeo()
      * `updateOrCreate`s, never a plain `create()`) — same "no row until something is actually
      * saved" posture as {@see featuredImage()}'s nullable BelongsTo. Model class is
@@ -284,12 +285,12 @@ class Post extends Model
      */
     public function seoMeta(): MorphOne
     {
-        return $this->morphOne(config('heisenberg.models.seo_meta', \Heisenberg\Models\SeoMeta::class), 'able');
+        return $this->morphOne(config('heisenberg.models.seo_meta', SeoMeta::class), 'able');
     }
 
     /**
      * This post's comments (blueprint §2.3.1 `comments()`), unordered/unfiltered — the raw
-     * relation. {@see \Heisenberg\Adapters\NativeCommentProvider} is what applies the
+     * relation. {@see NativeCommentProvider} is what applies the
      * approved-only + nesting + sort-order rules a template actually renders; this relation
      * exists for direct model access (moderation surfaces, tests) rather than public display.
      */

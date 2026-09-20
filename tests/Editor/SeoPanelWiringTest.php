@@ -26,7 +26,7 @@ class SeoPanelWiringTest extends TestCase
         parent::setUp();
 
         $this->app['env'] = 'local';
-        $this->withoutMiddleware(\Illuminate\Foundation\Http\Middleware\ValidateCsrfToken::class);
+        $this->withoutCsrfProtection();
     }
 
     private function blankEditorHtml(): string
@@ -256,4 +256,3 @@ class SeoPanelWiringTest extends TestCase
         $this->assertStringContainsString('data-hb-social-preview-domain', $html);
     }
 }
-

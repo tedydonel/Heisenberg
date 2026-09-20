@@ -7,10 +7,13 @@ declare(strict_types=1);
 | Heisenberg block-palette preview generator
 |--------------------------------------------------------------------------
 |
-| Heisenberg has no editor UI of its own (the block-editor SPA is a host
-| concern — blueprint §0.2). The closest visual of "current builder state" is
-| the registry: the catalogue of block types the editor would be fed. This
-| script discovers the shipped contracts and writes:
+| This is a static preview, not the editor itself. Heisenberg now ships a full
+| block editor at /editor (and an email editor at /editor/email — see
+| resources/views/editor/ and src/Http/Controllers/EditorController.php) with
+| a live canvas, inspector, and autosave. What this script renders is one
+| layer below that: the registry — the catalogue of block *types* the editor's
+| inserter is fed, before any document/instance exists. It discovers the
+| shipped contracts under resources/blocks/ and writes:
 |
 |   examples/registry.json        — the contract catalogue as data
 |   examples/blocks-preview.html   — a styled palette you can open in a browser
@@ -20,7 +23,9 @@ declare(strict_types=1);
 |
 |   php examples/preview.php
 |
-| Re-run any time the contracts change.
+| Re-run any time the contracts under resources/blocks/ change — there is no
+| separate artisan command for this; running this script is the only way
+| examples/registry.json gets regenerated.
 */
 
 use Heisenberg\Services\BlockContractValidator;
@@ -38,6 +43,7 @@ $discovered = $registry->discover();
 /** Strip the on-disk path keys so the hash matches the editor-facing registry. */
 $blocks = array_map(static function (array $contract): array {
     unset($contract['_absolutePath'], $contract['_relativePath']);
+
     return $contract;
 }, $discovered['blocks']);
 
@@ -49,11 +55,11 @@ $categories = $registry->getCategories($blocks);
 // registry.json (app-free subset of the editor envelope).
 $envelope = [
     'schemaVersion' => BlockRegistryService::SCHEMA_VERSION,
-    'registryHash'  => $hash,
-    'blockCount'    => count($blocks),
-    'categories'    => $categories,
-    'errors'        => $discovered['errors'],
-    'blocks'        => $blocks,
+    'registryHash' => $hash,
+    'blockCount' => count($blocks),
+    'categories' => $categories,
+    'errors' => $discovered['errors'],
+    'blocks' => $blocks,
 ];
 
 file_put_contents(
@@ -128,7 +134,7 @@ $html = <<<HTML
 <body>
 <header>
   <h1>Heisenberg — Block Palette</h1>
-  <p>This is the current state of the block builder: the <strong>catalogue of block types</strong> the editor would offer in its inserter. There are no block <em>instances</em> yet (no rendered content) — the renderer lands later. Heisenberg ships the backend; the visual editor SPA is a host concern.</p>
+  <p>This is a static preview, not the editor: the <strong>catalogue of block types</strong> the editor's inserter offers, generated straight from the shipped contracts. No block <em>instances</em> or documents live here. The real editor — canvas, inspector, autosave and all — ships with this package at <code>/editor</code> (and <code>/editor/email</code> for email documents); this page just shows the palette it draws from.</p>
   <div class="pills">
     <span class="pill"><strong>$count</strong> block types</span>
     <span class="pill">$errorNote</span>

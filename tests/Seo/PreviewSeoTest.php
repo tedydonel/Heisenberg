@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace Heisenberg\Tests\Seo;
 
+use Heisenberg\Adapters\NullPostSeoMetaProvider;
+use Heisenberg\Contracts\PostSeoMetaProvider;
 use Heisenberg\Models\Post;
 use Heisenberg\Models\SeoMeta;
 use Heisenberg\Tests\TestCase;
@@ -89,8 +91,8 @@ class PreviewSeoTest extends TestCase
 
     public function test_the_null_seo_meta_provider_binding_also_falls_back_cleanly(): void
     {
-        $this->app['config']->set('heisenberg.post_template.seo_meta_provider', \Heisenberg\Adapters\NullPostSeoMetaProvider::class);
-        $this->app->forgetInstance(\Heisenberg\Contracts\PostSeoMetaProvider::class);
+        $this->app['config']->set('heisenberg.post_template.seo_meta_provider', NullPostSeoMetaProvider::class);
+        $this->app->forgetInstance(PostSeoMetaProvider::class);
 
         $post = $this->makePost();
         SeoMeta::create([

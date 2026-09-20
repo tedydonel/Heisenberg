@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Heisenberg\Tests\Templates;
 
+use Heisenberg\Adapters\NullMediaResolver;
 use Heisenberg\Adapters\NullPostCommentProvider;
 use Heisenberg\Adapters\NullPostSeoMetaProvider;
 use Heisenberg\Adapters\NullPostViewsProvider;
@@ -14,7 +15,7 @@ use Heisenberg\Tests\TestCase;
 /**
  * The four adapter-backed post-template capabilities (postViews, comments,
  * relatedPosts, seoMeta — docs/post-template-schema.md) each get a bundled
- * null-object default, the same pattern as {@see \Heisenberg\Adapters\NullMediaResolver}
+ * null-object default, the same pattern as {@see NullMediaResolver}
  * et al. These are plain classes — not yet bound in the container (see the
  * schema doc's "Wiring" section) — so they're exercised here by direct
  * instantiation, same as the rest of this delivery.

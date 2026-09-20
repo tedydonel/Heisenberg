@@ -1,0 +1,73 @@
+{
+    "$schema": "../../../../docs/post-template-schema.md",
+    "apiVersion": 1,
+    "name": "heisenberg/blog",
+    "title": "Workbench blog post",
+    "category": "post",
+    "icon": "newspaper",
+    "description": "The demo host's own post template — proves the config('heisenberg.template_root') seam (PostTemplateRegistryService's docblock) by pointing the registry at this workbench directory instead of the package's bundled resources/templates.",
+    "keywords": ["blog", "post", "demo"],
+    "version": "1.0.0",
+    "render": {
+        "view": "blog.show",
+        "script": null
+    },
+    "capabilities": {
+        "tableOfContents": {
+            "enabled": true,
+            "source": "entries",
+            "minLevel": 2,
+            "maxLevel": 3,
+            "title": "On this page"
+        },
+        "featuredImage": {
+            "enabled": true,
+            "source": "post-attribute",
+            "context": "hero",
+            "fallback": null
+        },
+        "readingTime": {
+            "enabled": true,
+            "wordsPerMinute": 200,
+            "label": "min read"
+        },
+        "authorBox": {
+            "enabled": true,
+            "fields": {
+                "name": "name",
+                "avatar": "avatar_url",
+                "bio": "bio"
+            }
+        },
+        "shareButtons": {
+            "enabled": true,
+            "networks": ["x", "facebook", "linkedin", "email", "copy-link"]
+        },
+        "breadcrumbs": {
+            "enabled": true,
+            "homeLabel": "Blog",
+            "categoryAttribute": null
+        },
+        "pagination": {
+            "enabled": true,
+            "mode": "prev-next"
+        },
+        "postViews": {
+            "enabled": false,
+            "label": "views"
+        },
+        "comments": {
+            "enabled": true,
+            "allowGuests": true,
+            "sortOrder": "oldest"
+        },
+        "relatedPosts": {
+            "enabled": true,
+            "limit": 3
+        },
+        "seoMeta": {
+            "enabled": true,
+            "fields": ["title", "description", "canonical", "ogImage", "robots"]
+        }
+    }
+}

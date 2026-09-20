@@ -51,7 +51,7 @@ class MediaAuthorizationTest extends TestCase
         // simulateLocalDevSession() docblock). Disabling it unconditionally
         // here, the same way CategoryControllerTest does, keeps every test
         // method free to switch environments without re-deriving this.
-        $this->withoutMiddleware(\Illuminate\Foundation\Http\Middleware\ValidateCsrfToken::class);
+        $this->withoutCsrfProtection();
     }
 
     private function actingAsRole(int $id, string $role): FakeActor

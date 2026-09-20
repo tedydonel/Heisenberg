@@ -48,7 +48,7 @@ final class ConfigMerge
 {
     /**
      * @param array<array-key, mixed> $defaults the package's shipped config
-     * @param array<array-key, mixed> $host     the host's current config (published + already-set values)
+     * @param array<array-key, mixed> $host the host's current config (published + already-set values)
      * @return array<array-key, mixed> the host's config, with any package key it was missing filled in
      */
     public static function merge(array $defaults, array $host): array
@@ -58,6 +58,7 @@ final class ConfigMerge
         foreach ($defaults as $key => $value) {
             if (! array_key_exists($key, $result)) {
                 $result[$key] = $value;
+
                 continue;
             }
 
@@ -65,6 +66,7 @@ final class ConfigMerge
 
             if (is_array($value) && is_array($hostValue) && self::isAssociative($value) && self::isAssociative($hostValue)) {
                 $result[$key] = self::merge($value, $hostValue);
+
                 continue;
             }
 

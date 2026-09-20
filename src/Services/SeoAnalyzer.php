@@ -128,7 +128,6 @@ class SeoAnalyzer
         return array_key_exists($key, $overrides) ? trim((string) $overrides[$key]) : trim($fallback);
     }
 
-    
     private function titleLengthCheck(string $title): array
     {
         $len = mb_strlen($title);
@@ -155,7 +154,6 @@ class SeoAnalyzer
         return $this->check('description-length', 'pass', "Description length ({$len} characters) is in the ideal range.", ['length' => $len]);
     }
 
-    
     private function keyphraseSetCheck(string $keyphrase): array
     {
         return $keyphrase !== ''
@@ -237,7 +235,6 @@ class SeoAnalyzer
         return $this->check('density', 'pass', "Keyphrase density ({$density}%) is in the ideal range.", ['density' => $density]);
     }
 
-    
     private function contentLengthCheck(int $wordCount): array
     {
         if ($wordCount >= 300) {
@@ -294,7 +291,6 @@ class SeoAnalyzer
         return $this->check('paragraph-length', 'pass', 'Paragraph lengths look reasonable.', ['words' => $longest]);
     }
 
-    
     /** @param list<array{hasAlt:bool}> $images */
     private function imageAltsCheck(array $images): array
     {
@@ -335,7 +331,6 @@ class SeoAnalyzer
             : $this->check('outbound-link', 'warn', 'Add at least one outbound link to a credible external source.');
     }
 
-    
     private function slugQualityCheck(string $slug): array
     {
         if ($slug === '') {
@@ -391,7 +386,6 @@ class SeoAnalyzer
             : $this->check('og-image', 'warn', 'Add a social share image for better link previews.');
     }
 
-    
     private function readabilityCheck(string $plainText, int $wordCount, string $locale): array
     {
         if ($wordCount === 0) {
@@ -453,7 +447,6 @@ class SeoAnalyzer
         return max(1, $groups ?: 1);
     }
 
-    
     /**
      * Flattens the post's stored block tree into plain text + structure for the checks above.
      * Deterministic, no rendering: walks the RAW attribute values (not through BlockRenderer's
@@ -682,7 +675,6 @@ class SeoAnalyzer
         return is_string($appHost) && $appHost !== '' && strcasecmp($host, $appHost) === 0;
     }
 
-    
     /** @return list<string> */
     private function words(string $text): array
     {

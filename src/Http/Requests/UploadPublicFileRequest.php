@@ -5,10 +5,13 @@ declare(strict_types=1);
 namespace Heisenberg\Http\Requests;
 
 use Closure;
+use Heisenberg\Adapters\GuestActor;
+use Heisenberg\Adapters\LocalDevRoleGate;
 use Heisenberg\Contracts\RoleGate;
 use Heisenberg\Models\PublicFile;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Http\UploadedFile;
+use Illuminate\Validation\Validator;
 
 /**
  * Validation for `POST /media/upload` (blueprint §5 step 1-2, §8): ability-gated
@@ -23,9 +26,9 @@ class UploadPublicFileRequest extends FormRequest
         // Same GuestActor + LocalDevRoleGate seam as PublicFilePolicy (2026-08-10):
         // "no user" is allowed on a developer's local machine only; a real user
         // is always answered by the configured gate.
-        $actor = $this->user() ?? new \Heisenberg\Adapters\GuestActor();
+        $actor = $this->user() ?? new GuestActor();
 
-        return (new \Heisenberg\Adapters\LocalDevRoleGate(app(RoleGate::class)))->is($actor, 'media.create');
+        return (new LocalDevRoleGate(app(RoleGate::class)))->is($actor, 'media.create');
     }
 
     /**
@@ -48,9 +51,9 @@ class UploadPublicFileRequest extends FormRequest
         ];
     }
 
-    public function withValidator(\Illuminate\Validation\Validator $validator): void
+    public function withValidator(Validator $validator): void
     {
-        $validator->after(function (\Illuminate\Validation\Validator $validator): void {
+        $validator->after(function (Validator $validator): void {
             if (! $this->hasFile('file') && ! $this->hasFile('files')) {
                 $validator->errors()->add('file', 'A file is required.');
             }

@@ -8,6 +8,7 @@ use Heisenberg\Models\Block;
 use Heisenberg\Models\Post;
 use Heisenberg\Models\Revision;
 use Heisenberg\Services\McpToolRegistry;
+use Heisenberg\Tests\Taxonomy\FakeActor;
 use Heisenberg\Tests\TestCase;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 
@@ -152,7 +153,7 @@ class PostTrashToolsTest extends TestCase
         $trashedPost->delete();
 
         $this->app['env'] = 'testing';
-        $this->actingAs(new \Heisenberg\Tests\Taxonomy\FakeActor(999, 'author'));
+        $this->actingAs(new FakeActor(999, 'author'));
 
         $trashCall = $this->callTool('trash_post', ['post_id' => $post->id]);
         $this->assertTrue($trashCall['isError']);
@@ -168,7 +169,7 @@ class PostTrashToolsTest extends TestCase
         $post = Post::create(['title_en' => 'X', 'status' => 'draft']);
 
         $this->app['env'] = 'testing';
-        $this->actingAs(new \Heisenberg\Tests\Taxonomy\FakeActor(1, 'admin'));
+        $this->actingAs(new FakeActor(1, 'admin'));
 
         $this->toolData('trash_post', ['post_id' => $post->id]);
         $this->assertTrue($post->fresh()->trashed());

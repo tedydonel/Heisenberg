@@ -70,6 +70,7 @@ class BlocksPayloadService
         foreach (array_values($blocks) as $i => $block) {
             if (! is_array($block)) {
                 $this->add($errors, $errorMap, "blocks.{$i}", "blocks.{$i} must be an object");
+
                 continue;
             }
             $this->validateBlockInstance($block, $contracts, "blocks.{$i}", $errors, $errorMap, 0);
@@ -141,6 +142,7 @@ class BlocksPayloadService
             $childPath = "{$basePath}.innerBlocks.{$i}";
             if (! is_array($child)) {
                 $this->add($errors, $errorMap, $childPath, "{$childPath} must be an object");
+
                 continue;
             }
             $this->validateBlockInstance($child, $contracts, $childPath, $errors, $errorMap, $depth + 1);
@@ -171,6 +173,7 @@ class BlocksPayloadService
             $type = $definition['type'] ?? null;
             if (in_array($type, self::ATTRIBUTE_TYPES, true) && ! $this->valueMatchesType($value, $type)) {
                 $this->add($errors, $errorMap, "{$basePath}.{$key}", "{$basePath}.{$key}: expected type {$type}");
+
                 continue;
             }
 

@@ -6,6 +6,41 @@ All notable changes to this project are documented here. The format is based on
 
 ## [Unreleased]
 
+See [`UPGRADING.md`](UPGRADING.md) for what these mean for an existing install.
+
+### Security
+
+- **Livewire media library authorization.** The `media-library` component now authorizes `media.viewAny` before listing or selecting files, matching `MediaLibraryController`; previously only upload and delete were gated.
+- **Saved-pattern endpoints now require authorization.** `/editor/patterns` (list / save / delete) had no role check at all, so with the default `['web']` middleware an anonymous visitor could write arbitrary JSON and delete every pattern. All three actions now require the `authors` tier (with the usual local-dev bypass), and a pattern's `blocks` payload is capped at 512 KB.
+- **SSRF guard for outbound AI/MCP requests.** New `OutboundUrlGuard` vets MCP server URLs and custom provider base URLs on save and again before every request. Private networks are allowed automatically only in `local` (`heisenberg.ai.outbound.*`), link-local / cloud-metadata ranges are always blocked, disguised host forms (bracketed IPv6, decimal/hex/short IPv4, `*.localhost`) are normalized or refused, and these requests no longer follow redirects.
+- **SVG upload guard.** `.svg`/`.svgz` uploads are refused unless a `SvgSanitizer` is bound (`heisenberg.media.svg_sanitizer`); `.svgz` is inflated incrementally under a hard size cap.
+- **Anonymous-bypass warning.** A throttled log warning fires while the local-dev anonymous bypass is active, escalated when `APP_DEBUG` is false.
+
+### Added
+
+- **Demo host app** under `workbench/` with an end-to-end adopter-path test (`tests/Demo`), screenshots, and `docs/demo.md`.
+- `UPGRADING.md`, `docs/ARCHITECTURE.md`, and `docs/STATUS.md`; the frozen `TODO.md` / `CODE_REVIEW.md` moved to `docs/archive/`.
+- CI: explicit Laravel 11 / 12 / 13 matrix, Larastan (baselined), Pint, `composer audit`, Dependabot, and the jsdom + Playwright JS harnesses. `composer test:parallel` runs the suite under paratest.
+- Editor stylesheet caching: versioned URLs with `immutable` caching, ETag / `304` revalidation otherwise (was `no-store`).
+- Autosave skips saves whose content is unchanged and backs off for very large documents.
+
+### Changed
+
+- **Internal structure, no behavior change.** `McpToolRegistry`, `BlockRegistryService` and `BlockRenderer` are now thin façades with unchanged public APIs over `src/Mcp/`, `src/Blocks/` and `src/Rendering/`; `block-runtime.blade.php` is a table of contents over 13 ordered partials emitting a byte-identical page. Pinned by a tool-catalogue snapshot test and a renderer golden-output corpus. Hosts that extended these classes by subclassing and overriding private/protected methods should re-check their overrides.
+- Icon blocks no longer re-read the icon manifest from disk on every render.
+- Code style is now enforced by Pint (config tuned to the existing conventions) and static analysis by Larastan with a baseline.
+- `heisenberg_posts.locale` is a plain string column instead of a database ENUM; the supported locales are an application concern (`heisenberg.locales`).
+- With the bundled public route enabled and no `seo.url_template`, sitemap / canonical / hreflang URLs now use the public route instead of the editor preview.
+- `orchestra/testbench` dev constraint widened to `^11.0`. The package advertised Laravel 13 support that could not previously be installed, so the suite had never run on it; it now does, on 13.32, and CI runs a real 11 / 12 / 13 matrix in parallel (~5 min per lane instead of ~33).
+- Test suite hygiene: CSRF is disabled through one version-agnostic helper (Laravel 13 renamed the middleware, which silently turned 30 files' `withoutMiddleware()` calls into no-ops), and the file-backed theme / saved-theme / AI settings / AI credential stores get a fresh temp directory per test instead of sharing the Testbench skeleton's `storage/` with `testbench serve`.
+
+### Fixed
+
+- **Bundled public route and single-row bilingual posts.** `/posts/{locale}/{slug}` now serves the same row at every locale it has content in, renders in the URL's locale, and 404s for untranslated locales — previously the page's own hreflang alternates pointed at URLs that 404'd.
+- The editor "Preview" bar no longer renders on the public post page.
+- The editor save request validates `locale` against `heisenberg.locales` instead of a hardcoded pair.
+- Removed a `heisenberg-assets` publish entry for a `resources/js` directory that does not exist.
+
 ## [0.0.7] - 2026-09-19
 
 ### Added
@@ -36,6 +71,8 @@ All notable changes to this project are documented here. The format is based on
 
 - Restored standard `x` close icons across the application layout.
 - Cleaned up documentation, updated email system integration instructions, and removed em-dash usage.
+
+## [0.0.5] - 2026-08-27
 
 ### Fixed
 
@@ -138,7 +175,9 @@ All notable changes to this project are documented here. The format is based on
 First public release: block editor, media library, taxonomy, post templates, canonical role gates,
 AI writing assistant, MCP integration, revisions, autosave, and host-owned rendering seams.
 
-[Unreleased]: https://github.com/tedydonel/Heisenberg/compare/v0.0.5...HEAD
+[Unreleased]: https://github.com/tedydonel/Heisenberg/compare/v0.0.7...HEAD
+[0.0.7]: https://github.com/tedydonel/Heisenberg/compare/v0.0.6...v0.0.7
+[0.0.6]: https://github.com/tedydonel/Heisenberg/compare/v0.0.5...v0.0.6
 [0.0.5]: https://github.com/tedydonel/Heisenberg/compare/v0.0.4...v0.0.5
 [0.0.4]: https://github.com/tedydonel/Heisenberg/compare/v0.0.3...v0.0.4
 [0.0.3]: https://github.com/tedydonel/Heisenberg/compare/v0.0.2...v0.0.3

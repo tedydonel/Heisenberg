@@ -5,14 +5,19 @@ declare(strict_types=1);
 namespace Heisenberg\Tests\M0;
 
 use Heisenberg\Adapters\ConfigRoleGate;
-use Heisenberg\Adapters\PhosphorIconProvider;
+use Heisenberg\Adapters\NativeCommentProvider;
+use Heisenberg\Adapters\NativeSeoMetaProvider;
 use Heisenberg\Adapters\NullAuditSink;
 use Heisenberg\Adapters\NullMediaResolver;
+use Heisenberg\Adapters\PhosphorIconProvider;
 use Heisenberg\Contracts\AuditSink;
 use Heisenberg\Contracts\IconProvider;
 use Heisenberg\Contracts\MediaResolver;
+use Heisenberg\Contracts\PostCommentProvider;
+use Heisenberg\Contracts\PostSeoMetaProvider;
 use Heisenberg\Contracts\RoleGate;
 use Heisenberg\HeisenbergServiceProvider;
+use Heisenberg\Services\PostTemplateRegistryService;
 use Heisenberg\Tests\TestCase;
 use Illuminate\Foundation\Auth\User as AuthUser;
 
@@ -90,12 +95,12 @@ class PackageSkeletonTest extends TestCase
     public function test_post_comment_provider_resolves_to_the_native_adapter_by_default(): void
     {
         $this->assertInstanceOf(
-            \Heisenberg\Adapters\NativeCommentProvider::class,
-            app(\Heisenberg\Contracts\PostCommentProvider::class)
+            NativeCommentProvider::class,
+            app(PostCommentProvider::class)
         );
         $this->assertSame(
-            app(\Heisenberg\Contracts\PostCommentProvider::class),
-            app(\Heisenberg\Contracts\PostCommentProvider::class)
+            app(PostCommentProvider::class),
+            app(PostCommentProvider::class)
         );
     }
 
@@ -108,12 +113,12 @@ class PackageSkeletonTest extends TestCase
     public function test_post_seo_meta_provider_resolves_to_the_native_adapter_by_default(): void
     {
         $this->assertInstanceOf(
-            \Heisenberg\Adapters\NativeSeoMetaProvider::class,
-            app(\Heisenberg\Contracts\PostSeoMetaProvider::class)
+            NativeSeoMetaProvider::class,
+            app(PostSeoMetaProvider::class)
         );
         $this->assertSame(
-            app(\Heisenberg\Contracts\PostSeoMetaProvider::class),
-            app(\Heisenberg\Contracts\PostSeoMetaProvider::class)
+            app(PostSeoMetaProvider::class),
+            app(PostSeoMetaProvider::class)
         );
     }
 
@@ -125,8 +130,8 @@ class PackageSkeletonTest extends TestCase
      */
     public function test_template_registry_resolves_as_a_singleton_and_honors_template_root(): void
     {
-        $registry = app(\Heisenberg\Services\PostTemplateRegistryService::class);
-        $this->assertSame($registry, app(\Heisenberg\Services\PostTemplateRegistryService::class));
+        $registry = app(PostTemplateRegistryService::class);
+        $this->assertSame($registry, app(PostTemplateRegistryService::class));
 
         // Default root: the shipped article template is discovered.
         $slugs = array_column($registry->registry()['templates'] ?? [], 'name');
@@ -139,13 +144,13 @@ class PackageSkeletonTest extends TestCase
         mkdir($root);
         try {
             config(['heisenberg.template_root' => $root]);
-            $this->app->forgetInstance(\Heisenberg\Services\PostTemplateRegistryService::class);
-            $hostRegistry = app(\Heisenberg\Services\PostTemplateRegistryService::class);
+            $this->app->forgetInstance(PostTemplateRegistryService::class);
+            $hostRegistry = app(PostTemplateRegistryService::class);
             $this->assertSame([], $hostRegistry->registry()['templates'] ?? []);
         } finally {
             rmdir($root);
             config(['heisenberg.template_root' => null]);
-            $this->app->forgetInstance(\Heisenberg\Services\PostTemplateRegistryService::class);
+            $this->app->forgetInstance(PostTemplateRegistryService::class);
         }
     }
 
@@ -164,7 +169,8 @@ class PackageSkeletonTest extends TestCase
 
     private function userWithRoles(array $roles): AuthUser
     {
-        return new class($roles) extends AuthUser {
+        return new class($roles) extends AuthUser
+        {
             /** @param string[] $roles */
             public function __construct(private array $roles)
             {

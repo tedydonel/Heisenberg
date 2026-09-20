@@ -29,6 +29,16 @@ class AiSettingsRepositoryTest extends TestCase
 
         $this->path = sys_get_temp_dir() . DIRECTORY_SEPARATOR . 'hb-ai-settings-' . uniqid('', true) . '.json';
         config(['heisenberg.ai.settings_path' => $this->path]);
+
+        // This suite's own env is 'testing', not 'local' — OutboundUrlGuard's
+        // SSRF check (see AiSettingsRepository::validateProviders/
+        // validateServers) therefore blocks a private-network base_url/url by
+        // default here, exactly as it would for a real non-local deployment.
+        // Several fixtures below deliberately use a local Ollama endpoint
+        // (http://localhost:11434/v1) as a legitimate provider example — opt
+        // private networks IN for this suite rather than weakening the
+        // guard's actual default.
+        config(['heisenberg.ai.outbound.allow_private_networks' => true]);
     }
 
     protected function tearDown(): void
@@ -257,5 +267,55 @@ class AiSettingsRepositoryTest extends TestCase
 
         $this->assertFalse($result['saved']);
         $this->assertStringContainsString('launch_missiles', implode(' ', $result['errors']));
+    }
+
+    // ── SSRF guard (OutboundUrlGuard) applied at validation time ────────────
+    //
+    // See HttpMcpClientSsrfTest / AiMcpControllerTest for the SAME policy
+    // re-checked immediately before every actual outbound request — this
+    // suite only proves the save-time half.
+
+    public function test_a_cloud_metadata_provider_base_url_is_rejected_even_with_private_networks_allowed(): void
+    {
+        // setUp() already opts private networks in for this whole suite (see
+        // its docblock) — link-local/metadata must stay blocked regardless.
+        $result = $this->repo()->save([
+            'providers' => [['id' => 'evil', 'format' => 'openai', 'base_url' => 'http://169.254.169.254/']],
+        ]);
+
+        $this->assertFalse($result['saved']);
+        $this->assertStringContainsString('link-local', implode(' ', $result['errors']));
+    }
+
+    public function test_a_private_network_provider_base_url_is_rejected_outside_local_by_default(): void
+    {
+        config(['heisenberg.ai.outbound.allow_private_networks' => false]);
+
+        $result = $this->repo()->save([
+            'providers' => [['id' => 'internal', 'format' => 'openai', 'base_url' => 'http://10.0.0.5/v1']],
+        ]);
+
+        $this->assertFalse($result['saved']);
+        $this->assertStringContainsString('private/internal address', implode(' ', $result['errors']));
+    }
+
+    public function test_a_cloud_metadata_mcp_server_url_is_rejected_even_with_private_networks_allowed(): void
+    {
+        $result = $this->repo()->save([
+            'mcp_servers' => [['id' => 'evil', 'url' => 'http://169.254.169.254/latest/meta-data/']],
+        ]);
+
+        $this->assertFalse($result['saved']);
+        $this->assertStringContainsString('link-local', implode(' ', $result['errors']));
+    }
+
+    public function test_a_private_network_mcp_server_url_is_allowed_when_opted_in(): void
+    {
+        // setUp() already sets allow_private_networks => true.
+        $result = $this->repo()->save([
+            'mcp_servers' => [['id' => 'internal', 'url' => 'http://10.0.0.5/mcp']],
+        ]);
+
+        $this->assertTrue($result['saved'], implode(' / ', $result['errors']));
     }
 }

@@ -1,0 +1,4 @@
+{
+    "html": "<table role=\"presentation\" width=\"100%\" cellpadding=\"0\" cellspacing=\"0\" border=\"0\" style=\"--hb-button-color: #ffffff; --hb-button-bg: #ff0000; --hb-border-top-style: solid; --hb-border-right-style: solid; --hb-border-bottom-style: solid; --hb-border-left-style: solid; --hb-opacity: 0.5; --hb-anim-dur: 600; --hb-anim-delay: 0;\"><tr><td align=\"left\" style=\"padding:0 0 16px 0;\"><table role=\"presentation\" cellpadding=\"0\" cellspacing=\"0\" border=\"0\"><tr><td align=\"center\" style=\"border-radius:4px; background-color: var(--hb-button-bg, #0a0a0a);\"><a href=\"https://example.com/cta\" style=\"display:inline-block; padding:12px 24px; font-family: var(--hb-button-ff, Arial, Helvetica, sans-serif); font-weight: var(--hb-button-fw, 600); font-size: var(--hb-button-fs, 15px); color: var(--hb-button-color, #ffffff); text-decoration:none; border-radius:4px;\">Email CTA</a></td></tr></table></td></tr></table>",
+    "css": ""
+}

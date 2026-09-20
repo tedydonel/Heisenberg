@@ -8,8 +8,8 @@ use Heisenberg\Contracts\PostCommentProvider;
 use Heisenberg\Contracts\PostSeoMetaProvider;
 use Heisenberg\Contracts\PostUrlResolver;
 use Heisenberg\Models\Post;
-use Heisenberg\Services\BlockRenderer;
 use Heisenberg\Services\BlockRegistryService;
+use Heisenberg\Services\BlockRenderer;
 use Heisenberg\Services\FontCatalogService;
 use Heisenberg\Services\ThemeRepository;
 use Heisenberg\Services\TranslationStatusService;
@@ -17,6 +17,7 @@ use Heisenberg\Support\BlockViewData;
 use Heisenberg\Support\LocaleConfig;
 use Illuminate\Contracts\View\View;
 use Illuminate\Http\Request;
+use Illuminate\Support\Carbon;
 
 /**
  * The bundled public show route (opt-in via `heisenberg.public.routes`): serves a
@@ -71,14 +72,12 @@ class PostPublicController
         // document never leaks into the public blog at this URL (emails have their
         // own dedicated surface at /emails/{slug}). withTrashed() would include trashed
         // rows; omit it so a trashed post 404s here like it does everywhere else.
-        $class = (string) config('heisenberg.models.post', Post::class);
-        $model = $class::query()
-            ->posts()
-            ->where('locale', $locale)
-            ->where('slug', $slug)
-            ->where('status', 'published')
-            ->firstOrFail();
+        $model = $this->resolvePost($locale, $slug);
 
+        // The URL's own locale segment is what the visitor is browsing — it drives the
+        // render. `?locale=` stays as an explicit override on top (the PreviewController
+        // seam), so existing `/posts/en/{slug}?locale=fr` links keep working.
+        app()->setLocale($locale);
         $this->applyContentLocale($request);
 
         // Mirror PreviewController::showPost: the REQUEST locale drives title(),
@@ -96,6 +95,9 @@ class PostPublicController
         ];
 
         return view('heisenberg::preview', [
+            // The view is shared with the editor preview; its "Preview — close this tab to
+            // return to the editor" bar has no business on a real visitor's page.
+            'previewBar' => false,
             'hasDoc' => true,
             'title' => $model->title($activeLocale) ?: 'Untitled post',
             'html' => $this->renderer->renderBlocks($blocks, $activeLocale),
@@ -112,6 +114,43 @@ class PostPublicController
             ])->values()->all(),
             'comments' => $model->allow_comments === false ? null : $this->commentsPayload($request, $model),
         ]);
+    }
+
+    /**
+     * One logical post is ONE row carrying every language (docs/content-translation.md §0:
+     * "`/fr/blog/{slug}` resolves the SAME row and renders with `locale=fr`"), so the row's
+     * own `locale` column is its AUTHORING locale, not the only URL it answers at. A row
+     * whose `locale` matches the URL wins outright (that also keeps any not-yet-merged
+     * legacy split rows, which share a slug across locales, resolving to their own row).
+     * Otherwise the slug's row answers for the requested locale only if it actually has a
+     * title in it — the same "has content" test alternatesPayload() uses to decide which
+     * hreflang links to emit, so every alternate this page advertises resolves, and a
+     * locale the post was never translated into 404s instead of serving a duplicate of the
+     * authoring-locale page under a second URL.
+     */
+    private function resolvePost(string $locale, string $slug): Post
+    {
+        $class = (string) config('heisenberg.models.post', Post::class);
+
+        $published = fn () => $class::query()
+            ->posts()
+            ->where('slug', $slug)
+            ->where('status', 'published');
+
+        $model = $published()->where('locale', $locale)->first();
+        if ($model !== null) {
+            return $model;
+        }
+
+        $model = $published()->orderBy('id')->firstOrFail();
+
+        foreach ($this->translationStatus->statuses($model) as $row) {
+            if ($row['locale'] === $locale && $row['title']) {
+                return $model;
+            }
+        }
+
+        abort(404);
     }
 
     /**
@@ -255,7 +294,7 @@ class PostPublicController
 
         if (is_string($value) && $value !== '') {
             try {
-                return \Illuminate\Support\Carbon::parse($value)->format('M j, Y H:i');
+                return Carbon::parse($value)->format('M j, Y H:i');
             } catch (\Throwable) {
                 return $value;
             }

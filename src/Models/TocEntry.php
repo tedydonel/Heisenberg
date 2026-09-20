@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Heisenberg\Models;
 
+use Heisenberg\Http\Controllers\PostSettingsController;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
@@ -15,7 +16,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
  * rather than `label_en`/`label_fr`, `anchor` rather than `target`, and no `num` — bilingual
  * labels can be added later without a breaking migration if a host needs them.
  *
- * Written only by {@see \Heisenberg\Http\Controllers\PostSettingsController::updateToc()}, which
+ * Written only by {@see PostSettingsController::updateToc()}, which
  * replaces a post's whole set on every save (delete then re-insert in submitted order). `order`
  * is fillable (the controller sets it from the submitted array's index) but is never itself part
  * of the validated request body — a client posts `{label, anchor}` pairs in the order it wants;

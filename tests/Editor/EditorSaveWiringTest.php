@@ -30,7 +30,7 @@ class EditorSaveWiringTest extends TestCase
         // post, and disable CSRF since forcing APP_ENV to 'local' also turns off
         // runningUnitTests(), which would otherwise 419 these requests.
         $this->app['env'] = 'local';
-        $this->withoutMiddleware(\Illuminate\Foundation\Http\Middleware\ValidateCsrfToken::class);
+        $this->withoutCsrfProtection();
     }
 
     private function registry(): BlockRegistryService
@@ -159,11 +159,11 @@ class EditorSaveWiringTest extends TestCase
         $html = $this->get('/editor')->assertOk()->getContent();
 
         // setStatusPending() is set true the moment a differing status is picked...
-        $this->assertStringContainsString("setStatusPending(trigger, true)", $html);
+        $this->assertStringContainsString('setStatusPending(trigger, true)', $html);
         // ...and hb:post-saved's guard refuses to re-sync the row from a save that
         // didn't actually carry the pending pick (autosave never does).
         $this->assertStringContainsString("trigger.dataset.hbPending === 'true'", $html);
-        $this->assertStringContainsString("if (!stillPendingElsewhere) applyConfirmedStatus(", $html);
+        $this->assertStringContainsString('if (!stillPendingElsewhere) applyConfirmedStatus(', $html);
     }
 
     // ── Slug and Publish-date rows have the SAME latent bug Status just had fixed

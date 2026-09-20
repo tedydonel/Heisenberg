@@ -32,7 +32,7 @@ class CommentControllerTest extends TestCase
     {
         $this->skipIfMysqlUnreachable();
 
-        $this->withoutMiddleware(\Illuminate\Foundation\Http\Middleware\ValidateCsrfToken::class);
+        $this->withoutCsrfProtection();
 
         // store() is throttled (routes/comments.php, throttle:20,1). Testbench defaults to the
         // `database` cache driver with no `cache` table, which the throttle middleware would hit

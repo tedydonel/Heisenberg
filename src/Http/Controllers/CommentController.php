@@ -20,7 +20,7 @@ use Illuminate\Support\Facades\Gate;
  * `/editor` management surface.
  *
  * Both actions run the SAME `PostPolicy::view` authorization
- * {@see \Heisenberg\Http\Controllers\PreviewController} does — a draft stays
+ * {@see PreviewController} does — a draft stays
  * invisible to a guest (and to `thread()`/`store()` alike), while a
  * `published` post is publicly readable per PostPolicy::view()'s status
  * branch.

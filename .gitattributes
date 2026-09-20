@@ -11,9 +11,13 @@
 /.gitignore         export-ignore
 /phpunit.xml.dist   export-ignore
 /testbench.yaml     export-ignore
-/CODE_REVIEW.md     export-ignore
-/TODO.md            export-ignore
+/workbench          export-ignore
 /IDEA.md            export-ignore
+/phpstan.neon.dist  export-ignore
+/phpstan-baseline.neon export-ignore
+/pint.json          export-ignore
+/package.json       export-ignore
+/package-lock.json  export-ignore
 
 # Normalize line endings.
 * text=auto eol=lf

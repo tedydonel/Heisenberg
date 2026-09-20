@@ -6,13 +6,15 @@ namespace Heisenberg\Contracts;
 
 use Heisenberg\Ai\AiRequest;
 use Heisenberg\Ai\AiResponse;
+use Heisenberg\Ai\AiStreamEvent;
+use Heisenberg\Services\AiProviderRegistry;
 
 /**
  * One **API format** — not one vendor.
  *
  * There are two implementations (Anthropic Messages, OpenAI Chat Completions)
  * and any number of providers speaking them, because nearly every vendor on the
- * market exposes the OpenAI shape. {@see \Heisenberg\Services\AiProviderRegistry}
+ * market exposes the OpenAI shape. {@see AiProviderRegistry}
  * picks the adapter from a provider's `format` and constructs it with that
  * provider's endpoint and resolved credential.
  *
@@ -60,7 +62,7 @@ interface AiProvider
     /**
      * The same completion as a normalised event stream.
      *
-     * @return iterable<\Heisenberg\Ai\AiStreamEvent>
+     * @return iterable<AiStreamEvent>
      */
     public function stream(AiRequest $request): iterable;
 }

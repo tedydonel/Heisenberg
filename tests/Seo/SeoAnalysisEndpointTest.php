@@ -4,16 +4,18 @@ declare(strict_types=1);
 
 namespace Heisenberg\Tests\Seo;
 
+use Heisenberg\Http\Controllers\SeoAnalysisController;
 use Heisenberg\Models\Post;
 use Heisenberg\Models\SeoMeta;
+use Heisenberg\Services\SeoAnalyzer;
 use Heisenberg\Tests\TestCase;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 
 /**
  * Acceptance coverage for `GET /editor/posts/{post}/seo/analyze` (routes/editor.php,
- * `heisenberg.editor.seo.analyze`, {@see \Heisenberg\Http\Controllers\SeoAnalysisController}) —
+ * `heisenberg.editor.seo.analyze`, {@see SeoAnalysisController}) —
  * response shape, locale validation/default, `o_*` query overrides reaching
- * {@see \Heisenberg\Services\SeoAnalyzer}, and the same PostPolicy::view() gate
+ * {@see SeoAnalyzer}, and the same PostPolicy::view() gate
  * `CommentControllerTest`/`PreviewSeoTest` already pin (a draft stays invisible to a guest).
  */
 class SeoAnalysisEndpointTest extends TestCase

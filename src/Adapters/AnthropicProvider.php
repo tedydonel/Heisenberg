@@ -4,11 +4,13 @@ declare(strict_types=1);
 
 namespace Heisenberg\Adapters;
 
+use Heisenberg\Ai\AiMessage;
 use Heisenberg\Ai\AiRequest;
 use Heisenberg\Ai\AiResponse;
 use Heisenberg\Ai\AiStreamEvent;
 use Heisenberg\Ai\SseReader;
 use Heisenberg\Contracts\AiProvider;
+use Heisenberg\Support\OutboundUrlGuard;
 use Illuminate\Support\Facades\Http;
 
 /**
@@ -68,9 +70,18 @@ class AnthropicProvider implements AiProvider
             return [];
         }
 
+        // SSRF guard, re-checked here rather than trusted from whatever
+        // validated this base_url when it was saved — see OutboundUrlGuard.
+        // Only reachable at all when a host overrides the default
+        // api.anthropic.com base_url with something else.
+        if (OutboundUrlGuard::reject($this->baseUrl()) !== null) {
+            return [];
+        }
+
         try {
             $response = Http::withHeaders($this->headers())
                 ->timeout($this->timeout())
+                ->withOptions(['allow_redirects' => false])
                 ->get(rtrim($this->baseUrl(), '/') . '/v1/models', ['limit' => 100]);
         } catch (\Throwable) {
             return [];
@@ -102,9 +113,16 @@ class AnthropicProvider implements AiProvider
             return AiResponse::error(__('heisenberg::editor.ai.provider_not_configured', ['provider' => $this->label()]));
         }
 
+        // SSRF guard — see OutboundUrlGuard. Only reachable when a host
+        // overrides the default api.anthropic.com base_url.
+        if (($blocked = OutboundUrlGuard::reject($this->baseUrl())) !== null) {
+            return AiResponse::error($blocked);
+        }
+
         try {
             $response = Http::withHeaders($this->headers())
                 ->timeout($this->timeout())
+                ->withOptions(['allow_redirects' => false])
                 ->post($this->endpoint(), $this->body($request));
         } catch (\Throwable $e) {
             return AiResponse::error($this->networkMessage($e));
@@ -126,13 +144,21 @@ class AnthropicProvider implements AiProvider
             return;
         }
 
+        // SSRF guard — see the identical check in complete().
+        if (($blocked = OutboundUrlGuard::reject($this->baseUrl())) !== null) {
+            yield AiStreamEvent::error($blocked);
+
+            return;
+        }
+
         try {
             // No TOTAL timeout on a stream — same reasoning as OpenAiCompatibleProvider:
             // Guzzle's `timeout` bounds the entire body read and kills long generations
             // mid-stream; the configured budget bounds INACTIVITY between chunks instead.
             $response = Http::withHeaders($this->headers())
                 ->timeout(0)
-                ->withOptions(['stream' => true, 'read_timeout' => $this->timeout()])
+                // No redirects: see the identical note on HttpMcpClient's rpc().
+                ->withOptions(['stream' => true, 'read_timeout' => $this->timeout(), 'allow_redirects' => false])
                 ->post($this->endpoint(), $this->body($request) + ['stream' => true]);
         } catch (\Throwable $e) {
             yield AiStreamEvent::error($this->networkMessage($e));
@@ -280,7 +306,7 @@ class AnthropicProvider implements AiProvider
      * OpenAI-compatible shape). Consecutive results are merged into one user
      * turn, which the API requires.
      *
-     * @param  list<\Heisenberg\Ai\AiMessage> $messages
+     * @param list<AiMessage> $messages
      * @return list<array<string, mixed>>
      */
     private function messages(array $messages): array
@@ -301,10 +327,12 @@ class AnthropicProvider implements AiProvider
                 $last = count($out) - 1;
                 if ($last >= 0 && $out[$last]['role'] === 'user' && is_array($out[$last]['content'])) {
                     $out[$last]['content'][] = $block;
+
                     continue;
                 }
 
                 $out[] = ['role' => 'user', 'content' => [$block]];
+
                 continue;
             }
 
@@ -322,6 +350,7 @@ class AnthropicProvider implements AiProvider
                     ];
                 }
                 $out[] = ['role' => 'assistant', 'content' => $content];
+
                 continue;
             }
 

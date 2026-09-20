@@ -8,6 +8,7 @@ use Heisenberg\Models\Post;
 use Heisenberg\Tests\Persistence\SkipsWhenMysqlUnreachable;
 use Heisenberg\Tests\TestCase;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Route;
 
 /**
  * Pins `config('heisenberg.translations.routes')` as the load-time opt-out for the whole
@@ -42,7 +43,7 @@ class TranslationRoutesToggleTest extends TestCase
         $this->getJson("/heisenberg/posts/{$post->id}/translations")->assertStatus(404);
 
         $this->assertFalse(
-            \Illuminate\Support\Facades\Route::has('heisenberg.translations.index'),
+            Route::has('heisenberg.translations.index'),
             'the translations index route must not be registered when heisenberg.translations.routes is false'
         );
     }

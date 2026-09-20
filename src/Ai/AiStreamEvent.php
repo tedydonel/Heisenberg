@@ -15,8 +15,11 @@ namespace Heisenberg\Ai;
 class AiStreamEvent
 {
     public const TEXT_DELTA = 'text_delta';
+
     public const TOOL_USE = 'tool_use';
+
     public const DONE = 'done';
+
     public const ERROR = 'error';
 
     /** @param array<string, mixed> $data */

@@ -1,0 +1,2125 @@
+parameters:
+	ignoreErrors:
+		-
+			message: '#^If condition is always false\.$#'
+			identifier: if.alwaysFalse
+			count: 1
+			path: src/Adapters/AnthropicProvider.php
+
+		-
+			message: '#^Called ''env'' outside of the config directory which returns null when the config is cached, use ''config''\.$#'
+			identifier: larastan.noEnvCallsOutsideOfConfig
+			count: 2
+			path: src/Adapters/EncryptedFileCredentialStore.php
+
+		-
+			message: '#^Method Heisenberg\\Adapters\\GuestActor\:\:getAuthPassword\(\) should return string but returns null\.$#'
+			identifier: return.type
+			count: 1
+			path: src/Adapters/GuestActor.php
+
+		-
+			message: '#^Access to an undefined property Heisenberg\\Models\\Comment\:\:\$author_name\.$#'
+			identifier: property.notFound
+			count: 1
+			path: src/Adapters/NativeCommentProvider.php
+
+		-
+			message: '#^Access to an undefined property Heisenberg\\Models\\Comment\:\:\$body\.$#'
+			identifier: property.notFound
+			count: 1
+			path: src/Adapters/NativeCommentProvider.php
+
+		-
+			message: '#^Access to an undefined property Heisenberg\\Models\\Comment\:\:\$created_at\.$#'
+			identifier: property.notFound
+			count: 2
+			path: src/Adapters/NativeCommentProvider.php
+
+		-
+			message: '#^Access to an undefined property Heisenberg\\Models\\Comment\:\:\$parent_id\.$#'
+			identifier: property.notFound
+			count: 1
+			path: src/Adapters/NativeCommentProvider.php
+
+		-
+			message: '#^Access to an undefined property Heisenberg\\Models\\Comment\:\:\$post_id\.$#'
+			identifier: property.notFound
+			count: 1
+			path: src/Adapters/NativeCommentProvider.php
+
+		-
+			message: '#^Access to an undefined property Heisenberg\\Models\\Comment\:\:\$status\.$#'
+			identifier: property.notFound
+			count: 2
+			path: src/Adapters/NativeCommentProvider.php
+
+		-
+			message: '#^Access to an undefined property Heisenberg\\Models\\SeoMeta\:\:\$canonical_url\.$#'
+			identifier: property.notFound
+			count: 1
+			path: src/Adapters/NativeSeoMetaProvider.php
+
+		-
+			message: '#^Access to an undefined property Heisenberg\\Models\\SeoMeta\:\:\$og_image\.$#'
+			identifier: property.notFound
+			count: 1
+			path: src/Adapters/NativeSeoMetaProvider.php
+
+		-
+			message: '#^Access to an undefined property Heisenberg\\Models\\SeoMeta\:\:\$robots\.$#'
+			identifier: property.notFound
+			count: 1
+			path: src/Adapters/NativeSeoMetaProvider.php
+
+		-
+			message: '#^If condition is always false\.$#'
+			identifier: if.alwaysFalse
+			count: 1
+			path: src/Adapters/OpenAiCompatibleProvider.php
+
+		-
+			message: '#^Offset ''colors'' on array\{colors\: list\<array\<string, mixed\>\>, fontSizes\: list\<array\<string, mixed\>\>, spaces\: list\<array\<string, mixed\>\>, radii\: list\<array\<string, mixed\>\>, fonts\: list\<array\<string, mixed\>\>\} on left side of \?\? always exists and is not nullable\.$#'
+			identifier: nullCoalesce.offset
+			count: 1
+			path: src/Ai/EditorPrompt.php
+
+		-
+			message: '#^Offset ''fontSizes'' on array\{colors\: list\<array\<string, mixed\>\>, fontSizes\: list\<array\<string, mixed\>\>, spaces\: list\<array\<string, mixed\>\>, radii\: list\<array\<string, mixed\>\>, fonts\: list\<array\<string, mixed\>\>\} on left side of \?\? always exists and is not nullable\.$#'
+			identifier: nullCoalesce.offset
+			count: 1
+			path: src/Ai/EditorPrompt.php
+
+		-
+			message: '#^Offset ''fonts'' on array\{colors\: list\<array\<string, mixed\>\>, fontSizes\: list\<array\<string, mixed\>\>, spaces\: list\<array\<string, mixed\>\>, radii\: list\<array\<string, mixed\>\>, fonts\: list\<array\<string, mixed\>\>\} on left side of \?\? always exists and is not nullable\.$#'
+			identifier: nullCoalesce.offset
+			count: 1
+			path: src/Ai/EditorPrompt.php
+
+		-
+			message: '#^Offset ''radii'' on array\{colors\: list\<array\<string, mixed\>\>, fontSizes\: list\<array\<string, mixed\>\>, spaces\: list\<array\<string, mixed\>\>, radii\: list\<array\<string, mixed\>\>, fonts\: list\<array\<string, mixed\>\>\} on left side of \?\? always exists and is not nullable\.$#'
+			identifier: nullCoalesce.offset
+			count: 1
+			path: src/Ai/EditorPrompt.php
+
+		-
+			message: '#^Offset ''spaces'' on array\{colors\: list\<array\<string, mixed\>\>, fontSizes\: list\<array\<string, mixed\>\>, spaces\: list\<array\<string, mixed\>\>, radii\: list\<array\<string, mixed\>\>, fonts\: list\<array\<string, mixed\>\>\} on left side of \?\? always exists and is not nullable\.$#'
+			identifier: nullCoalesce.offset
+			count: 1
+			path: src/Ai/EditorPrompt.php
+
+		-
+			message: '#^Parameter \#1 \$array \(list\<\(int\|string\)\>\) of array_values is already a list, call has no effect\.$#'
+			identifier: arrayValues.list
+			count: 1
+			path: src/Ai/EditorPrompt.php
+
+		-
+			message: '#^Called ''env'' outside of the config directory which returns null when the config is cached, use ''config''\.$#'
+			identifier: larastan.noEnvCallsOutsideOfConfig
+			count: 1
+			path: src/Ai/McpServer.php
+
+		-
+			message: '#^Method Heisenberg\\Blocks\\StylePanelFieldRows\:\:selectSupportRows\(\) is unused\.$#'
+			identifier: method.unused
+			count: 1
+			path: src/Blocks/StylePanelFieldRows.php
+
+		-
+			message: '#^Access to an undefined property Heisenberg\\Models\\Post\:\:\$locale\.$#'
+			identifier: property.notFound
+			count: 3
+			path: src/Console/Commands/MergeTranslationsCommand.php
+
+		-
+			message: '#^Access to an undefined property Heisenberg\\Models\\Post\:\:\$translation_group_id\.$#'
+			identifier: property.notFound
+			count: 1
+			path: src/Console/Commands/MergeTranslationsCommand.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$content\.$#'
+			identifier: property.notFound
+			count: 4
+			path: src/Console/Commands/MergeTranslationsCommand.php
+
+		-
+			message: '#^Parameter &\$writes by\-ref type of method Heisenberg\\Console\\Commands\\MergeTranslationsCommand\:\:planColumn\(\) expects array\<string, string\>, array\<string, mixed\> given\.$#'
+			identifier: parameterByRef.type
+			count: 1
+			path: src/Console/Commands/MergeTranslationsCommand.php
+
+		-
+			message: '#^Parameter &\$writes by\-ref type of method Heisenberg\\Console\\Commands\\MergeTranslationsCommand\:\:planSeo\(\) expects array\<string, string\>, array\<string, mixed\> given\.$#'
+			identifier: parameterByRef.type
+			count: 1
+			path: src/Console/Commands/MergeTranslationsCommand.php
+
+		-
+			message: '#^Called ''env'' outside of the config directory which returns null when the config is cached, use ''config''\.$#'
+			identifier: larastan.noEnvCallsOutsideOfConfig
+			count: 1
+			path: src/HeisenbergServiceProvider.php
+
+		-
+			message: '#^Call to function is_array\(\) with array\{role\?\: mixed, content\?\: mixed\} will always evaluate to true\.$#'
+			identifier: function.alreadyNarrowedType
+			count: 2
+			path: src/Http/Controllers/AiController.php
+
+		-
+			message: '#^Using nullsafe property access "\?\-\>effort" on left side of \?\? is unnecessary\. Use \-\> instead\.$#'
+			identifier: nullsafe.neverNull
+			count: 1
+			path: src/Http/Controllers/AiController.php
+
+		-
+			message: '#^Access to an undefined property Heisenberg\\Models\\AiChatMessage\:\:\$content\.$#'
+			identifier: property.notFound
+			count: 1
+			path: src/Http/Controllers/AiConversationController.php
+
+		-
+			message: '#^Access to an undefined property Heisenberg\\Models\\AiChatMessage\:\:\$created_at\.$#'
+			identifier: property.notFound
+			count: 1
+			path: src/Http/Controllers/AiConversationController.php
+
+		-
+			message: '#^Access to an undefined property Heisenberg\\Models\\AiChatMessage\:\:\$role\.$#'
+			identifier: property.notFound
+			count: 1
+			path: src/Http/Controllers/AiConversationController.php
+
+		-
+			message: '#^Access to an undefined property Heisenberg\\Models\\AiConversation\:\:\$post_id\.$#'
+			identifier: property.notFound
+			count: 1
+			path: src/Http/Controllers/AiConversationController.php
+
+		-
+			message: '#^Access to an undefined property Heisenberg\\Models\\AiConversation\:\:\$updated_at\.$#'
+			identifier: property.notFound
+			count: 1
+			path: src/Http/Controllers/AiConversationController.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$id\.$#'
+			identifier: property.notFound
+			count: 1
+			path: src/Http/Controllers/AiConversationController.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$post_id\.$#'
+			identifier: property.notFound
+			count: 2
+			path: src/Http/Controllers/AiConversationController.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$title\.$#'
+			identifier: property.notFound
+			count: 1
+			path: src/Http/Controllers/AiConversationController.php
+
+		-
+			message: '#^Call to an undefined method Illuminate\\Database\\Eloquent\\Model\:\:messages\(\)\.$#'
+			identifier: method.notFound
+			count: 2
+			path: src/Http/Controllers/AiConversationController.php
+
+		-
+			message: '#^Parameter \#1 \$callback of method Illuminate\\Database\\Eloquent\\Collection\<int,Illuminate\\Database\\Eloquent\\Model\>\:\:map\(\) contains unresolvable type\.$#'
+			identifier: argument.unresolvableType
+			count: 1
+			path: src/Http/Controllers/AiConversationController.php
+
+		-
+			message: '#^Parameter \#1 \$callback of method Illuminate\\Database\\Eloquent\\Collection\<int,Illuminate\\Database\\Eloquent\\Model\>\:\:map\(\) expects callable\(Illuminate\\Database\\Eloquent\\Model, int\)\: array\{id\: int, title\: string, post_id\: mixed, message_count\: int\<0, max\>, updated_at\: mixed\}, Closure\(Heisenberg\\Models\\AiConversation\)\: array\{id\: int, title\: string, post_id\: mixed, message_count\: int\<0, max\>, updated_at\: mixed\} given\.$#'
+			identifier: argument.type
+			count: 1
+			path: src/Http/Controllers/AiConversationController.php
+
+		-
+			message: '#^Access to an undefined property Heisenberg\\Models\\Category\:\:\$created_at\.$#'
+			identifier: property.notFound
+			count: 1
+			path: src/Http/Controllers/CategoryController.php
+
+		-
+			message: '#^Access to an undefined property Heisenberg\\Models\\Category\:\:\$description_en\.$#'
+			identifier: property.notFound
+			count: 1
+			path: src/Http/Controllers/CategoryController.php
+
+		-
+			message: '#^Access to an undefined property Heisenberg\\Models\\Category\:\:\$description_fr\.$#'
+			identifier: property.notFound
+			count: 1
+			path: src/Http/Controllers/CategoryController.php
+
+		-
+			message: '#^Access to an undefined property Heisenberg\\Models\\Category\:\:\$name_en\.$#'
+			identifier: property.notFound
+			count: 1
+			path: src/Http/Controllers/CategoryController.php
+
+		-
+			message: '#^Access to an undefined property Heisenberg\\Models\\Category\:\:\$name_fr\.$#'
+			identifier: property.notFound
+			count: 1
+			path: src/Http/Controllers/CategoryController.php
+
+		-
+			message: '#^Access to an undefined property Heisenberg\\Models\\Category\:\:\$order\.$#'
+			identifier: property.notFound
+			count: 1
+			path: src/Http/Controllers/CategoryController.php
+
+		-
+			message: '#^Access to an undefined property Heisenberg\\Models\\Category\:\:\$parent_id\.$#'
+			identifier: property.notFound
+			count: 1
+			path: src/Http/Controllers/CategoryController.php
+
+		-
+			message: '#^Access to an undefined property Heisenberg\\Models\\Category\:\:\$slug\.$#'
+			identifier: property.notFound
+			count: 1
+			path: src/Http/Controllers/CategoryController.php
+
+		-
+			message: '#^Access to an undefined property Heisenberg\\Models\\Category\:\:\$updated_at\.$#'
+			identifier: property.notFound
+			count: 1
+			path: src/Http/Controllers/CategoryController.php
+
+		-
+			message: '#^Access to an undefined property Heisenberg\\Models\\Post\:\:\$allow_comments\.$#'
+			identifier: property.notFound
+			count: 3
+			path: src/Http/Controllers/CommentController.php
+
+		-
+			message: '#^Offset ''status'' on array\{ok\: false, status\: string, comment\?\: array\{id\: int\|string, parent_id\: int\|string\|null, author_name\: string, body\: string, created_at\: mixed, replies\: list\<mixed\>\}, error\?\: string\} on left side of \?\? always exists and is not nullable\.$#'
+			identifier: nullCoalesce.offset
+			count: 1
+			path: src/Http/Controllers/CommentController.php
+
+		-
+			message: '#^Access to an undefined property Heisenberg\\Models\\Comment\:\:\$author_email\.$#'
+			identifier: property.notFound
+			count: 1
+			path: src/Http/Controllers/CommentModerationController.php
+
+		-
+			message: '#^Access to an undefined property Heisenberg\\Models\\Comment\:\:\$author_id\.$#'
+			identifier: property.notFound
+			count: 1
+			path: src/Http/Controllers/CommentModerationController.php
+
+		-
+			message: '#^Access to an undefined property Heisenberg\\Models\\Comment\:\:\$author_name\.$#'
+			identifier: property.notFound
+			count: 1
+			path: src/Http/Controllers/CommentModerationController.php
+
+		-
+			message: '#^Access to an undefined property Heisenberg\\Models\\Comment\:\:\$body\.$#'
+			identifier: property.notFound
+			count: 1
+			path: src/Http/Controllers/CommentModerationController.php
+
+		-
+			message: '#^Access to an undefined property Heisenberg\\Models\\Comment\:\:\$created_at\.$#'
+			identifier: property.notFound
+			count: 1
+			path: src/Http/Controllers/CommentModerationController.php
+
+		-
+			message: '#^Access to an undefined property Heisenberg\\Models\\Comment\:\:\$parent_id\.$#'
+			identifier: property.notFound
+			count: 1
+			path: src/Http/Controllers/CommentModerationController.php
+
+		-
+			message: '#^Access to an undefined property Heisenberg\\Models\\Comment\:\:\$post_id\.$#'
+			identifier: property.notFound
+			count: 1
+			path: src/Http/Controllers/CommentModerationController.php
+
+		-
+			message: '#^Access to an undefined property Heisenberg\\Models\\Comment\:\:\$status\.$#'
+			identifier: property.notFound
+			count: 3
+			path: src/Http/Controllers/CommentModerationController.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$title_en\.$#'
+			identifier: property.notFound
+			count: 1
+			path: src/Http/Controllers/CommentModerationController.php
+
+		-
+			message: '#^Parameter \#1 \$callback of method Illuminate\\Support\\Collection\<int,Heisenberg\\Models\\Comment\>\:\:map\(\) contains unresolvable type\.$#'
+			identifier: argument.unresolvableType
+			count: 1
+			path: src/Http/Controllers/CommentModerationController.php
+
+		-
+			message: '#^Parameter \#1 \$post of method Heisenberg\\Contracts\\PostCommentProvider\:\:submit\(\) expects Heisenberg\\Models\\Post, Illuminate\\Database\\Eloquent\\Model\|null given\.$#'
+			identifier: argument.type
+			count: 1
+			path: src/Http/Controllers/CommentModerationController.php
+
+		-
+			message: '#^Access to an undefined property Heisenberg\\Models\\Pattern\:\:\$blocks\.$#'
+			identifier: property.notFound
+			count: 1
+			path: src/Http/Controllers/EditorController.php
+
+		-
+			message: '#^Access to an undefined property Heisenberg\\Models\\Pattern\:\:\$name\.$#'
+			identifier: property.notFound
+			count: 1
+			path: src/Http/Controllers/EditorController.php
+
+		-
+			message: '#^Access to an undefined property Heisenberg\\Models\\Pattern\:\:\$updated_at\.$#'
+			identifier: property.notFound
+			count: 1
+			path: src/Http/Controllers/EditorController.php
+
+		-
+			message: '#^Access to an undefined property Heisenberg\\Models\\Post\:\:\$content_version\.$#'
+			identifier: property.notFound
+			count: 1
+			path: src/Http/Controllers/EditorController.php
+
+		-
+			message: '#^Access to an undefined property Heisenberg\\Models\\Post\:\:\$locale\.$#'
+			identifier: property.notFound
+			count: 3
+			path: src/Http/Controllers/EditorController.php
+
+		-
+			message: '#^Access to an undefined property Heisenberg\\Models\\Post\:\:\$published_at\.$#'
+			identifier: property.notFound
+			count: 1
+			path: src/Http/Controllers/EditorController.php
+
+		-
+			message: '#^Access to an undefined property Heisenberg\\Models\\Post\:\:\$scheduled_at\.$#'
+			identifier: property.notFound
+			count: 1
+			path: src/Http/Controllers/EditorController.php
+
+		-
+			message: '#^Access to an undefined property Heisenberg\\Models\\Post\:\:\$slug\.$#'
+			identifier: property.notFound
+			count: 4
+			path: src/Http/Controllers/EditorController.php
+
+		-
+			message: '#^Access to an undefined property Heisenberg\\Models\\Post\:\:\$status\.$#'
+			identifier: property.notFound
+			count: 1
+			path: src/Http/Controllers/EditorController.php
+
+		-
+			message: '#^Access to an undefined property Heisenberg\\Models\\Post\:\:\$type\.$#'
+			identifier: property.notFound
+			count: 3
+			path: src/Http/Controllers/EditorController.php
+
+		-
+			message: '#^Access to an undefined property Heisenberg\\Models\\Tag\:\:\$name_en\.$#'
+			identifier: property.notFound
+			count: 1
+			path: src/Http/Controllers/EditorController.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$anchor\.$#'
+			identifier: property.notFound
+			count: 1
+			path: src/Http/Controllers/EditorController.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$canonical_url\.$#'
+			identifier: property.notFound
+			count: 1
+			path: src/Http/Controllers/EditorController.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$content\.$#'
+			identifier: property.notFound
+			count: 1
+			path: src/Http/Controllers/EditorController.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$id\.$#'
+			identifier: property.notFound
+			count: 1
+			path: src/Http/Controllers/EditorController.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$in_sitemap\.$#'
+			identifier: property.notFound
+			count: 1
+			path: src/Http/Controllers/EditorController.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$label\.$#'
+			identifier: property.notFound
+			count: 1
+			path: src/Http/Controllers/EditorController.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$og_image\.$#'
+			identifier: property.notFound
+			count: 1
+			path: src/Http/Controllers/EditorController.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$robots\.$#'
+			identifier: property.notFound
+			count: 1
+			path: src/Http/Controllers/EditorController.php
+
+		-
+			message: '#^Call to an undefined method Illuminate\\Database\\Eloquent\\Model\:\:focusKeyphrase\(\)\.$#'
+			identifier: method.notFound
+			count: 1
+			path: src/Http/Controllers/EditorController.php
+
+		-
+			message: '#^Call to an undefined method Illuminate\\Database\\Eloquent\\Model\:\:getAlt\(\)\.$#'
+			identifier: method.notFound
+			count: 1
+			path: src/Http/Controllers/EditorController.php
+
+		-
+			message: '#^Call to an undefined method Illuminate\\Database\\Eloquent\\Model\:\:imagePayload\(\)\.$#'
+			identifier: method.notFound
+			count: 1
+			path: src/Http/Controllers/EditorController.php
+
+		-
+			message: '#^Call to an undefined method Illuminate\\Database\\Eloquent\\Model\:\:metaDescription\(\)\.$#'
+			identifier: method.notFound
+			count: 1
+			path: src/Http/Controllers/EditorController.php
+
+		-
+			message: '#^Call to an undefined method Illuminate\\Database\\Eloquent\\Model\:\:metaTitle\(\)\.$#'
+			identifier: method.notFound
+			count: 1
+			path: src/Http/Controllers/EditorController.php
+
+		-
+			message: '#^Call to an undefined method Illuminate\\Database\\Eloquent\\Model\:\:ogDescription\(\)\.$#'
+			identifier: method.notFound
+			count: 1
+			path: src/Http/Controllers/EditorController.php
+
+		-
+			message: '#^Call to an undefined method Illuminate\\Database\\Eloquent\\Model\:\:ogTitle\(\)\.$#'
+			identifier: method.notFound
+			count: 1
+			path: src/Http/Controllers/EditorController.php
+
+		-
+			message: '#^Offset 1 on array\{list\<string\>, list\<non\-falsy\-string\>\} on left side of \?\? always exists and is not nullable\.$#'
+			identifier: nullCoalesce.offset
+			count: 1
+			path: src/Http/Controllers/EditorController.php
+
+		-
+			message: '#^Parameter \#1 \$callback of method Illuminate\\Database\\Eloquent\\Collection\<int,Heisenberg\\Models\\Pattern\>\:\:map\(\) contains unresolvable type\.$#'
+			identifier: argument.unresolvableType
+			count: 1
+			path: src/Http/Controllers/EditorController.php
+
+		-
+			message: '#^Parameter \#1 \$callback of method Illuminate\\Database\\Eloquent\\Collection\<int,Illuminate\\Database\\Eloquent\\Model\>\:\:map\(\) contains unresolvable type\.$#'
+			identifier: argument.unresolvableType
+			count: 1
+			path: src/Http/Controllers/EditorController.php
+
+		-
+			message: '#^Using nullsafe property access "\?\-\>blocks" on left side of \?\? is unnecessary\. Use \-\> instead\.$#'
+			identifier: nullsafe.neverNull
+			count: 1
+			path: src/Http/Controllers/EditorController.php
+
+		-
+			message: '#^Using nullsafe property access "\?\-\>canonical_url" on left side of \?\? is unnecessary\. Use \-\> instead\.$#'
+			identifier: nullsafe.neverNull
+			count: 1
+			path: src/Http/Controllers/EditorController.php
+
+		-
+			message: '#^Using nullsafe property access "\?\-\>in_sitemap" on left side of \?\? is unnecessary\. Use \-\> instead\.$#'
+			identifier: nullsafe.neverNull
+			count: 1
+			path: src/Http/Controllers/EditorController.php
+
+		-
+			message: '#^Using nullsafe property access "\?\-\>locale" on left side of \?\? is unnecessary\. Use \-\> instead\.$#'
+			identifier: nullsafe.neverNull
+			count: 1
+			path: src/Http/Controllers/EditorController.php
+
+		-
+			message: '#^Using nullsafe property access "\?\-\>og_image" on left side of \?\? is unnecessary\. Use \-\> instead\.$#'
+			identifier: nullsafe.neverNull
+			count: 1
+			path: src/Http/Controllers/EditorController.php
+
+		-
+			message: '#^Using nullsafe property access "\?\-\>robots" on left side of \?\? is unnecessary\. Use \-\> instead\.$#'
+			identifier: nullsafe.neverNull
+			count: 1
+			path: src/Http/Controllers/EditorController.php
+
+		-
+			message: '#^Using nullsafe property access "\?\-\>slug" on left side of \?\? is unnecessary\. Use \-\> instead\.$#'
+			identifier: nullsafe.neverNull
+			count: 1
+			path: src/Http/Controllers/EditorController.php
+
+		-
+			message: '#^Using nullsafe property access "\?\-\>status" on left side of \?\? is unnecessary\. Use \-\> instead\.$#'
+			identifier: nullsafe.neverNull
+			count: 1
+			path: src/Http/Controllers/EditorController.php
+
+		-
+			message: '#^Access to an undefined property Heisenberg\\Models\\Post\:\:\$type\.$#'
+			identifier: property.notFound
+			count: 3
+			path: src/Http/Controllers/EmailPreviewController.php
+
+		-
+			message: '#^Access to an undefined property Heisenberg\\Models\\Pattern\:\:\$blocks\.$#'
+			identifier: property.notFound
+			count: 2
+			path: src/Http/Controllers/HeisenbergPatternController.php
+
+		-
+			message: '#^Access to an undefined property Heisenberg\\Models\\Pattern\:\:\$name\.$#'
+			identifier: property.notFound
+			count: 2
+			path: src/Http/Controllers/HeisenbergPatternController.php
+
+		-
+			message: '#^Access to an undefined property Heisenberg\\Models\\Pattern\:\:\$updated_at\.$#'
+			identifier: property.notFound
+			count: 2
+			path: src/Http/Controllers/HeisenbergPatternController.php
+
+		-
+			message: '#^Parameter \#1 \$callback of method Illuminate\\Database\\Eloquent\\Collection\<int,Heisenberg\\Models\\Pattern\>\:\:map\(\) contains unresolvable type\.$#'
+			identifier: argument.unresolvableType
+			count: 1
+			path: src/Http/Controllers/HeisenbergPatternController.php
+
+		-
+			message: '#^Access to an undefined property Heisenberg\\Models\\PublicFile\:\:\$alt_text_en\.$#'
+			identifier: property.notFound
+			count: 1
+			path: src/Http/Controllers/MediaLibraryController.php
+
+		-
+			message: '#^Access to an undefined property Heisenberg\\Models\\PublicFile\:\:\$alt_text_fr\.$#'
+			identifier: property.notFound
+			count: 1
+			path: src/Http/Controllers/MediaLibraryController.php
+
+		-
+			message: '#^Access to an undefined property Heisenberg\\Models\\PublicFile\:\:\$caption_en\.$#'
+			identifier: property.notFound
+			count: 1
+			path: src/Http/Controllers/MediaLibraryController.php
+
+		-
+			message: '#^Access to an undefined property Heisenberg\\Models\\PublicFile\:\:\$caption_fr\.$#'
+			identifier: property.notFound
+			count: 1
+			path: src/Http/Controllers/MediaLibraryController.php
+
+		-
+			message: '#^Access to an undefined property Heisenberg\\Models\\PublicFile\:\:\$credit\.$#'
+			identifier: property.notFound
+			count: 1
+			path: src/Http/Controllers/MediaLibraryController.php
+
+		-
+			message: '#^Access to an undefined property Heisenberg\\Models\\PublicFile\:\:\$height\.$#'
+			identifier: property.notFound
+			count: 1
+			path: src/Http/Controllers/MediaLibraryController.php
+
+		-
+			message: '#^Access to an undefined property Heisenberg\\Models\\PublicFile\:\:\$original_name\.$#'
+			identifier: property.notFound
+			count: 1
+			path: src/Http/Controllers/MediaLibraryController.php
+
+		-
+			message: '#^Access to an undefined property Heisenberg\\Models\\PublicFile\:\:\$stored_name\.$#'
+			identifier: property.notFound
+			count: 1
+			path: src/Http/Controllers/MediaLibraryController.php
+
+		-
+			message: '#^Access to an undefined property Heisenberg\\Models\\PublicFile\:\:\$variants\.$#'
+			identifier: property.notFound
+			count: 1
+			path: src/Http/Controllers/MediaLibraryController.php
+
+		-
+			message: '#^Access to an undefined property Heisenberg\\Models\\PublicFile\:\:\$width\.$#'
+			identifier: property.notFound
+			count: 1
+			path: src/Http/Controllers/MediaLibraryController.php
+
+		-
+			message: '#^Access to an undefined property Heisenberg\\Models\\Category\:\:\$name_en\.$#'
+			identifier: property.notFound
+			count: 1
+			path: src/Http/Controllers/PostCategoryController.php
+
+		-
+			message: '#^Access to an undefined property Heisenberg\\Models\\Category\:\:\$name_fr\.$#'
+			identifier: property.notFound
+			count: 1
+			path: src/Http/Controllers/PostCategoryController.php
+
+		-
+			message: '#^Access to an undefined property Heisenberg\\Models\\Category\:\:\$slug\.$#'
+			identifier: property.notFound
+			count: 1
+			path: src/Http/Controllers/PostCategoryController.php
+
+		-
+			message: '#^Parameter \#1 \$callback of method Illuminate\\Database\\Eloquent\\Collection\<int,Illuminate\\Database\\Eloquent\\Model\>\:\:map\(\) contains unresolvable type\.$#'
+			identifier: argument.unresolvableType
+			count: 1
+			path: src/Http/Controllers/PostCategoryController.php
+
+		-
+			message: '#^Parameter \#1 \$callback of method Illuminate\\Database\\Eloquent\\Collection\<int,Illuminate\\Database\\Eloquent\\Model\>\:\:map\(\) expects callable\(Illuminate\\Database\\Eloquent\\Model, int\)\: array\{id\: int, name_en\: mixed, name_fr\: mixed, slug\: mixed\}, Closure\(Heisenberg\\Models\\Category\)\: array\{id\: int, name_en\: mixed, name_fr\: mixed, slug\: mixed\} given\.$#'
+			identifier: argument.type
+			count: 1
+			path: src/Http/Controllers/PostCategoryController.php
+
+		-
+			message: '#^Access to an undefined property Heisenberg\\Models\\Post\:\:\$author_id\.$#'
+			identifier: property.notFound
+			count: 1
+			path: src/Http/Controllers/PostController.php
+
+		-
+			message: '#^Access to an undefined property Heisenberg\\Models\\Post\:\:\$content_version\.$#'
+			identifier: property.notFound
+			count: 1
+			path: src/Http/Controllers/PostController.php
+
+		-
+			message: '#^Access to an undefined property Heisenberg\\Models\\Post\:\:\$excerpt_en\.$#'
+			identifier: property.notFound
+			count: 1
+			path: src/Http/Controllers/PostController.php
+
+		-
+			message: '#^Access to an undefined property Heisenberg\\Models\\Post\:\:\$excerpt_fr\.$#'
+			identifier: property.notFound
+			count: 1
+			path: src/Http/Controllers/PostController.php
+
+		-
+			message: '#^Access to an undefined property Heisenberg\\Models\\Post\:\:\$locale\.$#'
+			identifier: property.notFound
+			count: 5
+			path: src/Http/Controllers/PostController.php
+
+		-
+			message: '#^Access to an undefined property Heisenberg\\Models\\Post\:\:\$published_at\.$#'
+			identifier: property.notFound
+			count: 3
+			path: src/Http/Controllers/PostController.php
+
+		-
+			message: '#^Access to an undefined property Heisenberg\\Models\\Post\:\:\$scheduled_at\.$#'
+			identifier: property.notFound
+			count: 3
+			path: src/Http/Controllers/PostController.php
+
+		-
+			message: '#^Access to an undefined property Heisenberg\\Models\\Post\:\:\$slug\.$#'
+			identifier: property.notFound
+			count: 3
+			path: src/Http/Controllers/PostController.php
+
+		-
+			message: '#^Access to an undefined property Heisenberg\\Models\\Post\:\:\$status\.$#'
+			identifier: property.notFound
+			count: 4
+			path: src/Http/Controllers/PostController.php
+
+		-
+			message: '#^Access to an undefined property Heisenberg\\Models\\Post\:\:\$title_en\.$#'
+			identifier: property.notFound
+			count: 1
+			path: src/Http/Controllers/PostController.php
+
+		-
+			message: '#^Access to an undefined property Heisenberg\\Models\\Post\:\:\$title_fr\.$#'
+			identifier: property.notFound
+			count: 1
+			path: src/Http/Controllers/PostController.php
+
+		-
+			message: '#^Access to an undefined property Heisenberg\\Models\\Post\:\:\$translation_group_id\.$#'
+			identifier: property.notFound
+			count: 1
+			path: src/Http/Controllers/PostController.php
+
+		-
+			message: '#^Access to an undefined property Heisenberg\\Models\\Post\:\:\$type\.$#'
+			identifier: property.notFound
+			count: 1
+			path: src/Http/Controllers/PostController.php
+
+		-
+			message: '#^Access to an undefined property Heisenberg\\Models\\Post\|Illuminate\\Database\\Eloquent\\Collection\<\(int\|string\), Heisenberg\\Models\\Post\>\:\:\$content_version\.$#'
+			identifier: property.notFound
+			count: 1
+			path: src/Http/Controllers/PostController.php
+
+		-
+			message: '#^Access to an undefined property Heisenberg\\Models\\Post\|Illuminate\\Database\\Eloquent\\Collection\<\(int\|string\), Heisenberg\\Models\\Post\>\:\:\$status\.$#'
+			identifier: property.notFound
+			count: 2
+			path: src/Http/Controllers/PostController.php
+
+		-
+			message: '#^Access to an undefined property Heisenberg\\Models\\SeoMeta\:\:\$canonical_url\.$#'
+			identifier: property.notFound
+			count: 1
+			path: src/Http/Controllers/PostController.php
+
+		-
+			message: '#^Access to an undefined property Heisenberg\\Models\\SeoMeta\:\:\$focus_keyphrase_en\.$#'
+			identifier: property.notFound
+			count: 1
+			path: src/Http/Controllers/PostController.php
+
+		-
+			message: '#^Access to an undefined property Heisenberg\\Models\\SeoMeta\:\:\$focus_keyphrase_fr\.$#'
+			identifier: property.notFound
+			count: 1
+			path: src/Http/Controllers/PostController.php
+
+		-
+			message: '#^Access to an undefined property Heisenberg\\Models\\SeoMeta\:\:\$in_sitemap\.$#'
+			identifier: property.notFound
+			count: 1
+			path: src/Http/Controllers/PostController.php
+
+		-
+			message: '#^Access to an undefined property Heisenberg\\Models\\SeoMeta\:\:\$meta_description_en\.$#'
+			identifier: property.notFound
+			count: 1
+			path: src/Http/Controllers/PostController.php
+
+		-
+			message: '#^Access to an undefined property Heisenberg\\Models\\SeoMeta\:\:\$meta_description_fr\.$#'
+			identifier: property.notFound
+			count: 1
+			path: src/Http/Controllers/PostController.php
+
+		-
+			message: '#^Access to an undefined property Heisenberg\\Models\\SeoMeta\:\:\$meta_title_en\.$#'
+			identifier: property.notFound
+			count: 1
+			path: src/Http/Controllers/PostController.php
+
+		-
+			message: '#^Access to an undefined property Heisenberg\\Models\\SeoMeta\:\:\$meta_title_fr\.$#'
+			identifier: property.notFound
+			count: 1
+			path: src/Http/Controllers/PostController.php
+
+		-
+			message: '#^Access to an undefined property Heisenberg\\Models\\SeoMeta\:\:\$og_description_en\.$#'
+			identifier: property.notFound
+			count: 1
+			path: src/Http/Controllers/PostController.php
+
+		-
+			message: '#^Access to an undefined property Heisenberg\\Models\\SeoMeta\:\:\$og_description_fr\.$#'
+			identifier: property.notFound
+			count: 1
+			path: src/Http/Controllers/PostController.php
+
+		-
+			message: '#^Access to an undefined property Heisenberg\\Models\\SeoMeta\:\:\$og_image\.$#'
+			identifier: property.notFound
+			count: 1
+			path: src/Http/Controllers/PostController.php
+
+		-
+			message: '#^Access to an undefined property Heisenberg\\Models\\SeoMeta\:\:\$og_title_en\.$#'
+			identifier: property.notFound
+			count: 1
+			path: src/Http/Controllers/PostController.php
+
+		-
+			message: '#^Access to an undefined property Heisenberg\\Models\\SeoMeta\:\:\$og_title_fr\.$#'
+			identifier: property.notFound
+			count: 1
+			path: src/Http/Controllers/PostController.php
+
+		-
+			message: '#^Access to an undefined property Heisenberg\\Models\\SeoMeta\:\:\$robots\.$#'
+			identifier: property.notFound
+			count: 1
+			path: src/Http/Controllers/PostController.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$content\.$#'
+			identifier: property.notFound
+			count: 1
+			path: src/Http/Controllers/PostController.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$robots\.$#'
+			identifier: property.notFound
+			count: 1
+			path: src/Http/Controllers/PostController.php
+
+		-
+			message: '#^Call to function is_array\(\) with array\<string, mixed\> will always evaluate to true\.$#'
+			identifier: function.alreadyNarrowedType
+			count: 1
+			path: src/Http/Controllers/PostController.php
+
+		-
+			message: '#^Using nullsafe property access "\?\-\>\(Expression\)" on left side of \?\? is unnecessary\. Use \-\> instead\.$#'
+			identifier: nullsafe.neverNull
+			count: 5
+			path: src/Http/Controllers/PostController.php
+
+		-
+			message: '#^Using nullsafe property access "\?\-\>canonical_url" on left side of \?\? is unnecessary\. Use \-\> instead\.$#'
+			identifier: nullsafe.neverNull
+			count: 1
+			path: src/Http/Controllers/PostController.php
+
+		-
+			message: '#^Using nullsafe property access "\?\-\>in_sitemap" on left side of \?\? is unnecessary\. Use \-\> instead\.$#'
+			identifier: nullsafe.neverNull
+			count: 1
+			path: src/Http/Controllers/PostController.php
+
+		-
+			message: '#^Using nullsafe property access "\?\-\>og_image" on left side of \?\? is unnecessary\. Use \-\> instead\.$#'
+			identifier: nullsafe.neverNull
+			count: 1
+			path: src/Http/Controllers/PostController.php
+
+		-
+			message: '#^Using nullsafe property access "\?\-\>robots" on left side of \?\? is unnecessary\. Use \-\> instead\.$#'
+			identifier: nullsafe.neverNull
+			count: 1
+			path: src/Http/Controllers/PostController.php
+
+		-
+			message: '#^Access to an undefined property Heisenberg\\Models\\Post\:\:\$allow_comments\.$#'
+			identifier: property.notFound
+			count: 1
+			path: src/Http/Controllers/PostPublicController.php
+
+		-
+			message: '#^Access to an undefined property Heisenberg\\Models\\Post\:\:\$locale\.$#'
+			identifier: property.notFound
+			count: 1
+			path: src/Http/Controllers/PostPublicController.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$anchor\.$#'
+			identifier: property.notFound
+			count: 1
+			path: src/Http/Controllers/PostPublicController.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$content\.$#'
+			identifier: property.notFound
+			count: 1
+			path: src/Http/Controllers/PostPublicController.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$label\.$#'
+			identifier: property.notFound
+			count: 1
+			path: src/Http/Controllers/PostPublicController.php
+
+		-
+			message: '#^Parameter \#1 \$callback of method Illuminate\\Database\\Eloquent\\Collection\<int,Illuminate\\Database\\Eloquent\\Model\>\:\:map\(\) contains unresolvable type\.$#'
+			identifier: argument.unresolvableType
+			count: 1
+			path: src/Http/Controllers/PostPublicController.php
+
+		-
+			message: '#^Access to an undefined property Heisenberg\\Models\\Revision\:\:\$content_blocks\.$#'
+			identifier: property.notFound
+			count: 2
+			path: src/Http/Controllers/PostRevisionsController.php
+
+		-
+			message: '#^Access to an undefined property Heisenberg\\Models\\Revision\:\:\$created_at\.$#'
+			identifier: property.notFound
+			count: 2
+			path: src/Http/Controllers/PostRevisionsController.php
+
+		-
+			message: '#^Access to an undefined property Heisenberg\\Models\\Revision\:\:\$revision_type\.$#'
+			identifier: property.notFound
+			count: 1
+			path: src/Http/Controllers/PostRevisionsController.php
+
+		-
+			message: '#^Access to an undefined property Heisenberg\\Models\\Revision\:\:\$title_en\.$#'
+			identifier: property.notFound
+			count: 1
+			path: src/Http/Controllers/PostRevisionsController.php
+
+		-
+			message: '#^Parameter \#1 \$callback of method Illuminate\\Database\\Eloquent\\Collection\<int,Heisenberg\\Models\\Revision\>\:\:map\(\) contains unresolvable type\.$#'
+			identifier: argument.unresolvableType
+			count: 1
+			path: src/Http/Controllers/PostRevisionsController.php
+
+		-
+			message: '#^Access to an undefined property Heisenberg\\Models\\Post\:\:\$allow_comments\.$#'
+			identifier: property.notFound
+			count: 1
+			path: src/Http/Controllers/PostSettingsController.php
+
+		-
+			message: '#^Access to an undefined property Heisenberg\\Models\\Post\:\:\$featured_image_id\.$#'
+			identifier: property.notFound
+			count: 1
+			path: src/Http/Controllers/PostSettingsController.php
+
+		-
+			message: '#^Access to an undefined property Heisenberg\\Models\\Post\:\:\$page_padding_x\.$#'
+			identifier: property.notFound
+			count: 1
+			path: src/Http/Controllers/PostSettingsController.php
+
+		-
+			message: '#^Access to an undefined property Heisenberg\\Models\\Post\:\:\$page_padding_y\.$#'
+			identifier: property.notFound
+			count: 1
+			path: src/Http/Controllers/PostSettingsController.php
+
+		-
+			message: '#^Access to an undefined property Heisenberg\\Models\\TocEntry\:\:\$anchor\.$#'
+			identifier: property.notFound
+			count: 1
+			path: src/Http/Controllers/PostSettingsController.php
+
+		-
+			message: '#^Access to an undefined property Heisenberg\\Models\\TocEntry\:\:\$label\.$#'
+			identifier: property.notFound
+			count: 1
+			path: src/Http/Controllers/PostSettingsController.php
+
+		-
+			message: '#^Parameter \#1 \$callback of method Illuminate\\Database\\Eloquent\\Collection\<int,Illuminate\\Database\\Eloquent\\Model\>\:\:map\(\) contains unresolvable type\.$#'
+			identifier: argument.unresolvableType
+			count: 1
+			path: src/Http/Controllers/PostSettingsController.php
+
+		-
+			message: '#^Parameter \#1 \$callback of method Illuminate\\Database\\Eloquent\\Collection\<int,Illuminate\\Database\\Eloquent\\Model\>\:\:map\(\) expects callable\(Illuminate\\Database\\Eloquent\\Model, int\)\: array\{label\: mixed, anchor\: mixed\}, Closure\(Heisenberg\\Models\\TocEntry\)\: array\{label\: mixed, anchor\: mixed\} given\.$#'
+			identifier: argument.type
+			count: 1
+			path: src/Http/Controllers/PostSettingsController.php
+
+		-
+			message: '#^Access to an undefined property Heisenberg\\Models\\Tag\:\:\$name_en\.$#'
+			identifier: property.notFound
+			count: 1
+			path: src/Http/Controllers/PostTagController.php
+
+		-
+			message: '#^Access to an undefined property Heisenberg\\Models\\Tag\:\:\$name_fr\.$#'
+			identifier: property.notFound
+			count: 1
+			path: src/Http/Controllers/PostTagController.php
+
+		-
+			message: '#^Access to an undefined property Heisenberg\\Models\\Tag\:\:\$slug\.$#'
+			identifier: property.notFound
+			count: 1
+			path: src/Http/Controllers/PostTagController.php
+
+		-
+			message: '#^Parameter \#1 \$callback of method Illuminate\\Database\\Eloquent\\Collection\<int,Illuminate\\Database\\Eloquent\\Model\>\:\:map\(\) contains unresolvable type\.$#'
+			identifier: argument.unresolvableType
+			count: 1
+			path: src/Http/Controllers/PostTagController.php
+
+		-
+			message: '#^Parameter \#1 \$callback of method Illuminate\\Database\\Eloquent\\Collection\<int,Illuminate\\Database\\Eloquent\\Model\>\:\:map\(\) expects callable\(Illuminate\\Database\\Eloquent\\Model, int\)\: array\{id\: int, name_en\: mixed, name_fr\: mixed, slug\: mixed\}, Closure\(Heisenberg\\Models\\Tag\)\: array\{id\: int, name_en\: mixed, name_fr\: mixed, slug\: mixed\} given\.$#'
+			identifier: argument.type
+			count: 1
+			path: src/Http/Controllers/PostTagController.php
+
+		-
+			message: '#^Access to an undefined property Heisenberg\\Models\\Post\:\:\$locale\.$#'
+			identifier: property.notFound
+			count: 1
+			path: src/Http/Controllers/PostTranslationsApiController.php
+
+		-
+			message: '#^Access to an undefined property Heisenberg\\Models\\Post\:\:\$slug\.$#'
+			identifier: property.notFound
+			count: 1
+			path: src/Http/Controllers/PostTranslationsApiController.php
+
+		-
+			message: '#^Access to an undefined property Heisenberg\\Models\\Post\:\:\$author_id\.$#'
+			identifier: property.notFound
+			count: 1
+			path: src/Http/Controllers/PostTrashController.php
+
+		-
+			message: '#^Access to an undefined property Heisenberg\\Models\\Post\:\:\$deleted_at\.$#'
+			identifier: property.notFound
+			count: 2
+			path: src/Http/Controllers/PostTrashController.php
+
+		-
+			message: '#^Parameter \#1 \$callback of method Illuminate\\Database\\Eloquent\\Collection\<int,Heisenberg\\Models\\Post\>\:\:map\(\) contains unresolvable type\.$#'
+			identifier: argument.unresolvableType
+			count: 1
+			path: src/Http/Controllers/PostTrashController.php
+
+		-
+			message: '#^Access to an undefined property Heisenberg\\Models\\Post\:\:\$allow_comments\.$#'
+			identifier: property.notFound
+			count: 1
+			path: src/Http/Controllers/PreviewController.php
+
+		-
+			message: '#^Access to an undefined property Heisenberg\\Models\\Post\:\:\$locale\.$#'
+			identifier: property.notFound
+			count: 1
+			path: src/Http/Controllers/PreviewController.php
+
+		-
+			message: '#^Access to an undefined property Heisenberg\\Models\\Post\:\:\$type\.$#'
+			identifier: property.notFound
+			count: 1
+			path: src/Http/Controllers/PreviewController.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$anchor\.$#'
+			identifier: property.notFound
+			count: 1
+			path: src/Http/Controllers/PreviewController.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$content\.$#'
+			identifier: property.notFound
+			count: 1
+			path: src/Http/Controllers/PreviewController.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$label\.$#'
+			identifier: property.notFound
+			count: 1
+			path: src/Http/Controllers/PreviewController.php
+
+		-
+			message: '#^Parameter \#1 \$callback of method Illuminate\\Database\\Eloquent\\Collection\<int,Illuminate\\Database\\Eloquent\\Model\>\:\:map\(\) contains unresolvable type\.$#'
+			identifier: argument.unresolvableType
+			count: 1
+			path: src/Http/Controllers/PreviewController.php
+
+		-
+			message: '#^Access to an undefined property Heisenberg\\Models\\Post\:\:\$locale\.$#'
+			identifier: property.notFound
+			count: 1
+			path: src/Http/Controllers/SeoAnalysisController.php
+
+		-
+			message: '#^Access to an undefined property Heisenberg\\Models\\Post\:\:\$locale\.$#'
+			identifier: property.notFound
+			count: 2
+			path: src/Http/Controllers/SitemapController.php
+
+		-
+			message: '#^Access to an undefined property Heisenberg\\Models\\Post\:\:\$updated_at\.$#'
+			identifier: property.notFound
+			count: 1
+			path: src/Http/Controllers/SitemapController.php
+
+		-
+			message: '#^Access to an undefined property Heisenberg\\Models\\SeoMeta\:\:\$in_sitemap\.$#'
+			identifier: property.notFound
+			count: 1
+			path: src/Http/Controllers/SitemapController.php
+
+		-
+			message: '#^Access to an undefined property Heisenberg\\Models\\SeoMeta\:\:\$robots\.$#'
+			identifier: property.notFound
+			count: 1
+			path: src/Http/Controllers/SitemapController.php
+
+		-
+			message: '#^Offset ''title'' on array\{locale\: string, is_default\: bool, title\: bool, excerpt\: bool, blocks_translated\: int, blocks_total\: int, complete\: bool\} on left side of \?\? always exists and is not nullable\.$#'
+			identifier: nullCoalesce.offset
+			count: 1
+			path: src/Http/Controllers/SitemapController.php
+
+		-
+			message: '#^Access to an undefined property Heisenberg\\Models\\Tag\:\:\$created_at\.$#'
+			identifier: property.notFound
+			count: 1
+			path: src/Http/Controllers/TagController.php
+
+		-
+			message: '#^Access to an undefined property Heisenberg\\Models\\Tag\:\:\$name_en\.$#'
+			identifier: property.notFound
+			count: 1
+			path: src/Http/Controllers/TagController.php
+
+		-
+			message: '#^Access to an undefined property Heisenberg\\Models\\Tag\:\:\$name_fr\.$#'
+			identifier: property.notFound
+			count: 1
+			path: src/Http/Controllers/TagController.php
+
+		-
+			message: '#^Access to an undefined property Heisenberg\\Models\\Tag\:\:\$slug\.$#'
+			identifier: property.notFound
+			count: 1
+			path: src/Http/Controllers/TagController.php
+
+		-
+			message: '#^Access to an undefined property Heisenberg\\Models\\Tag\:\:\$updated_at\.$#'
+			identifier: property.notFound
+			count: 1
+			path: src/Http/Controllers/TagController.php
+
+		-
+			message: '#^Call to function is_array\(\) with array\<string, mixed\> will always evaluate to true\.$#'
+			identifier: function.alreadyNarrowedType
+			count: 1
+			path: src/Http/Controllers/ThemeController.php
+
+		-
+			message: '#^Called ''env'' outside of the config directory which returns null when the config is cached, use ''config''\.$#'
+			identifier: larastan.noEnvCallsOutsideOfConfig
+			count: 1
+			path: src/Http/Middleware/McpTokenMiddleware.php
+
+		-
+			message: '#^Parameter \#1 \$array \(array\<int, Livewire\\Features\\SupportFileUploads\\TemporaryUploadedFile\>\) to function array_filter does not contain falsy values, the array will always stay the same\.$#'
+			identifier: arrayFilter.same
+			count: 1
+			path: src/Livewire/MediaLibrary.php
+
+		-
+			message: '#^Parameter \#1 \$textView of method Illuminate\\Mail\\Mailable\:\:text\(\) expects view\-string, Illuminate\\Support\\HtmlString given\.$#'
+			identifier: argument.type
+			count: 1
+			path: src/Mail/HeisenbergMailable.php
+
+		-
+			message: '#^Call to function is_array\(\) with array\<string, mixed\> will always evaluate to true\.$#'
+			identifier: function.alreadyNarrowedType
+			count: 1
+			path: src/Mcp/Support/ContentBlockPipeline.php
+
+		-
+			message: '#^Offset ''blocks'' on array\{valid\: bool, errors\: array\<string\>, errorMap\: array\<string, array\<string\>\>\} on left side of \?\? does not exist\.$#'
+			identifier: nullCoalesce.offset
+			count: 1
+			path: src/Mcp/Support/ContentBlockPipeline.php
+
+		-
+			message: '#^Offset ''errors'' on \*NEVER\* on left side of \?\? always exists and is not nullable\.$#'
+			identifier: nullCoalesce.offset
+			count: 1
+			path: src/Mcp/Support/ContentBlockPipeline.php
+
+		-
+			message: '#^Offset ''valid'' on array\{valid\: bool, errors\: array\<string\>, errorMap\: array\<string, array\<string\>\>\} on left side of \?\? always exists and is not nullable\.$#'
+			identifier: nullCoalesce.offset
+			count: 1
+			path: src/Mcp/Support/ContentBlockPipeline.php
+
+		-
+			message: '#^Access to an undefined property Heisenberg\\Models\\Post\:\:\$content_version\.$#'
+			identifier: property.notFound
+			count: 3
+			path: src/Mcp/Support/PostAccess.php
+
+		-
+			message: '#^Access to an undefined property Heisenberg\\Models\\Post\:\:\$excerpt_en\.$#'
+			identifier: property.notFound
+			count: 1
+			path: src/Mcp/Support/PostAccess.php
+
+		-
+			message: '#^Access to an undefined property Heisenberg\\Models\\Post\:\:\$excerpt_fr\.$#'
+			identifier: property.notFound
+			count: 1
+			path: src/Mcp/Support/PostAccess.php
+
+		-
+			message: '#^Access to an undefined property Heisenberg\\Models\\Post\:\:\$locale\.$#'
+			identifier: property.notFound
+			count: 1
+			path: src/Mcp/Support/PostAccess.php
+
+		-
+			message: '#^Access to an undefined property Heisenberg\\Models\\Post\:\:\$slug\.$#'
+			identifier: property.notFound
+			count: 1
+			path: src/Mcp/Support/PostAccess.php
+
+		-
+			message: '#^Access to an undefined property Heisenberg\\Models\\Post\:\:\$status\.$#'
+			identifier: property.notFound
+			count: 1
+			path: src/Mcp/Support/PostAccess.php
+
+		-
+			message: '#^Access to an undefined property Heisenberg\\Models\\Post\:\:\$title_en\.$#'
+			identifier: property.notFound
+			count: 1
+			path: src/Mcp/Support/PostAccess.php
+
+		-
+			message: '#^Access to an undefined property Heisenberg\\Models\\Post\:\:\$title_fr\.$#'
+			identifier: property.notFound
+			count: 1
+			path: src/Mcp/Support/PostAccess.php
+
+		-
+			message: '#^Access to an undefined property Heisenberg\\Models\\Post\:\:\$type\.$#'
+			identifier: property.notFound
+			count: 1
+			path: src/Mcp/Support/PostAccess.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$content\.$#'
+			identifier: property.notFound
+			count: 1
+			path: src/Mcp/Support/PostAccess.php
+
+		-
+			message: '#^Parameter \#1 \$array \(list\<array\<string, mixed\>\>\) of array_values is already a list, call has no effect\.$#'
+			identifier: arrayValues.list
+			count: 1
+			path: src/Mcp/Support/PostAccess.php
+
+		-
+			message: '#^Access to an undefined property Heisenberg\\Models\\Post\:\:\$deleted_at\.$#'
+			identifier: property.notFound
+			count: 1
+			path: src/Mcp/Tools/PostLifecycleTools.php
+
+		-
+			message: '#^Access to an undefined property Heisenberg\\Models\\Post\:\:\$published_at\.$#'
+			identifier: property.notFound
+			count: 2
+			path: src/Mcp/Tools/PostLifecycleTools.php
+
+		-
+			message: '#^Access to an undefined property Heisenberg\\Models\\Post\:\:\$scheduled_at\.$#'
+			identifier: property.notFound
+			count: 2
+			path: src/Mcp/Tools/PostLifecycleTools.php
+
+		-
+			message: '#^Access to an undefined property Heisenberg\\Models\\Post\:\:\$status\.$#'
+			identifier: property.notFound
+			count: 2
+			path: src/Mcp/Tools/PostLifecycleTools.php
+
+		-
+			message: '#^Access to an undefined property Heisenberg\\Models\\Post\:\:\$allow_comments\.$#'
+			identifier: property.notFound
+			count: 1
+			path: src/Mcp/Tools/PostSettingsTools.php
+
+		-
+			message: '#^Access to an undefined property Heisenberg\\Models\\Post\:\:\$featured_image_id\.$#'
+			identifier: property.notFound
+			count: 2
+			path: src/Mcp/Tools/PostSettingsTools.php
+
+		-
+			message: '#^Access to an undefined property Heisenberg\\Models\\Post\:\:\$page_padding_x\.$#'
+			identifier: property.notFound
+			count: 1
+			path: src/Mcp/Tools/PostSettingsTools.php
+
+		-
+			message: '#^Access to an undefined property Heisenberg\\Models\\Post\:\:\$page_padding_y\.$#'
+			identifier: property.notFound
+			count: 1
+			path: src/Mcp/Tools/PostSettingsTools.php
+
+		-
+			message: '#^Access to an undefined property Heisenberg\\Models\\Post\:\:\$content_version\.$#'
+			identifier: property.notFound
+			count: 2
+			path: src/Mcp/Tools/PostTools.php
+
+		-
+			message: '#^Access to an undefined property Heisenberg\\Models\\Revision\:\:\$content_blocks\.$#'
+			identifier: property.notFound
+			count: 1
+			path: src/Mcp/Tools/RevisionTools.php
+
+		-
+			message: '#^Access to an undefined property Heisenberg\\Models\\Revision\:\:\$created_at\.$#'
+			identifier: property.notFound
+			count: 1
+			path: src/Mcp/Tools/RevisionTools.php
+
+		-
+			message: '#^Access to an undefined property Heisenberg\\Models\\Revision\:\:\$revision_type\.$#'
+			identifier: property.notFound
+			count: 1
+			path: src/Mcp/Tools/RevisionTools.php
+
+		-
+			message: '#^Access to an undefined property Heisenberg\\Models\\Revision\:\:\$title_en\.$#'
+			identifier: property.notFound
+			count: 1
+			path: src/Mcp/Tools/RevisionTools.php
+
+		-
+			message: '#^Access to an undefined property Heisenberg\\Models\\Post\:\:\$locale\.$#'
+			identifier: property.notFound
+			count: 1
+			path: src/Mcp/Tools/SeoTools.php
+
+		-
+			message: '#^Access to an undefined property Heisenberg\\Models\\SeoMeta\:\:\$canonical_url\.$#'
+			identifier: property.notFound
+			count: 1
+			path: src/Mcp/Tools/SeoTools.php
+
+		-
+			message: '#^Access to an undefined property Heisenberg\\Models\\SeoMeta\:\:\$focus_keyphrase_en\.$#'
+			identifier: property.notFound
+			count: 1
+			path: src/Mcp/Tools/SeoTools.php
+
+		-
+			message: '#^Access to an undefined property Heisenberg\\Models\\SeoMeta\:\:\$focus_keyphrase_fr\.$#'
+			identifier: property.notFound
+			count: 1
+			path: src/Mcp/Tools/SeoTools.php
+
+		-
+			message: '#^Access to an undefined property Heisenberg\\Models\\SeoMeta\:\:\$in_sitemap\.$#'
+			identifier: property.notFound
+			count: 1
+			path: src/Mcp/Tools/SeoTools.php
+
+		-
+			message: '#^Access to an undefined property Heisenberg\\Models\\SeoMeta\:\:\$meta_description_en\.$#'
+			identifier: property.notFound
+			count: 1
+			path: src/Mcp/Tools/SeoTools.php
+
+		-
+			message: '#^Access to an undefined property Heisenberg\\Models\\SeoMeta\:\:\$meta_description_fr\.$#'
+			identifier: property.notFound
+			count: 1
+			path: src/Mcp/Tools/SeoTools.php
+
+		-
+			message: '#^Access to an undefined property Heisenberg\\Models\\SeoMeta\:\:\$meta_title_en\.$#'
+			identifier: property.notFound
+			count: 1
+			path: src/Mcp/Tools/SeoTools.php
+
+		-
+			message: '#^Access to an undefined property Heisenberg\\Models\\SeoMeta\:\:\$meta_title_fr\.$#'
+			identifier: property.notFound
+			count: 1
+			path: src/Mcp/Tools/SeoTools.php
+
+		-
+			message: '#^Access to an undefined property Heisenberg\\Models\\SeoMeta\:\:\$og_description_en\.$#'
+			identifier: property.notFound
+			count: 1
+			path: src/Mcp/Tools/SeoTools.php
+
+		-
+			message: '#^Access to an undefined property Heisenberg\\Models\\SeoMeta\:\:\$og_description_fr\.$#'
+			identifier: property.notFound
+			count: 1
+			path: src/Mcp/Tools/SeoTools.php
+
+		-
+			message: '#^Access to an undefined property Heisenberg\\Models\\SeoMeta\:\:\$og_image\.$#'
+			identifier: property.notFound
+			count: 1
+			path: src/Mcp/Tools/SeoTools.php
+
+		-
+			message: '#^Access to an undefined property Heisenberg\\Models\\SeoMeta\:\:\$og_title_en\.$#'
+			identifier: property.notFound
+			count: 1
+			path: src/Mcp/Tools/SeoTools.php
+
+		-
+			message: '#^Access to an undefined property Heisenberg\\Models\\SeoMeta\:\:\$og_title_fr\.$#'
+			identifier: property.notFound
+			count: 1
+			path: src/Mcp/Tools/SeoTools.php
+
+		-
+			message: '#^Access to an undefined property Heisenberg\\Models\\SeoMeta\:\:\$robots\.$#'
+			identifier: property.notFound
+			count: 1
+			path: src/Mcp/Tools/SeoTools.php
+
+		-
+			message: '#^Access to an undefined property Heisenberg\\Models\\SeoMeta\:\:\$schema_data\.$#'
+			identifier: property.notFound
+			count: 1
+			path: src/Mcp/Tools/SeoTools.php
+
+		-
+			message: '#^Access to an undefined property Heisenberg\\Models\\SeoMeta\:\:\$schema_type\.$#'
+			identifier: property.notFound
+			count: 1
+			path: src/Mcp/Tools/SeoTools.php
+
+		-
+			message: '#^Offset ''colors''\|''fontSizes''\|''radii''\|''spaces'' on array\{colors\: list\<array\<string, mixed\>\>, fontSizes\: list\<array\<string, mixed\>\>, spaces\: list\<array\<string, mixed\>\>, radii\: list\<array\<string, mixed\>\>, fonts\: list\<array\<string, mixed\>\>\} on left side of \?\? always exists and is not nullable\.$#'
+			identifier: nullCoalesce.offset
+			count: 1
+			path: src/Mcp/Tools/ThemeTools.php
+
+		-
+			message: '#^Offset ''fonts'' on array\{colors\: list\<array\<string, mixed\>\>, fontSizes\: list\<array\<string, mixed\>\>, spaces\: list\<array\<string, mixed\>\>, radii\: list\<array\<string, mixed\>\>, fonts\: list\<array\<string, mixed\>\>\} on left side of \?\? always exists and is not nullable\.$#'
+			identifier: nullCoalesce.offset
+			count: 1
+			path: src/Mcp/Tools/ThemeTools.php
+
+		-
+			message: '#^Access to an undefined property Heisenberg\\Models\\Post\:\:\$locale\.$#'
+			identifier: property.notFound
+			count: 1
+			path: src/Mcp/Tools/TranslationTools.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$content\.$#'
+			identifier: property.notFound
+			count: 3
+			path: src/Mcp/Tools/TranslationTools.php
+
+		-
+			message: '#^Call to function is_array\(\) with array\<string, mixed\> will always evaluate to true\.$#'
+			identifier: function.alreadyNarrowedType
+			count: 2
+			path: src/Mcp/Tools/TranslationTools.php
+
+		-
+			message: '#^Class App\\Models\\User not found\.$#'
+			identifier: class.notFound
+			count: 1
+			path: src/Models/AiConversation.php
+
+		-
+			message: '#^Access to an undefined property Heisenberg\\Models\\Category\:\:\$name_en\.$#'
+			identifier: property.notFound
+			count: 1
+			path: src/Models/Category.php
+
+		-
+			message: '#^Access to an undefined property Heisenberg\\Models\\Category\:\:\$name_fr\.$#'
+			identifier: property.notFound
+			count: 1
+			path: src/Models/Category.php
+
+		-
+			message: '#^Access to an undefined property Heisenberg\\Models\\Category\:\:\$slug\.$#'
+			identifier: property.notFound
+			count: 3
+			path: src/Models/Category.php
+
+		-
+			message: '#^Call to an undefined method Illuminate\\Database\\Eloquent\\Model\:\:getDescendantIds\(\)\.$#'
+			identifier: method.notFound
+			count: 1
+			path: src/Models/Category.php
+
+		-
+			message: '#^Unsafe call to private method Heisenberg\\Models\\Category\:\:uniqueSlug\(\) through static\:\:\.$#'
+			identifier: staticClassAccess.privateMethod
+			count: 2
+			path: src/Models/Category.php
+
+		-
+			message: '#^Access to an undefined property Heisenberg\\Models\\Post\:\:\$deleted_batch_id\.$#'
+			identifier: property.notFound
+			count: 2
+			path: src/Models/Post.php
+
+		-
+			message: '#^Access to an undefined property Heisenberg\\Models\\Post\:\:\$excerpt_en\.$#'
+			identifier: property.notFound
+			count: 2
+			path: src/Models/Post.php
+
+		-
+			message: '#^Access to an undefined property Heisenberg\\Models\\Post\:\:\$excerpt_fr\.$#'
+			identifier: property.notFound
+			count: 2
+			path: src/Models/Post.php
+
+		-
+			message: '#^Access to an undefined property Heisenberg\\Models\\Post\:\:\$locale\.$#'
+			identifier: property.notFound
+			count: 4
+			path: src/Models/Post.php
+
+		-
+			message: '#^Access to an undefined property Heisenberg\\Models\\Post\:\:\$slug\.$#'
+			identifier: property.notFound
+			count: 3
+			path: src/Models/Post.php
+
+		-
+			message: '#^Access to an undefined property Heisenberg\\Models\\Post\:\:\$title_en\.$#'
+			identifier: property.notFound
+			count: 4
+			path: src/Models/Post.php
+
+		-
+			message: '#^Access to an undefined property Heisenberg\\Models\\Post\:\:\$title_fr\.$#'
+			identifier: property.notFound
+			count: 4
+			path: src/Models/Post.php
+
+		-
+			message: '#^Access to an undefined property Heisenberg\\Models\\Post\:\:\$translation_group_id\.$#'
+			identifier: property.notFound
+			count: 1
+			path: src/Models/Post.php
+
+		-
+			message: '#^Call to an undefined method Illuminate\\Database\\Eloquent\\Builder\:\:withTrashed\(\)\.$#'
+			identifier: method.notFound
+			count: 2
+			path: src/Models/Post.php
+
+		-
+			message: '#^Call to an undefined method Illuminate\\Database\\Eloquent\\Relations\\HasMany\<Illuminate\\Database\\Eloquent\\Model, \$this\(Heisenberg\\Models\\Post\)\>\:\:ordered\(\)\.$#'
+			identifier: method.notFound
+			count: 1
+			path: src/Models/Post.php
+
+		-
+			message: '#^Unsafe call to private method Heisenberg\\Models\\Post\:\:uniqueSlug\(\) through static\:\:\.$#'
+			identifier: staticClassAccess.privateMethod
+			count: 2
+			path: src/Models/Post.php
+
+		-
+			message: '#^Access to an undefined property Heisenberg\\Models\\PublicFile\:\:\$alt_text_en\.$#'
+			identifier: property.notFound
+			count: 2
+			path: src/Models/PublicFile.php
+
+		-
+			message: '#^Access to an undefined property Heisenberg\\Models\\PublicFile\:\:\$alt_text_fr\.$#'
+			identifier: property.notFound
+			count: 2
+			path: src/Models/PublicFile.php
+
+		-
+			message: '#^Access to an undefined property Heisenberg\\Models\\PublicFile\:\:\$disk\.$#'
+			identifier: property.notFound
+			count: 2
+			path: src/Models/PublicFile.php
+
+		-
+			message: '#^Access to an undefined property Heisenberg\\Models\\PublicFile\:\:\$size_bytes\.$#'
+			identifier: property.notFound
+			count: 1
+			path: src/Models/PublicFile.php
+
+		-
+			message: '#^Access to an undefined property Heisenberg\\Models\\PublicFile\:\:\$stored_path\.$#'
+			identifier: property.notFound
+			count: 1
+			path: src/Models/PublicFile.php
+
+		-
+			message: '#^Access to an undefined property Heisenberg\\Models\\PublicFile\:\:\$type\.$#'
+			identifier: property.notFound
+			count: 1
+			path: src/Models/PublicFile.php
+
+		-
+			message: '#^Access to an undefined property Heisenberg\\Models\\PublicFile\:\:\$width\.$#'
+			identifier: property.notFound
+			count: 1
+			path: src/Models/PublicFile.php
+
+		-
+			message: '#^Unsafe call to private method Heisenberg\\Models\\PublicFile\:\:encodePath\(\) through static\:\:\.$#'
+			identifier: staticClassAccess.privateMethod
+			count: 2
+			path: src/Models/PublicFile.php
+
+		-
+			message: '#^Access to an undefined property Heisenberg\\Models\\Block\:\:\$content\.$#'
+			identifier: property.notFound
+			count: 1
+			path: src/Models/Revision.php
+
+		-
+			message: '#^Access to an undefined property Heisenberg\\Models\\Block\:\:\$order\.$#'
+			identifier: property.notFound
+			count: 1
+			path: src/Models/Revision.php
+
+		-
+			message: '#^Access to an undefined property Heisenberg\\Models\\Block\:\:\$type\.$#'
+			identifier: property.notFound
+			count: 1
+			path: src/Models/Revision.php
+
+		-
+			message: '#^Access to an undefined property Heisenberg\\Models\\Post\:\:\$excerpt_en\.$#'
+			identifier: property.notFound
+			count: 1
+			path: src/Models/Revision.php
+
+		-
+			message: '#^Access to an undefined property Heisenberg\\Models\\Post\:\:\$excerpt_fr\.$#'
+			identifier: property.notFound
+			count: 1
+			path: src/Models/Revision.php
+
+		-
+			message: '#^Access to an undefined property Heisenberg\\Models\\Post\:\:\$rendered_html_en\.$#'
+			identifier: property.notFound
+			count: 1
+			path: src/Models/Revision.php
+
+		-
+			message: '#^Access to an undefined property Heisenberg\\Models\\Post\:\:\$rendered_html_fr\.$#'
+			identifier: property.notFound
+			count: 1
+			path: src/Models/Revision.php
+
+		-
+			message: '#^Access to an undefined property Heisenberg\\Models\\Post\:\:\$title_en\.$#'
+			identifier: property.notFound
+			count: 1
+			path: src/Models/Revision.php
+
+		-
+			message: '#^Access to an undefined property Heisenberg\\Models\\Post\:\:\$title_fr\.$#'
+			identifier: property.notFound
+			count: 1
+			path: src/Models/Revision.php
+
+		-
+			message: '#^Call to function in_array\(\) with arguments ''auto_save''\|''manual''\|''restore'', array\{''manual'', ''auto_save'', ''restore''\} and true will always evaluate to true\.$#'
+			identifier: function.alreadyNarrowedType
+			count: 1
+			path: src/Models/Revision.php
+
+		-
+			message: '#^Class App\\Models\\User not found\.$#'
+			identifier: class.notFound
+			count: 1
+			path: src/Models/Revision.php
+
+		-
+			message: '#^Instanceof between Illuminate\\Database\\Eloquent\\Collection\<int, Illuminate\\Database\\Eloquent\\Model\> and Illuminate\\Support\\Collection will always evaluate to true\.$#'
+			identifier: instanceof.alwaysTrue
+			count: 1
+			path: src/Models/Revision.php
+
+		-
+			message: '#^Parameter \#1 \$callback of method Illuminate\\Database\\Eloquent\\Collection\<int,Illuminate\\Database\\Eloquent\\Model\>\:\:map\(\) contains unresolvable type\.$#'
+			identifier: argument.unresolvableType
+			count: 1
+			path: src/Models/Revision.php
+
+		-
+			message: '#^Parameter \#1 \$callback of method Illuminate\\Database\\Eloquent\\Collection\<int,Illuminate\\Database\\Eloquent\\Model\>\:\:map\(\) expects callable\(Illuminate\\Database\\Eloquent\\Model, int\)\: array\{id\: mixed, type\: mixed, content\: mixed, order\: mixed\}, Closure\(Heisenberg\\Models\\Block\)\: array\{id\: mixed, type\: mixed, content\: mixed, order\: mixed\} given\.$#'
+			identifier: argument.type
+			count: 1
+			path: src/Models/Revision.php
+
+		-
+			message: '#^Access to an undefined property Heisenberg\\Models\\SeoMeta\:\:\$og_image\.$#'
+			identifier: property.notFound
+			count: 1
+			path: src/Models/SeoMeta.php
+
+		-
+			message: '#^Access to an undefined property Heisenberg\\Models\\SeoMeta\:\:\$schema_data\.$#'
+			identifier: property.notFound
+			count: 1
+			path: src/Models/SeoMeta.php
+
+		-
+			message: '#^Access to an undefined property Heisenberg\\Models\\SeoMeta\:\:\$schema_type\.$#'
+			identifier: property.notFound
+			count: 1
+			path: src/Models/SeoMeta.php
+
+		-
+			message: '#^Access to an undefined property Heisenberg\\Models\\Tag\:\:\$name_en\.$#'
+			identifier: property.notFound
+			count: 1
+			path: src/Models/Tag.php
+
+		-
+			message: '#^Access to an undefined property Heisenberg\\Models\\Tag\:\:\$name_fr\.$#'
+			identifier: property.notFound
+			count: 1
+			path: src/Models/Tag.php
+
+		-
+			message: '#^Access to an undefined property Heisenberg\\Models\\Tag\:\:\$slug\.$#'
+			identifier: property.notFound
+			count: 3
+			path: src/Models/Tag.php
+
+		-
+			message: '#^Unsafe call to private method Heisenberg\\Models\\Tag\:\:uniqueSlug\(\) through static\:\:\.$#'
+			identifier: staticClassAccess.privateMethod
+			count: 2
+			path: src/Models/Tag.php
+
+		-
+			message: '#^Access to an undefined property Heisenberg\\Models\\Post\:\:\$author_id\.$#'
+			identifier: property.notFound
+			count: 1
+			path: src/Policies/PostPolicy.php
+
+		-
+			message: '#^Access to an undefined property Heisenberg\\Models\\Post\:\:\$status\.$#'
+			identifier: property.notFound
+			count: 1
+			path: src/Policies/PostPolicy.php
+
+		-
+			message: '#^Access to an undefined property Heisenberg\\Models\\PublicFile\:\:\$uploaded_by\.$#'
+			identifier: property.notFound
+			count: 1
+			path: src/Policies/PublicFilePolicy.php
+
+		-
+			message: '#^Strict comparison using \!\=\= between non\-empty\-string and '''' will always evaluate to true\.$#'
+			identifier: notIdentical.alwaysTrue
+			count: 1
+			path: src/Rendering/BlockStyleCompiler.php
+
+		-
+			message: '#^Match arm comparison between ''cfstream'' and ''cfstream'' is always true\.$#'
+			identifier: match.alwaysTrue
+			count: 1
+			path: src/Rendering/EmbedUrlResolver.php
+
+		-
+			message: '#^Offset ''arguments'' on array\{id\: string, name\: string, arguments\: array\} on left side of \?\? always exists and is not nullable\.$#'
+			identifier: nullCoalesce.offset
+			count: 2
+			path: src/Services/AiToolRunner.php
+
+		-
+			message: '#^Offset ''id'' on array\{id\: string, name\: string, arguments\: array\} on left side of \?\? always exists and is not nullable\.$#'
+			identifier: nullCoalesce.offset
+			count: 1
+			path: src/Services/AiToolRunner.php
+
+		-
+			message: '#^Offset ''name'' on array\{id\: string, name\: string, arguments\: array\} on left side of \?\? always exists and is not nullable\.$#'
+			identifier: nullCoalesce.offset
+			count: 2
+			path: src/Services/AiToolRunner.php
+
+		-
+			message: '#^Using nullsafe property access "\?\-\>usage" on left side of \?\? is unnecessary\. Use \-\> instead\.$#'
+			identifier: nullsafe.neverNull
+			count: 1
+			path: src/Services/AiToolRunner.php
+
+		-
+			message: '#^Right side of && is always true\.$#'
+			identifier: booleanAnd.rightAlwaysTrue
+			count: 1
+			path: src/Services/BlockContractValidator.php
+
+		-
+			message: '#^Access to an undefined property Heisenberg\\Models\\PublicFile\:\:\$disk\.$#'
+			identifier: property.notFound
+			count: 3
+			path: src/Services/EmailRenderer.php
+
+		-
+			message: '#^Access to an undefined property Heisenberg\\Models\\PublicFile\:\:\$mime_type\.$#'
+			identifier: property.notFound
+			count: 1
+			path: src/Services/EmailRenderer.php
+
+		-
+			message: '#^Access to an undefined property Heisenberg\\Models\\PublicFile\:\:\$stored_path\.$#'
+			identifier: property.notFound
+			count: 1
+			path: src/Services/EmailRenderer.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$content\.$#'
+			identifier: property.notFound
+			count: 1
+			path: src/Services/EmailRenderer.php
+
+		-
+			message: '#^Call to function is_array\(\) with array\<string, mixed\> will always evaluate to true\.$#'
+			identifier: function.alreadyNarrowedType
+			count: 3
+			path: src/Services/EmailRenderer.php
+
+		-
+			message: '#^Parameter \#1 \$array \(list\<array\{cid\: string, path\: string, mime\: string\}\>\) of array_values is already a list, call has no effect\.$#'
+			identifier: arrayValues.list
+			count: 1
+			path: src/Services/EmailRenderer.php
+
+		-
+			message: '#^Offset ''family'' on array\{family\: string, weights\: list\<int\>\} on left side of \?\? always exists and is not nullable\.$#'
+			identifier: nullCoalesce.offset
+			count: 1
+			path: src/Services/FontCatalogService.php
+
+		-
+			message: '#^Offset ''weights'' on array\{family\: string, weights\: list\<int\>\} on left side of \?\? always exists and is not nullable\.$#'
+			identifier: nullCoalesce.offset
+			count: 1
+			path: src/Services/FontCatalogService.php
+
+		-
+			message: '#^Parameter \#1 \$array \(list\<array\<string, mixed\>\>\) of array_values is already a list, call has no effect\.$#'
+			identifier: arrayValues.list
+			count: 1
+			path: src/Services/FontCatalogService.php
+
+		-
+			message: '#^Parameter \#1 \$array \(list\<int\>\) of array_values is already a list, call has no effect\.$#'
+			identifier: arrayValues.list
+			count: 1
+			path: src/Services/FontCatalogService.php
+
+		-
+			message: '#^Offset ''isError'' on array\{content\: list\<array\{type\: string, text\: string\}\>, isError\: bool\} on left side of \?\? always exists and is not nullable\.$#'
+			identifier: nullCoalesce.offset
+			count: 1
+			path: src/Services/HeisenbergToolSource.php
+
+		-
+			message: '#^Offset ''icons'' on array\{count\: int, icons\: array\<string\>\} on left side of \?\? always exists and is not nullable\.$#'
+			identifier: nullCoalesce.offset
+			count: 1
+			path: src/Services/IconLibraryService.php
+
+		-
+			message: '#^Access to an undefined property Heisenberg\\Models\\PublicFile\:\:\$disk\.$#'
+			identifier: property.notFound
+			count: 1
+			path: src/Services/MediaLibraryService.php
+
+		-
+			message: '#^Access to an undefined property Heisenberg\\Models\\PublicFile\:\:\$stored_path\.$#'
+			identifier: property.notFound
+			count: 1
+			path: src/Services/MediaLibraryService.php
+
+		-
+			message: '#^Offset ''filename'' on array\{dirname\?\: string, basename\: string, extension\?\: string, filename\: string\} on left side of \?\? always exists and is not nullable\.$#'
+			identifier: nullCoalesce.offset
+			count: 1
+			path: src/Services/MediaLibraryService.php
+
+		-
+			message: '#^Offset ''width'' on array\{width\: int\} on left side of \?\? always exists and is not nullable\.$#'
+			identifier: nullCoalesce.offset
+			count: 1
+			path: src/Services/MediaLibraryService.php
+
+		-
+			message: '#^Offset 0 on array\{0\: int\<0, max\>, 1\: int\<0, max\>, 2\: int, 3\: string, mime\: string, channels\?\: int, bits\?\: int\} on left side of \?\? always exists and is not nullable\.$#'
+			identifier: nullCoalesce.offset
+			count: 1
+			path: src/Services/MediaLibraryService.php
+
+		-
+			message: '#^Offset 1 on array\{0\: int\<0, max\>, 1\: int\<0, max\>, 2\: int, 3\: string, mime\: string, channels\?\: int, bits\?\: int\} on left side of \?\? always exists and is not nullable\.$#'
+			identifier: nullCoalesce.offset
+			count: 1
+			path: src/Services/MediaLibraryService.php
+
+		-
+			message: '#^Match arm comparison between ''seoMeta'' and ''seoMeta'' is always true\.$#'
+			identifier: match.alwaysTrue
+			count: 1
+			path: src/Services/PostTemplateContractValidator.php
+
+		-
+			message: '#^Right side of && is always true\.$#'
+			identifier: booleanAnd.rightAlwaysTrue
+			count: 1
+			path: src/Services/PostTemplateContractValidator.php
+
+		-
+			message: '#^Access to an undefined property Heisenberg\\Models\\Post\:\:\$slug\.$#'
+			identifier: property.notFound
+			count: 1
+			path: src/Services/SeoAnalyzer.php
+
+		-
+			message: '#^Access to an undefined property Heisenberg\\Models\\Post\:\:\$status\.$#'
+			identifier: property.notFound
+			count: 1
+			path: src/Services/SeoAnalyzer.php
+
+		-
+			message: '#^Access to an undefined property Heisenberg\\Models\\SeoMeta\:\:\$canonical_url\.$#'
+			identifier: property.notFound
+			count: 1
+			path: src/Services/SeoAnalyzer.php
+
+		-
+			message: '#^Access to an undefined property Heisenberg\\Models\\SeoMeta\:\:\$og_image\.$#'
+			identifier: property.notFound
+			count: 1
+			path: src/Services/SeoAnalyzer.php
+
+		-
+			message: '#^Access to an undefined property Heisenberg\\Models\\SeoMeta\:\:\$robots\.$#'
+			identifier: property.notFound
+			count: 1
+			path: src/Services/SeoAnalyzer.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$content\.$#'
+			identifier: property.notFound
+			count: 1
+			path: src/Services/SeoAnalyzer.php
+
+		-
+			message: '#^PHPDoc tag @param references unknown parameter\: \$overrides$#'
+			identifier: parameter.notFound
+			count: 1
+			path: src/Services/SeoAnalyzer.php
+
+		-
+			message: '#^Strict comparison using \!\=\= between non\-falsy\-string and '''' will always evaluate to true\.$#'
+			identifier: notIdentical.alwaysTrue
+			count: 1
+			path: src/Services/SeoAnalyzer.php
+
+		-
+			message: '#^Using nullsafe property access "\?\-\>canonical_url" on left side of \?\? is unnecessary\. Use \-\> instead\.$#'
+			identifier: nullsafe.neverNull
+			count: 1
+			path: src/Services/SeoAnalyzer.php
+
+		-
+			message: '#^Using nullsafe property access "\?\-\>og_image" on left side of \?\? is unnecessary\. Use \-\> instead\.$#'
+			identifier: nullsafe.neverNull
+			count: 1
+			path: src/Services/SeoAnalyzer.php
+
+		-
+			message: '#^Access to an undefined property Heisenberg\\Models\\Post\:\:\$locale\.$#'
+			identifier: property.notFound
+			count: 1
+			path: src/Services/SeoUrlResolver.php
+
+		-
+			message: '#^Access to an undefined property Heisenberg\\Models\\Post\:\:\$slug\.$#'
+			identifier: property.notFound
+			count: 3
+			path: src/Services/SeoUrlResolver.php
+
+		-
+			message: '#^Binary operation "\+" between non\-empty\-string and 0 results in an error\.$#'
+			identifier: binaryOp.invalid
+			count: 1
+			path: src/Services/ShortcodeDialect.php
+
+		-
+			message: '#^Offset 1 on non\-empty\-list\<string\> on left side of \?\? always exists and is not nullable\.$#'
+			identifier: nullCoalesce.offset
+			count: 1
+			path: src/Services/ShortcodeParser.php
+
+		-
+			message: '#^Parameter \#1 \$array \(non\-empty\-list\<string\>\) of array_values is already a list, call has no effect\.$#'
+			identifier: arrayValues.list
+			count: 1
+			path: src/Services/ShortcodeParser.php
+
+		-
+			message: '#^Access to an undefined property Heisenberg\\Models\\Post\:\:\$locale\.$#'
+			identifier: property.notFound
+			count: 1
+			path: src/Services/TranslationStatusService.php
+
+		-
+			message: '#^Parameter \#1 \$blockModels of method Heisenberg\\Services\\TranslationStatusService\:\:flattenTranslatable\(\) expects iterable\<Heisenberg\\Models\\Block\>, Illuminate\\Database\\Eloquent\\Collection\<int, Illuminate\\Database\\Eloquent\\Model\> given\.$#'
+			identifier: argument.type
+			count: 1
+			path: src/Services/TranslationStatusService.php
+
+		-
+			message: '#^Parameter &\$flat by\-ref type of method Heisenberg\\Services\\TranslationStatusService\:\:collect\(\) expects list\<array\{block\: array\<string, mixed\>, attributes\: array\<string\>\}\>, non\-empty\-list\<array\{block\: array, attributes\: array\<string\>\}\> given\.$#'
+			identifier: parameterByRef.type
+			count: 1
+			path: src/Services/TranslationStatusService.php
+
+		-
+			message: '#^Called ''env'' outside of the config directory which returns null when the config is cached, use ''config''\.$#'
+			identifier: larastan.noEnvCallsOutsideOfConfig
+			count: 2
+			path: src/Services/WebSearchService.php
+
+		-
+			message: '#^Offset ''bounce''\|''ease''\|''ease\-in''\|''ease\-in\-out''\|''ease\-out''\|''linear''\|''smooth''\|''spring'' on array\{smooth\: ''Smooth'', ease\: ''Ease'', ease\-in\: ''Ease in'', ease\-out\: ''Ease out'', ease\-in\-out\: ''Ease in\-out'', spring\: ''Spring'', bounce\: ''Bounce'', linear\: ''Linear''\} on left side of \?\? always exists and is not nullable\.$#'
+			identifier: nullCoalesce.offset
+			count: 1
+			path: src/Support/AnimationCatalog.php
+
+		-
+			message: '#^Call to function method_exists\(\) with Illuminate\\Foundation\\Application and ''environment'' will always evaluate to true\.$#'
+			identifier: function.alreadyNarrowedType
+			count: 1
+			path: src/Support/BlockViewData.php

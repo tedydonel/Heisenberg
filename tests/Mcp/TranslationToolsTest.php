@@ -6,6 +6,7 @@ namespace Heisenberg\Tests\Mcp;
 
 use Heisenberg\Models\Post;
 use Heisenberg\Services\McpToolRegistry;
+use Heisenberg\Services\TranslationStatusService;
 use Heisenberg\Tests\TestCase;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 
@@ -18,7 +19,7 @@ use Illuminate\Foundation\Testing\RefreshDatabase;
  * locale-suffixed attribute variants on the SAME row. `create_translation` now writes
  * `title_<locale>`/`excerpt_<locale>` directly and folds a translated `code` document into the
  * post's EXISTING blocks by position (never replacing the tree); `get_post`'s `translations` map
- * reports per-locale completeness ({@see \Heisenberg\Services\TranslationStatusService}) instead
+ * reports per-locale completeness ({@see TranslationStatusService}) instead
  * of a sibling post_id/status pair. `set_featured_image`'s "fatals on every call" coverage lives
  * in {@see SeoMediaToolsTest} (it is unrelated to translation — a plain content tool that merely
  * happened to break from the same sibling-API removal).

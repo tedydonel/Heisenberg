@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace Heisenberg\Services;
 
+use Heisenberg\Adapters\NullVirusScanner;
+use Heisenberg\Contracts\SvgSanitizer;
 use Heisenberg\Contracts\VirusScanner;
 use Heisenberg\Models\PublicFile;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
@@ -11,6 +13,7 @@ use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Validation\ValidationException;
+use Intervention\Image\ImageManager;
 use Throwable;
 
 /**
@@ -25,8 +28,22 @@ class MediaLibraryService
     /** Sane upper bound for a sanitized base name (blueprint §3.2). */
     private const MAX_BASE_NAME_LENGTH = 200;
 
-    public function __construct(private VirusScanner $scanner)
-    {
+    /** Extensions that are XML documents, not raster images — see enforceSvgSafety(). */
+    private const SVG_EXTENSIONS = ['svg', 'svgz'];
+
+    /**
+     * Decompression-bomb guard for `.svgz` specifically (the megapixel cap
+     * above only covers formats getimagesize() can read headers from, which
+     * excludes gzip-compressed SVG). A tiny .svgz can expand to an enormous
+     * XML document; refuse anything past this size once decompressed rather
+     * than sanitizing/holding an unbounded string in memory.
+     */
+    private const MAX_SVGZ_DECOMPRESSED_BYTES = 10 * 1024 * 1024;
+
+    public function __construct(
+        private VirusScanner $scanner,
+        private ?SvgSanitizer $svgSanitizer = null,
+    ) {
     }
 
     /**
@@ -68,6 +85,14 @@ class MediaLibraryService
         // again, regardless of environment or authorization outcome.
         $this->enforceAllowedExtension($extension, $file, $uploadedBy);
 
+        // SVG guard (blueprint-adjacent, 2026-09-19): an .svg/.svgz is an XML
+        // document that can carry an inline <script> or event-handler
+        // attribute — see enforceSvgSafety() and SvgSanitizer's docblock.
+        // Runs even if a host lists 'svg' in heisenberg.media.extensions,
+        // same "enforced regardless of config" posture as the allow-list
+        // check just above.
+        $this->enforceSvgSafety($extension, $file, $uploadedBy);
+
         // Virus scan happens on the TEMP path, BEFORE anything is written to
         // the public disk (blueprint §5 step 3 / §5.1 / §12 invariant).
         $this->enforceScan($this->scanner->scan($sourcePath), $file, $uploadedBy);
@@ -80,7 +105,13 @@ class MediaLibraryService
 
         try {
             [$storedName, $collisionSuffix] = $this->availableFilename($disk, $dir, $baseName, $extension);
-            $stored = Storage::disk($disk)->putFileAs($dir, $file, $storedName);
+
+            // An svg/svgz's bytes are never the ORIGINAL upload's bytes — see
+            // storeSanitizedSvg(): the sanitizer's output is what reaches
+            // disk, never the untrusted upload verbatim.
+            $stored = $this->isSvgExtension($extension)
+                ? $this->storeSanitizedSvg($disk, $dir, $storedName, $sourcePath, $extension)
+                : Storage::disk($disk)->putFileAs($dir, $file, $storedName);
 
             if ($stored === false) {
                 throw new \RuntimeException('Failed to store the uploaded file on disk.');
@@ -235,6 +266,117 @@ class MediaLibraryService
         throw ValidationException::withMessages([
             'file' => ['That file type is not allowed.'],
         ]);
+    }
+
+    /**
+     * Refuses every 'svg'/'svgz' upload UNLESS a real {@see SvgSanitizer} is
+     * bound (`config('heisenberg.media.svg_sanitizer')`) — see that
+     * contract's docblock for why there is deliberately no permissive "null"
+     * default the way {@see VirusScanner} has {@see NullVirusScanner}.
+     * A host that lists 'svg' in `heisenberg.media.extensions` without also
+     * binding a sanitizer gets every such upload rejected here, not a
+     * silently-unsanitized stored-XSS hole.
+     */
+    private function enforceSvgSafety(string $extension, UploadedFile $file, ?int $uploadedBy): void
+    {
+        if (! $this->isSvgExtension($extension)) {
+            return;
+        }
+
+        if ($this->svgSanitizer === null) {
+            Log::warning('heisenberg: media upload rejected — svg/svgz uploaded with no SvgSanitizer bound', [
+                'extension' => $extension,
+                'filename' => $file->getClientOriginalName(),
+                'uploaded_by' => $uploadedBy,
+            ]);
+
+            throw ValidationException::withMessages([
+                'file' => ['SVG uploads are disabled: no SvgSanitizer is configured (see config(\'heisenberg.media.svg_sanitizer\')).'],
+            ]);
+        }
+    }
+
+    /**
+     * Runs an svg/svgz's bytes through the bound {@see SvgSanitizer} and
+     * writes ONLY the sanitized result to disk — the original upload's bytes
+     * never reach the `uploads` disk verbatim for these two extensions.
+     * `.svgz` (gzip-compressed SVG) is decompressed first, sanitized as plain
+     * XML, then re-compressed so the stored file still matches its
+     * extension; the decompressed size is capped (see
+     * MAX_SVGZ_DECOMPRESSED_BYTES) so a small compressed file cannot expand
+     * into an unbounded in-memory string (a "gzip bomb").
+     *
+     * @return string|false the stored path, or false on failure (mirrors
+     *                      Storage::putFileAs()'s return contract).
+     */
+    private function storeSanitizedSvg(
+        string $disk,
+        string $dir,
+        string $storedName,
+        string $sourcePath,
+        string $extension,
+    ): string|false {
+        $raw = (string) file_get_contents($sourcePath);
+
+        if ($extension === 'svgz') {
+            $raw = $this->inflateSvgzWithinCap($raw);
+        }
+
+        /** @var SvgSanitizer $sanitizer */
+        $sanitizer = $this->svgSanitizer;
+        $sanitized = $sanitizer->sanitize($raw);
+
+        $bytes = $extension === 'svgz' ? gzencode($sanitized) : $sanitized;
+        if ($bytes === false) {
+            throw new \RuntimeException('Failed to re-compress the sanitized .svgz file.');
+        }
+
+        $path = $dir . '/' . $storedName;
+
+        return Storage::disk($disk)->put($path, $bytes) ? $path : false;
+    }
+
+    /**
+     * Inflates a .svgz incrementally and stops the moment the output passes
+     * MAX_SVGZ_DECOMPRESSED_BYTES. Deliberately NOT `gzdecode($raw)` followed
+     * by a strlen() check — that pays the full memory cost before measuring
+     * it — and not gzdecode()'s own `$max_length` either, which does not
+     * actually stop inflation (verified on PHP 8.4: an 11 MB payload came back
+     * whole under a 10 MB limit). Small input chunks bound how far a single
+     * inflate_add() call can overshoot (deflate tops out near 1032:1).
+     */
+    private function inflateSvgzWithinCap(string $compressed): string
+    {
+        $context = @inflate_init(ZLIB_ENCODING_GZIP);
+        if ($context === false) {
+            throw new \RuntimeException('Failed to initialise zlib for the uploaded .svgz file.');
+        }
+
+        $inflated = '';
+
+        foreach (str_split($compressed, 2048) as $chunk) {
+            $piece = @inflate_add($context, $chunk);
+            if ($piece === false) {
+                throw ValidationException::withMessages([
+                    'file' => ['That .svgz file could not be decompressed.'],
+                ]);
+            }
+
+            $inflated .= $piece;
+
+            if (strlen($inflated) > self::MAX_SVGZ_DECOMPRESSED_BYTES) {
+                throw ValidationException::withMessages([
+                    'file' => ['That .svgz file is too large once decompressed.'],
+                ]);
+            }
+        }
+
+        return $inflated;
+    }
+
+    private function isSvgExtension(string $extension): bool
+    {
+        return in_array(strtolower($extension), self::SVG_EXTENSIONS, true);
     }
 
     private function enforceScan(string $result, UploadedFile $file, ?int $uploadedBy): void
@@ -441,7 +583,7 @@ class MediaLibraryService
      */
     private function variants(string $disk, string $dir, string $storedName, string $sourcePath): array
     {
-        if (! class_exists(\Intervention\Image\ImageManager::class)) {
+        if (! class_exists(ImageManager::class)) {
             return [];
         }
 
@@ -450,7 +592,7 @@ class MediaLibraryService
             $base = (string) ($pathInfo['filename'] ?? $storedName);
             $extension = $this->normalizeVariantExtension(strtolower((string) ($pathInfo['extension'] ?? '')));
 
-            $manager = \Intervention\Image\ImageManager::gd();
+            $manager = ImageManager::gd();
             $result = [];
 
             foreach ($this->variantConfig() as $key => $spec) {

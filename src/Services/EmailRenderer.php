@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Heisenberg\Services;
 
+use Heisenberg\Http\Controllers\EmailPreviewController;
 use Heisenberg\Models\Post;
 use Heisenberg\Models\PublicFile;
 use Heisenberg\Support\EmailRenderResult;
@@ -119,7 +120,7 @@ class EmailRenderer
     }
 
     /**
-     * `$preview` (docs/email-system.md §6, {@see \Heisenberg\Http\Controllers\EmailPreviewController})
+     * `$preview` (docs/email-system.md §6, {@see EmailPreviewController})
      * is false for every real send/size measurement — the default, cid-embedded output the
      * Mailable attaches. Passed true ONLY for the editor's own browser-renderable preview tab: a
      * `cid:` reference has no meaning outside a MIME multipart message, so {@see self::rewriteImages()}
@@ -137,8 +138,7 @@ class EmailRenderer
         Post $email,
         string $locale,
         bool $preview = false,
-    ): EmailRenderResult
-    {
+    ): EmailRenderResult {
         $locale = LocaleConfig::isValid($locale) ? $locale : LocaleConfig::default();
 
         $blocks = $this->capColumns($email->blocks->map(fn ($block) => $block->content)->values()->all());
@@ -227,7 +227,7 @@ class EmailRenderer
      * Outlook needs an explicit per-cell width or the layout collapses unpredictably (§4/§9) —
      * the web surface leans on flexbox, which has no email equivalent. Whole-percent widths
      * summing to exactly 100 (the last column absorbs the rounding remainder), stashed as a
-     * synthetic `_emailColWidthPercent` attribute {@see \Heisenberg\Services\BlockRenderer}
+     * synthetic `_emailColWidthPercent` attribute {@see BlockRenderer}
      * substitutes into `column.json`'s `email.template` — this attribute exists ONLY for this
      * one render pass, never persisted, never part of the block's real schema.
      *
@@ -266,7 +266,7 @@ class EmailRenderer
      * network fetch happens here, and a broken/absent embed would be worse than a live URL.
      *
      * `$preview` (§7-E3): true swaps the `src` for the SAME variant's real, public URL
-     * ({@see \Heisenberg\Models\PublicFile::urlForPath()}) instead of a `cid:` reference, and
+     * ({@see PublicFile::urlForPath()}) instead of a `cid:` reference, and
      * never touches `$embeds` — a browser preview tab has no MIME parts to attach, and a `cid:`
      * URL simply wouldn't load there.
      *
@@ -406,7 +406,7 @@ class EmailRenderer
      * invariant "no `var(` survives" — the ONE non-negotiable output property (email clients,
      * Outlook foremost, do not support CSS custom properties at all; §1). Two-tier map, LOCAL
      * declarations (harvested from THIS fragment's own `--name: value;` custom-property
-     * declarations — what {@see \Heisenberg\Services\BlockRenderer}'s root-level
+     * declarations — what {@see BlockRenderer}'s root-level
      * `style.variables` materialization always produces) winning over the global $tokenMap, so
      * an author's actual instance pick (e.g. a custom text color) resolves correctly even though
      * it is declared on the block's root and USED via `var()` on a non-root child within the

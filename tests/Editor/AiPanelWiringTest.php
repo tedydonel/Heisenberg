@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace Heisenberg\Tests\Editor;
 
+use Heisenberg\Services\McpToolRegistry;
+use Heisenberg\Tests\Support\AssertsHtmlStructure;
 use Heisenberg\Tests\TestCase;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 
@@ -19,9 +21,24 @@ use Illuminate\Foundation\Testing\RefreshDatabase;
  *
  * RefreshDatabase for the same reason EditorRendersTest needs it —
  * EditorController::index() reads the category table on every render.
+ *
+ * Structural-assertion note: this file used to assert with whole-page
+ * `assertStringContainsString()`/`assertStringNotContainsString()` calls against
+ * raw HTML AND literal inline-JS lines (e.g. `'const liveApply = (final)'`
+ * pinned character-for-character, or a hand-escaped route URL compared against
+ * `str_replace('/', '\/', route(...))`). It now uses AssertsHtmlStructure to
+ * assert DOM structure (an element/attribute/class exists) and decodes the
+ * settings dialog's own JSON data islands (`data-payload`/`data-urls`) rather
+ * than string-matching their JSON-escaped serialization. Real client-side
+ * business logic that only ever lives in inline JS (the live-apply/tool-apply
+ * wiring, the translating-locale guard) is still asserted, through
+ * assertInlineScriptContains()/assertInlineScriptMatches(), which scope the
+ * search to actual `<script>` bodies and tolerate reformatting rather than
+ * pinning an exact line.
  */
 class AiPanelWiringTest extends TestCase
 {
+    use AssertsHtmlStructure;
     use RefreshDatabase;
 
     private function editorHtml(): string
@@ -33,10 +50,10 @@ class AiPanelWiringTest extends TestCase
     {
         $html = $this->editorHtml();
 
-        $this->assertStringContainsString('data-hb-ai-settings-open', $html);
+        $this->assertElementExists($html, '[data-hb-ai-settings-open]');
         // Added beside the extracted header row, not in place of it.
-        $this->assertStringContainsString('hb-ai-header__title', $html);
-        $this->assertStringContainsString('hb-ai-header__badge', $html);
+        $this->assertElementExists($html, '.hb-ai-header__title');
+        $this->assertElementExists($html, '.hb-ai-header__badge');
     }
 
     public function test_the_extracted_panel_composition_survived_the_wiring(): void
@@ -49,7 +66,7 @@ class AiPanelWiringTest extends TestCase
             'hb-ai-msg',               // a transcript turn
             'hb-panel-ai__grid',       // Tools tab card grid
         ] as $marker) {
-            $this->assertStringContainsString($marker, $html, "the extracted {$marker} must still be mounted");
+            $this->assertElementExists($html, '.' . $marker, "the extracted {$marker} must still be mounted");
         }
     }
 
@@ -57,12 +74,12 @@ class AiPanelWiringTest extends TestCase
     {
         $html = $this->editorHtml();
 
-        $this->assertStringContainsString('data-hb-ai-settings', $html);
+        $this->assertElementExists($html, '[data-hb-ai-settings]');
         // Reusing the shell is what gives this dialog hbOpen/hbClose, Escape,
         // backdrop-close and the focus trap — if these classes drift, all four
-        // silently stop working.
-        $this->assertStringContainsString('hb-mediadialog__scrim', $html);
-        $this->assertStringContainsString('hb-mediadialog hb-aidialog', $html);
+        // silently stop working. Both classes on the SAME element, order-independent.
+        $this->assertElementExists($html, '.hb-mediadialog__scrim');
+        $this->assertElementExists($html, '.hb-mediadialog.hb-aidialog');
     }
 
     public function test_the_dialog_offers_all_four_tabs(): void
@@ -70,7 +87,7 @@ class AiPanelWiringTest extends TestCase
         $html = $this->editorHtml();
 
         foreach (['providers', 'models', 'mcp', 'expose'] as $tab) {
-            $this->assertStringContainsString('data-hb-tab-body="' . $tab . '"', $html);
+            $this->assertElementExists($html, '[data-hb-tab-body="' . $tab . '"]');
         }
     }
 
@@ -83,11 +100,25 @@ class AiPanelWiringTest extends TestCase
     {
         $html = $this->editorHtml();
 
-        $this->assertStringContainsString('data-hb-prov-list', $html);
-        $this->assertStringContainsString('data-hb-preset-list', $html);
-        // The seed list reaches the client as JSON, so the vendor names appear.
-        foreach (['OpenAI', 'Anthropic', 'xAI', 'Google Gemini', 'OpenRouter', 'Ollama'] as $vendor) {
-            $this->assertStringContainsString($vendor, $html);
+        $this->assertElementExists($html, '[data-hb-prov-list]');
+        $this->assertElementExists($html, '[data-hb-preset-list]');
+
+        // The seed list reaches the client as a JSON data island — decoded and
+        // compared against the CONFIGURED presets (config('heisenberg.ai.provider_presets'))
+        // rather than a hardcoded copy of the vendor names, so this proves the
+        // real wiring (config -> AiProviderRegistry::availablePresets() -> payload
+        // -> this attribute) rather than merely that some string appears on the page.
+        $payload = $this->hbDataJson($html, '[data-hb-ai-settings]', 'data-payload');
+        $this->assertIsArray($payload['presets'] ?? null);
+        $seededLabels = array_column($payload['presets'], 'label');
+
+        $configuredPresets = (array) config('heisenberg.ai.provider_presets');
+        $this->assertNotEmpty($configuredPresets);
+
+        foreach (['openai', 'anthropic', 'google', 'xai', 'openrouter', 'ollama'] as $id) {
+            $configured = collect($configuredPresets)->firstWhere('id', $id);
+            $this->assertIsArray($configured, "'{$id}' should be a configured provider preset");
+            $this->assertContains($configured['label'], $seededLabels, "'{$configured['label']}' should reach the settings payload");
         }
     }
 
@@ -96,10 +127,10 @@ class AiPanelWiringTest extends TestCase
     {
         $html = $this->editorHtml();
 
-        $this->assertStringContainsString('data-hb-prov-add-toggle', $html);
-        $this->assertStringContainsString('data-hb-prov-new-label', $html);
-        $this->assertStringContainsString('data-hb-prov-new-format', $html);
-        $this->assertStringContainsString('data-hb-prov-new-url', $html);
+        $this->assertElementExists($html, '[data-hb-prov-add-toggle]');
+        $this->assertElementExists($html, '[data-hb-prov-new-label]');
+        $this->assertElementExists($html, '[data-hb-prov-new-format]');
+        $this->assertElementExists($html, '[data-hb-prov-new-url]');
     }
 
     /** The gap that started this: there is now somewhere to put an API key. */
@@ -107,24 +138,25 @@ class AiPanelWiringTest extends TestCase
     {
         $html = $this->editorHtml();
 
-        $this->assertStringContainsString('data-hb-prov-key', $html);
-        $this->assertStringContainsString('data-hb-prov-savekey', $html);
-        $this->assertStringContainsString('data-hb-prov-discover', $html);
-        $this->assertStringContainsString('data-hb-prov-url', $html);
+        $this->assertElementExists($html, '[data-hb-prov-key]');
+        $this->assertElementExists($html, '[data-hb-prov-savekey]');
+        $this->assertElementExists($html, '[data-hb-prov-discover]');
+        $this->assertElementExists($html, '[data-hb-prov-url]');
     }
 
     public function test_the_dialog_carries_every_endpoint_it_needs(): void
     {
         $html = $this->editorHtml();
 
-        foreach ([
-            route('heisenberg.editor.ai.settings.update'),
-            route('heisenberg.editor.ai.providers.key', ['provider' => '__ID__']),
-            route('heisenberg.editor.ai.providers.discover', ['provider' => '__ID__']),
-            route('heisenberg.editor.ai.mcp.test'),
-        ] as $url) {
-            $this->assertStringContainsString(str_replace('/', '\/', $url), $html);
-        }
+        // Decoded from the dialog's own JSON data island and compared directly
+        // against route() — no manual JSON-slash-escaping needed once it is read
+        // back through the DOM, unlike the raw-HTML substring match this replaced.
+        $urls = $this->hbDataJson($html, '[data-hb-ai-settings]', 'data-urls');
+
+        $this->assertSame(route('heisenberg.editor.ai.settings.update'), $urls['settings'] ?? null);
+        $this->assertSame(route('heisenberg.editor.ai.providers.key', ['provider' => '__ID__']), $urls['key'] ?? null);
+        $this->assertSame(route('heisenberg.editor.ai.providers.discover', ['provider' => '__ID__']), $urls['discover'] ?? null);
+        $this->assertSame(route('heisenberg.editor.ai.mcp.test'), $urls['mcpTest'] ?? null);
     }
 
     /**
@@ -135,13 +167,13 @@ class AiPanelWiringTest extends TestCase
     {
         $html = $this->editorHtml();
 
-        $this->assertStringContainsString('data-hb-model-list', $html);
-        $this->assertStringContainsString('data-hb-model-add-toggle', $html);
-        $this->assertStringContainsString('data-hb-model-new-provider', $html);
-        $this->assertStringContainsString('data-hb-model-new-effort', $html);
+        $this->assertElementExists($html, '[data-hb-model-list]');
+        $this->assertElementExists($html, '[data-hb-model-add-toggle]');
+        $this->assertElementExists($html, '[data-hb-model-new-provider]');
+        $this->assertElementExists($html, '[data-hb-model-new-effort]');
         // One form serves add AND edit, so the two cannot drift apart.
-        $this->assertStringContainsString('data-hb-model-edit', $html);
-        $this->assertStringContainsString('data-hb-tmpl="model"', $html);
+        $this->assertElementExists($html, '[data-hb-model-edit]');
+        $this->assertElementExists($html, '[data-hb-tmpl="model"]');
     }
 
     /** No model catalogue is shipped — models come from the vendor's endpoint. */
@@ -149,8 +181,8 @@ class AiPanelWiringTest extends TestCase
     {
         $html = $this->editorHtml();
 
-        $this->assertStringContainsString('data-hb-prov-discover', $html);
-        $this->assertStringNotContainsString('data-hb-ai-model-list', $html);
+        $this->assertElementExists($html, '[data-hb-prov-discover]');
+        $this->assertElementMissing($html, '[data-hb-ai-model-list]');
     }
 
     /** Every scrolling region uses the house scrollbar, not the browser's. */
@@ -159,7 +191,7 @@ class AiPanelWiringTest extends TestCase
         $html = $this->editorHtml();
 
         foreach (['providers', 'models', 'mcp', 'expose'] as $tab) {
-            $this->assertStringContainsString('[data-hb-ai-' . $tab . '-scroll]', $html);
+            $this->assertElementExists($html, '[data-hb-ai-' . $tab . '-scroll]');
         }
     }
 
@@ -167,9 +199,9 @@ class AiPanelWiringTest extends TestCase
     {
         $html = $this->editorHtml();
 
-        $this->assertStringContainsString('data-hb-ai-prompt', $html);
-        $this->assertStringContainsString('data-hb-ai-send', $html);
-        $this->assertStringContainsString('data-stream-url="' . route('heisenberg.editor.ai.stream') . '"', $html);
+        $this->assertElementExists($html, '[data-hb-ai-prompt]');
+        $this->assertElementExists($html, '[data-hb-ai-send]');
+        $this->assertElementHasAttribute($html, '[data-hb-panel-ai]', 'data-stream-url', route('heisenberg.editor.ai.stream'));
     }
 
     /**
@@ -181,14 +213,16 @@ class AiPanelWiringTest extends TestCase
     {
         $html = $this->editorHtml();
 
-        $this->assertStringContainsString('data-hb-ai-thread', $html);
+        $this->assertElementExists($html, '[data-hb-ai-thread]');
         // Two templates now — user and assistant turns render differently
         // (the assistant turn carries the thinking block and applied card).
-        $this->assertStringContainsString('data-hb-ai-user-template', $html);
-        $this->assertStringContainsString('data-hb-ai-assistant-template', $html);
-        $this->assertStringContainsString('data-hb-ai-new', $html);
-        // The old single-slot card is gone, along with its fake copy.
-        $this->assertStringNotContainsString('data-hb-ai-result', $html);
+        $this->assertElementExists($html, '[data-hb-ai-user-template]');
+        $this->assertElementExists($html, '[data-hb-ai-assistant-template]');
+        $this->assertElementExists($html, '[data-hb-ai-new]');
+        // The old single-slot card is gone, along with its fake copy. The
+        // latter has no markup counterpart (it was placeholder copy, not a
+        // control), so it stays a plain leftover-content substring check.
+        $this->assertElementMissing($html, '[data-hb-ai-result]');
         $this->assertStringNotContainsString('punchy introduction', $html);
     }
 
@@ -197,9 +231,10 @@ class AiPanelWiringTest extends TestCase
     {
         $html = $this->editorHtml();
 
+        // Leftover copy check — no element ever carried this text as a hook.
         $this->assertStringNotContainsString('Get help writing, editing, and optimizing', $html);
-        $this->assertStringNotContainsString('hb-suggestionrow', $html);
-        $this->assertStringNotContainsString('data-hb-ai-suggest="Write an introduction"', $html);
+        $this->assertElementMissing($html, '.hb-suggestionrow');
+        $this->assertElementMissing($html, '[data-hb-ai-suggest="Write an introduction"]');
     }
 
     /**
@@ -212,9 +247,9 @@ class AiPanelWiringTest extends TestCase
     {
         $html = $this->editorHtml();
 
-        $this->assertMatchesRegularExpression('/<textarea[^>]*data-hb-ai-prompt/', $html);
-        $this->assertStringContainsString('data-hb-ai-send', $html);
-        $this->assertStringContainsString('data-hb-ai-stop', $html);
+        $this->assertElementExists($html, 'textarea[data-hb-ai-prompt]');
+        $this->assertElementExists($html, '[data-hb-ai-send]');
+        $this->assertElementExists($html, '[data-hb-ai-stop]');
     }
 
     /**
@@ -226,7 +261,7 @@ class AiPanelWiringTest extends TestCase
     {
         $html = $this->editorHtml();
 
-        $this->assertStringNotContainsString('hb-editor--ai-wide', $html);
+        $this->assertElementMissing($html, '.hb-editor--ai-wide');
     }
 
     public function test_markup_replies_build_the_canvas_live_and_insert_is_gone(): void
@@ -237,13 +272,13 @@ class AiPanelWiringTest extends TestCase
         // old build instead of doubling it. Prose replies never touch the page.
         $html = $this->editorHtml();
 
-        $this->assertStringNotContainsString('data-hb-ai-insert', $html);
-        $this->assertStringContainsString('data-hb-ai-regenerate', $html);
-        $this->assertStringContainsString('const liveApply = (final)', $html);
-        $this->assertStringContainsString('liveApply(false);', $html);
-        $this->assertStringContainsString('liveApply(true);', $html);
-        $this->assertStringContainsString('window.hbEditor.replaceDoc(lastRun.baseline.concat(parsed.blocks));', $html);
-        $this->assertStringContainsString('window.hbEditor.replaceDoc(lastRun.baseline);', $html);
+        $this->assertElementMissing($html, '[data-hb-ai-insert]');
+        $this->assertElementExists($html, '[data-hb-ai-regenerate]');
+        $this->assertInlineScriptContains($html, 'const liveApply = (final)');
+        $this->assertInlineScriptContains($html, 'liveApply(false);');
+        $this->assertInlineScriptContains($html, 'liveApply(true);');
+        $this->assertInlineScriptContains($html, 'window.hbEditor.replaceDoc(lastRun.baseline.concat(parsed.blocks));');
+        $this->assertInlineScriptContains($html, 'window.hbEditor.replaceDoc(lastRun.baseline);');
     }
 
     /**
@@ -257,14 +292,14 @@ class AiPanelWiringTest extends TestCase
     {
         $html = $this->editorHtml();
 
-        $this->assertStringContainsString("'heisenberg__write_canvas'", $html);
-        $this->assertStringContainsString('const applyCanvasTool', $html);
-        $this->assertStringContainsString('if (toolBuilt) return;', $html);
+        $this->assertInlineScriptContains($html, "'heisenberg__write_canvas'");
+        $this->assertInlineScriptContains($html, 'const applyCanvasTool');
+        $this->assertInlineScriptContains($html, 'if (toolBuilt) return;');
         // Server verdict is honored: code the contracts rejected never applies.
-        $this->assertStringContainsString('data.ok === false', $html);
+        $this->assertInlineScriptContains($html, 'data.ok === false');
         // set_page_title lands in the editor's title field the same way.
-        $this->assertStringContainsString("'heisenberg__set_page_title'", $html);
-        $this->assertStringContainsString('const applyTitleTool', $html);
+        $this->assertInlineScriptContains($html, "'heisenberg__set_page_title'");
+        $this->assertInlineScriptContains($html, 'const applyTitleTool');
     }
 
     /**
@@ -276,9 +311,9 @@ class AiPanelWiringTest extends TestCase
     {
         $html = $this->editorHtml();
 
-        $this->assertStringContainsString('const renderMarkdown', $html);
-        $this->assertStringContainsString('renderMarkdown(reply.textEl', $html);
-        $this->assertMatchesRegularExpression('/<div class="hb-ai-msg__text" data-hb-ai-text>/', $html);
+        $this->assertInlineScriptContains($html, 'const renderMarkdown');
+        $this->assertInlineScriptContains($html, 'renderMarkdown(reply.textEl');
+        $this->assertElementExists($html, 'div.hb-ai-msg__text[data-hb-ai-text]');
     }
 
     /**
@@ -289,15 +324,16 @@ class AiPanelWiringTest extends TestCase
     {
         $html = $this->editorHtml();
 
-        $this->assertStringContainsString('window.hbCodeView', $html);
-        $this->assertStringContainsString('hbEditor.replaceDoc', $html);
+        $this->assertInlineScriptContains($html, 'window.hbCodeView');
+        $this->assertInlineScriptContains($html, 'hbEditor.replaceDoc');
     }
 
     public function test_tool_cards_carry_their_prompts(): void
     {
         $html = $this->editorHtml();
 
-        $this->assertStringContainsString('data-hb-ai-suggest="Generate Title"', $html);
+        $label = __('heisenberg::editor.panel_ai_tools.tool_generate_title');
+        $this->assertElementExists($html, '[data-hb-ai-suggest="' . $label . '"]');
     }
 
     public function test_providers_expose_editable_connection_detail_but_never_a_key_field(): void
@@ -305,20 +341,20 @@ class AiPanelWiringTest extends TestCase
         $html = $this->editorHtml();
 
         // This is what makes a provider addable from the UI at all.
-        $this->assertStringContainsString('data-hb-prov-new-url', $html);
-        $this->assertStringContainsString('data-hb-model-new-id', $html);
+        $this->assertElementExists($html, '[data-hb-prov-new-url]');
+        $this->assertElementExists($html, '[data-hb-model-new-id]');
     }
 
     public function test_the_mcp_tab_can_add_test_and_scope_a_server(): void
     {
         $html = $this->editorHtml();
 
-        $this->assertStringContainsString('data-hb-mcp-list', $html);
-        $this->assertStringContainsString('data-hb-mcp-add', $html);
-        $this->assertStringContainsString('data-hb-mcp-test', $html);
+        $this->assertElementExists($html, '[data-hb-mcp-list]');
+        $this->assertElementExists($html, '[data-hb-mcp-add]');
+        $this->assertElementExists($html, '[data-hb-mcp-test]');
         // The add form asks for the env var's NAME, never a token.
-        $this->assertStringContainsString('data-hb-mcp-new-env', $html);
-        $this->assertStringNotContainsString('data-hb-mcp-new-token', $html);
+        $this->assertElementExists($html, '[data-hb-mcp-new-env]');
+        $this->assertElementMissing($html, '[data-hb-mcp-new-token]');
     }
 
     /**
@@ -329,8 +365,17 @@ class AiPanelWiringTest extends TestCase
     {
         $html = $this->editorHtml();
 
+        // Guard the guard: these must actually be real registered tools, not
+        // just strings this test happens to also assert are rendered.
+        $registryNames = array_column(app(McpToolRegistry::class)->describeAll(), 'name');
+
         foreach (['list_blocks', 'create_post', 'render_preview'] as $tool) {
-            $this->assertStringContainsString($tool, $html);
+            $this->assertContains($tool, $registryNames, "{$tool} should be a real registered MCP tool");
+            $this->assertElementExists(
+                $html,
+                "//span[@class='hb-aidialog__name' and normalize-space(text())='{$tool}']",
+                "{$tool} should be rendered in the Expose tab",
+            );
         }
     }
 
@@ -343,8 +388,11 @@ class AiPanelWiringTest extends TestCase
     {
         $html = $this->editorHtml();
 
-        $this->assertStringNotContainsString('data-hb-ai-suggest="Generate Image"', $html);
-        $this->assertStringContainsString('data-hb-ai-suggest="Translate"', $html);
+        $imageLabel = __('heisenberg::editor.panel_ai_tools.tool_generate_image');
+        $translateLabel = __('heisenberg::editor.panel_ai_tools.tool_translate');
+
+        $this->assertElementMissing($html, '[data-hb-ai-suggest="' . $imageLabel . '"]');
+        $this->assertElementExists($html, '[data-hb-ai-suggest="' . $translateLabel . '"]');
     }
 
     /**
@@ -359,8 +407,8 @@ class AiPanelWiringTest extends TestCase
     {
         $html = $this->editorHtml();
 
-        $this->assertStringContainsString('base.editingLocale = window.hbEditor.getEditingLocale()', $html);
-        $this->assertStringContainsString('base.homeLocale = window.hbEditor.getHomeLocale()', $html);
+        $this->assertInlineScriptContains($html, 'base.editingLocale = window.hbEditor.getEditingLocale()');
+        $this->assertInlineScriptContains($html, 'base.homeLocale = window.hbEditor.getHomeLocale()');
     }
 
     /**
@@ -374,23 +422,31 @@ class AiPanelWiringTest extends TestCase
     {
         $html = $this->editorHtml();
 
-        $this->assertStringContainsString('window.hbEditor.applyCanvasWrite(parsed.blocks, args.mode)', $html);
-        $this->assertStringContainsString('result.refusedAppend', $html);
-        $this->assertStringContainsString("addNote(msg('msgTranslateAppendRefused'), true)", $html);
-        $this->assertStringContainsString("addNote(result.error || msg('msgTranslateMismatch'), true)", $html);
-        $this->assertStringContainsString(
-            "(result.translating ? msg('msgTranslated') : msg('msgBuilt'))",
+        $this->assertInlineScriptContains($html, 'window.hbEditor.applyCanvasWrite(parsed.blocks, args.mode)');
+        $this->assertInlineScriptContains($html, 'result.refusedAppend');
+        $this->assertInlineScriptContains($html, "addNote(msg('msgTranslateAppendRefused'), true)");
+        $this->assertInlineScriptContains($html, "addNote(result.error || msg('msgTranslateMismatch'), true)");
+        $this->assertInlineScriptContains(
             $html,
+            "(result.translating ? msg('msgTranslated') : msg('msgBuilt'))",
         );
 
         // The legacy bare-shortcode fallback has no fold — it must stand down entirely while
         // translating rather than replaceDoc away the home locale's text.
-        $this->assertStringContainsString(
-            "if (window.hbEditor.getEditingLocale() !== window.hbEditor.getHomeLocale()) return;",
+        $this->assertInlineScriptContains(
             $html,
+            'if (window.hbEditor.getEditingLocale() !== window.hbEditor.getHomeLocale()) return;',
         );
     }
 
+    /**
+     * SECURITY: no configured credential — however it reached the process (env var here) —
+     * may ever be echoed into the page, even though the modal legitimately needs to show the
+     * env var's NAME so an operator knows what to set. Left as exact substring checks
+     * deliberately: this is the one place a structural query would be the WRONG tool — the
+     * guarantee is "this literal secret value appears nowhere in the whole response", which a
+     * scoped element query could accidentally narrow.
+     */
     public function test_the_rendered_page_never_contains_key_material(): void
     {
         putenv('HEISENBERG_AI_ANTHROPIC_KEY=sk-ant-page-secret');

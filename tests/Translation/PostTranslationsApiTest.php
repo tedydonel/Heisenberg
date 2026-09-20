@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Heisenberg\Tests\Translation;
 
 use Heisenberg\Models\Post;
+use Heisenberg\Services\TranslationStatusService;
 use Heisenberg\Tests\Persistence\SkipsWhenMysqlUnreachable;
 use Heisenberg\Tests\Taxonomy\FakeActor;
 use Heisenberg\Tests\TestCase;
@@ -14,7 +15,7 @@ use Illuminate\Foundation\Testing\RefreshDatabase;
  * `GET /heisenberg/posts/{post}/translations` (routes/translations.php, `PostTranslationsApiController`)
  * — rebuilt for the single-row translation model (docs/content-translation.md §0/§7): a
  * "translation" is `_<locale>` attribute variants on the SAME row now, so this endpoint reports
- * per-locale COMPLETENESS ({@see \Heisenberg\Services\TranslationStatusService}), not a set of
+ * per-locale COMPLETENESS ({@see TranslationStatusService}), not a set of
  * sibling post rows. Shape: `{default_locale, slug, translations: [{locale, complete, current}]}`.
  */
 class PostTranslationsApiTest extends TestCase

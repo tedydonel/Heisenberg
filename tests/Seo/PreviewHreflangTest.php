@@ -4,19 +4,21 @@ declare(strict_types=1);
 
 namespace Heisenberg\Tests\Seo;
 
+use Heisenberg\Contracts\PostUrlResolver;
 use Heisenberg\Models\Post;
+use Heisenberg\Services\TranslationStatusService;
 use Heisenberg\Tests\TestCase;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 
 /**
  * Coverage for `PreviewController::showPost()`'s `title_en`-only read fix — replaced by
- * {@see \Heisenberg\Models\Post::title()} (own-locale first, cross-locale fallback) — and for
+ * {@see Post::title()} (own-locale first, cross-locale fallback) — and for
  * `alternatesPayload()`'s hreflang emission, rewritten for the single-row translation model
  * (docs/content-translation.md §0): a translation is `_<locale>` attribute variants on the SAME
  * row now, not a published sibling row, so alternates are built from
- * {@see \Heisenberg\Services\TranslationStatusService}'s per-locale completeness signal instead
+ * {@see TranslationStatusService}'s per-locale completeness signal instead
  * of a `Post::siblings()` query, with every alternate URL resolved for the SAME post (an
- * in-memory clone with only `locale` swapped) through {@see \Heisenberg\Contracts\PostUrlResolver}.
+ * in-memory clone with only `locale` swapped) through {@see PostUrlResolver}.
  */
 class PreviewHreflangTest extends TestCase
 {

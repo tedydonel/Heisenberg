@@ -37,7 +37,7 @@ class PostPublicControllerTest extends TestCase
         // Local-dev auth bypass so a plain unauthenticated GET (the visitor's posture)
         // can exercise the controller. Same pattern PreviewSeoTest / EditingLocaleTest use.
         $this->app['env'] = 'local';
-        $this->withoutMiddleware(\Illuminate\Foundation\Http\Middleware\ValidateCsrfToken::class);
+        $this->withoutCsrfProtection();
     }
 
     private function makePost(array $attrs = []): Post
@@ -159,6 +159,79 @@ class PostPublicControllerTest extends TestCase
 
         $response->assertOk();
         $response->assertSee('Bonjour', false);
+    }
+
+    public function test_the_same_row_answers_at_every_locale_it_has_content_in(): void
+    {
+        // docs/content-translation.md §0: one row, both languages. The row's `locale` is its
+        // authoring locale, not the only URL it lives at.
+        $post = $this->makePost([
+            'title_en' => 'Hello',
+            'title_fr' => 'Bonjour',
+            'slug' => 'hello',
+            'locale' => 'en',
+        ]);
+        $this->addBlock($post, 0, 'heisenberg/paragraph', [
+            'content' => 'English body.',
+            'content_fr' => 'Corps en français.',
+        ]);
+
+        $fr = $this->get('/posts/fr/hello');
+        $fr->assertOk();
+        $fr->assertSee('Bonjour', false);
+        $fr->assertSee('Corps en français.', false);
+        $fr->assertDontSee('English body.', false);
+
+        $en = $this->get('/posts/en/hello');
+        $en->assertOk();
+        $en->assertSee('English body.', false);
+    }
+
+    public function test_a_locale_the_post_was_never_translated_into_returns_404(): void
+    {
+        $this->makePost(['title_en' => 'Hello', 'slug' => 'hello', 'locale' => 'en']);
+
+        $this->get('/posts/fr/hello')->assertNotFound();
+    }
+
+    public function test_every_hreflang_alternate_the_page_advertises_actually_resolves(): void
+    {
+        $this->makePost([
+            'title_en' => 'Hello',
+            'title_fr' => 'Bonjour',
+            'slug' => 'hello',
+            'locale' => 'en',
+        ]);
+
+        $html = $this->get('/posts/en/hello')->assertOk()->getContent();
+
+        $dom = new \DOMDocument();
+        @$dom->loadHTML($html);
+        $hrefs = [];
+        foreach ($dom->getElementsByTagName('link') as $link) {
+            if ($link->getAttribute('rel') === 'alternate' && $link->getAttribute('hreflang') !== '') {
+                $hrefs[$link->getAttribute('hreflang')] = $link->getAttribute('href');
+            }
+        }
+
+        $this->assertArrayHasKey('fr', $hrefs);
+        $this->assertStringEndsWith('/posts/fr/hello', $hrefs['fr'], 'alternates must use the public route, not the editor preview');
+        foreach ($hrefs as $href) {
+            $this->get($href)->assertOk();
+        }
+    }
+
+    public function test_the_editor_preview_bar_is_not_shown_to_public_visitors(): void
+    {
+        $this->makePost();
+
+        $html = $this->get('/posts/en/widgets')->assertOk()->getContent();
+
+        $dom = new \DOMDocument();
+        @$dom->loadHTML($html);
+        $bars = (new \DOMXPath($dom))->query('//div[contains(concat(" ", normalize-space(@class), " "), " hb-preview-bar ")]');
+
+        $this->assertSame(0, $bars->length);
     }
 
     public function test_seo_meta_is_rendered_into_the_head_when_present(): void

@@ -1,0 +1,20 @@
+{
+    "name": "heisenberg-js-tests",
+    "private": true,
+    "description": "JS-side test harnesses for the Heisenberg editor (shortcode parity, jsdom pipeline checks, and Playwright matrices against a live testbench server). Not published; not part of the Composer package (see .gitattributes export-ignore).",
+    "scripts": {
+        "pretest:jsdom": "node -e \"require('fs').mkdirSync('build/js-harness',{recursive:true})\"",
+        "dump:editor": "cross-env HB_DUMP_PATH=build/js-harness/editor.html php vendor/bin/phpunit --testsuite=\"JS Harness Fixtures\"",
+        "test:shortcode-parity": "node tests/js/shortcode-parity.mjs build/js-harness/editor.html",
+        "test:canvas-pipeline": "node tests/js/canvas-pipeline-harness.mjs build/js-harness/editor.html",
+        "test:jsdom": "npm run dump:editor && npm run test:shortcode-parity && npm run test:canvas-pipeline",
+        "playwright:install": "playwright install --with-deps chromium",
+        "test:playwright": "node tests/js/browser-matrix.mjs && node tests/js/canvas-drag-matrix.mjs && node tests/js/code-editor-matrix.mjs && node tests/js/containers-matrix.mjs && node tests/js/duplicate-block-id.mjs && node tests/js/history-revisions-matrix.mjs && node tests/js/inspector-sync-matrix.mjs && node tests/js/phase-g-matrix.mjs && node tests/js/theme-update-create-button.mjs && node tests/js/theme-var-integer-fix.mjs && node tests/js/toolbar-follow-matrix.mjs",
+        "test": "npm run test:jsdom"
+    },
+    "devDependencies": {
+        "cross-env": "7.0.3",
+        "jsdom": "25.0.1",
+        "playwright": "1.62.1"
+    }
+}

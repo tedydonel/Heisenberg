@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Heisenberg\Tests\Mcp;
 
 use Heisenberg\Models\Post;
+use Heisenberg\Services\IconLibraryService;
 use Heisenberg\Tests\TestCase;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 
@@ -25,6 +26,7 @@ class McpServerTest extends TestCase
     use RefreshDatabase;
 
     private const READ_TOKEN = 'tok-read-0000000000';
+
     private const WRITE_TOKEN = 'tok-write-000000000';
 
     protected function getEnvironmentSetUp($app): void
@@ -153,7 +155,7 @@ class McpServerTest extends TestCase
         $this->assertLessThanOrEqual(5, count($result['icons']));
         $this->assertGreaterThan(0, $result['total']);
 
-        $library = app(\Heisenberg\Services\IconLibraryService::class);
+        $library = app(IconLibraryService::class);
         foreach ($result['icons'] as $reference) {
             // Pre-joined into exactly the string the `icon` attribute takes — the model never
             // assembles one itself — and every one of them really exists.

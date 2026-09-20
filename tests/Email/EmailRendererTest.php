@@ -329,7 +329,6 @@ class EmailRendererTest extends TestCase
         $this->assertStringNotContainsString('mso-table-lspace: 0pt;', $result->html);
     }
 
-
     // ====================================================================
     // Architecture invariant: `{{ variable_name }}` placeholders authored
     // into email content are rendered VERBATIM. Heisenberg does not

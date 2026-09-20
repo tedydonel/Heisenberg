@@ -4,13 +4,16 @@ declare(strict_types=1);
 
 namespace Heisenberg\Support;
 
+use Heisenberg\Services\BlockContractValidator;
+use Heisenberg\Services\BlockRenderer;
+
 /**
  * The shared "supports capabilities" stylesheet. Mirrors {@see AnimationCatalog}:
  * a GENERATED stylesheet
  * (no hand-authored per-block CSS) that reads generic `--hb-*` inline vars
  * a contract's `style.variables` sets on the block root, each var already
- * sanitized by {@see \Heisenberg\Services\BlockRenderer} through one of the
- * kinds in {@see \Heisenberg\Services\BlockContractValidator::SANITIZERS}.
+ * sanitized by {@see BlockRenderer} through one of the
+ * kinds in {@see BlockContractValidator::SANITIZERS}.
  *
  * Contract with the runtime:
  *   - every rule is scoped to `[data-block-id]` — the same hook

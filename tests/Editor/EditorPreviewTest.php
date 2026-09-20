@@ -4,6 +4,9 @@ declare(strict_types=1);
 
 namespace Heisenberg\Tests\Editor;
 
+use Heisenberg\Models\Block;
+use Heisenberg\Models\Post;
+use Heisenberg\Models\PublicFile;
 use Heisenberg\Services\BlockRegistryService;
 use Heisenberg\Tests\TestCase;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -40,7 +43,7 @@ class EditorPreviewTest extends TestCase
         parent::setUp();
 
         $this->app['env'] = 'local';
-        $this->withoutMiddleware(\Illuminate\Foundation\Http\Middleware\ValidateCsrfToken::class);
+        $this->withoutCsrfProtection();
     }
 
     private function registry(): BlockRegistryService
@@ -237,13 +240,13 @@ class EditorPreviewTest extends TestCase
      */
     public function test_saved_post_preview_renders_the_requested_locale(): void
     {
-        $post = \Heisenberg\Models\Post::create([
+        $post = Post::create([
             'title_en' => 'English title',
             'title_fr' => 'Titre français',
             'locale' => 'en',
             'status' => 'published',
         ]);
-        \Heisenberg\Models\Block::create([
+        Block::create([
             'post_id' => $post->id,
             'type' => 'paragraph',
             'content' => [
@@ -294,7 +297,7 @@ class EditorPreviewTest extends TestCase
         $without = (string) $this->get("/editor/{$postId}/preview")->assertOk()->getContent();
         $this->assertStringNotContainsString('<figure class="hb-preview-featured"', $without);
 
-        $file = \Heisenberg\Models\PublicFile::create([
+        $file = PublicFile::create([
             'type' => 'jpg',
             'disk' => 'uploads',
             'stored_path' => 'media/2026/08/hero.jpg',

@@ -153,7 +153,7 @@ class EditorPrompt
     /** §1 — what this is, where it lives, what it can do here. */
     private function identity(): string
     {
-        return <<<TXT
+        return <<<'TXT'
         You are the writing assistant built into Heisenberg, a block-based page/post builder,
         with direct write access via the write_canvas tool. You live in the editor's AI panel.
 
@@ -501,7 +501,7 @@ class EditorPrompt
     /** §5 — tool discipline: replaces the old "use tools instead of asking" closer. */
     private function toolDiscipline(): string
     {
-        return <<<TXT
+        return <<<'TXT'
         TOOL DISCIPLINE
         - The document arrives on every turn. Never ask the user to paste it.
         - Authoring request → call write_canvas immediately; close with a one-line note.
@@ -519,7 +519,7 @@ class EditorPrompt
      *  (docs/content-translation.md §0). */
     private function locales(): string
     {
-        return <<<TXT
+        return <<<'TXT'
         LOCALES — one post, multiple languages on the SAME row (suffixed attrs, e.g. content_fr).
         get_post `translations`: locale→{is_default,title,excerpt,blocks_translated,complete}.
         create_translation(post_id,locale,title?,excerpt?,code?) — same block sequence, text only.
@@ -559,7 +559,7 @@ class EditorPrompt
     /** §7 — SEO/social metadata + score, and media metadata (docs/seo-system.md §6). */
     private function seo(): string
     {
-        return <<<TXT
+        return <<<'TXT'
         SEO — get_seo reads a post's meta/social row (both locales); update_seo writes it.
         `locale` routes meta_title/meta_description/og_title/og_description/focus_keyphrase to
         that locale's column (default: the post's own); og_image/canonical_url/robots/

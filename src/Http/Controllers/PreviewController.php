@@ -9,8 +9,8 @@ use Heisenberg\Contracts\PostCommentProvider;
 use Heisenberg\Contracts\PostSeoMetaProvider;
 use Heisenberg\Contracts\PostUrlResolver;
 use Heisenberg\Models\Post;
-use Heisenberg\Services\BlockRenderer;
 use Heisenberg\Services\BlockRegistryService;
+use Heisenberg\Services\BlockRenderer;
 use Heisenberg\Services\FontCatalogService;
 use Heisenberg\Services\ThemeRepository;
 use Heisenberg\Services\TranslationStatusService;
@@ -20,6 +20,7 @@ use Illuminate\Contracts\Auth\Authenticatable;
 use Illuminate\Contracts\View\View;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Gate;
 
 /**
@@ -50,6 +51,7 @@ use Illuminate\Support\Facades\Gate;
 class PreviewController
 {
     private const SESSION_KEY = 'heisenberg.preview-doc';
+
     private const MAX_BYTES = 1024 * 1024;
 
     public function __construct(
@@ -273,7 +275,7 @@ class PreviewController
 
         if (is_string($value) && $value !== '') {
             try {
-                return \Illuminate\Support\Carbon::parse($value)->format('M j, Y H:i');
+                return Carbon::parse($value)->format('M j, Y H:i');
             } catch (\Throwable) {
                 return $value;
             }

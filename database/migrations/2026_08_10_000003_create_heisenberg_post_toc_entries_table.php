@@ -2,6 +2,7 @@
 
 declare(strict_types=1);
 
+use Heisenberg\Models\TocEntry;
 use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\Schema;
@@ -9,7 +10,7 @@ use Illuminate\Support\Facades\Schema;
 /**
  * Authored table-of-contents entries — a scoped-down first cut of blueprint §2.3.10's
  * `BlogPostTocEntry` (single `label`/`anchor` rather than bilingual `label_en`/`label_fr` and
- * `target`, no `num`; see {@see \Heisenberg\Models\TocEntry}'s own docblock). The editorially-
+ * `target`, no `num`; see {@see TocEntry}'s own docblock). The editorially-
  * curated counterpart to the `tableOfContents` capability's `source: "headings"` derivation
  * (docs/post-template-schema.md). A post's TOC renders ONLY when it has rows here;
  * PostSettingsController::updateToc() writes them with replace-all semantics (delete then

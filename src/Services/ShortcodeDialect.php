@@ -124,7 +124,7 @@ class ShortcodeDialect
      * The tag a model serializes as, plus attributes the tag itself carries and
      * which therefore must not be repeated as attributes.
      *
-     * @param  array<string, mixed> $model
+     * @param array<string, mixed> $model
      * @return array{tag: string, skip: list<string>}
      */
     public static function tagFor(string $slug, array $model): array
@@ -215,8 +215,8 @@ class ShortcodeDialect
     }
 
     /**
-     * @param  list<string> $values
-     * @param  list<string> $keys
+     * @param list<string> $values
+     * @param list<string> $keys
      * @return array<string, string>
      */
     public static function expandBox(array $values, array $keys): array
@@ -238,7 +238,7 @@ class ShortcodeDialect
      * missing (the caller then emits per-side attributes instead).
      *
      * @param array<string, mixed> $sides
-     * @param list<string>         $keys
+     * @param list<string> $keys
      */
     public static function collapseBox(array $sides, array $keys): ?string
     {

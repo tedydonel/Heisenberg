@@ -5,24 +5,33 @@ declare(strict_types=1);
 namespace Heisenberg\Http\Controllers;
 
 use Heisenberg\Adapters\GuestActor;
+use Heisenberg\Contracts\PostUrlResolver;
 use Heisenberg\Models\Category;
 use Heisenberg\Models\Pattern;
 use Heisenberg\Models\Post;
+use Heisenberg\Models\PublicFile;
+use Heisenberg\Models\SeoMeta;
 use Heisenberg\Models\Tag;
 use Heisenberg\Services\AiProviderRegistry;
 use Heisenberg\Services\AiSettingsRepository;
 use Heisenberg\Services\BlockRegistryService;
-use Heisenberg\Services\FontCatalogService;
 use Heisenberg\Services\EmailVariableCatalog;
+use Heisenberg\Services\FontCatalogService;
+use Heisenberg\Services\IconLibraryService;
 use Heisenberg\Services\SavedThemeRepository;
+use Heisenberg\Services\SeoAnalyzer;
 use Heisenberg\Services\ThemeRepository;
 use Heisenberg\Services\TranslationStatusService;
+use Heisenberg\Support\AnimationCatalog;
 use Heisenberg\Support\BlockViewData;
 use Heisenberg\Support\LocaleConfig;
+use Heisenberg\Support\SupportsStyle;
 use Illuminate\Contracts\View\View;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\Lang;
 use Illuminate\Support\Facades\Route;
@@ -32,6 +41,7 @@ final class EditorController
 {
     // Must stay in sync with 34-canvas.css's --hb-page-padding-x/-y fallbacks.
     private const DEFAULT_PAGE_PADDING_X = 56;
+
     private const DEFAULT_PAGE_PADDING_Y = 56;
 
     /**
@@ -228,7 +238,7 @@ final class EditorController
             // PostUrlResolver (config('heisenberg.seo.url_template') or its own resolver binding) —
             // never a hardcoded "yoursite.com" string — so the author sees the URL their actual
             // blog routes will publish under.
-            'postPublicUrl' => app(\Heisenberg\Contracts\PostUrlResolver::class)->url($model),
+            'postPublicUrl' => app(PostUrlResolver::class)->url($model),
             // Seeds the Summary's schedule/publish-date <input type="datetime-local"> pair, each
             // of which expects a timezone-less "Y-m-d\TH:i" — a bare ISO offset string won't
             // populate the widget.
@@ -402,9 +412,9 @@ final class EditorController
 
     /**
      * The SEO/Social panel's seed payload (docs/seo-system.md §3, Wave S2a). The five localized
-     * fields go through {@see \Heisenberg\Models\SeoMeta}'s own fallback accessors — own-locale
-     * first, cross-locale fallback, the same {@see \Heisenberg\Models\PublicFile::getAlt()}
-     * posture {@see \Heisenberg\Services\SeoAnalyzer}'s own `resolve()` already uses — so the
+     * fields go through {@see SeoMeta}'s own fallback accessors — own-locale
+     * first, cross-locale fallback, the same {@see PublicFile::getAlt()}
+     * posture {@see SeoAnalyzer}'s own `resolve()` already uses — so the
      * panel's starting point matches "what would actually be used publicly right now", not a
      * blank field next to content that already exists on the other locale's row. This is
      * deliberately DIFFERENT from PostController::seoPayload()'s post-save echo, which reads the
@@ -712,46 +722,200 @@ final class EditorController
         ]);
     }
 
-    public function css(): Response
+    /**
+     * Cache keys the three asset-version helpers below memoize into outside
+     * `local` (see cssAssetVersion() etc.). Public so tests can Cache::forget()
+     * a stale entry after mutating whatever the version is derived from,
+     * without needing to know a magic string.
+     */
+    public const CSS_VERSION_CACHE_KEY = 'heisenberg:editor-css:version';
+
+    public const ANIMATIONS_VERSION_CACHE_KEY = 'heisenberg:editor-animations-css:version';
+
+    public const SUPPORTS_VERSION_CACHE_KEY = 'heisenberg:editor-supports-css:version';
+
+    /**
+     * Absolute paths of every source file concatenated into the editor.css
+     * bundle, in the same order css() concatenates them.
+     *
+     * @return list<string>
+     */
+    private static function cssSourceFiles(): array
     {
         $base = dirname(__DIR__, 3) . '/resources/css/';
         $files = [$base . 'tokens.css', ...(glob($base . 'editor/*.css') ?: [])];
-        $files = array_values(array_filter($files, 'is_file'));
-        $editorCss = '';
 
+        return array_values(array_filter($files, 'is_file'));
+    }
+
+    /**
+     * Stat-based fingerprint for a list of files: each file's path + mtime +
+     * size, hashed. A cheap proxy for "did any of these change" that never
+     * reads file content, so it's safe to compute on every request. Exposed as
+     * public (and file-list-parameterized) so it's unit-testable without
+     * mutating the package's real shipped CSS files.
+     *
+     * @param list<string> $files
+     */
+    public static function fingerprintFiles(array $files): string
+    {
+        $parts = [];
         foreach ($files as $file) {
-            $editorCss .= (string) file_get_contents($file) . "\n";
+            $stat = @stat($file);
+            $parts[] = $file . ':' . ($stat['mtime'] ?? 0) . ':' . ($stat['size'] ?? 0);
         }
 
-        // no-store while the editor is under active development; revisit for production.
-        return response($editorCss, 200, [
+        return substr(sha1(implode('|', $parts)), 0, 12);
+    }
+
+    /** Short content-hash version for a generated (in-PHP, not on-disk) CSS string. */
+    public static function contentVersion(string $content): string
+    {
+        return substr(sha1($content), 0, 12);
+    }
+
+    /**
+     * Shared local/non-local caching split for the three version helpers below.
+     * Outside `local`, memoizing the (cheap but not free) computation in the
+     * app cache means a burst of requests doesn't repeat it on every one, and a
+     * short TTL means a deploy that changes the CSS is picked up within minutes
+     * without a manual cache flush. `local` always recomputes so an on-disk CSS
+     * edit shows up on the very next reload.
+     *
+     * A host's cache backend is not this route's problem: an unmigrated
+     * `database` store, an unreachable Redis, etc. must never turn serving the
+     * editor's CSS into a 500 — any Cache failure here just falls back to
+     * computing the version directly, same as `local`.
+     */
+    private static function cachedVersion(string $key, \Closure $compute): string
+    {
+        if (app()->environment('local')) {
+            return $compute();
+        }
+
+        try {
+            return Cache::remember($key, 300, $compute);
+        } catch (\Throwable) {
+            return $compute();
+        }
+    }
+
+    /**
+     * Cache-busting version for /heisenberg-assets/editor.css — also what the
+     * `<link>` tags append as `?v=` (see e.g. resources/views/editor/layouts/app.blade.php)
+     * and what css() uses as its ETag.
+     */
+    public static function cssAssetVersion(): string
+    {
+        return self::cachedVersion(
+            self::CSS_VERSION_CACHE_KEY,
+            static fn (): string => self::fingerprintFiles(self::cssSourceFiles()),
+        );
+    }
+
+    /**
+     * Cache-busting version for /heisenberg-assets/editor-animations.css. The
+     * bundle is generated purely from AnimationCatalog's own PHP constants (no
+     * disk file, no config/theme lookup — see AnimationCatalog::css()), so the
+     * version is a content hash of the generated string rather than a file
+     * fingerprint.
+     */
+    public static function animationsAssetVersion(): string
+    {
+        return self::cachedVersion(
+            self::ANIMATIONS_VERSION_CACHE_KEY,
+            static fn (): string => self::contentVersion(AnimationCatalog::css()),
+        );
+    }
+
+    /**
+     * Cache-busting version for /heisenberg-assets/editor-supports.css. Same
+     * reasoning as animationsAssetVersion(): SupportsStyle::css() is generated
+     * purely from code today (no block-contract or theme config lookups), so a
+     * content hash of its output is the correct and cheapest version signal —
+     * if that ever starts reading per-theme config, this must hash that input
+     * too, or the cached version could go stale across a config change alone.
+     */
+    public static function supportsAssetVersion(): string
+    {
+        return self::cachedVersion(
+            self::SUPPORTS_VERSION_CACHE_KEY,
+            static fn (): string => self::contentVersion(SupportsStyle::css()),
+        );
+    }
+
+    /**
+     * Shared conditional-GET handling for the three generated CSS bundles below.
+     *
+     * The URL's own `?v=` is the fast path: when it matches the current
+     * version the response can never change without the URL itself changing,
+     * so it's safe to cache forever (`immutable`). Anything else — no `v`, a
+     * stale `v` (e.g. an old cached HTML page still linking a previous hash),
+     * or a direct hit on the bare route, as several tests do — falls back to
+     * standard ETag revalidation: a 304 when the caller already has this exact
+     * content, a fresh 200 body otherwise. `local` never issues the immutable
+     * response, so editing CSS on disk stays visible on the next reload.
+     */
+    private function cssBundleResponse(Request $request, string $version, \Closure $buildBody): Response
+    {
+        $etag = '"' . $version . '"';
+        $ifNoneMatch = trim((string) $request->headers->get('If-None-Match', ''));
+
+        $cacheControl = app()->environment('local')
+            ? 'no-cache'
+            : ($version === (string) $request->query('v', '')
+                ? 'public, max-age=31536000, immutable'
+                : 'public, max-age=0, must-revalidate');
+
+        $headers = [
             'Content-Type' => 'text/css; charset=UTF-8',
-            'Cache-Control' => 'no-store',
-        ]);
+            'ETag' => $etag,
+            'Cache-Control' => $cacheControl,
+        ];
+
+        if ($ifNoneMatch !== '' && $ifNoneMatch === $etag) {
+            return response('', 304, $headers);
+        }
+
+        return response($buildBody(), 200, $headers);
+    }
+
+    public function css(Request $request): Response
+    {
+        return $this->cssBundleResponse($request, self::cssAssetVersion(), static function (): string {
+            $editorCss = '';
+            foreach (self::cssSourceFiles() as $file) {
+                $editorCss .= (string) file_get_contents($file) . "\n";
+            }
+
+            return $editorCss;
+        });
     }
 
     /**
      * Shared animation catalog (keyframes + trigger classes) — generated, not a
      * disk asset. Consumed by preview.blade.php (heisenberg.editor.asset.animations).
      */
-    public function animationsCss(): Response
+    public function animationsCss(Request $request): Response
     {
-        return response(\Heisenberg\Support\AnimationCatalog::css(), 200, [
-            'Content-Type' => 'text/css; charset=UTF-8',
-            'Cache-Control' => 'no-store',
-        ]);
+        return $this->cssBundleResponse(
+            $request,
+            self::animationsAssetVersion(),
+            static fn (): string => AnimationCatalog::css(),
+        );
     }
 
     /**
      * The generated supports-capabilities stylesheet — a no-op for any block root
      * that doesn't carry hb-supports.
      */
-    public function supportsCss(): Response
+    public function supportsCss(Request $request): Response
     {
-        return response(\Heisenberg\Support\SupportsStyle::css(), 200, [
-            'Content-Type' => 'text/css; charset=UTF-8',
-            'Cache-Control' => 'no-store',
-        ]);
+        return $this->cssBundleResponse(
+            $request,
+            self::supportsAssetVersion(),
+            static fn (): string => SupportsStyle::css(),
+        );
     }
 
     /**
@@ -799,7 +963,7 @@ final class EditorController
      * collection). The set/slug pair is manifest-gated inside the service, so an
      * unlisted pair 404s without ever touching the filesystem.
      */
-    public function icon(\Heisenberg\Services\IconLibraryService $icons, string $set, string $slug): Response
+    public function icon(IconLibraryService $icons, string $set, string $slug): Response
     {
         $svg = $icons->svg($set . '/' . $slug);
         if ($svg === null) {
@@ -817,7 +981,7 @@ final class EditorController
      * slugs, `set` filters to one set, `limit`/`offset` page. Each row carries
      * the reference the icon block's attribute stores plus its asset URL.
      */
-    public function iconsSearch(Request $request, \Heisenberg\Services\IconLibraryService $icons): \Illuminate\Http\JsonResponse
+    public function iconsSearch(Request $request, IconLibraryService $icons): JsonResponse
     {
         $result = $icons->search(
             (string) $request->query('q', ''),

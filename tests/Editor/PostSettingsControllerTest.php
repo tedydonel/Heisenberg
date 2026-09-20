@@ -5,8 +5,11 @@ declare(strict_types=1);
 namespace Heisenberg\Tests\Editor;
 
 use Heisenberg\Models\Post;
+use Heisenberg\Models\PublicFile;
+use Heisenberg\Tests\Taxonomy\FakeActor;
 use Heisenberg\Tests\TestCase;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\DB;
 
 /**
  * Acceptance tests for PostSettingsController (routes/editor.php: PUT /editor/posts/{post}/layout
@@ -27,7 +30,7 @@ class PostSettingsControllerTest extends TestCase
         parent::setUp();
 
         $this->app['env'] = 'local';
-        $this->withoutMiddleware(\Illuminate\Foundation\Http\Middleware\ValidateCsrfToken::class);
+        $this->withoutCsrfProtection();
     }
 
     public function test_page_padding_can_be_saved_and_read_back(): void
@@ -81,10 +84,10 @@ class PostSettingsControllerTest extends TestCase
         $this->assertTrue((bool) $post->fresh()->allow_comments);
     }
 
-    /** @return \Heisenberg\Models\PublicFile */
+    /** @return PublicFile */
     private function imageRow()
     {
-        return \Heisenberg\Models\PublicFile::create([
+        return PublicFile::create([
             'type' => 'jpg',
             'disk' => 'uploads',
             'stored_path' => 'media/2026/08/featured-' . uniqid('', true) . '.jpg',
@@ -269,7 +272,7 @@ class PostSettingsControllerTest extends TestCase
 
         $post->forceDelete();
 
-        $this->assertSame(0, \Illuminate\Support\Facades\DB::table($tocTable)->where('post_id', $post->id)->count());
+        $this->assertSame(0, DB::table($tocTable)->where('post_id', $post->id)->count());
     }
 
     public function test_layout_and_discussion_are_denied_for_an_actor_who_cannot_update_the_post(): void
@@ -280,7 +283,7 @@ class PostSettingsControllerTest extends TestCase
         // The Taxonomy FakeActor, not the same-namespace one PostPersistenceTest
         // declares inline — depending on that one couples this file to test
         // load order (it only exists once PostPersistenceTest has been loaded).
-        $this->actingAs(new \Heisenberg\Tests\Taxonomy\FakeActor(999, 'author'));
+        $this->actingAs(new FakeActor(999, 'author'));
 
         $this->putJson("/editor/posts/{$post->id}/layout", ['page_padding_x' => 40, 'page_padding_y' => 40])->assertStatus(403);
         $this->putJson("/editor/posts/{$post->id}/discussion", ['allow_comments' => false])->assertStatus(403);

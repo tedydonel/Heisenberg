@@ -52,10 +52,6 @@ class HeisenbergMailable extends Mailable
 {
     public readonly EmailRenderResult $result;
 
-    /**
-     * @param int|string $postId
-     * @param string|null $locale
-     */
     public function __construct(
         int|string $postId,
         ?string $locale = null,

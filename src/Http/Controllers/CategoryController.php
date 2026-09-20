@@ -8,6 +8,7 @@ use Heisenberg\Adapters\GuestActor;
 use Heisenberg\Http\Requests\StoreCategoryRequest;
 use Heisenberg\Http\Requests\UpdateCategoryRequest;
 use Heisenberg\Models\Category;
+use Heisenberg\Policies\CategoryPolicy;
 use Illuminate\Contracts\Auth\Authenticatable;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\JsonResponse;
@@ -17,7 +18,7 @@ use Illuminate\Support\Facades\Gate;
 /**
  * REST CRUD for the category taxonomy (blueprint §9.5 `TaxonomyController`,
  * category half; §10.1 `BlogCategoryPolicy`) — an adopter-facing JSON API.
- * Every action authorizes via {@see \Heisenberg\Policies\CategoryPolicy}
+ * Every action authorizes via {@see CategoryPolicy}
  * (registered against Category::class in HeisenbergServiceProvider), using
  * the SAME GuestActor/LocalDevRoleGate idiom PostController uses (see
  * actor() below) since these routes sit behind

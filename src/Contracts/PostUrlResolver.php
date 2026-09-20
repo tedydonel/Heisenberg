@@ -5,9 +5,10 @@ declare(strict_types=1);
 namespace Heisenberg\Contracts;
 
 use Heisenberg\Models\Post;
+use Heisenberg\Services\SeoUrlResolver;
 
 /**
- * Resolves a post's public URL — the full override seam behind {@see \Heisenberg\Services\SeoUrlResolver}
+ * Resolves a post's public URL — the full override seam behind {@see SeoUrlResolver}
  * (docs/seo-system.md §5), same house pattern as {@see RoleGate}/{@see MediaResolver}/
  * {@see PostCommentProvider}: an interface, a bundled default, and a config key naming the bound
  * class (`heisenberg.seo.url_resolver`).

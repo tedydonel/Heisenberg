@@ -13,6 +13,17 @@ Companion: [`toolbar-composition.md`](toolbar-composition.md). Schema reference:
 > `resources/views/components/live/block/**`, the `style.variables` in the two shipped contracts,
 > and `BlockRenderer`'s read-back. Where the docblocks in the code disagree with the code, the
 > code wins and the disagreement is flagged.
+>
+> **STALE — updated 2026-09-19 with a banner only, not re-verified.** This document is six weeks
+> and ~170 commits old. The core mechanism it describes (attributes/supports → `style.variables`/
+> `style.classNames`/`supports.align` read-back) is architecturally unchanged and still the right
+> mental model, but the **panel inventory below reflects only 2 block contracts (heading,
+> paragraph)** — 10 more ship today (button, column, columns, embed, group, icon, image, list,
+> quote, separator) — and it predates the SEO/Social panel, the AI assistant panel, the saved
+> block patterns (Components panel), the email-only variables panel, and any inspector surface
+> added for comments/translations. Treat section 1 (the read-back model) as current and every
+> panel/contract-specific claim below as needing a fresh check against the live code before you
+> rely on it. See [`docs/ARCHITECTURE.md`](ARCHITECTURE.md) for the current subsystem map.
 
 ---
 
@@ -487,7 +498,7 @@ omitting the declaration — it never reaches the page.
   roots), the `hb-align-left/center/right` rules were restored in
   `SupportsStyle::alignBreakoutRules()`, bare numeric field values are unit-normalized
   (`px`/`deg`) at render time by both engines, and the JS `cssValueValid()` was brought to
-  full sanitizer parity with `BlockRenderer` (see `CODE_REVIEW.md`).
+  full sanitizer parity with `BlockRenderer` (see `docs/archive/CODE_REVIEW.md`).
 
 Regression coverage: `tests/Editor/StylePanelGatingTest.php` and
 `tests/Editor/InspectorWiringTest.php`.

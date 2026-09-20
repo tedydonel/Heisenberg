@@ -4,12 +4,48 @@ providers:
 
 env:
   - APP_KEY="base64:aGhoaGhoaGhoaGhoaGhoaGhoaGhoaGhoaGhoaGhoaGg="
+  # local (not testing/production): required for the /editor + /editor/media
+  # anonymous dev bypass (Heisenberg\Adapters\LocalDevRoleGate) — see
+  # docs/demo.md. Without this, a plain unauthenticated `testbench serve`
+  # visit 403s the moment you try to load/save a post or upload media.
+  - APP_ENV=local
   - DB_CONNECTION=sqlite
-  # A persistent file (not :memory:) so the dev server keeps media rows across
-  # requests — the Livewire media library needs real, surviving data to page.
-  # Run `php vendor/bin/testbench migrate --seed` once to build + seed it.
-  - DB_DATABASE=database/testbench.sqlite
+  # NOTE: DB_DATABASE is deliberately NOT set here. `php vendor/bin/testbench
+  # serve` launches PHP's built-in server with the vendor skeleton's public/
+  # dir as the worker's cwd (not this package's root) — a relative path here
+  # would resolve against THAT cwd, fail is_file(), and Testbench would
+  # silently swap to a throw-away `:memory:` connection every request (see
+  # workbench/config/database.php's own docblock for the full story, and
+  # docs/demo.md for the exact failure this caused during this task). The
+  # absolute path lives in workbench/config/database.php instead (an
+  # __DIR__-relative computation, loaded via workbench.discovers.config
+  # below), which is immune to this. Run `php vendor/bin/testbench
+  # migrate:fresh` once, then `php vendor/bin/testbench demo:seed`, to build
+  # + seed it (docs/demo.md). File lives under workbench/database/ (see
+  # workbench/.gitignore).
   # File sessions: CSRF verification and the preview-doc handoff need
   # session state that survives between dev-server requests.
   - SESSION_DRIVER=file
   - CACHE_STORE=array
+
+# Orchestra Workbench conventions (workbench/app, workbench/routes,
+# workbench/resources/views, workbench/database/seeders, ...) — this is the
+# "client test app" / demo host: a small Laravel app that adopts Heisenberg
+# the way a real host would, used by `php vendor/bin/testbench serve` and by
+# tests/Demo/AdopterPathTest. See docs/demo.md for the exact commands.
+workbench:
+  # Discovers workbench/routes/web.php (the demo blog: /blog, /blog/{locale}/
+  # {slug}, /demo/email-preview/{slug}), workbench/resources/views (the
+  # `blog.*` views), and workbench/routes/console.php (the `demo:seed`
+  # command) — see that file's own docblock for why it's closure-based
+  # rather than an Artisan Command class.
+  discovers:
+    web: true
+    views: true
+    commands: true
+    # Loads workbench/config/heisenberg.php BEFORE HeisenbergServiceProvider
+    # registers its own config defaults, so the workbench overrides
+    # (`public.routes`, `template_root`, `seo.url_template`) win — the
+    # workbench analogue of a host publishing config/heisenberg.php and
+    # editing it. See that file's own docblock.
+    config: true

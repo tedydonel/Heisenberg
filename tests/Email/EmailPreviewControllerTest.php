@@ -308,7 +308,6 @@ class EmailPreviewControllerTest extends TestCase
         $this->assertGreaterThan(strlen($previewHtml), $size);
     }
 
-
     // ====================================================================
     // Architecture invariant: `{{ variable_name }}` placeholders authored
     // into email content are rendered VERBATIM through the preview, size,

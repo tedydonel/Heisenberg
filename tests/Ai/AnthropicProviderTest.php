@@ -227,4 +227,41 @@ class AnthropicProviderTest extends TestCase
 
         Http::assertSent(fn ($request) => $request->data()['stream'] === true);
     }
+
+    // ── SSRF guard (OutboundUrlGuard) — only reachable via a custom base_url;
+    // the default api.anthropic.com is always public. ────────────────────────
+
+    public function test_a_custom_base_url_pointing_at_a_private_network_is_rejected_by_default(): void
+    {
+        Http::fake();
+
+        $response = $this->provider(['base_url' => 'http://10.0.0.5'])->complete($this->request());
+
+        $this->assertTrue($response->isError());
+        $this->assertStringContainsString('private/internal address', (string) $response->error);
+        Http::assertNothingSent();
+    }
+
+    public function test_a_custom_base_url_is_allowed_once_private_networks_are_opted_in(): void
+    {
+        config(['heisenberg.ai.outbound.allow_private_networks' => true]);
+        $this->fakeOk();
+
+        $response = $this->provider(['base_url' => 'http://10.0.0.5'])->complete($this->request());
+
+        $this->assertFalse($response->isError());
+        Http::assertSent(fn ($request) => str_starts_with($request->url(), 'http://10.0.0.5'));
+    }
+
+    public function test_streaming_also_rejects_a_custom_base_url_pointing_at_cloud_metadata(): void
+    {
+        config(['heisenberg.ai.outbound.allow_private_networks' => true]);
+        Http::fake();
+
+        $events = iterator_to_array($this->provider(['base_url' => 'http://169.254.169.254'])->stream($this->request()));
+
+        $this->assertSame(AiStreamEvent::ERROR, $events[0]->type);
+        $this->assertStringContainsString('link-local', $events[0]->text);
+        Http::assertNothingSent();
+    }
 }

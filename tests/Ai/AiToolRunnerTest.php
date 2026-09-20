@@ -14,6 +14,7 @@ use Heisenberg\Contracts\AiProvider;
 use Heisenberg\Contracts\McpClient;
 use Heisenberg\Services\AiSettingsRepository;
 use Heisenberg\Services\AiToolRunner;
+use Heisenberg\Services\HeisenbergToolSource;
 use Heisenberg\Tests\TestCase;
 use Illuminate\Support\Facades\Http;
 
@@ -72,7 +73,8 @@ class AiToolRunnerTest extends TestCase
 
     public function test_discovery_offers_only_allow_listed_tools(): void
     {
-        $mcp = new class () implements McpClient {
+        $mcp = new class() implements McpClient
+        {
             public function listTools(McpServer $server): array
             {
                 return [
@@ -106,7 +108,8 @@ class AiToolRunnerTest extends TestCase
     /** One broken integration must not take the assistant down with it. */
     public function test_an_unreachable_server_is_skipped_not_fatal(): void
     {
-        $mcp = new class () implements McpClient {
+        $mcp = new class() implements McpClient
+        {
             public function listTools(McpServer $server): array
             {
                 throw new \RuntimeException('boom');
@@ -176,7 +179,8 @@ class AiToolRunnerTest extends TestCase
      */
     public function test_a_thrown_tool_exception_becomes_an_error_result_and_the_loop_continues(): void
     {
-        $mcp = new class () implements McpClient {
+        $mcp = new class() implements McpClient
+        {
             public function listTools(McpServer $server): array
             {
                 return [['name' => 'search', 'description' => 'Search', 'input_schema' => ['type' => 'object']]];
@@ -262,7 +266,8 @@ class AiToolRunnerTest extends TestCase
 
         // Never stops asking for tools while any are offered; answers plainly
         // the moment none are — exactly the graceful final pass.
-        $provider = new class () implements AiProvider {
+        $provider = new class() implements AiProvider
+        {
             public int $calls = 0;
 
             /** @var list<bool> */
@@ -329,7 +334,8 @@ class AiToolRunnerTest extends TestCase
         config(['heisenberg.ai.mcp.client.max_iterations' => 2]);
         $mcp = $this->recordingClient();
 
-        $provider = new class () implements AiProvider {
+        $provider = new class() implements AiProvider
+        {
             public int $calls = 0;
 
             public function id(): string
@@ -567,7 +573,7 @@ class AiToolRunnerTest extends TestCase
         $runner = new AiToolRunner(
             $this->recordingClient(),
             new AiSettingsRepository($this->path),
-            app(\Heisenberg\Services\HeisenbergToolSource::class),
+            app(HeisenbergToolSource::class),
         );
         $events = iterator_to_array($runner->stream($provider, $this->request(), [], [
             ['name' => 'heisenberg__write_canvas', 'description' => '', 'input_schema' => ['type' => 'object']],
@@ -591,7 +597,7 @@ class AiToolRunnerTest extends TestCase
         $runner = new AiToolRunner(
             $this->recordingClient(),
             new AiSettingsRepository($this->path),
-            app(\Heisenberg\Services\HeisenbergToolSource::class),
+            app(HeisenbergToolSource::class),
         );
         $events = iterator_to_array($runner->stream($provider, $this->request(), [], [
             ['name' => 'heisenberg__write_canvas', 'description' => '', 'input_schema' => ['type' => 'object']],
@@ -607,7 +613,8 @@ class AiToolRunnerTest extends TestCase
     /** @param list<list<AiStreamEvent>> $passes */
     private function streamingProviderReturning(array $passes): AiProvider
     {
-        return new class ($passes) implements AiProvider {
+        return new class($passes) implements AiProvider
+        {
             private int $index = 0;
 
             public function __construct(private array $passes)
@@ -653,7 +660,8 @@ class AiToolRunnerTest extends TestCase
 
     private function recordingClient(string $reply = 'ok'): McpClient
     {
-        return new class ($reply) implements McpClient {
+        return new class($reply) implements McpClient
+        {
             /** @var list<array{0: string, 1: string, 2: array}> */
             public array $calls = [];
 
@@ -678,7 +686,8 @@ class AiToolRunnerTest extends TestCase
     /** @param list<AiResponse> $responses */
     private function providerReturning(array $responses): AiProvider
     {
-        return new class ($responses) implements AiProvider {
+        return new class($responses) implements AiProvider
+        {
             /** @var list<list<AiMessage>> */
             public array $seen = [];
 

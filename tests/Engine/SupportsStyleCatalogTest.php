@@ -4,13 +4,14 @@ declare(strict_types=1);
 
 namespace Heisenberg\Tests\Engine;
 
+use Heisenberg\Support\AnimationCatalog;
 use Heisenberg\Support\SupportsStyle;
 use Heisenberg\Tests\TestCase;
 
 /**
  * Builder full-kit overhaul (Phase 1) — the generated shared "supports
  * capabilities" stylesheet ({@see SupportsStyle}), mirroring how
- * {@see \Heisenberg\Support\AnimationCatalog} is tested. Confirms every
+ * {@see AnimationCatalog} is tested. Confirms every
  * capability rule is present with a safe, no-op default, and that the
  * dedicated route serves it.
  */

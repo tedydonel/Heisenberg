@@ -13,11 +13,13 @@ use Heisenberg\Tests\Media\Fakes\FakeUser;
 use Heisenberg\Tests\Media\Fakes\FakeVirusScanner;
 use Heisenberg\Tests\TestCase;
 use Illuminate\Database\Schema\Blueprint;
+use Illuminate\Foundation\Http\Middleware\ValidateCsrfToken;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Facades\Storage;
 use Livewire\Livewire;
+use Livewire\LivewireServiceProvider;
 
 /**
  * The Livewire media-library path (src/Livewire/MediaLibrary.php) had ZERO
@@ -48,7 +50,7 @@ class MediaLibraryLivewireTest extends TestCase
     protected function getPackageProviders($app): array
     {
         return array_merge(parent::getPackageProviders($app), [
-            \Livewire\LivewireServiceProvider::class,
+            LivewireServiceProvider::class,
         ]);
     }
 
@@ -96,7 +98,7 @@ class MediaLibraryLivewireTest extends TestCase
     private function simulateLocalDevSession(): void
     {
         $this->app['env'] = 'local';
-        $this->withoutMiddleware(\Illuminate\Foundation\Http\Middleware\ValidateCsrfToken::class);
+        $this->withoutCsrfProtection();
         config(['cache.default' => 'array']);
     }
 
@@ -275,5 +277,86 @@ class MediaLibraryLivewireTest extends TestCase
         $this->assertSame(0, PublicFile::count());
         $this->assertSame([], Storage::disk('uploads')->allFiles());
         $this->assertNotNull($component->get('error'));
+    }
+
+    // ── viewAny gap (fixed 2026-09-19) ──────────────────────────────────────
+    //
+    // render() and select() used to expose the file list / a selected file's
+    // id to ANY actor at all — MediaLibraryController's HTTP twin authorizes
+    // `viewAny` on both index() and select() (see MediaAuthorizationTest),
+    // but this component had no equivalent check anywhere in its READ path,
+    // only on the two mutations covered above.
+
+    public function test_render_lists_no_files_to_an_actor_without_viewany(): void
+    {
+        Livewire::test(MediaLibrary::class)->set('uploads', [
+            UploadedFile::fake()->image('photo.jpg', 100, 100),
+        ]);
+        $this->assertSame(1, PublicFile::count(), 'precondition: a file exists to (not) be listed');
+
+        $this->roleGate->abilities['media.viewAny'] = false;
+
+        $component = Livewire::test(MediaLibrary::class);
+
+        $this->assertCount(0, $component->viewData('files'), 'an actor without media.viewAny must see no files at all');
+        $this->assertNotNull($component->get('error'));
+    }
+
+    public function test_select_is_denied_to_an_actor_without_viewany(): void
+    {
+        Livewire::test(MediaLibrary::class)->set('uploads', [
+            UploadedFile::fake()->image('photo.jpg', 100, 100),
+        ]);
+        $file = PublicFile::first();
+        $this->assertNotNull($file);
+
+        $this->roleGate->abilities['media.viewAny'] = false;
+
+        $component = Livewire::test(MediaLibrary::class)->call('select', $file->id);
+
+        $this->assertNull($component->get('selectedId'), 'an actor without media.viewAny must not be able to select a file');
+        $this->assertNotNull($component->get('error'));
+    }
+
+    public function test_true_guest_cannot_list_or_select_outside_the_local_bypass(): void
+    {
+        Livewire::test(MediaLibrary::class)->set('uploads', [
+            UploadedFile::fake()->image('photo.jpg', 100, 100),
+        ]);
+        $file = PublicFile::first();
+        $this->assertNotNull($file);
+
+        // Not merely an ability-flag denial — a real guest, no acting-as user
+        // at all, hitting the default (non-local) environment.
+        $this->actingAsGuest();
+
+        $rendered = Livewire::test(MediaLibrary::class);
+        $this->assertCount(0, $rendered->viewData('files'));
+        $this->assertNotNull($rendered->get('error'));
+
+        $selected = Livewire::test(MediaLibrary::class)->call('select', $file->id);
+        $this->assertNull($selected->get('selectedId'));
+    }
+
+    /** A "viewer"-shaped actor (viewAny yes, create/delete no) can still browse and pick. */
+    public function test_a_viewer_role_actor_can_view_and_select_but_not_mutate(): void
+    {
+        Livewire::test(MediaLibrary::class)->set('uploads', [
+            UploadedFile::fake()->image('photo.jpg', 100, 100),
+        ]);
+        $file = PublicFile::first();
+        $this->assertNotNull($file);
+
+        $this->roleGate->abilities['media.create'] = false;
+        $this->roleGate->abilities['media.deleteAny'] = false;
+        // media.viewAny stays true — FakeRoleGate's default.
+
+        $rendered = Livewire::test(MediaLibrary::class);
+        $this->assertCount(1, $rendered->viewData('files'));
+        $this->assertNull($rendered->get('error'));
+
+        $selected = Livewire::test(MediaLibrary::class)->call('select', $file->id);
+        $this->assertSame($file->id, $selected->get('selectedId'));
+        $this->assertNull($selected->get('error'));
     }
 }

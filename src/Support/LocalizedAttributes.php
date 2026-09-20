@@ -4,13 +4,15 @@ declare(strict_types=1);
 
 namespace Heisenberg\Support;
 
+use Heisenberg\Services\BlockRenderer;
+
 /**
  * Pure, dependency-free helpers over a block's `attributes` map for the single-row translation
  * model (docs/content-translation.md §0): human-language content lives in locale-suffixed
  * attribute variants (`content_en`, `content_fr`, …) on the SAME block instance, resolved
  * `key_<locale>` first, then bare `key`.
  *
- * LOCKSTEP with {@see \Heisenberg\Services\BlockRenderer::localizedAttribute()} — that method
+ * LOCKSTEP with {@see BlockRenderer::localizedAttribute()} — that method
  * owns the render-time resolution (and stays untouched, per this wave's brief); this class gives
  * every OTHER caller (the merge command, `TranslationStatusService`, the future editor wave) the
  * same read/write/discover primitives without reaching into a block array by hand. No Laravel
@@ -121,6 +123,7 @@ final class LocalizedAttributes
                         if (! self::hasContent($attributes[$suffixed])) {
                             return false;
                         }
+
                         continue;
                     }
 

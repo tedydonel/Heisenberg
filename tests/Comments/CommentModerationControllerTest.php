@@ -28,7 +28,7 @@ class CommentModerationControllerTest extends TestCase
     {
         $this->skipIfMysqlUnreachable();
 
-        $this->withoutMiddleware(\Illuminate\Foundation\Http\Middleware\ValidateCsrfToken::class);
+        $this->withoutCsrfProtection();
     }
 
     private function makePost(array $overrides = []): Post

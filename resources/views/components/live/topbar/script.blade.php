@@ -50,6 +50,26 @@
         let hbSaveInFlight = null;
         let hbAutosaveTimer = null;
         const HB_AUTOSAVE_MS = 3000;
+        // Adaptive debounce: a large document autosaving every 3s hammers the server
+        // (and the optimistic-lock round trip) for no benefit — back off the delay as
+        // the serialized payload grows. Thresholds are on the JSON string's UTF-16
+        // length, a close-enough proxy for byte size for this purpose (guarding
+        // request frequency, not billing).
+        const HB_AUTOSAVE_MS_LARGE = 8000;
+        const HB_AUTOSAVE_LARGE_CHARS = 256 * 1024;
+        const HB_AUTOSAVE_MS_HUGE = 15000;
+        const HB_AUTOSAVE_HUGE_CHARS = 1024 * 1024;
+        // The content portion (block tree + per-locale titles) of the last payload
+        // that was *successfully* saved — window.hbEditor.buildSavePayload({}) plus
+        // hbTitleSaveExtra(), deliberately excluding bookkeeping fields (content_version,
+        // autosave, editingLocale, pending status/slug/publishedAt/seo) that change on
+        // every save regardless of whether the document itself did. Lets autosave skip
+        // the network round trip entirely when nothing actually changed (e.g. an undo
+        // back to the saved state, or a rerender that fires hb:blocks-changed without a
+        // real edit).
+        let hbLastSavedCore = null;
+        // Length of the most recently serialized content payload (see hbAutosaveDelayMs()).
+        let hbLastPayloadChars = 0;
         let hbPendingStatus = null;
         let hbPendingScheduledAt = null;
         let hbPendingSlug = null;
@@ -148,10 +168,20 @@
             try { window.history.replaceState({ hbPostId: hbPostId }, '', target); } catch (e) { }
         };
 
+        // Runs on every dirty mark (i.e. per keystroke), so it must not serialize the
+        // document itself — it reuses the size hbPerformSave() measured last time, which
+        // is already paying for that JSON.stringify. A document only crosses a threshold
+        // one save late, which is fine for a frequency guard.
+        function hbAutosaveDelayMs() {
+            if (hbLastPayloadChars > HB_AUTOSAVE_HUGE_CHARS) return HB_AUTOSAVE_MS_HUGE;
+            if (hbLastPayloadChars > HB_AUTOSAVE_LARGE_CHARS) return HB_AUTOSAVE_MS_LARGE;
+            return HB_AUTOSAVE_MS;
+        }
+
         function hbScheduleAutosave() {
             if (hbConflicted || hbPostId === null) return;
             clearTimeout(hbAutosaveTimer);
-            hbAutosaveTimer = setTimeout(() => hbPerformSave(false), HB_AUTOSAVE_MS);
+            hbAutosaveTimer = setTimeout(() => hbPerformSave(false), hbAutosaveDelayMs());
         }
 
         function hbMarkDirty() {
@@ -185,11 +215,37 @@
         }
 
         function hbPerformSave(explicit) {
+            // Never overlap saves: a timer firing (or the `online` handler, or a second
+            // click) while a request is already in flight is dropped here rather than
+            // queued. That's not data loss — hbDirty is left untouched, and the in-flight
+            // request's own .finally() below reschedules an autosave if hbDirty is still
+            // true once it settles.
             if (hbSaveInFlight) return;
             if (!navigator.onLine) return;
             if (hbConflicted && !explicit) return;
             if (!explicit && hbPostId === null) return;
             if (!window.hbEditor || typeof window.hbEditor.buildSavePayload !== 'function') return;
+
+            // hbTitleSaveExtra() also records the current title into hbTitleByLocale as a
+            // side effect — computed once here and reused below so the comparison sees
+            // the same title state that will actually be sent.
+            const titleExtra = hbTitleSaveExtra();
+
+            // Guardrail: an autosave whose content (block tree + titles) is byte-identical
+            // to the last successfully saved content is a wasted round trip (e.g. a
+            // rerender that fires hb:blocks-changed with no real edit, or an undo landing
+            // back on the saved state) — skip the network call entirely. Explicit saves
+            // (the Save button) always go through: they may carry pending status/slug/SEO
+            // changes that have nothing to do with the block tree or title.
+            const corePayload = JSON.stringify(Object.assign({}, window.hbEditor.buildSavePayload({}), titleExtra));
+            hbLastPayloadChars = corePayload.length;
+            if (!explicit && hbLastSavedCore !== null && corePayload === hbLastSavedCore) {
+                clearTimeout(hbAutosaveTimer);
+                hbAutosaveTimer = null;
+                hbDirty = false;
+                hbEmitSaveState(hbHasPending() ? 'dirty' : 'saved');
+                return;
+            }
 
             clearTimeout(hbAutosaveTimer);
             hbAutosaveTimer = null;
@@ -199,7 +255,7 @@
             const includeSlug = explicit && hbPendingSlug !== null;
             const includePublishedAt = explicit && hbPendingPublishedAt !== null;
             const includeSeo = explicit && hbPendingSeo !== null;
-            const extra = Object.assign({ autosave: !explicit }, hbTitleSaveExtra());
+            const extra = Object.assign({ autosave: !explicit }, titleExtra);
             if (hbPostId !== null) extra.content_version = hbContentVersion;
             if (window.hbEditor && window.hbEditor.getEditingLocale) {
                 extra.editingLocale = window.hbEditor.getEditingLocale();
@@ -233,6 +289,10 @@
                 .then((r) => r.json().catch(() => ({})).then((data) => ({ ok: r.ok, status: r.status, data: data })))
                 .then((res) => {
                     if (res.ok) {
+                        // Record the just-saved block tree as the new baseline for the
+                        // byte-identical guard above, regardless of whether this was an
+                        // autosave or an explicit save.
+                        hbLastSavedCore = corePayload;
                         if (res.data && res.data.post) {
                             const wasNew = hbPostId === null;
                             if (res.data.post.id != null) hbPostId = res.data.post.id;

@@ -18,7 +18,7 @@ class AiResponse
 {
     /**
      * @param list<array{id: string, name: string, arguments: array}> $toolCalls
-     * @param array<string, int|string>                               $usage
+     * @param array<string, int|string> $usage
      */
     public function __construct(
         public readonly string $text = '',
@@ -60,12 +60,12 @@ class AiResponse
     public function toArray(): array
     {
         return [
-            'text'       => $this->text,
-            'toolCalls'  => $this->toolCalls,
+            'text' => $this->text,
+            'toolCalls' => $this->toolCalls,
             'stopReason' => $this->stopReason,
-            'model'      => $this->model,
-            'usage'      => $this->usage,
-            'error'      => $this->error,
+            'model' => $this->model,
+            'usage' => $this->usage,
+            'error' => $this->error,
         ];
     }
 }

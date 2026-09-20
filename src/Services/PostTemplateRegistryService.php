@@ -4,10 +4,10 @@ declare(strict_types=1);
 
 namespace Heisenberg\Services;
 
+use FilesystemIterator;
 use JsonException;
 use RecursiveDirectoryIterator;
 use RecursiveIteratorIterator;
-use FilesystemIterator;
 
 /**
  * Discovers post-template contract JSON on disk, validates each via
@@ -64,12 +64,12 @@ class PostTemplateRegistryService
 
         return [
             'schemaVersion' => self::SCHEMA_VERSION,
-            'registryHash'  => $this->computeHash($bare),
-            'templates'     => array_map(fn (array $c): array => $this->localizeContract($c, $locale), $bare),
-            'categories'    => $this->getCategories($bare),
-            'icons'         => $this->referencedIcons($bare),
-            'generatedAt'   => now()->toIso8601String(),
-            'errors'        => $scan['errors'],
+            'registryHash' => $this->computeHash($bare),
+            'templates' => array_map(fn (array $c): array => $this->localizeContract($c, $locale), $bare),
+            'categories' => $this->getCategories($bare),
+            'icons' => $this->referencedIcons($bare),
+            'generatedAt' => now()->toIso8601String(),
+            'errors' => $scan['errors'],
         ];
     }
 
@@ -126,7 +126,6 @@ class PostTemplateRegistryService
         return $real === $root || str_starts_with($real, $root . DIRECTORY_SEPARATOR);
     }
 
-    
     /**
      * @return array{contracts: array<string, array>, paths: array<string, array{abs: string, rel: string}>, errors: list<array{file: string, error: string}>}
      */
@@ -160,6 +159,7 @@ class PostTemplateRegistryService
             $real = realpath($file);
             if ($real === false || ! str_starts_with($real, $realRoot . DIRECTORY_SEPARATOR)) {
                 $errors[] = ['file' => $file, 'error' => 'File is outside the template root'];
+
                 continue;
             }
 
@@ -167,11 +167,13 @@ class PostTemplateRegistryService
                 $contract = json_decode((string) @file_get_contents($real), true, 512, JSON_THROW_ON_ERROR);
             } catch (JsonException $e) {
                 $errors[] = ['file' => $real, 'error' => 'Invalid JSON: ' . $e->getMessage()];
+
                 continue;
             }
 
             if (! is_array($contract)) {
                 $errors[] = ['file' => $real, 'error' => 'Contract is not a JSON object'];
+
                 continue;
             }
 
@@ -180,12 +182,14 @@ class PostTemplateRegistryService
                 foreach ($result['errors'] as $message) {
                     $errors[] = ['file' => $real, 'error' => $message];
                 }
+
                 continue;
             }
 
             $name = (string) $contract['name'];
             if (isset($contracts[$name])) {
                 $errors[] = ['file' => $real, 'error' => "Duplicate template name: {$name}"];
+
                 continue;
             }
 

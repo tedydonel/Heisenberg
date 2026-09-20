@@ -24,7 +24,6 @@ class ColorPickerTest extends TestCase
 {
     use RefreshDatabase;
 
-
     private function editorHtml(): string
     {
         return $this->get('/editor')->getContent();
@@ -229,7 +228,7 @@ class ColorPickerTest extends TestCase
         $this->assertStringContainsString('stopPopup.hidden = true;', $html);
         // Its own trigger is exempt, or the picker's click handler would open and this would
         // close it within the same event.
-        $this->assertStringContainsString("[data-cp-gradient-stop-select]", $html);
+        $this->assertStringContainsString('[data-cp-gradient-stop-select]', $html);
         // A canvas click closes every panel's popups despite never reaching a Style root.
         $this->assertStringContainsString("document.querySelectorAll('.hb-blockstyle').forEach((panel) => closeStylePopups(panel));", $html);
     }

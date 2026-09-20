@@ -8,6 +8,8 @@ use Heisenberg\Ai\AiModel;
 use Heisenberg\Ai\AiProviderProfile;
 use Heisenberg\Ai\AiRequest;
 use Heisenberg\Ai\McpServer;
+use Heisenberg\Contracts\AiCredentialStore;
+use Heisenberg\Support\OutboundUrlGuard;
 
 /**
  * The AI panel's settings: the operator's **providers**, their **models**, which
@@ -24,7 +26,7 @@ use Heisenberg\Ai\McpServer;
  *
  * **No credential ever lands in this file.** A provider entry carries `key_env`
  * (the NAME of an environment variable) and nothing else; a key typed into the
- * modal goes to the {@see \Heisenberg\Contracts\AiCredentialStore}, which
+ * modal goes to the {@see AiCredentialStore}, which
  * encrypts it in a separate file. {@see self::assertNoCredentials()} rejects any
  * payload containing a key-shaped field outright, and runs on load as well as
  * save so a hand-edited file cannot smuggle one back through the API.
@@ -71,10 +73,10 @@ class AiSettingsRepository
     public function defaults(): array
     {
         return [
-            'providers'   => [],
-            'models'      => [],
+            'providers' => [],
+            'models' => [],
             'active_model' => null,
-            'tools'       => self::TOOLS,
+            'tools' => self::TOOLS,
             'mcp_servers' => [],
         ];
     }
@@ -97,7 +99,7 @@ class AiSettingsRepository
     }
 
     /**
-     * @param  array<string, mixed> $settings
+     * @param array<string, mixed> $settings
      * @return array{saved: bool, errors: list<string>, settings: array<string, mixed>}
      */
     public function save(array $settings): array
@@ -186,7 +188,7 @@ class AiSettingsRepository
     }
 
     /**
-     * @param  array<string, mixed> $raw
+     * @param array<string, mixed> $raw
      * @return array{valid: bool, errors: list<string>, settings: array<string, mixed>}
      */
     public function validate(array $raw): array
@@ -196,8 +198,8 @@ class AiSettingsRepository
 
         if (($leaked = $this->assertNoCredentials($raw)) !== null) {
             return [
-                'valid'    => false,
-                'errors'   => ["'{$leaked}' cannot be stored here — API keys go to the credential store, not the settings file"],
+                'valid' => false,
+                'errors' => ["'{$leaked}' cannot be stored here — API keys go to the credential store, not the settings file"],
                 'settings' => $defaults,
             ];
         }
@@ -220,6 +222,7 @@ class AiSettingsRepository
             $tool = is_string($tool) ? $tool : '';
             if (! in_array($tool, self::TOOLS, true)) {
                 $errors[] = "tools: unknown tool '{$tool}'";
+
                 continue;
             }
             $tools[$tool] = true;
@@ -228,21 +231,21 @@ class AiSettingsRepository
         $servers = $this->validateServers((array) ($raw['mcp_servers'] ?? []), $errors);
 
         return [
-            'valid'  => $errors === [],
+            'valid' => $errors === [],
             'errors' => $errors,
             'settings' => [
-                'providers'    => $providers,
-                'models'       => $models,
+                'providers' => $providers,
+                'models' => $models,
                 'active_model' => $active,
-                'tools'        => array_keys($tools),
-                'mcp_servers'  => $servers,
+                'tools' => array_keys($tools),
+                'mcp_servers' => $servers,
             ],
         ];
     }
 
     /**
-     * @param  array<int, mixed> $raw
-     * @param  list<string>      $errors
+     * @param array<int, mixed> $raw
+     * @param list<string> $errors
      * @return list<array<string, mixed>>
      */
     private function validateProviders(array $raw, array &$errors): array
@@ -254,6 +257,7 @@ class AiSettingsRepository
         foreach ($raw as $i => $row) {
             if (! is_array($row)) {
                 $errors[] = "providers.{$i}: must be an object";
+
                 continue;
             }
             if (count($out) >= self::MAX_PROVIDERS) {
@@ -264,16 +268,19 @@ class AiSettingsRepository
             $id = (string) ($row['id'] ?? '');
             if (preg_match('/^[a-z0-9][a-z0-9-]{0,39}$/', $id) !== 1) {
                 $errors[] = "providers.{$i}: id must be kebab-case (a-z, 0-9, -)";
+
                 continue;
             }
             if (isset($seen[$id])) {
                 $errors[] = "providers.{$i}: duplicate id '{$id}'";
+
                 continue;
             }
 
             $format = (string) ($row['format'] ?? '');
             if (! in_array($format, $formats, true)) {
                 $errors[] = "providers.{$i} ('{$id}'): unknown API format '{$format}'";
+
                 continue;
             }
 
@@ -283,6 +290,18 @@ class AiSettingsRepository
             // this URL is fetched server-side.
             if (! in_array($scheme, ['http', 'https'], true) || parse_url($url, PHP_URL_HOST) === null) {
                 $errors[] = "providers.{$i} ('{$id}'): base_url must be an http(s) URL";
+
+                continue;
+            }
+
+            // SSRF guard (see OutboundUrlGuard): catches an obviously bad base_url
+            // right here, in the settings UI, before it is ever used — the SAME
+            // policy is re-checked immediately before every actual request the
+            // provider adapters make, because a hostname's DNS answer can change
+            // between now and then.
+            if (($blocked = OutboundUrlGuard::reject($url)) !== null) {
+                $errors[] = "providers.{$i} ('{$id}'): {$blocked}";
+
                 continue;
             }
 
@@ -293,6 +312,7 @@ class AiSettingsRepository
                 // an env var name, so it lands here rather than in the file.
                 if (preg_match('/^[A-Z][A-Z0-9_]{0,63}$/', $keyEnv) !== 1) {
                     $errors[] = "providers.{$i} ('{$id}'): key_env must be an environment variable NAME (A-Z, 0-9, _), not a key";
+
                     continue;
                 }
             } else {
@@ -317,9 +337,9 @@ class AiSettingsRepository
     }
 
     /**
-     * @param  array<int, mixed> $raw
-     * @param  list<string>      $providerIds
-     * @param  list<string>      $errors
+     * @param array<int, mixed> $raw
+     * @param list<string> $providerIds
+     * @param list<string> $errors
      * @return list<array<string, mixed>>
      */
     private function validateModels(array $raw, array $providerIds, array &$errors): array
@@ -330,6 +350,7 @@ class AiSettingsRepository
         foreach ($raw as $i => $row) {
             if (! is_array($row)) {
                 $errors[] = "models.{$i}: must be an object";
+
                 continue;
             }
             if (count($out) >= self::MAX_MODELS) {
@@ -340,12 +361,14 @@ class AiSettingsRepository
             $id = trim((string) ($row['id'] ?? ''));
             if (preg_match('/^[A-Za-z0-9][A-Za-z0-9._:\/\-]{0,99}$/', $id) !== 1) {
                 $errors[] = "models.{$i}: '{$id}' is not a valid model id";
+
                 continue;
             }
 
             $provider = (string) ($row['provider'] ?? '');
             if (! in_array($provider, $providerIds, true)) {
                 $errors[] = "models.{$i} ('{$id}'): unknown provider '{$provider}'";
+
                 continue;
             }
 
@@ -353,6 +376,7 @@ class AiSettingsRepository
             $key = $provider . ':' . $id;
             if (isset($seen[$key])) {
                 $errors[] = "models.{$i}: duplicate '{$key}'";
+
                 continue;
             }
 
@@ -370,8 +394,8 @@ class AiSettingsRepository
     }
 
     /**
-     * @param  array<int, mixed> $raw
-     * @param  list<string>      $errors
+     * @param array<int, mixed> $raw
+     * @param list<string> $errors
      * @return list<array<string, mixed>>
      */
     private function validateServers(array $raw, array &$errors): array
@@ -382,6 +406,7 @@ class AiSettingsRepository
         foreach ($raw as $i => $row) {
             if (! is_array($row)) {
                 $errors[] = "mcp_servers.{$i}: must be an object";
+
                 continue;
             }
             if (count($servers) >= self::MAX_SERVERS) {
@@ -392,10 +417,12 @@ class AiSettingsRepository
             $id = (string) ($row['id'] ?? '');
             if (preg_match('/^[a-z0-9][a-z0-9-]{0,39}$/', $id) !== 1) {
                 $errors[] = "mcp_servers.{$i}: id must be kebab-case (a-z, 0-9, -)";
+
                 continue;
             }
             if (isset($seen[$id])) {
                 $errors[] = "mcp_servers.{$i}: duplicate id '{$id}'";
+
                 continue;
             }
 
@@ -403,6 +430,18 @@ class AiSettingsRepository
             $scheme = strtolower((string) parse_url($url, PHP_URL_SCHEME));
             if (! in_array($scheme, ['http', 'https'], true) || parse_url($url, PHP_URL_HOST) === null) {
                 $errors[] = "mcp_servers.{$i} ('{$id}'): url must be an http(s) URL";
+
+                continue;
+            }
+
+            // SSRF guard (see OutboundUrlGuard) — same policy HttpMcpClient
+            // re-checks immediately before every actual tool call. docs/ai-mcp-
+            // plan.md deliberately allows a self-hosted MCP server on localhost
+            // or inside an operator's own VPC, so this is a configurable policy
+            // (heisenberg.ai.outbound.*), not a hard localhost/private-IP ban.
+            if (($blocked = OutboundUrlGuard::reject($url)) !== null) {
+                $errors[] = "mcp_servers.{$i} ('{$id}'): {$blocked}";
+
                 continue;
             }
 
@@ -411,6 +450,7 @@ class AiSettingsRepository
                 $authEnv = (string) $authEnv;
                 if (preg_match('/^[A-Z][A-Z0-9_]{0,63}$/', $authEnv) !== 1) {
                     $errors[] = "mcp_servers.{$i} ('{$id}'): auth_env must be an environment variable NAME (A-Z, 0-9, _), not a token";
+
                     continue;
                 }
             } else {
@@ -427,11 +467,11 @@ class AiSettingsRepository
 
             $seen[$id] = true;
             $servers[] = [
-                'id'            => $id,
-                'label'         => mb_substr(trim((string) ($row['label'] ?? $id)), 0, 60),
-                'url'           => $url,
-                'auth_env'      => $authEnv,
-                'enabled'       => (bool) ($row['enabled'] ?? false),
+                'id' => $id,
+                'label' => mb_substr(trim((string) ($row['label'] ?? $id)), 0, 60),
+                'url' => $url,
+                'auth_env' => $authEnv,
+                'enabled' => (bool) ($row['enabled'] ?? false),
                 'allowed_tools' => array_keys($allowed),
             ];
         }

@@ -5,8 +5,8 @@ declare(strict_types=1);
 namespace Heisenberg\Tests\Editor;
 
 use Heisenberg\Services\ThemeRepository;
-use Heisenberg\Tests\TestCase;
 use Heisenberg\Tests\Taxonomy\FakeActor;
+use Heisenberg\Tests\TestCase;
 
 /**
  * Acceptance tests for the theme library API (routes/editor.php: GET/POST/DELETE
@@ -24,7 +24,7 @@ class SavedThemeControllerTest extends TestCase
     protected function setUp(): void
     {
         parent::setUp();
-        $this->withoutMiddleware(\Illuminate\Foundation\Http\Middleware\ValidateCsrfToken::class);
+        $this->withoutCsrfProtection();
 
         // Isolate the container-resolved SavedThemeRepository from the real
         // storage/app/heisenberg/themes.json — without this, state written by

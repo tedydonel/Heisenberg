@@ -7,13 +7,17 @@ namespace Heisenberg\Http\Controllers;
 use Heisenberg\Adapters\GuestActor;
 use Heisenberg\Http\Requests\SavePostRequest;
 use Heisenberg\Models\Post;
+use Heisenberg\Models\Revision;
+use Heisenberg\Models\SeoMeta;
 use Heisenberg\Policies\PostPolicy;
 use Heisenberg\Services\BlockRegistryService;
-use Heisenberg\Support\LocalizedAttributes;
+use Heisenberg\Services\SeoAnalyzer;
 use Heisenberg\Support\LocaleConfig;
+use Heisenberg\Support\LocalizedAttributes;
 use Illuminate\Contracts\Auth\Authenticatable;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Gate;
 
@@ -331,7 +335,7 @@ class PostController
             return ['status' => 403, 'message' => 'You are not authorized to set this post\'s date.'];
         }
 
-        $post->published_at = ($raw !== null && $raw !== '') ? \Illuminate\Support\Carbon::parse($raw) : null;
+        $post->published_at = ($raw !== null && $raw !== '') ? Carbon::parse($raw) : null;
 
         return null;
     }
@@ -343,7 +347,7 @@ class PostController
      * the other locale's (same posture `title_en`/`title_fr` already have — one row, two
      * independent per-locale halves). `robots_index`/
      * `robots_follow` compose into the single `robots` column ('index'|'noindex', ', ',
-     * 'follow'|'nofollow') — the shape {@see \Heisenberg\Services\SeoAnalyzer} and the preview's
+     * 'follow'|'nofollow') — the shape {@see SeoAnalyzer} and the preview's
      * own head logic already parse. Only keys actually PRESENT in `$seo` are touched (mirrors
      * `contentAttributes()`'s "an absent key leaves the column alone" posture) — a partial
      * payload from a future AI/API caller never clobbers fields it didn't mean to touch.
@@ -394,7 +398,7 @@ class PostController
      * panel-seo-social.blade.php's own script can resync its "last confirmed" snapshot after
      * every save — same "the server's echo is the only thing a live panel trusts post-save"
      * posture `post.slug`/`post.status` already have. Deliberately reads the RAW own-locale
-     * columns (not {@see \Heisenberg\Models\SeoMeta}'s cross-locale-fallback accessors the
+     * columns (not {@see SeoMeta}'s cross-locale-fallback accessors the
      * SEED payload uses, EditorController::postSeo()): right after a save the own-locale column
      * holds exactly what the user just submitted, including an intentionally emptied field — the
      * fallback accessor would silently show the OTHER locale's stale text instead of the blank
@@ -426,10 +430,10 @@ class PostController
         ];
     }
 
-    /** @return class-string<\Heisenberg\Models\SeoMeta> */
+    /** @return class-string<SeoMeta> */
     private function seoMetaClass(): string
     {
-        return (string) config('heisenberg.models.seo_meta', \Heisenberg\Models\SeoMeta::class);
+        return (string) config('heisenberg.models.seo_meta', SeoMeta::class);
     }
 
     /**
@@ -470,7 +474,7 @@ class PostController
             return; // an empty tree is not a version worth restoring
         }
 
-        $revisionClass = (string) config('heisenberg.models.revision', \Heisenberg\Models\Revision::class);
+        $revisionClass = (string) config('heisenberg.models.revision', Revision::class);
 
         if ($autosave) {
             $revisionClass::query()
@@ -479,7 +483,7 @@ class PostController
                 ->forceDelete();
         }
 
-        \Heisenberg\Models\Revision::snapshotOf($post, $autosave ? 'auto_save' : 'manual', $actor->getAuthIdentifier());
+        Revision::snapshotOf($post, $autosave ? 'auto_save' : 'manual', $actor->getAuthIdentifier());
 
         $keep = config('heisenberg.revisions.keep');
         if ($keep === null) {
@@ -517,7 +521,7 @@ class PostController
      * The right-hand key match uses the block `id` first, then positional fallback for any
      * block that doesn't carry one (a brand-new block mid-save).
      *
-     * @param  list<array<string, mixed>> $incoming
+     * @param list<array<string, mixed>> $incoming
      * @return list<array<string, mixed>>
      */
     private function defendAgainstBareOverwrite(Post $post, array $incoming, string $editingLocale): array
@@ -550,6 +554,7 @@ class PostController
         foreach ($incoming as $position => $incomingBlock) {
             if (! is_array($incomingBlock)) {
                 $defended[] = $incomingBlock;
+
                 continue;
             }
 

@@ -5,13 +5,15 @@ declare(strict_types=1);
 namespace Heisenberg\Services;
 
 use Heisenberg\Contracts\PostUrlResolver;
+use Heisenberg\Http\Controllers\PreviewController;
 use Heisenberg\Models\Post;
 use Heisenberg\Support\LocaleConfig;
+use Illuminate\Support\Facades\Route;
 
 /**
  * The bundled default {@see PostUrlResolver} — ONE definition of "a post's public URL per locale"
  * (docs/seo-system.md §5), resolved from the container by both {@see SitemapController} and
- * {@see \Heisenberg\Http\Controllers\PreviewController}'s hreflang alternates (never referenced by
+ * {@see PreviewController}'s hreflang alternates (never referenced by
  * concrete class from either caller) — both need the exact same answer or the sitemap and the
  * page's own `<link rel="alternate">` tags would disagree about a post's canonical public address.
  * A host that needs a URL shape this class cannot express (per-locale domains, id-based URLs,
@@ -32,7 +34,9 @@ use Heisenberg\Support\LocaleConfig;
  *    the `heisenberg.default_locale` key if present; if none of those exist, this falls through
  *    to the same dev-default preview route as an unset `url_template`.
  *
- * `null` (the default) — or a map with no matching entry — falls back to this package's own
+ * `null` (the default) — or a map with no matching entry — resolves to the bundled public route
+ * (`GET /posts/{locale}/{slug}`) when the host has enabled it via `heisenberg.public.routes`.
+ * With neither a template nor the public route, it falls back to this package's own
  * post-scoped preview route (`GET /editor/{post}/preview`) — a DEV DEFAULT ONLY: it is gated
  * behind `config('heisenberg.middleware.editor')` (open by default, `['web']`) rather than a real
  * public route, and reveals the `/editor` prefix. A host publishing a real sitemap MUST set
@@ -55,6 +59,14 @@ class SeoUrlResolver implements PostUrlResolver
             if ($entry !== null) {
                 return $this->substitute($entry, $locale, $post);
             }
+        }
+
+        // A host that turned on the bundled public route (`heisenberg.public.routes`) has
+        // already told us where posts live — without this, enabling it still left the
+        // sitemap, canonical and hreflang links pointing at the editor preview below until
+        // `url_template` was ALSO set by hand.
+        if (Route::has('heisenberg.public.posts.show') && (string) $post->slug !== '') {
+            return route('heisenberg.public.posts.show', ['locale' => $locale, 'slug' => $post->slug]);
         }
 
         return route('heisenberg.editor.preview.post', ['post' => $post->getKey()]);

@@ -17,7 +17,7 @@ if (! function_exists('heisenberg_csp_nonce')) {
     {
         try {
             return (string) Vite::cspNonce();
-        } catch (\Throwable) {
+        } catch (Throwable) {
             return '';
         }
     }

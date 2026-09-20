@@ -234,6 +234,7 @@ class ThemeRepository
             foreach ((array) ($raw[$section] ?? []) as $i => $token) {
                 if (! is_array($token)) {
                     $errors[] = "{$section}.{$i} must be an object";
+
                     continue;
                 }
                 $name = (string) ($token['name'] ?? '');
@@ -241,14 +242,17 @@ class ThemeRepository
                 $value = trim((string) ($token['value'] ?? ''));
                 if (preg_match('/^[a-z0-9][a-z0-9-]{0,39}$/', $name) !== 1) {
                     $errors[] = "{$section}.{$i}: name must be kebab-case (a-z, 0-9, -)";
+
                     continue;
                 }
                 if (isset($seen[$name])) {
                     $errors[] = "{$section}.{$i}: duplicate name '{$name}'";
+
                     continue;
                 }
                 if (preg_match($kinds[$section], $value) !== 1) {
                     $errors[] = "{$section}.{$i} ('{$name}'): invalid value '{$value}'";
+
                     continue;
                 }
                 // Bare integer (no unit) — promote to px so the CSS the block renderer emits
@@ -269,6 +273,7 @@ class ThemeRepository
         foreach ((array) ($raw['fonts'] ?? []) as $i => $token) {
             if (! is_array($token)) {
                 $errors[] = "fonts.{$i} must be an object";
+
                 continue;
             }
             $name = (string) ($token['name'] ?? '');
@@ -276,14 +281,17 @@ class ThemeRepository
             $family = trim((string) ($token['family'] ?? ''));
             if (preg_match('/^[a-z0-9][a-z0-9-]{0,39}$/', $name) !== 1) {
                 $errors[] = "fonts.{$i}: name must be kebab-case (a-z, 0-9, -)";
+
                 continue;
             }
             if (isset($seen[$name])) {
                 $errors[] = "fonts.{$i}: duplicate name '{$name}'";
+
                 continue;
             }
             if (preg_match('/^[A-Za-z0-9][A-Za-z0-9 \-]{0,80}$/', $family) !== 1) {
                 $errors[] = "fonts.{$i} ('{$name}'): invalid family '{$family}'";
+
                 continue;
             }
             $weights = [];

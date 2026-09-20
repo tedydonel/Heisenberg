@@ -1,3 +1,8 @@
+> **ARCHIVED — frozen as of 2026-08-06.** This review is a point-in-time snapshot; it does not
+> cover ~170 later commits or the email builder, AI assistant, bidirectional MCP, threaded
+> comments, SEO, revisions, or single-row bilingual content subsystems shipped since. Superseded
+> by [`docs/STATUS.md`](../STATUS.md), which carries forward any findings still valid today.
+
 # Heisenberg — Full Codebase Review
 
 > **Remediation status (2026-08-05, same day):** Phases A, B, C (safe subset), E, and F are

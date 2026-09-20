@@ -281,7 +281,6 @@ class EmailExportControllerTest extends TestCase
         $this->assertStringNotContainsString('data-hb-export-item data-format="html"', $html);
     }
 
-
     // ====================================================================
     // Architecture invariant: `{{ variable_name }}` placeholders authored
     // into email content are rendered VERBATIM through the html and eml
@@ -349,9 +348,9 @@ class EmailExportControllerTest extends TestCase
 
         $response->assertOk();
         $raw = (string) $response->getContent();
-        $dequoted = str_replace(["=
-", "=
-"], '', $raw);
+        $dequoted = str_replace(['=
+', '=
+'], '', $raw);
 
         $this->assertStringContainsString('Subject: Hello {{ user.first_name }}', $dequoted);
         $this->assertStringContainsString('Hi {{ user.first_name }}', $dequoted);

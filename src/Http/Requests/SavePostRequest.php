@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Heisenberg\Http\Requests;
 
 use Heisenberg\Services\BlocksPayloadService;
+use Heisenberg\Support\LocaleConfig;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\Validator;
@@ -43,7 +44,7 @@ class SavePostRequest extends FormRequest
             'title_en' => $isUpdate ? ['sometimes', 'nullable', 'string', 'max:255'] : ['nullable', 'string', 'max:255'],
             'title_fr' => ['sometimes', 'nullable', 'string', 'max:255'],
             'slug' => ['sometimes', 'nullable', 'string', 'max:255'],
-            'locale' => ['sometimes', Rule::in(['en', 'fr'])],
+            'locale' => ['sometimes', Rule::in(LocaleConfig::locales())],
             'excerpt_en' => ['sometimes', 'nullable', 'string'],
             'excerpt_fr' => ['sometimes', 'nullable', 'string'],
 

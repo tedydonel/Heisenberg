@@ -50,11 +50,11 @@ class AiConversationController
 
         return response()->json([
             'conversations' => $query->get()->map(static fn (AiConversation $c): array => [
-                'id'            => $c->id,
-                'title'         => (string) ($c->title ?? ''),
-                'post_id'       => $c->post_id,
+                'id' => $c->id,
+                'title' => (string) ($c->title ?? ''),
+                'post_id' => $c->post_id,
                 'message_count' => (int) $c->messages_count,
-                'updated_at'    => $c->updated_at?->toIso8601String(),
+                'updated_at' => $c->updated_at?->toIso8601String(),
             ])->all(),
         ]);
     }
@@ -72,13 +72,13 @@ class AiConversationController
         }
 
         return response()->json([
-            'id'       => $found->id,
-            'title'    => (string) ($found->title ?? ''),
-            'post_id'  => $found->post_id,
+            'id' => $found->id,
+            'title' => (string) ($found->title ?? ''),
+            'post_id' => $found->post_id,
             'messages' => $found->messages()->orderBy('id')->get()->map(static fn (AiChatMessage $m): array => [
-                'role'       => $m->role,
-                'content'    => $m->content,
-                'meta'       => $m->meta ?? [],
+                'role' => $m->role,
+                'content' => $m->content,
+                'meta' => $m->meta ?? [],
                 'created_at' => $m->created_at?->toIso8601String(),
             ])->all(),
         ]);
@@ -92,7 +92,7 @@ class AiConversationController
         }
 
         $conversation = AiConversation::create([
-            'post_id'   => $request->filled('post_id') ? (int) $request->input('post_id') : null,
+            'post_id' => $request->filled('post_id') ? (int) $request->input('post_id') : null,
             'author_id' => $request->user()?->getAuthIdentifier(),
         ]);
 
@@ -119,9 +119,9 @@ class AiConversationController
 
         $meta = $request->input('meta');
         $message = $found->messages()->create([
-            'role'    => $role,
+            'role' => $role,
             'content' => $content,
-            'meta'    => is_array($meta) ? $meta : null,
+            'meta' => is_array($meta) ? $meta : null,
         ]);
 
         // First user turn names the thread; touch() keeps "newest activity

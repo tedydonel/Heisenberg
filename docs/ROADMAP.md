@@ -1,94 +1,61 @@
-# Heisenberg — Product Roadmap
+# Heisenberg — Roadmap
 
-> A lightweight, Laravel-native, **contract-driven block/page builder** — the maintained,
-> non-React alternative to the abandoned Laraberg. Blocks are JSON contracts + CSS (+ a
-> little vanilla JS). One generic editor reads any contract and auto-generates its toolbar
-> and inspector. The published page is always rendered (and sanitized) server-side in PHP.
->
-> A clean-room reconstruction of GTC's `Modules/Blog`, deliberately **lighter and better**:
-> standalone package, leaner contract, no host coupling. Companion docs:
-> [`BLUEPRINT.md`](BLUEPRINT.md) (engine spec) and [`block-schema.md`](block-schema.md) (the
-> canonical block-contract definition). Reference (study only): the real GTC source and
-> Gutenberg's block model.
+> This document used to carry a detailed "Done / In progress / Next" plan. That plan stopped
+> being updated on 2026-08-06 and was overtaken by ~170 commits (email builder, AI assistant,
+> bidirectional MCP, threaded comments, SEO, revisions, single-row bilingual content) — it was
+> deleted rather than left stale. For **current state**, see [`docs/STATUS.md`](STATUS.md). For
+> the block engine's original reconstruction spec, see [`docs/BLUEPRINT.md`](BLUEPRINT.md). This
+> file now holds only the genuinely forward-looking plan: what has to be true before 0.1.0, and
+> before 1.0.
 
-## Architecture in one breath
+## Toward 0.1.0
 
-| Layer | Job |
+0.1.0 is "safe for a stranger to install," not a feature milestone. What must be true:
+
+- **A stable-enough schema.** The `locale` column migrating from a fixed `ENUM('en','fr')` to a
+  plain string is in progress; once it lands, the schema shape should not need another breaking
+  migration for a while. See `UPGRADING.md`'s Unreleased section.
+- **An upgrade guide that actually exists.** `UPGRADING.md` now covers v0.0.1 → v0.0.7; it needs
+  to keep pace with every tag from here, not fall behind the way the planning docs did.
+- **A demo/workbench app, finished.** Not screenshots — a real Laravel app that installs
+  Heisenberg as a dependency and exercises the adopter path end to end (install, migrate, author
+  a bilingual post, send an email, connect an MCP client). This is `docs/archive/TODO.md` Phase 5,
+  unstarted since 2026-08-05 and now in progress; finishing it is what would have caught the
+  config-merge bugs `ConfigMerge`'s own docblock says bit a real install three times.
+- **CI gates that mean something.** Larastan, Pint, `composer audit`, and a real Laravel
+  11/12/13 matrix (today's CI is PHP-version-only) — in progress on `chore/review-fixes`, not yet
+  merged.
+- **A JS test harness.** There is currently no automated coverage for the ~16,000-line vanilla-JS
+  editor runtime at all — undo/redo, canvas rendering, and most of the shortcode-dialect parity
+  guarantee are unverified by CI.
+- **The god classes stop growing.** `McpToolRegistry` (2,046 lines), `BlockRegistryService`
+  (1,435 lines), `BlockRenderer` (1,422 lines), and `block-runtime.blade.php` (2,014 lines) don't
+  need to shrink before 0.1.0, but they shouldn't keep absorbing new responsibilities unsplit.
+
+## Toward 1.0
+
+- **Outside usage.** At least one real adopter running Heisenberg in a non-demo application,
+  surfacing integration problems this repo's own tests can't.
+- **The post-template rendering gap closed.** Templates are validated JSON with no rendering
+  consumer today (see `docs/STATUS.md`); either wire them into the public/preview render path or
+  retire the concept.
+- **An accessibility pass.** No focus trapping, no consistent `Escape` handling, no ARIA live
+  region for save/autosave state — open since at least 2026-08-07.
+- **A considered position on N-locale support**, not a default. Bilingual (en/fr) single-row
+  content is the deliberate 0.x design; broadening past two locales is a real schema and UX
+  question, not a config toggle, and stays out of scope until 1.0 explicitly takes it up.
+- **Versioning discipline.** Pre-1.0, `0.0.x` releases may carry breaking changes (this package
+  has shipped several); 1.0 is the point at which that stops being acceptable, and semver starts
+  meaning what hosts expect it to mean.
+
+## Open questions — resolved
+
+The prior version of this document carried an open-questions table; most of what it asked has
+since been settled by shipped code or explicit lead decisions. For the record:
+
+| Question | Resolution |
 |---|---|
-| **JSON contract** | *Defines* a block — attributes (the single source of truth), supports, render template. Drives both render and the auto-generated edit UI. |
-| **CSS** | How a block looks (CSS-variable-driven, so most inspector edits are instant). |
-| **PHP** | The only authoritative renderer: contract + values → safe HTML (sanitized, escaped). |
-| **HTML** | What a block *is* — an independent fragment. |
-| **Vanilla JS** | Thin layer that makes the editor interactive (select, RichText, insert, live-tweak, autosave). No framework, no build step. |
-
-## Locked architectural decisions
-
-- **Standalone Composer package**, decoupled from any host via the 5 contracts (MediaResolver,
-  RoleGate, AuditSink, IconProvider, HeisenbergUser) — vs GTC welded into `Modules/Blog`.
-- **JSON-only.** Blocks serialize as a JSON array of block objects (`{name, attributes,
-  supports, innerBlocks}`). No Gutenberg comment-delimiters; no HTML-source parsing; no legacy
-  `{type, content}` path.
-- **Attributes are the single source of truth.** Inspector controls and most `style.variables`
-  are *derived* from attributes + supports, not duplicated (the contract-redesign goal).
-- **One `render.template` per block, two renderers** — walked by the PHP renderer (publish) and
-  the JS canvas (edit). GTC's model.
-- **Client editor = a lean vanilla-JS document model** (GTC-faithful), no framework/build.
-- **Gutenberg is a study reference only** (how it models attributes/supports/inspector/toolbar),
-  reimplemented our leaner way.
-
-## Done
-
-- **M0** — package skeleton (provider, config, 5 decoupling contracts + adapters, Testbench).
-- **M1 — contract core** — `BlockType` enum, `BlockContractValidator`, `BlockRegistryService`,
-  shipped contracts + EN lang labels (pruned to `heading` + `paragraph` in the 2026-08-02 reset;
-  the other contracts return as they are rebuilt on the editor).
-- **Engine ring-1** — `HtmlSanitizationService` (HTMLPurifier configs), `BlockRenderer` (one
-  generic contract-template walk → safe HTML), `BlocksPayloadService` (validates instances vs
-  the live registry).
-- **Builder (shell + chrome)** — *deleted in the 2026-08-02 reset*, superseded by the `/editor`
-  surface (which reimplemented its chrome, inspector, and toolbar). Kept here as history: it was
-  a real Blade page at `GET /builder` with sidebars, device dropdown, tabs, list/outline, a
-  contract-driven inspector, and an editable title.
-- **Persistence foundation** — `Post` + `Block` models + migrations on MySQL (JSON `content`,
-  ordered scope, `content_version` lock).
-- **98 tests green.**
-
-## In progress — engine hardening + contract redefinition
-
-Lock down a clean, lean contract and a solid engine *before* building the client editor:
-
-- ✅ Redefined the contract (canonical [`block-schema.md`](block-schema.md)): dropped the
-  vestigial HTML-source fields (`source`/`selector`/`attribute`), **controls derived from
-  attributes + supports**, normalized `security`, slimmed `style.variables`.
-- ✅ **GTC fidelity audit** of `BlockRenderer` + `HtmlSanitizationService` — stricter rich-text /
-  colour / size-token sanitizers ported.
-- ✅ **Inner-block rendering** in `BlockRenderer` — the `inner-blocks` node + depth-capped
-  recursion (each child via its own contract).
-- ✅ **Supports → inspector panels** — `BlockRegistryService` derives the color/typography/
-  spacing/border panels (token registry in `config('heisenberg.tokens')`).
-- ⏳ Wire the **final HTMLPurifier pass** over rendered output (the public-render job's backstop).
-- ⏳ **Per-block CSS** (the `*.css` the contracts reference, missing today).
-- ⏳ End-to-end render tests for every shipped block.
-
-## Next
-
-> Phase 1 engine work above is now done. The current working plan lives in
-> [`../TODO.md`](../TODO.md); the inspector/toolbar capability catalogues are in
-> [`inspector-composition.md`](inspector-composition.md) and
-> [`toolbar-composition.md`](toolbar-composition.md).
-
-- **Contract-driven client editor** (GTC-faithful): document model → client `render.template`
-  renderer (mirrors PHP) → selection + RichText → inspector writeback → insertion → JSON
-  serialization → undo/redo + drag-reorder. Retires the throwaway `.t-*` canvas.
-- **Persistence write path** — `BlockService::persistBlocks` (transactional full-replace; the
-  `_allow_raw` gate lands with the `html_raw` block) + **autosave JSON API** (optimistic
-  `content_version` → 409).
-- **Public render pipeline** — render job → `BlockRenderer` → purify → cached `rendered_html`,
-  + the public Blade view.
-- **Broaden** — more blocks incl. nesting (columns/cover) and `html_raw` (with the gate).
-
-## Sequencing decision
-
-**Engine-and-contract first, then editor-first vertical slice.** Harden the engine and lock the
-contract so the editor isn't built twice; then drive one block (paragraph) all the way —
-contract → render → editable in the builder → save — before broadening to every block.
+| Is the public render path (`GET /posts/{locale}/{slug}`) still blocking? | **No.** It shipped 2026-08-23, is real (`PostPublicController` runs the full `BlockRenderer` pipeline, SEO, hreflang, comments included), and is tested (`tests/Public/PostPublicControllerTest.php`). It ships **opt-in**, off by default — a host that wants a different URL shape leaves it off and binds its own `PostUrlResolver`. |
+| Is single-row bilingual content a stopgap or the design? | **The design**, per an explicit lead decision (see `IDEA.md`). Arbitrary N-locale support is a non-goal before 1.0, not an oversight. |
+| Does Heisenberg still own email personalization (variable substitution, batch export)? | **No.** That layer was removed 2026-09-17; Heisenberg renders `{{ tokens }}` verbatim and the host substitutes and sends. See `docs/email-system.md` §6 and `UPGRADING.md`. |
+| Is the post-template contract wired into rendering? | **Not yet** — it's validated, discoverable JSON with no layout consumer. Tracked above as a 1.0 requirement, not assumed done. |

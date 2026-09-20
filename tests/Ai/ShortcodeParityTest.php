@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Heisenberg\Tests\Ai;
 
 use Heisenberg\Services\BlockRegistryService;
+use Heisenberg\Services\ShortcodeDialect;
 use Heisenberg\Services\ShortcodeParser;
 use Heisenberg\Services\ShortcodeSerializer;
 use Heisenberg\Tests\TestCase;
@@ -208,15 +209,15 @@ class ShortcodeParityTest extends TestCase
      */
     public function test_javascript_value_stringification_is_matched(): void
     {
-        $this->assertSame('true', \Heisenberg\Services\ShortcodeDialect::jsString(true));
-        $this->assertSame('false', \Heisenberg\Services\ShortcodeDialect::jsString(false));
-        $this->assertSame('3', \Heisenberg\Services\ShortcodeDialect::jsString(3.0));
-        $this->assertSame('3.5', \Heisenberg\Services\ShortcodeDialect::jsString(3.5));
+        $this->assertSame('true', ShortcodeDialect::jsString(true));
+        $this->assertSame('false', ShortcodeDialect::jsString(false));
+        $this->assertSame('3', ShortcodeDialect::jsString(3.0));
+        $this->assertSame('3.5', ShortcodeDialect::jsString(3.5));
         // JSON.stringify does not escape forward slashes; json_encode does by default.
-        $this->assertSame('{"u":"a/b"}', \Heisenberg\Services\ShortcodeDialect::jsJson(['u' => 'a/b']));
+        $this->assertSame('{"u":"a/b"}', ShortcodeDialect::jsJson(['u' => 'a/b']));
         // Number("") is 0 in JavaScript, not NaN.
-        $this->assertSame(0, \Heisenberg\Services\ShortcodeDialect::jsNumber(''));
-        $this->assertNull(\Heisenberg\Services\ShortcodeDialect::jsNumber('abc'));
-        $this->assertSame(12, \Heisenberg\Services\ShortcodeDialect::jsNumber(' 12 '));
+        $this->assertSame(0, ShortcodeDialect::jsNumber(''));
+        $this->assertNull(ShortcodeDialect::jsNumber('abc'));
+        $this->assertSame(12, ShortcodeDialect::jsNumber(' 12 '));
     }
 }

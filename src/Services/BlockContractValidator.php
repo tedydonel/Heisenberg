@@ -93,7 +93,7 @@ class BlockContractValidator
 
     /**
      * Interaction states a contract may declare under `supports.states`. Must stay in
-     * lockstep with {@see \Heisenberg\Services\BlockRenderer::INTERACTION_STATES} — a state this
+     * lockstep with {@see BlockRenderer::INTERACTION_STATES} — a state this
      * accepts but the renderer cannot compile would validate and then never emit any CSS.
      */
     public const INTERACTION_STATES = ['hover', 'active', 'focus'];
@@ -189,6 +189,7 @@ class BlockContractValidator
         foreach ($attributes as $name => $def) {
             if (! is_array($def)) {
                 $errors[] = "attribute '{$name}' must be an object";
+
                 continue;
             }
 
@@ -243,6 +244,7 @@ class BlockContractValidator
             if ($group === 'align') {
                 if (! is_array($value)) {
                     $errors[] = 'supports.align must be an array';
+
                     continue;
                 }
                 foreach ($value as $align) {
@@ -250,6 +252,7 @@ class BlockContractValidator
                         $errors[] = "supports.align has unknown value '" . $this->stringify($align) . "'";
                     }
                 }
+
                 continue;
             }
 
@@ -262,6 +265,7 @@ class BlockContractValidator
             if ($group === 'states') {
                 if (! is_array($value)) {
                     $errors[] = 'supports.states must be an object';
+
                     continue;
                 }
                 foreach ($value as $state => $enabled) {
@@ -271,11 +275,13 @@ class BlockContractValidator
                         $errors[] = "supports.states.{$state} must be a boolean";
                     }
                 }
+
                 continue;
             }
 
             if (! in_array($group, self::SUPPORT_KEYS, true)) {
                 $errors[] = "unknown support group '{$group}'";
+
                 continue;
             }
 
@@ -283,6 +289,7 @@ class BlockContractValidator
                 if (! is_bool($value)) {
                     $errors[] = 'supports.animation must be a boolean';
                 }
+
                 continue;
             }
 
@@ -317,6 +324,7 @@ class BlockContractValidator
             $shape = $catalog[$feature] ?? null;
             if ($shape === null) {
                 $errors[] = "supports.{$group} has unknown feature '" . $this->stringify($feature) . "'";
+
                 continue;
             }
 
@@ -396,6 +404,7 @@ class BlockContractValidator
 
             if (! is_array($control[$key])) {
                 $errors[] = "attribute '{$name}' control {$key} must be a predicate object";
+
                 continue;
             }
 
@@ -469,6 +478,7 @@ class BlockContractValidator
                 foreach ($style['classNames'] as $index => $binding) {
                     if (! is_array($binding)) {
                         $errors[] = "style.classNames.{$index} must be an object";
+
                         continue;
                     }
 
@@ -480,6 +490,7 @@ class BlockContractValidator
                     $when = $binding['when'] ?? null;
                     if (! is_array($when)) {
                         $errors[] = "style.classNames.{$index}.when must be a predicate object";
+
                         continue;
                     }
 
@@ -495,6 +506,7 @@ class BlockContractValidator
             foreach ($variables as $var => $def) {
                 if (! is_array($def)) {
                     $errors[] = "style variable '{$var}' must be an object";
+
                     continue;
                 }
 
@@ -609,6 +621,7 @@ class BlockContractValidator
 
         if (! array_key_exists('enabled', $inner) || ! is_bool($inner['enabled'])) {
             $errors[] = 'innerBlocks.enabled must be a boolean';
+
             return;
         }
 

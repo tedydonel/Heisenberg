@@ -10,7 +10,6 @@ use Heisenberg\Services\SeoUrlResolver;
 use Heisenberg\Tests\Seo\Fixtures\StubPostUrlResolver;
 use Heisenberg\Tests\TestCase;
 use Illuminate\Foundation\Testing\RefreshDatabase;
-use SimpleXMLElement;
 
 /**
  * Coverage for the owner's per-locale-URL request (docs/seo-system.md §5): `url_template` as

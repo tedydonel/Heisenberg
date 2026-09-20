@@ -10,6 +10,8 @@ use Heisenberg\Ai\AiResponse;
 use Heisenberg\Ai\AiStreamEvent;
 use Heisenberg\Ai\SseReader;
 use Heisenberg\Contracts\AiProvider;
+use Heisenberg\Services\AiSettingsRepository;
+use Heisenberg\Support\OutboundUrlGuard;
 use Illuminate\Support\Facades\Http;
 
 /**
@@ -21,7 +23,7 @@ use Illuminate\Support\Facades\Http;
  * Two consequences of that breadth:
  *
  * - **The model catalogue is host-supplied and may be empty**, because we cannot
- *   know what an arbitrary endpoint serves. {@see \Heisenberg\Services\AiSettingsRepository}
+ *   know what an arbitrary endpoint serves. {@see AiSettingsRepository}
  *   accepts any well-formed model id for this provider and lets the endpoint
  *   reject it, rather than pretending to validate against a list we don't have.
  * - **`effort` has no equivalent** in this API, so it is dropped rather than
@@ -79,9 +81,16 @@ class OpenAiCompatibleProvider implements AiProvider
             return [];
         }
 
+        // SSRF guard, re-checked here rather than trusted from whatever
+        // validated this base_url when it was saved — see OutboundUrlGuard.
+        if (OutboundUrlGuard::reject($this->baseUrl()) !== null) {
+            return [];
+        }
+
         try {
             $response = Http::withHeaders($this->headers())
                 ->timeout($this->timeout())
+                ->withOptions(['allow_redirects' => false])
                 ->get($this->baseUrl() . '/models');
         } catch (\Throwable) {
             return [];
@@ -119,9 +128,17 @@ class OpenAiCompatibleProvider implements AiProvider
             return AiResponse::error(__('heisenberg::editor.ai.provider_not_configured', ['provider' => $this->label()]));
         }
 
+        // SSRF guard (see OutboundUrlGuard): a host may point a custom
+        // OpenAI-compatible base_url at anything, and this is the last check
+        // before that URL is actually fetched.
+        if (($blocked = OutboundUrlGuard::reject($this->baseUrl())) !== null) {
+            return AiResponse::error($blocked);
+        }
+
         try {
             $response = Http::withHeaders($this->headers())
                 ->timeout($this->timeout())
+                ->withOptions(['allow_redirects' => false])
                 ->post($this->endpoint(), $this->body($request));
         } catch (\Throwable $e) {
             return AiResponse::error($this->networkMessage());
@@ -166,6 +183,13 @@ class OpenAiCompatibleProvider implements AiProvider
             return;
         }
 
+        // SSRF guard — see the identical check in complete().
+        if (($blocked = OutboundUrlGuard::reject($this->baseUrl())) !== null) {
+            yield AiStreamEvent::error($blocked);
+
+            return;
+        }
+
         try {
             // No TOTAL timeout on a stream — a reasoning model (MiniMax-M3 at high effort)
             // legitimately generates for longer than any sane request budget, and Guzzle's
@@ -176,7 +200,8 @@ class OpenAiCompatibleProvider implements AiProvider
             $response = Http::withHeaders($this->headers())
                 ->connectTimeout(30) // a flaky line needs more than the 10s default to say hello
                 ->timeout(0)
-                ->withOptions(['stream' => true, 'read_timeout' => $this->timeout()])
+                // No redirects: see the identical note on HttpMcpClient's rpc().
+                ->withOptions(['stream' => true, 'read_timeout' => $this->timeout(), 'allow_redirects' => false])
                 ->post($this->endpoint(), $this->body($request) + ['stream' => true]);
         } catch (\Throwable $e) {
             yield AiStreamEvent::error($this->networkMessage());
@@ -281,7 +306,7 @@ class OpenAiCompatibleProvider implements AiProvider
      * validation error, which the model can read and correct, rather than the
      * call vanishing and the turn ending in silence.
      *
-     * @param  array<int, array{id: string, name: string, arguments: string}>       $partial
+     * @param array<int, array{id: string, name: string, arguments: string}> $partial
      * @return list<array{id: string, name: string, arguments: array<string, mixed>}>
      */
     private function finishToolCalls(array $partial): array
@@ -346,6 +371,7 @@ class OpenAiCompatibleProvider implements AiProvider
                     'tool_call_id' => $message->toolUseId,
                     'content' => $message->content,
                 ];
+
                 continue;
             }
 
@@ -366,6 +392,7 @@ class OpenAiCompatibleProvider implements AiProvider
                         ],
                     ], $message->toolCalls),
                 ];
+
                 continue;
             }
 

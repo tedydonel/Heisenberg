@@ -10,7 +10,7 @@ use Heisenberg\Models\SeoMeta;
 
 /**
  * Default SEO/meta adapter (2026-08-11, docs/seo-system.md Wave S1), reading
- * {@see \Heisenberg\Models\SeoMeta} (`config('heisenberg.tables.seo_meta')`, polymorphic).
+ * {@see SeoMeta} (`config('heisenberg.tables.seo_meta')`, polymorphic).
  * Bound at `heisenberg.post_template.seo_meta_provider` in place of
  * {@see NullPostSeoMetaProvider} — see that class and `PostSeoMetaProvider`'s docblock for the
  * "bind your own to opt out" story.

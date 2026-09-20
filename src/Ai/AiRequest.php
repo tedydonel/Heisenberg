@@ -26,8 +26,8 @@ class AiRequest
     public const DEFAULT_EFFORT = 'high';
 
     /**
-     * @param list<AiMessage>                                                          $messages
-     * @param list<array{name: string, description?: string, input_schema?: array}>    $tools
+     * @param list<AiMessage> $messages
+     * @param list<array{name: string, description?: string, input_schema?: array}> $tools
      */
     public function __construct(
         public readonly array $messages,

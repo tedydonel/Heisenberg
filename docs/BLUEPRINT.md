@@ -5,6 +5,18 @@
 
 ---
 
+> **Scope note (added 2026-09-19).** This document is a **reconstruction spec of the block
+> engine only**, reverse-engineered from a prior private application's `Blog` module, annotated
+> throughout with `[AS-BUILT]` (how that source module worked) and `[TARGET]` (how Heisenberg
+> should do it instead). It predates and does **not cover** the email builder, AI assistant,
+> MCP server/client, threaded comments, or SEO subsystems — all shipped later and are not
+> reverse-engineered from anything, so they have no `[AS-BUILT]`/`[TARGET]` split to record.
+> Readers looking for the current, complete system map — including the parts this document is
+> silent on — want [`docs/ARCHITECTURE.md`](ARCHITECTURE.md) instead; treat this file as a deep
+> archival reference for the block engine's origin, not the map of what exists today.
+
+---
+
 > **What this document is.** A faithful, exhaustive specification of the GTC platform's blog‑builder backend, written so that Heisenberg can be **rebuilt from scratch in a clean repository** without ever opening the GTC codebase again. Every class, method signature, database column, block‑contract key, security gate, and route in here was read out of the live `Modules/Blog` source — nothing is invented. Where the current code is welded to GTC‑specific things (its `User` model, its media model, its hard‑coded role names), this document records **both** what exists today **and** the clean‑room replacement Heisenberg should ship instead.
 >
 > **How to read it.** Two tags run throughout:

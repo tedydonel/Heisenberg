@@ -4,8 +4,8 @@ declare(strict_types=1);
 
 namespace Heisenberg\Http\Middleware;
 
-use Heisenberg\Services\McpToolRegistry;
 use Closure;
+use Heisenberg\Services\McpToolRegistry;
 use Illuminate\Http\Request;
 use Symfony\Component\HttpFoundation\Response;
 

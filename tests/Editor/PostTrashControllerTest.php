@@ -7,6 +7,7 @@ namespace Heisenberg\Tests\Editor;
 use Heisenberg\Models\Block;
 use Heisenberg\Models\Post;
 use Heisenberg\Models\Revision;
+use Heisenberg\Tests\Taxonomy\FakeActor;
 use Heisenberg\Tests\TestCase;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 
@@ -27,7 +28,7 @@ class PostTrashControllerTest extends TestCase
         parent::setUp();
 
         $this->app['env'] = 'local';
-        $this->withoutMiddleware(\Illuminate\Foundation\Http\Middleware\ValidateCsrfToken::class);
+        $this->withoutCsrfProtection();
     }
 
     public function test_trashing_a_post_soft_deletes_it_and_returns_the_deleted_at_timestamp(): void
@@ -141,7 +142,7 @@ class PostTrashControllerTest extends TestCase
         $trashedPost->delete();
 
         $this->app['env'] = 'testing';
-        $this->actingAs(new \Heisenberg\Tests\Taxonomy\FakeActor(999, 'author'));
+        $this->actingAs(new FakeActor(999, 'author'));
 
         $this->deleteJson("/editor/posts/{$post->id}")->assertStatus(403);
         $this->postJson("/editor/posts/{$trashedPost->id}/restore")->assertStatus(403);
@@ -156,7 +157,7 @@ class PostTrashControllerTest extends TestCase
         $post = Post::create(['title_en' => 'X', 'status' => 'draft']);
 
         $this->app['env'] = 'testing';
-        $this->actingAs(new \Heisenberg\Tests\Taxonomy\FakeActor(1, 'admin'));
+        $this->actingAs(new FakeActor(1, 'admin'));
 
         $this->deleteJson("/editor/posts/{$post->id}")->assertOk();
         $this->assertTrue($post->fresh()->trashed());

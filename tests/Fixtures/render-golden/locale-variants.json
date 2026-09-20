@@ -1,0 +1,4 @@
+{
+    "html": "<h3 class=\"hb-block hb-block-heading hb-supports hb-ease-smooth\" data-block-name=\"heisenberg/heading\" data-block-id=\"h1\" title=\"Only English tooltip\" style=\"--hb-heading-color: var(--ink); --hb-heading-bg: transparent; --hb-anim-dur: 600; --hb-anim-delay: 0;\"><span class=\"hb-block-heading__text\">Titre français</span></h3><p class=\"hb-block hb-block-paragraph hb-supports hb-ease-smooth\" data-block-name=\"heisenberg/paragraph\" data-block-id=\"p1\" style=\"--hb-paragraph-color: var(--ink); --hb-paragraph-bg: transparent; --hb-paragraph-fs: var(--fs-md); --hb-anim-dur: 600; --hb-anim-delay: 0;\"><span class=\"hb-block-paragraph__text\">English only paragraph (no _fr variant).</span></p>",
+    "css": ""
+}

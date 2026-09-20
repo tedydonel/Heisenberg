@@ -6,6 +6,7 @@ namespace Heisenberg\Adapters;
 
 use Heisenberg\Ai\McpServer;
 use Heisenberg\Contracts\McpClient;
+use Heisenberg\Support\OutboundUrlGuard;
 use Illuminate\Support\Facades\Http;
 
 /**
@@ -50,7 +51,7 @@ class HttpMcpClient implements McpClient
     }
 
     /**
-     * @param  array<string, mixed> $arguments
+     * @param array<string, mixed> $arguments
      * @return array{content: string, isError: bool}
      */
     public function callTool(McpServer $server, string $tool, array $arguments): array
@@ -94,11 +95,21 @@ class HttpMcpClient implements McpClient
     }
 
     /**
-     * @param  array<string, mixed> $params
+     * @param array<string, mixed> $params
      * @return array<string, mixed>
      */
     private function rpc(McpServer $server, string $method, array $params = []): array
     {
+        // Re-checked HERE, immediately before the request, rather than trusted
+        // from whatever validated the server entry when it was saved
+        // (AiSettingsRepository::validateServers runs the SAME check): a
+        // hostname's DNS answer can change between those two moments (DNS
+        // rebinding), and this is the last point before this package's own
+        // network access is spent on a third party's URL.
+        if (($blocked = OutboundUrlGuard::reject($server->url)) !== null) {
+            throw new \RuntimeException("MCP server '{$server->id}': {$blocked}");
+        }
+
         $headers = [
             'content-type' => 'application/json',
             // Some servers negotiate a stream; we only ever want the JSON body.
@@ -114,6 +125,10 @@ class HttpMcpClient implements McpClient
         try {
             $response = Http::withHeaders($headers)
                 ->timeout((int) config('heisenberg.ai.mcp.client.timeout', 30))
+                // No redirects: an allowed URL that 302s into a blocked range
+                // (loopback/private/link-local) would otherwise reach it
+                // without ever passing the check above again.
+                ->withOptions(['allow_redirects' => false])
                 ->post($server->url, array_filter([
                     'jsonrpc' => '2.0',
                     'id' => 1,

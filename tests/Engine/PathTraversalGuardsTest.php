@@ -22,6 +22,7 @@ use PHPUnit\Framework\Attributes\DataProvider;
 class PathTraversalGuardsTest extends TestCase
 {
     private string $iconRoot;
+
     private string $secretFile;
 
     protected function setUp(): void

@@ -10,14 +10,55 @@ permissions:
 
 jobs:
   test:
-    name: PHP ${{ matrix.php }} · ${{ matrix.dependency-version }}
+    name: PHP ${{ matrix.php }} · Laravel ${{ matrix.laravel }} · ${{ matrix.dependency-version }}
     runs-on: ubuntu-latest
 
     strategy:
       fail-fast: false
       matrix:
-        php: ['8.2', '8.3', '8.4']
-        dependency-version: [prefer-lowest, prefer-stable]
+        include:
+          # Laravel 11 (orchestra/testbench ^9.0)
+          - php: '8.2'
+            laravel: '11.*'
+            testbench: '^9.0'
+            dependency-version: prefer-stable
+          - php: '8.3'
+            laravel: '11.*'
+            testbench: '^9.0'
+            dependency-version: prefer-stable
+          - php: '8.4'
+            laravel: '11.*'
+            testbench: '^9.0'
+            dependency-version: prefer-stable
+          # The one prefer-lowest lane: lowest supported PHP + lowest supported Laravel.
+          - php: '8.2'
+            laravel: '11.*'
+            testbench: '^9.0'
+            dependency-version: prefer-lowest
+
+          # Laravel 12 (orchestra/testbench ^10.0)
+          - php: '8.2'
+            laravel: '12.*'
+            testbench: '^10.0'
+            dependency-version: prefer-stable
+          - php: '8.3'
+            laravel: '12.*'
+            testbench: '^10.0'
+            dependency-version: prefer-stable
+          - php: '8.4'
+            laravel: '12.*'
+            testbench: '^10.0'
+            dependency-version: prefer-stable
+
+          # Laravel 13 (orchestra/testbench ^11.0) requires PHP >= 8.3 — no 8.2 lane.
+          - php: '8.3'
+            laravel: '13.*'
+            testbench: '^11.0'
+            dependency-version: prefer-stable
+          - php: '8.4'
+            laravel: '13.*'
+            testbench: '^11.0'
+            dependency-version: prefer-stable
 
     steps:
       - name: Checkout
@@ -36,11 +77,180 @@ jobs:
         uses: actions/cache@v4
         with:
           path: ~/.composer/cache
-          key: composer-${{ matrix.php }}-${{ matrix.dependency-version }}-${{ hashFiles('composer.json') }}
-          restore-keys: composer-${{ matrix.php }}-${{ matrix.dependency-version }}-
+          key: composer-${{ matrix.php }}-${{ matrix.laravel }}-${{ matrix.dependency-version }}-${{ hashFiles('composer.json') }}
+          restore-keys: composer-${{ matrix.php }}-${{ matrix.laravel }}-${{ matrix.dependency-version }}-
+
+      - name: Require Laravel ${{ matrix.laravel }} (testbench ${{ matrix.testbench }})
+        run: |
+          composer require --no-update --no-interaction \
+            "illuminate/bus:${{ matrix.laravel }}" \
+            "illuminate/database:${{ matrix.laravel }}" \
+            "illuminate/http:${{ matrix.laravel }}" \
+            "illuminate/mail:${{ matrix.laravel }}" \
+            "illuminate/support:${{ matrix.laravel }}"
+          composer require --dev --no-update --no-interaction "orchestra/testbench:${{ matrix.testbench }}"
 
       - name: Install dependencies
         run: composer update --${{ matrix.dependency-version }} --prefer-dist --no-interaction --no-progress
 
+      # Parallel: every paratest worker boots the SAME orchestra/testbench-core
+      # "laravel" skeleton, and they used to race to rewrite its shared
+      # bootstrap/cache/{services,packages}.php (~2 spurious failures per full run).
+      # tests/TestCase.php now gives each worker its own manifest pair, keyed off
+      # paratest's TEST_TOKEN — with that in place a full 8-process run is green
+      # (1669 tests) and takes ~5 minutes instead of ~33. If this ever flakes,
+      # `vendor/bin/phpunit` still runs the same suite serially.
       - name: Run test suite
-        run: vendor/bin/phpunit
+        run: vendor/bin/paratest --processes=4
+
+  lint:
+    name: Pint (code style)
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.4'
+          coverage: none
+
+      - name: Cache Composer packages
+        uses: actions/cache@v4
+        with:
+          path: ~/.composer/cache
+          key: composer-lint-${{ hashFiles('composer.json') }}
+          restore-keys: composer-lint-
+
+      - name: Install dependencies
+        run: composer update --prefer-stable --prefer-dist --no-interaction --no-progress
+
+      - name: Run Pint
+        run: vendor/bin/pint --test
+
+  static-analysis:
+    name: PHPStan (static analysis)
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.4'
+          coverage: none
+
+      - name: Cache Composer packages
+        uses: actions/cache@v4
+        with:
+          path: ~/.composer/cache
+          key: composer-stan-${{ hashFiles('composer.json') }}
+          restore-keys: composer-stan-
+
+      - name: Install dependencies
+        run: composer update --prefer-stable --prefer-dist --no-interaction --no-progress
+
+      - name: Run PHPStan
+        run: vendor/bin/phpstan analyse --memory-limit=1G --no-progress
+
+  audit:
+    name: Composer security audit
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.4'
+          coverage: none
+
+      - name: Install dependencies
+        run: composer update --prefer-stable --prefer-dist --no-interaction --no-progress
+
+      - name: Run composer audit
+        run: composer audit
+
+  js-jsdom:
+    name: JS tests (jsdom — shortcode parity + canvas pipeline)
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.4'
+          extensions: dom, mbstring, pdo_sqlite, sqlite3
+          coverage: none
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Install PHP dependencies
+        run: composer update --prefer-stable --prefer-dist --no-interaction --no-progress
+
+      - name: Install JS dependencies
+        run: npm ci
+
+      - name: Dump the rendered /editor page + run the jsdom harnesses
+        run: npm run test:jsdom
+
+  js-playwright:
+    name: JS tests (Playwright — live testbench server)
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.4'
+          extensions: dom, mbstring, pdo_sqlite, sqlite3
+          coverage: none
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Install PHP dependencies
+        run: composer update --prefer-stable --prefer-dist --no-interaction --no-progress
+
+      - name: Install JS dependencies
+        run: npm ci
+
+      - name: Install Playwright's Chromium
+        run: npm run playwright:install
+
+      - name: Build the workbench demo database
+        run: |
+          php vendor/bin/testbench migrate:fresh
+          php vendor/bin/testbench demo:seed
+
+      - name: Start the testbench dev server
+        run: nohup php vendor/bin/testbench serve --port=8787 > testbench-serve.log 2>&1 &
+
+      - name: Wait for the dev server
+        run: |
+          for i in $(seq 1 30); do
+            if curl -sf http://127.0.0.1:8787/editor -o /dev/null; then
+              echo "Server is up"; exit 0
+            fi
+            sleep 1
+          done
+          echo "Server did not become ready in time"; cat testbench-serve.log; exit 1
+
+      - name: Run the Playwright matrices
+        run: npm run test:playwright
+
+      - name: Server log (always, for debugging)
+        if: always()
+        run: cat testbench-serve.log || true

@@ -456,7 +456,7 @@ return [
         'card_image' => 'Image',
         'card_divider' => 'Séparateur',
         'card_button' => 'Bouton',
-        'empty_blocks' => 'Bientôt disponible.'
+        'empty_blocks' => 'Bientôt disponible.',
     ],
 
     // Blocs réutilisables sauvegardés (« patterns », panneau Blocs, popover d'enregistrement).
@@ -466,6 +466,7 @@ return [
         'name_taken' => 'Un bloc avec ce nom existe déjà. Choisissez-en un autre.',
         'blocks_required' => 'Le contenu du bloc est manquant.',
         'blocks_invalid_entry' => 'Le bloc n° :index n’est pas un bloc valide.',
+        'blocks_too_large' => 'Ce modèle est trop volumineux pour être enregistré.',
         'not_found' => 'Ce bloc n’existe plus.',
         'save_dialog_title' => 'Enregistrer comme bloc',
         'save_dialog_prompt' => 'Nommez cette composition pour la réutiliser depuis l’onglet Blocs.',

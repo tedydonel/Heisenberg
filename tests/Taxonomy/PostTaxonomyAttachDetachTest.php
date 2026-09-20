@@ -35,7 +35,7 @@ class PostTaxonomyAttachDetachTest extends TestCase
         $this->skipIfMysqlUnreachable();
 
         $this->app['env'] = 'local';
-        $this->withoutMiddleware(\Illuminate\Foundation\Http\Middleware\ValidateCsrfToken::class);
+        $this->withoutCsrfProtection();
     }
 
     public function test_a_category_can_be_attached_then_detached_from_a_post(): void

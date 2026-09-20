@@ -5,11 +5,12 @@ declare(strict_types=1);
 namespace Heisenberg\Tests\Templates;
 
 use Heisenberg\Services\PostTemplateContractValidator;
+use Heisenberg\Tests\M1\BlockContractValidatorTest;
 use PHPUnit\Framework\TestCase;
 
 /**
  * Validates post-template contract *definitions*. Pure/stateless, zero host
- * couplings — mirrors {@see \Heisenberg\Tests\M1\BlockContractValidatorTest}'s
+ * couplings — mirrors {@see BlockContractValidatorTest}'s
  * style for the post-template contract (docs/post-template-schema.md).
  */
 class PostTemplateContractValidatorTest extends TestCase

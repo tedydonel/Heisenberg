@@ -1,0 +1,25 @@
+# To regenerate phpstan-baseline.neon (e.g. after src/ changes shift the error set —
+# baselines are a snapshot, not a permanent allowlist; re-run this whenever `composer
+# analyse` starts failing on errors that aren't genuinely new problems):
+#
+#   php vendor/bin/phpstan analyse --memory-limit=1G --generate-baseline=phpstan-baseline.neon
+#
+# That overwrites phpstan-baseline.neon with every current error. Review the diff before
+# committing — a shrinking baseline is good news (bugs got fixed); a growing one deserves
+# a look at what regressed.
+includes:
+    - vendor/larastan/larastan/extension.neon
+    - phpstan-baseline.neon
+
+parameters:
+    paths:
+        - src
+
+    level: 5
+
+    tmpDir: build/phpstan
+
+    # Heisenberg is a package (no host application to bootstrap), so give Larastan
+    # the same autoloaded helpers the package itself relies on at runtime.
+    bootstrapFiles:
+        - src/helpers.php

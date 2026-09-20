@@ -6,12 +6,13 @@ namespace Heisenberg\Tests\Templates;
 
 use Heisenberg\Services\PostTemplateContractValidator;
 use Heisenberg\Services\PostTemplateRegistryService;
+use Heisenberg\Tests\M1\BlockRegistryServiceTest;
 use Heisenberg\Tests\TestCase;
 
 /**
  * The post-template registry discovers contract JSON on disk, validates each,
  * and serves a hashed, localized envelope — mirroring
- * {@see \Heisenberg\Tests\M1\BlockRegistryServiceTest} for
+ * {@see BlockRegistryServiceTest} for
  * {@see PostTemplateRegistryService}. Driven against a temp fixture directory
  * so this is isolated from the shipped `resources/templates` contracts (see
  * ReferenceTemplateTest for those).

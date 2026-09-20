@@ -2,17 +2,19 @@
 
 declare(strict_types=1);
 
+use Heisenberg\Adapters\NativeCommentProvider;
+use Heisenberg\Models\Comment;
 use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\Schema;
 
 /**
  * Native comments storage (docs/BLUEPRINT.md §2.3.6's `BlogComment`, scoped down for this
- * first cut — see {@see \Heisenberg\Models\Comment}'s own docblock for what was deliberately
+ * first cut — see {@see Comment}'s own docblock for what was deliberately
  * left out). `heisenberg_comments` was reserved by `config('heisenberg.tables.comments')`
  * long before this migration existed; this is the delivery that finally fills it in and
  * flips `PostCommentProvider`'s default binding from the null adapter to
- * {@see \Heisenberg\Adapters\NativeCommentProvider}.
+ * {@see NativeCommentProvider}.
  *
  * `author_id` is a plain, unindexed-by-FK unsignedBigInteger — same "host-owned users table
  * a package must not hard-assume" posture as `heisenberg_public_files.uploaded_by`, except

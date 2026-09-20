@@ -10,7 +10,7 @@ use Heisenberg\Models\Post;
 use Illuminate\Support\Collection;
 
 /**
- * Default comments adapter (2026-08-11), reading/writing {@see \Heisenberg\Models\Comment}
+ * Default comments adapter (2026-08-11), reading/writing {@see Comment}
  * (`heisenberg_comments`, `config('heisenberg.tables.comments')`). Bound at
  * `heisenberg.post_template.comments_provider` in place of {@see NullPostCommentProvider} —
  * see that class and `PostCommentProvider`'s docblock for the "bind your own to opt out"

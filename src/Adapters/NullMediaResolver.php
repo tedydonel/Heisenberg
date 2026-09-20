@@ -16,9 +16,9 @@ class NullMediaResolver implements MediaResolver
     public function resolve(string $url, string $context): array
     {
         return [
-            'url'    => $this->safeUrl($url),
+            'url' => $this->safeUrl($url),
             'srcset' => null,
-            'sizes'  => null,
+            'sizes' => null,
         ];
     }
 

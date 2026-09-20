@@ -8,6 +8,7 @@ use Heisenberg\Mail\HeisenbergMailable;
 use Heisenberg\Models\Block;
 use Heisenberg\Models\Post;
 use Heisenberg\Models\PublicFile;
+use Heisenberg\Services\EmailRenderer;
 use Heisenberg\Tests\TestCase;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Storage;
@@ -15,7 +16,7 @@ use Symfony\Component\Mime\Email as SymfonyEmail;
 
 /**
  * {@see HeisenbergMailable} coverage (docs/email-system.md §6): constructed from a post id, it
- * carries subject/html/text and attaches every {@see \Heisenberg\Services\EmailRenderer} embed
+ * carries subject/html/text and attaches every {@see EmailRenderer} embed
  * with the EXACT Content-ID the HTML already references.
  */
 class HeisenbergMailableTest extends TestCase
@@ -146,7 +147,6 @@ class HeisenbergMailableTest extends TestCase
         $this->assertSame([], $mailable->callbacks);
     }
 
-
     // ====================================================================
     // Architecture invariant: `{{ variable_name }}` placeholders authored
     // into email content are rendered VERBATIM through HeisenbergMably — the
@@ -177,7 +177,8 @@ class HeisenbergMailableTest extends TestCase
         $mailable->assertSeeInText('Hi {{ user.first_name }}');
     }
 
-    public function test_two_argument_construction_still_renders_byte_for_byte(): void {
+    public function test_two_argument_construction_still_renders_byte_for_byte(): void
+    {
         // The pre-existing two-arg constructor (post id + locale) is the
         // only shape now — no behavior change for an email that carries no
         // tokens at all.

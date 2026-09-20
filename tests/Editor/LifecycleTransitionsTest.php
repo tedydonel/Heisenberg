@@ -31,7 +31,7 @@ class LifecycleTransitionsTest extends TestCase
         parent::setUp();
 
         $this->app['env'] = 'local';
-        $this->withoutMiddleware(\Illuminate\Foundation\Http\Middleware\ValidateCsrfToken::class);
+        $this->withoutCsrfProtection();
     }
 
     private function registry(): BlockRegistryService

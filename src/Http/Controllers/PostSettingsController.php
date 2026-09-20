@@ -29,6 +29,7 @@ use Illuminate\Support\Facades\Gate;
 class PostSettingsController
 {
     private const PADDING_MIN = 0;
+
     private const PADDING_MAX = 400;
 
     /** PUT /editor/posts/{post}/layout — body: { page_padding_x, page_padding_y } (px). */

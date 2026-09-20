@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Heisenberg\Http\Controllers;
 
+use Heisenberg\Http\Middleware\McpTokenMiddleware;
 use Heisenberg\Services\McpToolRegistry;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -16,7 +17,7 @@ use Illuminate\Http\Request;
  * which is why this is one route rather than a session protocol. Three methods
  * carry the whole surface: `initialize`, `tools/list`, `tools/call`.
  *
- * Authorization happened in {@see \Heisenberg\Http\Middleware\McpTokenMiddleware};
+ * Authorization happened in {@see McpTokenMiddleware};
  * the tier it resolved is the only authority this controller consults. Content
  * safety is {@see McpToolRegistry}'s: every write runs the editor's own
  * validation pipeline.

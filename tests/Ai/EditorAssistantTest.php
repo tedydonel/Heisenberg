@@ -5,10 +5,11 @@ declare(strict_types=1);
 namespace Heisenberg\Tests\Ai;
 
 use Heisenberg\Ai\ReasoningFilter;
+use Heisenberg\Services\AiSettingsRepository;
 use Heisenberg\Services\HeisenbergToolSource;
 use Heisenberg\Services\McpToolRegistry;
-use Heisenberg\Tests\TestCase;
 use Heisenberg\Tests\Taxonomy\FakeActor;
+use Heisenberg\Tests\TestCase;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Http;
 
@@ -22,6 +23,20 @@ use Illuminate\Support\Facades\Http;
  * 2. `<think>…</think>` was rendered verbatim in the response card. That tag
  *    comes from a serving template, not the model's choice, so no amount of
  *    prompting removes it; it has to be filtered at the boundary.
+ *
+ * Prompt-prose note: a handful of assertions here check that a RULE is present
+ * in prose written for a model to read — EditorPrompt::system()'s "Rules:"/TOOL
+ * DISCIPLINE sections, and a Mcp\Tools\CanvasTools tool description. Wording,
+ * casing and punctuation in that prose are free to evolve (a copy-edit is not a
+ * behavior change); what must not silently disappear is the RULE itself. Those
+ * assertions use a case-insensitive regex on the key concept rather than pinning
+ * the current sentence verbatim — this is the fix for the exact brittleness that
+ * once forced a commit purely to match a casing change ("fix(ai): match casing
+ * of 'Never ask the user to paste' in tool discipline"). Assertions that check a
+ * piece of TEST-SUPPLIED data round-trips into the outgoing request (e.g. 'Old
+ * title', 'now make it punchier') are left as exact substring checks — that is
+ * not prose either side is free to reword, it is literal user content whose
+ * exact preservation IS the thing under test.
  */
 class EditorAssistantTest extends TestCase
 {
@@ -32,7 +47,7 @@ class EditorAssistantTest extends TestCase
     protected function setUp(): void
     {
         parent::setUp();
-        $this->withoutMiddleware(\Illuminate\Foundation\Http\Middleware\ValidateCsrfToken::class);
+        $this->withoutCsrfProtection();
 
         $this->path = sys_get_temp_dir() . DIRECTORY_SEPARATOR . 'hb-ai-assistant-' . uniqid('', true) . '.json';
         config(['heisenberg.ai.settings_path' => $this->path, 'cache.default' => 'array']);
@@ -41,7 +56,7 @@ class EditorAssistantTest extends TestCase
         $_ENV['HB_TEST_ASSISTANT'] = 'sk-test';
         $_SERVER['HB_TEST_ASSISTANT'] = 'sk-test';
 
-        (new \Heisenberg\Services\AiSettingsRepository($this->path))->save([
+        (new AiSettingsRepository($this->path))->save([
             'providers' => [[
                 'id' => 'anthropic', 'label' => 'Anthropic', 'format' => 'anthropic',
                 'base_url' => 'https://api.anthropic.com', 'key_env' => 'HB_TEST_ASSISTANT',
@@ -98,7 +113,7 @@ class EditorAssistantTest extends TestCase
     public function test_the_completion_endpoint_never_returns_reasoning_tags(): void
     {
         $this->app['env'] = 'local';
-        $this->fakeReply("<think>Let me consider the options…</think>[h2]Hello[/h2]");
+        $this->fakeReply('<think>Let me consider the options…</think>[h2]Hello[/h2]');
 
         $this->postJson('/editor/ai/complete', ['prompt' => 'write a heading'])
             ->assertOk()
@@ -149,8 +164,21 @@ class EditorAssistantTest extends TestCase
         Http::assertSent(function ($request) {
             $system = $request->data()['system'];
 
-            $this->assertStringContainsString('Never ask the user to paste', $system);
-            $this->assertStringContainsString('Never write <think>', $system);
+            // The RULE (never ask the user to paste the document — it is sent every turn)
+            // must survive, independent of exact wording/casing (EditorPrompt::toolDiscipline()).
+            $this->assertMatchesRegularExpression(
+                '/\bnever\b[^.\n]*\bask\b[^.\n]*\bpaste\b/i',
+                $system,
+                'the system prompt must forbid asking the user to paste the document',
+            );
+            // The literal <think> tag IS the load-bearing part (ReasoningFilter strips exactly
+            // that tag) — kept exact — but the surrounding instruction wording/verb is free to
+            // change (EditorPrompt::system()'s "Rules:" section).
+            $this->assertMatchesRegularExpression(
+                '/\bnever\b[^.\n]*<think>/i',
+                $system,
+                'the system prompt must forbid emitting a literal <think> tag',
+            );
 
             return true;
         });
@@ -328,8 +356,13 @@ class EditorAssistantTest extends TestCase
 
         $ok = $source->call('heisenberg__write_canvas', ['code' => '[h2]Hi[/h2][p]Body[/p]']);
         $this->assertFalse($ok['isError']);
-        $this->assertStringContainsString('"applied": true', $ok['content']);
-        $this->assertStringContainsString('"blocks": 2', $ok['content']);
+        // Decoded rather than string-matched: the content is McpToolRegistry's own
+        // JSON_PRETTY_PRINT encoding of a PHP array, so asserting on the decoded value is
+        // immune to formatting (key order, exact whitespace) that isn't the actual contract.
+        $decoded = json_decode($ok['content'], true);
+        $this->assertIsArray($decoded);
+        $this->assertTrue($decoded['applied'] ?? null);
+        $this->assertSame(2, $decoded['blocks'] ?? null);
 
         $bad = $source->call('heisenberg__write_canvas', ['code' => '[not-a-block]x[/not-a-block]']);
         $this->assertTrue($bad['isError']);
@@ -355,9 +388,19 @@ class EditorAssistantTest extends TestCase
             ->firstWhere('name', 'write_canvas');
 
         $this->assertNotNull($tool);
-        $this->assertStringContainsString('TRANSLATING', $tool['description']);
-        $this->assertStringContainsString('SAME block sequence', $tool['description']);
-        $this->assertStringContainsString('mode="append" is refused while translating', $tool['description']);
+        $description = $tool['description'];
+
+        // Prose a model reads (Mcp\Tools\CanvasTools), same brittleness class as the system
+        // prompt — tolerant of wording/casing/punctuation, anchored to the three concepts the
+        // docblock above promises: the operation is named a translation, the block sequence
+        // must stay identical, and append is refused during one.
+        $this->assertMatchesRegularExpression('/\btranslating\b/i', $description);
+        $this->assertMatchesRegularExpression('/\bsame\b[^.\n]*\bblock\s+sequence\b/i', $description);
+        $this->assertMatchesRegularExpression(
+            '/\bappend\b[^.\n]{0,40}\brefused\b[^.\n]{0,40}\btranslat/i',
+            $description,
+            'the description must state that append is refused while translating',
+        );
     }
 
     public function test_a_local_tool_runs_in_process_without_any_mcp_server(): void

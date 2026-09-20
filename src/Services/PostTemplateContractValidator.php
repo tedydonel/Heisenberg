@@ -156,16 +156,19 @@ class PostTemplateContractValidator
         foreach ($capabilities as $key => $def) {
             if (! in_array($key, self::CAPABILITY_KEYS, true)) {
                 $errors[] = "unknown capability '{$this->stringify($key)}'";
+
                 continue;
             }
 
             if (! is_array($def)) {
                 $errors[] = "capability '{$key}' must be an object";
+
                 continue;
             }
 
             if (! array_key_exists('enabled', $def) || ! is_bool($def['enabled'])) {
                 $errors[] = "capability '{$key}' requires a boolean 'enabled'";
+
                 continue;
             }
 
@@ -263,12 +266,14 @@ class PostTemplateContractValidator
 
         if (! is_array($def['fields'])) {
             $errors[] = "capability 'authorBox' fields must be an object";
+
             return;
         }
 
         foreach ($def['fields'] as $field => $attribute) {
             if (! in_array($field, self::AUTHOR_BOX_FIELDS, true)) {
                 $errors[] = "capability 'authorBox' fields has unknown field '{$this->stringify($field)}'";
+
                 continue;
             }
             if ($attribute !== null && ! is_string($attribute)) {
@@ -285,6 +290,7 @@ class PostTemplateContractValidator
     {
         if ($def['enabled'] === true && (! isset($def['networks']) || ! is_array($def['networks']) || $def['networks'] === [])) {
             $errors[] = "capability 'shareButtons' networks must be a non-empty array when enabled";
+
             return;
         }
 
@@ -294,6 +300,7 @@ class PostTemplateContractValidator
 
         if (! is_array($def['networks'])) {
             $errors[] = "capability 'shareButtons' networks must be an array";
+
             return;
         }
 
@@ -387,6 +394,7 @@ class PostTemplateContractValidator
     {
         if ($def['enabled'] === true && (! isset($def['limit']) || ! (is_int($def['limit']) && $def['limit'] > 0))) {
             $errors[] = "capability 'relatedPosts' limit must be a positive integer when enabled";
+
             return;
         }
 
@@ -407,6 +415,7 @@ class PostTemplateContractValidator
 
         if (! is_array($def['fields'])) {
             $errors[] = "capability 'seoMeta' fields must be an array";
+
             return;
         }
 

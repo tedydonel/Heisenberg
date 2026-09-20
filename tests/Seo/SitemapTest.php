@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Heisenberg\Tests\Seo;
 
+use Heisenberg\Http\Controllers\SitemapController;
 use Heisenberg\Models\Post;
 use Heisenberg\Models\SeoMeta;
 use Heisenberg\Tests\TestCase;
@@ -11,7 +12,7 @@ use Illuminate\Foundation\Testing\RefreshDatabase;
 use SimpleXMLElement;
 
 /**
- * `GET /sitemap.xml` coverage (docs/seo-system.md §5, {@see \Heisenberg\Http\Controllers\SitemapController}):
+ * `GET /sitemap.xml` coverage (docs/seo-system.md §5, {@see SitemapController}):
  * inclusion/exclusion rules (draft, `in_sitemap` false, `robots` noindex), hreflang alternates +
  * `x-default` across a translation group, `heisenberg.seo.url_template` substitution, and that the
  * response is well-formed, correctly-namespaced XML.
@@ -178,5 +179,4 @@ class SitemapTest extends TestCase
 
         $this->assertSame('https://example.com/en/blog/my-post', (string) $locs[0]);
     }
-
 }

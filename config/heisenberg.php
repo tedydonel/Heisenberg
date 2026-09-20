@@ -1,6 +1,30 @@
 <?php
 
 declare(strict_types=1);
+use App\Models\User;
+use Heisenberg\Adapters\AnthropicProvider;
+use Heisenberg\Adapters\ConfigRoleGate;
+use Heisenberg\Adapters\EncryptedFileCredentialStore;
+use Heisenberg\Adapters\HttpMcpClient;
+use Heisenberg\Adapters\NativeCommentProvider;
+use Heisenberg\Adapters\NativeSeoMetaProvider;
+use Heisenberg\Adapters\NullAuditSink;
+use Heisenberg\Adapters\NullMediaResolver;
+use Heisenberg\Adapters\NullPostViewsProvider;
+use Heisenberg\Adapters\NullRelatedPostsProvider;
+use Heisenberg\Adapters\NullVirusScanner;
+use Heisenberg\Adapters\OpenAiCompatibleProvider;
+use Heisenberg\Adapters\PhosphorIconProvider;
+use Heisenberg\Ai\AiProviderProfile;
+use Heisenberg\Models\Block;
+use Heisenberg\Models\Category;
+use Heisenberg\Models\Comment;
+use Heisenberg\Models\Pattern;
+use Heisenberg\Models\Post;
+use Heisenberg\Models\PublicFile;
+use Heisenberg\Models\SeoMeta;
+use Heisenberg\Models\Tag;
+use Heisenberg\Services\SeoUrlResolver;
 
 /*
 |--------------------------------------------------------------------------
@@ -16,7 +40,7 @@ declare(strict_types=1);
 
 return [
 
-    'user_model'  => env('HEISENBERG_USER_MODEL', \App\Models\User::class),
+    'user_model' => env('HEISENBERG_USER_MODEL', User::class),
     'users_table' => 'users',
 
     // Single source of truth for every locale-aware surface: the editor's footer switcher
@@ -42,45 +66,45 @@ return [
     // throw a class-not-found fatal for a class that isn't built yet. Uncomment each entry
     // as its model ships.
     'models' => [
-        'post'        => \Heisenberg\Models\Post::class,
-        'block'       => \Heisenberg\Models\Block::class,
-        'public_file' => \Heisenberg\Models\PublicFile::class,
-        'category'    => \Heisenberg\Models\Category::class,
-        'tag'         => \Heisenberg\Models\Tag::class,
-        'comment'     => \Heisenberg\Models\Comment::class,
-        'seo_meta'    => \Heisenberg\Models\SeoMeta::class,
+        'post' => Post::class,
+        'block' => Block::class,
+        'public_file' => PublicFile::class,
+        'category' => Category::class,
+        'tag' => Tag::class,
+        'comment' => Comment::class,
+        'seo_meta' => SeoMeta::class,
         // 'revision' => \Heisenberg\Models\Revision::class, // M3 (already shipped; see note above)
-        'pattern'  => \Heisenberg\Models\Pattern::class,
+        'pattern' => Pattern::class,
     ],
 
     'tables' => [
-        'posts'           => 'heisenberg_posts',
-        'blocks'          => 'heisenberg_blocks',
-        'categories'      => 'heisenberg_categories',
-        'tags'            => 'heisenberg_tags',
-        'post_tag'        => 'heisenberg_post_tag',
-        'category_post'   => 'heisenberg_category_post',
-        'revisions'       => 'heisenberg_post_revisions',
-        'comments'        => 'heisenberg_comments',
-        'patterns'        => 'heisenberg_patterns',
-        'review_notes'    => 'heisenberg_review_notes',
-        'post_likes'      => 'heisenberg_post_likes',
-        'toc_entries'     => 'heisenberg_post_toc_entries',
-        'post_related'    => 'heisenberg_post_related',
-        'seo_meta'        => 'seo_meta',
-        'public_files'    => 'heisenberg_public_files',
+        'posts' => 'heisenberg_posts',
+        'blocks' => 'heisenberg_blocks',
+        'categories' => 'heisenberg_categories',
+        'tags' => 'heisenberg_tags',
+        'post_tag' => 'heisenberg_post_tag',
+        'category_post' => 'heisenberg_category_post',
+        'revisions' => 'heisenberg_post_revisions',
+        'comments' => 'heisenberg_comments',
+        'patterns' => 'heisenberg_patterns',
+        'review_notes' => 'heisenberg_review_notes',
+        'post_likes' => 'heisenberg_post_likes',
+        'toc_entries' => 'heisenberg_post_toc_entries',
+        'post_related' => 'heisenberg_post_related',
+        'seo_meta' => 'seo_meta',
+        'public_files' => 'heisenberg_public_files',
         'ai_conversations' => 'heisenberg_ai_conversations',
-        'ai_messages'      => 'heisenberg_ai_messages',
+        'ai_messages' => 'heisenberg_ai_messages',
     ],
 
     'block_prefix' => 'heisenberg',   // contract name namespace (gtc/… -> heisenberg/…)
-    'block_root'   => null,           // null -> package resources/blocks
+    'block_root' => null,           // null -> package resources/blocks
 
     // Post templates — the contract an adopter writes to describe how their posts/pages render
     // publicly. Same shape/scan/hash model as blocks above, deliberately, so there is one mental
     // model to learn. See docs/post-template-schema.md.
     'template_prefix' => 'heisenberg', // contract name namespace
-    'template_root'   => null,         // null -> package resources/templates
+    'template_root' => null,         // null -> package resources/templates
 
     // Capabilities a template can declare that need storage this package does not own. Each is an
     // adapter contract with a bundled null default, exactly like media_resolver/role_gate below —
@@ -99,21 +123,21 @@ return [
     // NullPostSeoMetaProvider here to opt out, or your own class to integrate an external
     // SEO system — see PostSeoMetaProvider's docblock.
     'post_template' => [
-        'post_views_provider'    => \Heisenberg\Adapters\NullPostViewsProvider::class,
-        'comments_provider'      => \Heisenberg\Adapters\NativeCommentProvider::class,
-        'related_posts_provider' => \Heisenberg\Adapters\NullRelatedPostsProvider::class,
-        'seo_meta_provider'      => \Heisenberg\Adapters\NativeSeoMetaProvider::class,
+        'post_views_provider' => NullPostViewsProvider::class,
+        'comments_provider' => NativeCommentProvider::class,
+        'related_posts_provider' => NullRelatedPostsProvider::class,
+        'seo_meta_provider' => NativeSeoMetaProvider::class,
     ],
 
     // Comments (docs/post-template-schema.md "Comments/discussion")
     // Native comment storage config — read by NativeCommentProvider and (for
     // allow_guests) by a later HTTP-layer agent's submission endpoint.
     'comments' => [
-        'routes'       => true,  // load routes/comments.php (public thread/submit + moderation)
+        'routes' => true,  // load routes/comments.php (public thread/submit + moderation)
         'allow_guests' => true,   // guests may submit on posts they can view (published)
         'auto_approve' => false, // new comments start 'pending'; moderators' own comments always approve
-        'max_depth'    => 3,     // reply nesting cap; 1 = flat (no replies)
-        'per_page'     => 50,    // moderation list page size
+        'max_depth' => 3,     // reply nesting cap; 1 = flat (no replies)
+        'per_page' => 50,    // moderation list page size
     ],
     // Public translations API (docs/content-translation.md §7)
     // A translation group presents as ONE post with ONE shared slug (locale comes from the
@@ -140,9 +164,9 @@ return [
     // domains, id-based URLs, a host's own route helpers). Defaults to SeoUrlResolver, exactly
     // like media_resolver/role_gate above.
     'seo' => [
-        'sitemap'      => true,
+        'sitemap' => true,
         'url_template' => null,
-        'url_resolver' => \Heisenberg\Services\SeoUrlResolver::class,
+        'url_resolver' => SeoUrlResolver::class,
     ],
     // Public post show route (docs/post-template-schema.md, the bundled turnkey option)
     // A working blog out of the box: GET /posts/{locale}/{slug} serving published posts
@@ -154,7 +178,7 @@ return [
     // public URL shape sets this to false, binds their own `PostUrlResolver` to map the
     // post to their real route, and serves their own view through the template contract.
     'public' => [
-        'routes'    => false, // load routes/public.php (GET /posts/{locale}/{slug})
+        'routes' => false, // load routes/public.php (GET /posts/{locale}/{slug})
         // 'route_prefix' is reserved for a future mount-prefix change; the route is fixed
         // at /posts/{locale}/{slug} today and that matches the bundled resolver's output.
     ],
@@ -168,8 +192,8 @@ return [
     // `heisenberg.middleware.email` gates the group; PostPolicy `view` runs regardless, so a
     // DRAFT email is never readable by a visitor no matter how open that stack is.
     'email' => [
-        'routes'              => true,
-        'route_prefix'        => 'emails',
+        'routes' => true,
+        'route_prefix' => 'emails',
 
         // Optional metadata supplied by the host platform. Heisenberg uses this only to
         // identify and visually distinguish placeholders while editing; it never resolves,
@@ -199,8 +223,8 @@ return [
             ],
         ],
     ],
-    'css_prefix'   => 'hb',           // emitted CSS class/var prefix (gtc-block -> hb-block)
-    'components'   => [
+    'css_prefix' => 'hb',           // emitted CSS class/var prefix (gtc-block -> hb-block)
+    'components' => [
         // safe component allowlist (§3.8), e.g.:
         // 'article_card' => ['blade' => 'heisenberg::components.article-card', 'props' => ['title', 'excerpt', 'url', 'image', 'date']],
     ],
@@ -254,13 +278,13 @@ return [
     'saved_themes_path' => env('HEISENBERG_SAVED_THEMES_PATH'),
 
     'editor' => [
-            'routes' => true,
-            // DEPRECATED alias of top-level `heisenberg.locales` (docs/content-translation.md §3)
-            // — kept only as the fallback LocaleController/EditorLocaleMiddleware/McpToolRegistry
-            // read when `heisenberg.locales` is absent. Set `heisenberg.locales` instead; this key
-            // has no effect once that one is present.
-            'locales' => ['en', 'fr'],
-        ],
+        'routes' => true,
+        // DEPRECATED alias of top-level `heisenberg.locales` (docs/content-translation.md §3)
+        // — kept only as the fallback LocaleController/EditorLocaleMiddleware/McpToolRegistry
+        // read when `heisenberg.locales` is absent. Set `heisenberg.locales` instead; this key
+        // has no effect once that one is present.
+        'locales' => ['en', 'fr'],
+    ],
 
     // Public media library (docs/media-library-backend-blueprint.md)
     // Package adaptation of the blueprint's app/-rooted subsystem: config-driven
@@ -280,11 +304,11 @@ return [
         // Upload limits + allowed extensions — mirror PublicFile's own constants
         // by default so there is one source of truth; a host may override either
         // independently (e.g. to allow a narrower extension list).
-        'max_kb'     => \Heisenberg\Models\PublicFile::MAX_KB,
-        'extensions' => \Heisenberg\Models\PublicFile::TYPES,
+        'max_kb' => PublicFile::MAX_KB,
+        'extensions' => PublicFile::TYPES,
 
         // Responsive derivative widths (blueprint §6); image uploads only.
-        'variants' => \Heisenberg\Models\PublicFile::VARIANTS,
+        'variants' => PublicFile::VARIANTS,
 
         // Decompression-bomb guard: a tiny file can declare an enormous pixel
         // grid (e.g. a 1 KB PNG claiming 40000x40000px) that is cheap to read
@@ -313,7 +337,18 @@ return [
 
         // Adapter for the VirusScanner contract — bind a real ClamAV/clamd
         // implementation in production; the bundled default always reports clean.
-        'virus_scanner' => \Heisenberg\Adapters\NullVirusScanner::class,
+        'virus_scanner' => NullVirusScanner::class,
+
+        // Adapter for the SvgSanitizer contract (Heisenberg\Contracts\SvgSanitizer) — deliberately
+        // NO bundled default, unlike every other adapter seam in this file. There is no such thing
+        // as a safe "null" SVG sanitizer: an .svg is an XML document that can carry an inline
+        // <script> or event-handler attribute, later served back from this app's own origin with a
+        // real image/svg+xml (or, worse, a misconfigured text/html) content type and executed —
+        // stored XSS. So MediaLibraryService::storeOne() refuses every 'svg'/'svgz' upload UNLESS a
+        // real sanitizer class is named here (e.g. an enshrined/svg-sanitizer wrapper) — leaving
+        // this null is what keeps 'svg' safe to even list in `extensions` above. See VirusScanner's
+        // adapter seam just above for the same shape with a safe bundled default.
+        'svg_sanitizer' => null,
     ],
 
     // AI assistant + MCP (docs/ai-mcp-plan.md)
@@ -339,13 +374,13 @@ return [
 
         // The API shapes, and the adapter that speaks each one.
         'formats' => [
-            \Heisenberg\Ai\AiProviderProfile::FORMAT_ANTHROPIC => [
-                'label'   => 'Anthropic Messages API',
-                'adapter' => \Heisenberg\Adapters\AnthropicProvider::class,
+            AiProviderProfile::FORMAT_ANTHROPIC => [
+                'label' => 'Anthropic Messages API',
+                'adapter' => AnthropicProvider::class,
             ],
-            \Heisenberg\Ai\AiProviderProfile::FORMAT_OPENAI => [
-                'label'   => 'OpenAI Chat Completions',
-                'adapter' => \Heisenberg\Adapters\OpenAiCompatibleProvider::class,
+            AiProviderProfile::FORMAT_OPENAI => [
+                'label' => 'OpenAI Chat Completions',
+                'adapter' => OpenAiCompatibleProvider::class,
             ],
         ],
 
@@ -412,21 +447,21 @@ return [
         // Where a UI-entered API key is kept. The bundled store encrypts with the
         // app key and always lets an environment variable win; a host running a
         // real secrets manager binds its own AiCredentialStore here.
-        'credential_store' => \Heisenberg\Adapters\EncryptedFileCredentialStore::class,
+        'credential_store' => EncryptedFileCredentialStore::class,
         'credentials_path' => env('HEISENBERG_AI_CREDENTIALS_PATH'),
 
         // Fallback effort for a model that carries none of its own. Sampling
         // parameters (temperature/top_p/top_k) and `budget_tokens` are
         // deliberately absent and must never be added: current Anthropic models
         // reject all four with a 400.
-        'effort'     => env('HEISENBERG_AI_EFFORT', 'high'), // low|medium|high|xhigh|max
+        'effort' => env('HEISENBERG_AI_EFFORT', 'high'), // low|medium|high|xhigh|max
         // Reasoning tokens count against this cap on every current API. A heavy
         // thinker (MiniMax-M3, DeepSeek-R1 class) can spend >16k on thinking
         // ALONE for a full-page build and hit the cap before writing anything —
         // the panel then shows "reply hit the model's length limit" with an
         // empty canvas. 32k leaves room to think AND build.
         'max_tokens' => (int) env('HEISENBERG_AI_MAX_TOKENS', 32000),
-        'timeout'    => (int) env('HEISENBERG_AI_TIMEOUT', 120),
+        'timeout' => (int) env('HEISENBERG_AI_TIMEOUT', 120),
 
         // Laravel throttle spec ("requests,minutes") for the two model-calling
         // endpoints. Every call spends the operator's API budget, so this is a
@@ -446,9 +481,9 @@ return [
             // offers their tools to the model. The server list lives in the
             // settings JSON; each entry names an env var for its token.
             'client' => [
-                'enabled'        => (bool) env('HEISENBERG_MCP_CLIENT', false),
-                'adapter'        => \Heisenberg\Adapters\HttpMcpClient::class,
-                'timeout'        => (int) env('HEISENBERG_MCP_TIMEOUT', 30),
+                'enabled' => (bool) env('HEISENBERG_MCP_CLIENT', false),
+                'adapter' => HttpMcpClient::class,
+                'timeout' => (int) env('HEISENBERG_MCP_TIMEOUT', 30),
                 // Hard stop on the request -> tool_use -> tool_result loop, so a
                 // model that keeps calling tools cannot run forever. Raised from
                 // 8: a from-scratch creative prompt routinely burns 6-8 rounds on
@@ -464,20 +499,51 @@ return [
             // the same validation the editor uses. OFF by default, deliberately:
             // this is a write API, and enabling it is an explicit act.
             'server' => [
-                'enabled'    => (bool) env('HEISENBERG_MCP_SERVER', false),
+                'enabled' => (bool) env('HEISENBERG_MCP_SERVER', false),
                 // "token:tier,token:tier" — tier is a heisenberg.roles key
                 // (authors/admins/super). Read at request time, never logged.
                 'tokens_env' => 'HEISENBERG_MCP_TOKENS',
-                'path'       => env('HEISENBERG_MCP_PATH', 'heisenberg/mcp'),
+                'path' => env('HEISENBERG_MCP_PATH', 'heisenberg/mcp'),
             ],
+        ],
+
+        // SSRF guard (see Heisenberg\Support\OutboundUrlGuard) for every URL this package fetches
+        // SERVER-SIDE with no human in the loop: an outbound MCP server call (HttpMcpClient,
+        // AiMcpController::test()) and an OpenAI-compatible/Anthropic provider's `base_url`
+        // (AiSettingsRepository::validateProviders, then re-checked immediately before each
+        // request). docs/ai-mcp-plan.md deliberately supports a self-hosted MCP server on
+        // localhost or inside an operator's own VPC, so this is a POLICY, not a hard-coded deny —
+        // an operator opts a private network in, rather than the package refusing it outright.
+        'outbound' => [
+            // null (the default) means "true only when app()->environment('local') is true" —
+            // computed at CHECK time by OutboundUrlGuard, not baked in here, so it always reflects
+            // the current environment even under `config:cache`. Set explicitly to true/false to
+            // override that auto-detection in either direction (e.g. a host running its own MCP
+            // server inside a private VPC in a non-"local" environment sets this true; a host that
+            // wants NO private-network access even in local dev sets it false).
+            'allow_private_networks' => env('HEISENBERG_AI_ALLOW_PRIVATE_NETWORKS'),
+
+            // Exact hostnames (case-insensitive, no ports/paths) that bypass the private-network
+            // check entirely, regardless of `allow_private_networks` — the escape hatch for "yes, I
+            // really do run a trusted MCP server at this address" outside local/VPC auto-detection.
+            // This does NOT bypass the link-local/cloud-metadata block below; there is no legitimate
+            // reason for this package to ever fetch that range.
+            'allowed_hosts' => [],
+
+            // NOT configurable here on purpose: link-local (169.254.0.0/16 — also the AWS/GCP/Azure
+            // instance-metadata range at 169.254.169.254) and its IPv6 equivalent (fe80::/10) are
+            // ALWAYS blocked by OutboundUrlGuard, even when `allow_private_networks` is true and
+            // even for a host named in `allowed_hosts`. Nearly every real-world SSRF-to-credential-
+            // theft exploit targets exactly this range; there is no legitimate reason for an MCP
+            // call or an AI provider request to ever reach it.
         ],
     ],
 
     // Contracts → adapters
-    'media_resolver' => \Heisenberg\Adapters\NullMediaResolver::class,
-    'role_gate'      => \Heisenberg\Adapters\ConfigRoleGate::class,
-    'audit_sink'     => \Heisenberg\Adapters\NullAuditSink::class,
-    'icon_provider'  => \Heisenberg\Adapters\PhosphorIconProvider::class,
+    'media_resolver' => NullMediaResolver::class,
+    'role_gate' => ConfigRoleGate::class,
+    'audit_sink' => NullAuditSink::class,
+    'icon_provider' => PhosphorIconProvider::class,
 
     // Local-dev-only authorization bypass
     // See src/Adapters/LocalDevRoleGate.php. Consulted by the Livewire media
@@ -495,6 +561,12 @@ return [
     // even in local (e.g. to exercise real authorization on your own machine).
     'allow_anonymous_in_local' => env('HEISENBERG_ALLOW_ANONYMOUS_IN_LOCAL', true),
 
+    // Silences ONLY the boot-time Log::warning() HeisenbergServiceProvider emits while the bypass
+    // above is active (see warnAboutAnonymousLocalBypassIfActive()) — it has no effect on the
+    // bypass itself. Set to false if the warning is unwanted noise in a dev log, once a team is
+    // confident about what `allow_anonymous_in_local` means on their machines.
+    'warn_anonymous_in_local' => env('HEISENBERG_WARN_ANONYMOUS_IN_LOCAL', true),
+
     // Authorization role map (tiers, not literal roles)
     // The map is keyed by TIER, not literal role — a tier resolves to a list
     // of the host's own role strings, and a policy asks the RoleGate for a
@@ -511,13 +583,13 @@ return [
     // them to an empty role set — the HTTP media API then denied EVERY user,
     // even admins, on any host using the bundled gate.
     'roles' => [
-        'super'   => ['admin'],
-        'admins'  => ['admin'],
+        'super' => ['admin'],
+        'admins' => ['admin'],
         'editors' => ['admin', 'editor'],
         'authors' => ['admin', 'editor', 'author'],
 
-        'media.viewAny'   => ['admin', 'editor', 'author', 'viewer'],
-        'media.create'    => ['admin', 'editor', 'author'],
+        'media.viewAny' => ['admin', 'editor', 'author', 'viewer'],
+        'media.create' => ['admin', 'editor', 'author'],
         'media.updateAny' => ['admin', 'editor'],
         'media.deleteAny' => ['admin', 'editor'],
 
@@ -555,26 +627,26 @@ return [
     //    edge) instead of archiving outright.
     'lifecycle' => [
         'transitions' => [
-            'draft'          => ['pending_review', 'published', 'scheduled', 'archived'],
+            'draft' => ['pending_review', 'published', 'scheduled', 'archived'],
             'pending_review' => ['published', 'scheduled', 'draft'],
-            'published'      => ['archived', 'draft'],
-            'scheduled'      => ['published', 'archived', 'draft'],
-            'archived'       => ['draft', 'published'],
+            'published' => ['archived', 'draft'],
+            'scheduled' => ['published', 'archived', 'draft'],
+            'archived' => ['draft', 'published'],
         ],
         'role_permissions' => [          // target status -> tier
             'pending_review' => 'authors',
-            'published'      => 'editors', // ← resolved publish-authority decision (§7.4) — WordPress semantics: editors publish
-            'scheduled'      => 'editors',
-            'archived'       => 'editors',
-            'draft'          => 'authors',
+            'published' => 'editors', // ← resolved publish-authority decision (§7.4) — WordPress semantics: editors publish
+            'scheduled' => 'editors',
+            'archived' => 'editors',
+            'draft' => 'authors',
         ],
     ],
 
     // Queues / cache / sanitization
-    'queues'              => ['render' => 'default', 'audit' => 'default'],
-    'cache_prefix'        => 'heisenberg',
+    'queues' => ['render' => 'default', 'audit' => 'default'],
+    'cache_prefix' => 'heisenberg',
     'purifier_cache_path' => storage_path('framework/cache/heisenberg-purifier'),
-    'revisions'           => ['keep' => null], // null = unbounded (as-built)
+    'revisions' => ['keep' => null], // null = unbounded (as-built)
 
     // Host admin/staff HTTP surfaces (replaces route-name string-sniffing)
     // Unrelated to Heisenberg's own /editor route group below — this names a HOST
@@ -607,18 +679,18 @@ return [
     // Putting `web` here would make every MCP call fail CSRF verification.
     'middleware' => [
         'api_admin' => ['auth:sanctum', 'verified', 'role:admin'],
-        'media'     => ['web'],
-        'editor'    => ['web'],
-        'ai'        => ['web'],
-        'comments'  => ['web'],
+        'media' => ['web'],
+        'editor' => ['web'],
+        'ai' => ['web'],
+        'comments' => ['web'],
         // `middleware.seo` gates the sitemap (routes/seo.php: GET /sitemap.xml) — the lightest
         // stack a crawler's/visitor's unauthenticated GET needs, same posture as `comments`.
-        'seo'       => ['web'],
+        'seo' => ['web'],
         // `middleware.email` gates the served email routes (routes/email.php: the built email at
         // its own slug, plus the HTML/.eml export). Same lightest-stack posture: a recipient
         // following a "view in browser" link is not an authenticated editor. Draft emails stay
         // protected by PostPolicy `view` inside the controller, not by this stack.
-        'email'     => ['web'],
+        'email' => ['web'],
         // `middleware.translations` gates the public translations API (routes/translations.php)
         // — same lightest-stack posture as `comments`/`seo`: a blog visitor's language-switcher
         // fetch must not require the editor stack.
@@ -628,8 +700,8 @@ return [
         // `translations`/`email`: a visitor following a link to a published post is not
         // an authenticated editor. The controller's own status='published' + scopePosts()
         // guard is what keeps draft/scheduled/archived/trashed/email rows off this URL.
-        'public'     => ['web'],
-        'mcp'       => [],
+        'public' => ['web'],
+        'mcp' => [],
     ],
 
 ];

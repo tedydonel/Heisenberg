@@ -84,9 +84,11 @@ class ShortcodeParser
                 $top = $this->stack === [] ? null : $this->stack[count($this->stack) - 1];
                 if ($top === null || $top['slug'] !== $slug) {
                     $this->err($line, 'err_stray_close', ['slug' => $slug]);
+
                     continue;
                 }
                 $this->attach(array_pop($this->stack));
+
                 continue;
             }
 
@@ -104,6 +106,7 @@ class ShortcodeParser
                 if (! $selfClose) {
                     $this->stack[] = ['slug' => $slug, 'dummy' => true, 'body' => [], 'line' => $line];
                 }
+
                 continue;
             }
 

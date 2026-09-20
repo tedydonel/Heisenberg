@@ -5,8 +5,8 @@ declare(strict_types=1);
 namespace Heisenberg\Tests\Ai;
 
 use Heisenberg\Contracts\AiCredentialStore;
-use Heisenberg\Tests\TestCase;
 use Heisenberg\Tests\Taxonomy\FakeActor;
+use Heisenberg\Tests\TestCase;
 use Illuminate\Support\Facades\Http;
 
 /**
@@ -25,7 +25,7 @@ class AiControllerTest extends TestCase
     protected function setUp(): void
     {
         parent::setUp();
-        $this->withoutMiddleware(\Illuminate\Foundation\Http\Middleware\ValidateCsrfToken::class);
+        $this->withoutCsrfProtection();
 
         $unique = uniqid('', true);
         $this->path = sys_get_temp_dir() . DIRECTORY_SEPARATOR . "hb-ai-http-{$unique}.json";

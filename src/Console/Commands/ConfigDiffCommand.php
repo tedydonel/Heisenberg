@@ -117,6 +117,7 @@ class ConfigDiffCommand extends Command
 
             if (! array_key_exists($key, $effective)) {
                 $missing[$path] = $value;
+
                 continue;
             }
 
@@ -124,6 +125,7 @@ class ConfigDiffCommand extends Command
 
             if (is_array($value) && is_array($hostValue) && ConfigMerge::isAssociative($value) && ConfigMerge::isAssociative($hostValue)) {
                 $this->diff($value, $hostValue, $path, $missing, $differs);
+
                 continue;
             }
 
@@ -142,6 +144,7 @@ class ConfigDiffCommand extends Command
         foreach ($defaults as $value) {
             if (is_array($value) && $value !== [] && ConfigMerge::isAssociative($value)) {
                 $count += $this->countLeaves($value);
+
                 continue;
             }
             $count++;

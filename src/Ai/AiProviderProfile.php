@@ -26,6 +26,7 @@ namespace Heisenberg\Ai;
 class AiProviderProfile
 {
     public const FORMAT_ANTHROPIC = 'anthropic';
+
     public const FORMAT_OPENAI = 'openai';
 
     public const FORMATS = [self::FORMAT_ANTHROPIC, self::FORMAT_OPENAI];

@@ -9,6 +9,7 @@ use Heisenberg\Models\Post;
 use Heisenberg\Models\PublicFile;
 use Heisenberg\Models\SeoMeta;
 use Heisenberg\Services\SeoAnalyzer;
+use Heisenberg\Services\SeoUrlResolver;
 use Heisenberg\Tests\TestCase;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 
@@ -30,7 +31,7 @@ class SeoAnalyzerTest extends TestCase
 
     private function analyzer(): SeoAnalyzer
     {
-        return new SeoAnalyzer(new \Heisenberg\Services\SeoUrlResolver());
+        return new SeoAnalyzer(new SeoUrlResolver());
     }
 
     private function makePost(array $attrs = []): Post

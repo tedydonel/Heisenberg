@@ -4,6 +4,9 @@ declare(strict_types=1);
 
 namespace Heisenberg\Models;
 
+use App\Models\User;
+use Heisenberg\Http\Controllers\PostController;
+use Heisenberg\Http\Controllers\PostRevisionsController;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\SoftDeletes;
@@ -22,10 +25,10 @@ use Illuminate\Support\Collection;
  * Participates in the same `deleted_batch_id` cascade soft-delete/restore
  * mechanism as `blocks` — see {@see Post::delete()} / {@see Post::restore()}.
  *
- * Wired into the save flow by {@see \Heisenberg\Http\Controllers\PostController::captureRevision()},
+ * Wired into the save flow by {@see PostController::captureRevision()},
  * which calls {@see snapshotOf()} on every non-autosave save (one rolling `auto_save` row per
  * post replaces the previous one; manual saves accumulate, pruned to `heisenberg.revisions.keep`
- * when set). Restore is client-driven: {@see \Heisenberg\Http\Controllers\PostRevisionsController}
+ * when set). Restore is client-driven: {@see PostRevisionsController}
  * serves the block tree and the editor's replaceDoc() applies it, so a restore is undoable.
  */
 class Revision extends Model
@@ -64,7 +67,7 @@ class Revision extends Model
 
     public function author(): BelongsTo
     {
-        return $this->belongsTo(config('heisenberg.user_model', \App\Models\User::class), 'author_id');
+        return $this->belongsTo(config('heisenberg.user_model', User::class), 'author_id');
     }
 
     /**
