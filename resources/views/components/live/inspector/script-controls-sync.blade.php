@@ -48,7 +48,14 @@
 
     function syncSelect(root, rawValue) {
         const value = rawValue == null ? '' : String(rawValue);
-        const option = root.querySelector('[data-hb-select-option="' + CSS.escape(value) + '"]');
+        // Read each option's value rather than building an escaped attribute selector:
+        // option values carry quotes and slashes freely, and CSS.escape is not available
+        // everywhere (jsdom exposes no CSS object, so this threw on every sync there —
+        // caught, but it left the select unsynced and buried the suite in noise).
+        const option = Array.prototype.find.call(
+            root.querySelectorAll('[data-hb-select-option]'),
+            (o) => o.dataset.hbSelectOption === value,
+        ) || null;
         const valueEl = root.querySelector('[data-hb-select-value]');
         root.querySelectorAll('[data-hb-select-option]').forEach((o) => o.setAttribute('aria-selected', o === option ? 'true' : 'false'));
         root.dataset.value = value;

@@ -105,8 +105,15 @@
                         const saved = window.localStorage.getItem(MODEL_KEY);
                         // Restore only a model the operator still offers; one removed or
                         // disabled since must fall back to the server-rendered selection.
+                        // Matched by reading each option's value rather than building an
+                        // attribute selector: a model key is `provider:id` and ids carry
+                        // '/' and ':' freely, and CSS.escape is not universally available
+                        // (jsdom has no CSS object at all).
                         const opt = saved && saved !== selectedModel()
-                            ? modelSel.querySelector('[data-hb-select-option="' + CSS.escape(saved) + '"]')
+                            ? Array.prototype.find.call(
+                                modelSel.querySelectorAll('[data-hb-select-option]'),
+                                (o) => o.dataset.hbSelectOption === saved,
+                            )
                             : null;
                         if (opt) {
                             // Drive the component's own select() rather than reproducing it.
