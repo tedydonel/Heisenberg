@@ -68,7 +68,9 @@
             -webkit-font-smoothing: antialiased;
         }
         .hb-preview-page { max-width: 760px; margin: 0 auto; padding: 56px 24px 96px; position: relative; z-index: 1; }
-        .hb-preview-title { font-size: 40px; font-weight: 700; letter-spacing: -0.02em; line-height: 1.15; margin: 0 0 10px; }
+        /* Fluid: 26px on a narrow phone, 40px from ~1100px up. clamp() scales with the
+           viewport instead of overflowing a 375px screen at a fixed 40px. */
+        .hb-preview-title { font-size: clamp(26px, 5.2vw, 40px); font-weight: 700; letter-spacing: -0.02em; line-height: 1.15; margin: 0 0 10px; }
     .hb-preview-featured { display: block; margin: 0 0 28px; }
     .hb-preview-featured img { display: block; width: 100%; height: 300px; object-fit: cover; border-radius: var(--r-md, 5px); }
     .hb-preview-toc {
