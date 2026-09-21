@@ -118,7 +118,7 @@
                     const rootEl = target.blk.querySelector(':scope > [data-block-id]') || target.blk;
                     insideEl = rootEl;
                     rootEl.classList.add('is-drop-inside');
-                    const slot = resolveInsideDrop(rootEl, ev.clientY);
+                    const slot = resolveInsideDrop(rootEl, ev.clientY, ev.clientX);
                     inside = { id: target.model.id, index: slot.index };
                     if (slot.markEl) {
                         insideMark = slot.markEl;
@@ -266,13 +266,26 @@
         return null;
     }
 
-    function resolveInsideDrop(rootEl, y) {
-        const items = Array.prototype.slice.call(rootEl.querySelectorAll(':scope > .hb-blk'));
-        const rootOf = (w) => w.querySelector(':scope > [data-block-id]') || w;
+    function resolveInsideDrop(rootEl, y, x) {
+        // The container's OWN child blocks, at whatever depth its template put them. On the web
+        // surface they are direct children of the root; an email template nests them inside
+        // table cells, where `:scope > .hb-blk` found none — so every drop into an email
+        // container resolved to index 0 and landed at the top regardless of where it was aimed.
+        const container = rootEl.closest('.hb-blk') || rootEl;
+        const items = Array.prototype.slice.call(container.querySelectorAll('.hb-blk')).filter(function (el) {
+            return el.parentElement && el.parentElement.closest('.hb-blk') === container;
+        });
+        // A nested wrapper is display:contents (no box of its own) — mark and measure what it
+        // renders, as blockBox() does.
+        const rootOf = (w) => w.querySelector(':scope > [data-block-id]') || (w.getBoundingClientRect().height ? w : (w.firstElementChild || w));
         if (!items.length) return { index: 0, markEl: null, below: false };
+        const boxes = items.map(function (el) { return blockBox(el); });
+        // Children laid out side by side (a row) are ordered by x, stacked ones by y.
+        const sideBySide = typeof x === 'number' && boxes.length > 1 && boxes[1].left >= boxes[0].right - 1;
         for (let i = 0; i < items.length; i++) {
-            const r = rootOf(items[i]).getBoundingClientRect();
-            if (y < r.top + r.height / 2) return { index: i, markEl: rootOf(items[i]), below: false };
+            const r = boxes[i];
+            const before = sideBySide ? x < r.left + r.width / 2 : y < r.top + r.height / 2;
+            if (before) return { index: i, markEl: rootOf(items[i]), below: false };
         }
         return { index: items.length, markEl: rootOf(items[items.length - 1]), below: true };
     }

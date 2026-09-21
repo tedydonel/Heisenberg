@@ -232,13 +232,27 @@ class EmailBlockCoverageServiceTest extends TestCase
         $this->assertSame([], $report['degraded']);
     }
 
+    /**
+     * left/center/right reach the sent markup as the cell's `align` (the template reads
+     * `{{supports.align}}`), so they are honoured, not degraded; `wide`/`full` have no table
+     * equivalent and still are.
+     */
+    public function test_document_report_does_not_flag_an_alignment_the_email_template_honours(): void
+    {
+        $report = $this->service()->documentReport([[
+            'id' => 'g1', 'name' => 'heisenberg/group', 'attributes' => [], 'supports' => ['align' => 'center'], 'innerBlocks' => [],
+        ]]);
+
+        $this->assertSame([], $report['degraded']);
+    }
+
     public function test_document_report_flags_an_authored_alignment_as_degraded(): void
     {
         $blocks = [[
             'id' => 'g1',
             'name' => 'heisenberg/group',
             'attributes' => [],
-            'supports' => ['align' => 'center'],
+            'supports' => ['align' => 'wide'],
             'innerBlocks' => [],
         ]];
 
@@ -301,7 +315,7 @@ class EmailBlockCoverageServiceTest extends TestCase
             'name' => 'heisenberg/group',
             'attributes' => ['hideMobile' => true],
             'supports' => [
-                'align' => 'center',
+                'align' => 'wide',
                 'color' => ['background' => 'radial-gradient(circle, #ff0000, #0000ff)'],
             ],
             'innerBlocks' => [],
@@ -319,7 +333,7 @@ class EmailBlockCoverageServiceTest extends TestCase
     {
         $blocks = [
             ['id' => 'i1', 'name' => 'heisenberg/icon', 'attributes' => [], 'supports' => [], 'innerBlocks' => []],
-            ['id' => 'g1', 'name' => 'heisenberg/group', 'attributes' => [], 'supports' => ['align' => 'center'], 'innerBlocks' => []],
+            ['id' => 'g1', 'name' => 'heisenberg/group', 'attributes' => [], 'supports' => ['align' => 'wide'], 'innerBlocks' => []],
         ];
 
         $summary = $this->service()->documentSummary($blocks);

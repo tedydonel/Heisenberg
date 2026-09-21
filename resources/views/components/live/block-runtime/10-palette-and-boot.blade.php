@@ -75,7 +75,7 @@
                     const rootEl = target.blk.querySelector(':scope > [data-block-id]') || target.blk;
                     insideEl = rootEl;
                     rootEl.classList.add('is-drop-inside');
-                    const slot = resolveInsideDrop(rootEl, ev.clientY);
+                    const slot = resolveInsideDrop(rootEl, ev.clientY, ev.clientX);
                     inside = { id: target.model.id, index: slot.index };
                     if (slot.markEl) {
                         insideMark = slot.markEl;

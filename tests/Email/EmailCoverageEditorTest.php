@@ -116,7 +116,7 @@ class EmailCoverageEditorTest extends TestCase
     public function test_an_email_with_a_degraded_block_reports_it_may_render_differently(): void
     {
         $post = $this->makeEmail();
-        $this->addBlock($post, 0, 'heisenberg/group', [], ['align' => 'center']);
+        $this->addBlock($post, 0, 'heisenberg/group', [], ['align' => 'wide']);
 
         $html = $this->get("/editor/email/{$post->id}")->assertOk()->getContent();
 
@@ -164,7 +164,7 @@ class EmailCoverageEditorTest extends TestCase
     {
         $post = $this->makeEmail();
         $this->addBlock($post, 0, 'heisenberg/icon');
-        $this->addBlock($post, 1, 'heisenberg/group', [], ['align' => 'left']);
+        $this->addBlock($post, 1, 'heisenberg/group', [], ['align' => 'full']);
 
         $html = $this->get("/editor/email/{$post->id}")->assertOk()->getContent();
 

@@ -24,7 +24,7 @@
     `surface`.
 
     Defines for later sections: previewStates, iconCache, iconPending, injectLibraryIcon(),
-    styleDeclarations(), predicateMatches(), safeUrl(), embedSrcFor(), embedFileSrcFor(),
+    styleDeclarations(), styleVariableMap(), resolveEmailVars(), emailLayoutFor(), predicateMatches(), safeUrl(), embedSrcFor(), embedFileSrcFor(),
     alignmentValuesFor().
 --}}
     const previewStates = {};
@@ -58,15 +58,27 @@
     }
 
     function styleDeclarations(model, contract, surface) {
+        const map = styleVariableMap(model, contract, surface);
+        const declarations = [];
+        for (const name in map) declarations.push(name + ': ' + map[name]);
+        return declarations.length ? declarations.join('; ') + ';' : '';
+    }
+
+    // BlockStyleCompiler::blockStyleMap(): variable name -> sanitized value for ONE block
+    // instance. A variable with no authored value and no default is ABSENT, so a
+    // `var(--name, fallback)` reading it takes its fallback.
+    function styleVariableMap(model, contract, surface) {
         surface = surface || RENDER_SURFACE;
+        const map = {};
         const variables = contract && contract.style && contract.style.variables;
-        if (!variables || typeof variables !== 'object') return '';
-        const state = previewStates[model.id];
+        if (!variables || typeof variables !== 'object') return map;
+        // Interaction states do not exist in a mail client, so the email surface never previews
+        // one — the canvas must show what is sent.
+        const state = surface === 'email' ? null : previewStates[model.id];
 
         const overrides = state && state !== 'default'
             ? dataGet(model.supports || {}, 'states.' + state)
             : null;
-        const declarations = [];
         for (const name in variables) {
             if (!Object.prototype.hasOwnProperty.call(variables, name)) continue;
             const definition = variables[name];
@@ -97,11 +109,74 @@
                     && /\s/.test(finalSafe)) {
                     finalSafe = '"' + finalSafe.replace(/"/g, '\\"') + '"';
                 }
-                declarations.push(name + ': ' + finalSafe);
+                map[name] = finalSafe;
             }
         }
-        return declarations.length ? declarations.join('; ') + ';' : '';
+        return map;
     }
+
+    /**
+     * EMAIL SURFACE — the exact mirror of BlockStyleCompiler::resolveEmailVars(): fill every
+     * `var(--x[, fallback])` that reads one of THIS contract's own style variables with this
+     * block's literal value, or the usage's fallback when the block sets nothing. A `var()`
+     * naming anything else (a design token such as `var(--ink)`) is left for the browser, as
+     * the PHP leaves it for EmailRenderer's theme-token pass.
+     *
+     * Done as string substitution rather than by declaring the properties on the root and
+     * letting the cascade resolve them, deliberately: custom properties INHERIT, so a Group's
+     * `--hb-border-top-width` or `--hb-text-align` would reach every block nested inside it on
+     * the canvas while the sent mail — resolved per block — shows no such thing.
+     */
+    function resolveEmailVars(css, model, contract) {
+        css = String(css == null ? '' : css);
+        if (css.toLowerCase().indexOf('var(') === -1) return css;
+        const variables = (contract && contract.style && contract.style.variables) || {};
+        return substituteEmailVars(css, variables, styleVariableMap(model, contract, 'email'), 0);
+    }
+    function substituteEmailVars(css, variables, map, depth) {
+        let out = '';
+        let offset = 0;
+        const lower = css.toLowerCase();
+        while (depth < 8) {
+            const start = lower.indexOf('var(', offset);
+            if (start === -1) break;
+            let level = 0, end = -1;
+            for (let i = start + 3; i < css.length; i++) {
+                if (css[i] === '(') level++;
+                else if (css[i] === ')' && --level === 0) { end = i; break; }
+            }
+            if (end === -1) break;
+            const inner = css.slice(start + 4, end);
+            const comma = inner.indexOf(',');
+            const name = (comma === -1 ? inner : inner.slice(0, comma)).trim();
+            const fallback = comma === -1 ? null : inner.slice(comma + 1).trim();
+            out += css.slice(offset, start);
+            if (!Object.prototype.hasOwnProperty.call(variables, name)) out += css.slice(start, end + 1);
+            else if (Object.prototype.hasOwnProperty.call(map, name)) out += map[name];
+            else if (fallback !== null) out += substituteEmailVars(fallback, variables, map, depth + 1);
+            offset = end + 1;
+        }
+        return out + css.slice(offset);
+    }
+    // BlockStyleCompiler::emailLayout() — a container's flex layout translated into table-cell
+    // terms: direction (row = one cell per child), gap (spacer row/cell), and justify/align
+    // resolved to cell `align`/`valign`, the axes swapping with direction exactly as flexbox's do.
+    function emailLayoutFor(model, contract) {
+        const map = styleVariableMap(model, contract, 'email');
+        const row = String(map['--hb-flex-direction'] || 'column').indexOf('row') === 0;
+        const justify = map['--hb-flex-justify'] || '';
+        const align = map['--hb-flex-align'] || '';
+        const horizontal = { start: 'left', center: 'center', end: 'right' };
+        const vertical = { start: 'top', center: 'middle', end: 'bottom' };
+        return {
+            row: row,
+            gap: map['--hb-flex-gap'] || '',
+            spread: row && (justify === 'space-between' || justify === 'space-around'),
+            align: horizontal[row ? justify : align] || '',
+            valign: vertical[row ? align : justify] || '',
+        };
+    }
+
     function predicateMatches(predicate, model, contract) {
         if (!predicate || typeof predicate !== 'object') return false;
         const attribute = String(predicate.attribute || '');

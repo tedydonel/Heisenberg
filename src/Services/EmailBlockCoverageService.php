@@ -8,6 +8,7 @@ use Heisenberg\Mcp\Support\ContentBlockPipeline;
 use Heisenberg\Rendering\BlockTreeRenderer;
 use Heisenberg\Rendering\CssValueSanitizer;
 use Heisenberg\Rendering\DataPath;
+use Heisenberg\Support\EmailSupports;
 
 /**
  * Answers, purely by inspecting the live block CONTRACTS (never a hardcoded block-name
@@ -321,9 +322,11 @@ final class EmailBlockCoverageService
     }
 
     /**
-     * This instance actually sets a `supports.align` value the contract allows —
-     * {@see BlockTreeRenderer::resolveClass()} appends the matching
-     * `hb-align-*` class on the web root only, never on email.
+     * This instance sets a `supports.align` value the contract allows but its EMAIL template
+     * cannot express. The web root gets an `hb-align-*` class; an email template honours
+     * alignment only where it reads `{{supports.align}}` onto a cell's `align`, which knows
+     * left/center/right — so `wide`/`full`, or any value on a template with no such slot, is
+     * still lost. {@see EmailSupports} is the single answer to "what does email honour".
      */
     private function hasAuthoredAlign(array $block, array $contract): bool
     {
@@ -333,7 +336,8 @@ final class EmailBlockCoverageService
         return $allowed !== []
             && is_string($alignment)
             && in_array($alignment, $allowed, true)
-            && in_array($alignment, self::ALIGN_VALUES, true);
+            && in_array($alignment, self::ALIGN_VALUES, true)
+            && ! in_array($alignment, EmailSupports::for($contract)['align'] ?? [], true);
     }
 
     /**

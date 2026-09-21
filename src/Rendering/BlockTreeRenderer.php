@@ -120,6 +120,13 @@ final class BlockTreeRenderer
             return '';
         }
 
+        if ($surface === 'email' && is_array($contract['supports']['layout'] ?? null)) {
+            // Render-pass-only, like EmailRenderer's `_emailColWidthPercent`: never persisted.
+            $layout = $this->styleCompiler->emailLayout($block, $contract);
+            $attributes = is_array($block['attributes'] ?? null) ? $block['attributes'] : [];
+            $block['attributes'] = ['_emailAlign' => $layout['align'], '_emailValign' => $layout['valign']] + $attributes;
+        }
+
         return $this->renderNode($template, $block, $contract, $locale, true, $depth, $surface);
     }
 
@@ -145,7 +152,11 @@ final class BlockTreeRenderer
         }
 
         if ($type === 'inner-blocks') {
-            return $this->renderInnerBlocks($block, $locale, $depth, $surface);
+            $flow = $node['flow'] ?? null;
+
+            return $surface === 'email' && in_array($flow, ['blocks', 'cells'], true)
+                ? $this->renderEmailFlow($block, $contract, $locale, $depth, $flow)
+                : $this->renderInnerBlocks($block, $locale, $depth, $surface);
         }
 
         // text-lines: one element per non-empty line of a plain attribute — the generic
@@ -241,7 +252,15 @@ final class BlockTreeRenderer
         if ($class !== '') {
             $attributes = ['class' => $class] + $attributes;
         }
-        if ($isRoot) {
+        if ($surface === 'email') {
+            // Email has no custom properties: a template's `var(--hb-…)` is a slot, filled here
+            // with THIS block's own value — on every node, not just the root, and never from a
+            // declaration on the root (nothing in a mail client would read one). See
+            // BlockStyleCompiler::resolveEmailVars() for why this cannot be done per fragment.
+            if (is_string($attributes['style'] ?? null)) {
+                $attributes['style'] = $this->styleCompiler->resolveEmailVars($attributes['style'], $block, $contract);
+            }
+        } elseif ($isRoot) {
             $style = $this->styleCompiler->blockStyleDeclarations($block, $contract, $surface);
             if ($style !== '') {
                 $attributes['style'] = $style;
@@ -279,6 +298,60 @@ final class BlockTreeRenderer
         }
 
         return $html;
+    }
+
+    /**
+     * EMAIL SURFACE: an `inner-blocks` node carrying `"flow"` lays its children out from the
+     * container's Layout settings ({@see BlockStyleCompiler::emailLayout()}) instead of just
+     * concatenating them.
+     *
+     *  - `"blocks"` (group, column): children are ordinary blocks. Column = stacked, a spacer
+     *    table between them when there is a gap; row = one table, one cell per child.
+     *  - `"cells"` (columns): each child already IS a `<td>`, so this node owns the rows. Row =
+     *    one `<tr>` holding every cell; column = one `<tr>` per cell (stacked columns).
+     *
+     * With no gap and the default direction, `"blocks"` emits exactly what plain concatenation
+     * does. Mirrored node-for-node by renderEmailFlow() in 05-render-tree.
+     */
+    private function renderEmailFlow(array $block, array $contract, string $locale, int $depth, string $flow): string
+    {
+        $children = [];
+        foreach (($block['innerBlocks'] ?? []) as $child) {
+            $html = is_array($child) ? $this->renderBlockAtDepth($child, $locale, $depth + 1, 'email') : '';
+            if ($html !== '') {
+                $children[] = $html;
+            }
+        }
+
+        $layout = $this->styleCompiler->emailLayout($block, $contract);
+        $gap = HtmlEscaper::escape($layout['gap']);
+        $table = '<table role="presentation" cellpadding="0" cellspacing="0" border="0"';
+        $rowGap = $gap === '' ? '' : '<td style="height: ' . $gap . '; line-height: ' . $gap . '; font-size: 0;"></td>';
+        $cellGap = $gap === '' ? '' : '<td style="width: ' . $gap . '; font-size: 0; line-height: 0;"></td>';
+
+        if ($flow === 'cells') {
+            $valign = $layout['valign'] !== '' ? $layout['valign'] : 'top';
+            $open = '<tr valign="' . $valign . '">';
+            if ($children === []) {
+                return $open . '</tr>';
+            }
+
+            return $layout['row']
+                ? $open . implode($cellGap, $children) . '</tr>'
+                : $open . implode('</tr>' . ($rowGap === '' ? '' : '<tr>' . $rowGap . '</tr>') . $open, $children) . '</tr>';
+        }
+
+        if (! $layout['row']) {
+            return implode($rowGap === '' ? '' : $table . ' width="100%"><tr>' . $rowGap . '</tr></table>', $children);
+        }
+        if ($children === []) {
+            return '';
+        }
+
+        $valign = $layout['valign'] !== '' ? $layout['valign'] : 'top';
+        $cells = array_map(static fn (string $html): string => '<td valign="' . $valign . '">' . $html . '</td>', $children);
+
+        return $table . ($layout['spread'] ? ' width="100%"' : '') . '><tr>' . implode($cellGap, $cells) . '</tr></table>';
     }
 
     private function isEditorOnlyNode(array $node): bool
@@ -465,6 +538,12 @@ final class BlockTreeRenderer
                     if ($value === '' && in_array($name, ['src', 'srcset'], true)) {
                         continue;
                     }
+                }
+
+                // Same opt-out the plain value form has: an unset choice with no default emits
+                // no attribute at all (`valign=""` is not "unset" — it is an invalid value).
+                if ($value === '' && ($raw['omitWhenEmpty'] ?? $raw['omitEmpty'] ?? false) === true) {
+                    continue;
                 }
 
                 $out[$name] = $value;

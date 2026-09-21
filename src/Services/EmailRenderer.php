@@ -7,6 +7,7 @@ namespace Heisenberg\Services;
 use Heisenberg\Http\Controllers\EmailPreviewController;
 use Heisenberg\Models\Post;
 use Heisenberg\Models\PublicFile;
+use Heisenberg\Rendering\HtmlEscaper;
 use Heisenberg\Support\EmailRenderResult;
 use Heisenberg\Support\LocaleConfig;
 use Illuminate\Support\Facades\Storage;
@@ -24,19 +25,18 @@ use TijsVerkoyen\CssToInlineStyles\CssToInlineStyles;
  *
  * Pipeline per block, in order (§5):
  *  1. `BlockRenderer::renderBlock($block, $locale, 'email')` — table-based HTML for that one
- *     block, root style still auto-materialized from `style.variables` (the SAME mechanism the
- *     web surface uses; harmless here, since it only ever emits CSS CUSTOM PROPERTY
- *     DECLARATIONS on the block's root node, cleaned up by step 3).
+ *     block. Every `var(--hb-<block>-…, fallback)` slot in its template is ALREADY literal when
+ *     this returns: BlockStyleCompiler::resolveEmailVars() fills each block's slots from that
+ *     block's own inspector values as the tree is walked, so nested blocks can never read one
+ *     another's. No custom-property declaration is emitted on this surface at all.
  *  2. {@see self::rewriteImages()} — every `<img src>` that resolves to a {@see PublicFile}
  *     (media library upload) is replaced with `cid:$cid` and recorded in the embeds manifest;
  *     an `src` that does not resolve (an external URL) is left untouched — best effort, no host
  *     network fetch happens here.
- *  3. {@see self::resolveTokens()} — every `var(--...)` in the fragment is replaced with a
- *     LITERAL value, so the invariant "no var( survives" holds even though email templates
- *     freely write `var(--hb-<block>-<prop>, <literal fallback>)` (the block's own instance
- *     style, WITH a safe literal fallback baked into every usage) and inherit the harmless
- *     custom-property declarations step 1 puts on the root. See that method's docblock for the
- *     two-tier (design token + per-instance declaration) resolution algorithm.
+ *  3. {@see self::resolveTokens()} — what is left is DESIGN tokens (`var(--ink)`,
+ *     `var(--hb-t-brand)`), which arrive inside resolved values and are theme-wide rather than
+ *     per block: each is replaced with the active theme's literal, so the invariant "no var(
+ *     survives" holds.
  *
  * TOKEN MAPPING (design tokens, §5.2): built once per `render()` call from
  * {@see ThemeRepository}'s active theme (`load()`, which itself falls back to `defaults()` — so
@@ -209,7 +209,10 @@ class EmailRenderer
                         if (count($inner) > self::MAX_EMAIL_COLUMNS) {
                             $inner = array_slice($inner, 0, self::MAX_EMAIL_COLUMNS);
                         }
-                        $inner = $this->assignColumnWidths($inner);
+                        // Layout direction "column" stacks the cells one per row — each is then
+                        // the full width, not a share of it.
+                        $stacked = str_starts_with((string) ($block['supports']['layout']['direction'] ?? ''), 'column');
+                        $inner = $this->assignColumnWidths($inner, $stacked);
                     }
                     $block['innerBlocks'] = $inner;
                 }
@@ -234,7 +237,7 @@ class EmailRenderer
      * @param list<array<string, mixed>> $columns
      * @return list<array<string, mixed>>
      */
-    private function assignColumnWidths(array $columns): array
+    private function assignColumnWidths(array $columns, bool $stacked = false): array
     {
         $count = count($columns);
         if ($count === 0) {
@@ -249,7 +252,7 @@ class EmailRenderer
                 continue;
             }
             $attributes = is_array($column['attributes'] ?? null) ? $column['attributes'] : [];
-            $attributes['_emailColWidthPercent'] = ($i === $count - 1 ? $last : $base) . '%';
+            $attributes['_emailColWidthPercent'] = ($stacked ? 100 : ($i === $count - 1 ? $last : $base)) . '%';
             $column['attributes'] = $attributes;
             $columns[$i] = $column;
         }
@@ -481,12 +484,16 @@ class EmailRenderer
         return (string) preg_replace_callback(
             '/\sstyle="([^"]*)"/i',
             static function (array $m): string {
+                // Split the DECODED value: an escaped quote is `&#039;`, and its own `;` is not
+                // a declaration boundary — splitting the raw attribute tore a quoted family
+                // apart and rejoined it as `' Times New Roman'`, a name no client matches.
+                $css = html_entity_decode($m[1], ENT_QUOTES | ENT_HTML5, 'UTF-8');
                 $declarations = array_filter(
-                    array_map('trim', explode(';', $m[1])),
+                    array_map('trim', explode(';', $css)),
                     static fn (string $d): bool => $d !== '' && ! str_starts_with($d, '--')
                 );
 
-                return $declarations === [] ? '' : ' style="' . implode('; ', $declarations) . '"';
+                return $declarations === [] ? '' : ' style="' . HtmlEscaper::escape(implode('; ', $declarations)) . '"';
             },
             $html
         );
@@ -544,7 +551,7 @@ CSS;
 <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background-color:{$bg};">
 <tr><td align="center" style="padding:24px 12px;">
 <table role="presentation" width="{$width}" cellpadding="0" cellspacing="0" border="0" style="width:{$width}px; max-width:{$width}px; background-color:#ffffff; font-family:{$font}; color:{$ink};">
-<tr><td>
+<tr><td align="left" style="text-align:left;">
 {$bodyHtml}
 </td></tr>
 </table>

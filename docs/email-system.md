@@ -37,11 +37,31 @@ A block opts into the email palette by declaring an `email` section in its contr
 - Presence of `email` = the block appears in the email palette; absence = it does not. Initial email-safe set: heading, paragraph, image, button, separator, group (as a full-width table section), columns/column (rendered as table cells, capped at 2-3 columns), list, quote. Excluded: embed, icon (webfont/SVG dependency), and every animation/hover capability (ignored by the email renderer even if authored).
 - `BlockContractValidator` validates the section (template shape identical to `render.template` rules); `BlockRegistryService` exposes surface filtering (`contractsFor('email')`).
 
+### 4.1 One canvas; the email is an EXPORT (2026-09-21)
+
+**An email document is edited on exactly the same canvas as a post** - the same `render.template`, the same block CSS, the same DOM, the same inspector. `block-runtime`'s `RENDER_SURFACE` is always `'render'`. Two things make a document an email, and neither is the canvas:
+
+- **the palette** - a contract with no `email` section (embed, icon) is not offered;
+- **the export** - `EmailRenderer` walks each block's `email.template` in PHP and produces table markup with literal inline styles.
+
+The canvas used to draw `email.template` itself, which made the editor a second, table-based renderer under the same chrome. Every email-only editing defect came from that DOM being different: nested outlines, a zero-size toolbar anchor, inspector controls with nothing to bind to, drops into a container landing at index 0. `tests/js/email-canvas-parity.mjs` now loads the same blocks as an email and as a post and requires the two canvases and the two Style tabs to be identical.
+
+The accepted cost: the canvas is not a pixel preview of the mail. What a mail client cannot render (shadow, opacity, interaction states, animation) shows while editing and is dropped from the send; the preview tab shows the real output, and `EmailBlockCoverageService` flags documents that use such features.
+
+**How the export honours the inspector.** An email template reads the block's values through `var(--hb-<block>-<prop>, <fallback>)` slots written into its `style` attributes. Mail clients have no custom properties, so on this surface a `var()` is a substitution slot, not CSS:
+
+- **Filled per block** by `BlockStyleCompiler::resolveEmailVars()`: a slot naming one of the contract's own `style.variables` takes that block instance's sanitized value, or the slot's fallback when the instance sets nothing (fallbacks may nest). A slot naming anything else - a design token such as `var(--ink)` - is left for `EmailRenderer::resolveTokens()`. No custom property is declared on this surface. Resolving once per rendered fragment, as it used to, let the last block in a container overwrite its siblings (two paragraphs in a group both shipped the second one's colour).
+- **Layout becomes table cells.** A container's template lays its children out with an `inner-blocks` node carrying `"flow"` (`"blocks"` for group/column, `"cells"` for columns, whose children already are `<td>`s). `BlockTreeRenderer::renderEmailFlow()` turns direction into stacked children vs one cell per child (stacked columns become one full-width row each), gap into a spacer row or cell, and space-between/around into a full-width row. Justify/align become the container cell's `align`/`valign` with flexbox's own axis swap (`BlockStyleCompiler::emailLayout()`), handed to the template as the render-pass-only `_emailAlign`/`_emailValign` attributes because a template cannot branch on direction. Text blocks use `text-align: inherit` and an unaligned button emits no `align`, so a container's alignment reaches its children; the shell's content cell anchors the default to left.
+- **Template shape.** Blocks share a frame: an outer *margin cell* (margins ship as cell padding; clients drop margins on tables) around an inner *box cell* that owns background, padding and border, so a background never bleeds into the block's own margin.
+- `Heisenberg\Support\EmailSupports::for($contract)` answers "which supports does this block's email template honour" by reading the template (it is derived, never declared); `EmailBlockCoverageService` uses it to decide what counts as degraded.
+
+Pinned by `tests/Email/EmailInspectorParityTest.php` (export) and `tests/js/email-canvas-parity.mjs` (canvas).
+
 ## 5. `EmailRenderer` (beside `BlockRenderer`, never replacing it)
 
 `render(Post $email, string $locale): EmailRenderResult` where the result is `{html, text, subject, embeds: [{cid, path, mime}], sizeBytes}`:
 
-1. Renders each block's `email.template` through the SAME substitution/sanitization engine.
+1. Renders each block's `email.template` through the SAME substitution/sanitization engine, filling every per-block style slot with a literal as it goes (§4.1).
 2. Resolves every theme token to its literal value (no `var()` in output); fonts to stacks (§2).
 3. Wraps content in the canonical shell: 100%-width background table -> centered 600px content table, theme background/text colors applied literally.
 4. Rewrites every image source to a `cid:` reference and records the embed (variant selection per §2).

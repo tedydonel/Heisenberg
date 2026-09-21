@@ -563,10 +563,10 @@
             "tag": "table",
             "attributes": {
                 "role": "presentation",
-                "width": "100%",
                 "cellpadding": "0",
                 "cellspacing": "0",
-                "border": "0"
+                "border": "0",
+                "width": "100%"
             },
             "children": [
                 {
@@ -575,8 +575,17 @@
                         {
                             "tag": "td",
                             "attributes": {
-                                "align": "left",
-                                "style": "padding:0 0 16px 0;"
+                                "align": {
+                                    "enumMap": "{{supports.align}}",
+                                    "cases": {
+                                        "left": "left",
+                                        "center": "center",
+                                        "right": "right"
+                                    },
+                                    "default": "",
+                                    "omitWhenEmpty": true
+                                },
+                                "style": "padding: var(--hb-button-mt, 0) var(--hb-button-mr, 0) var(--hb-button-mb, 16px) var(--hb-button-ml, 0);"
                             },
                             "children": [
                                 {
@@ -585,7 +594,8 @@
                                         "role": "presentation",
                                         "cellpadding": "0",
                                         "cellspacing": "0",
-                                        "border": "0"
+                                        "border": "0",
+                                        "style": "width: var(--hb-button-w, auto);"
                                     },
                                     "children": [
                                         {
@@ -595,7 +605,7 @@
                                                     "tag": "td",
                                                     "attributes": {
                                                         "align": "center",
-                                                        "style": "border-radius:4px; background-color: var(--hb-button-bg, #0a0a0a);"
+                                                        "style": "background-color: var(--hb-button-bg, #0a0a0a); border-top: var(--hb-border-top-width, 0) var(--hb-border-top-style, solid) var(--hb-border-top-color, transparent); border-right: var(--hb-border-right-width, 0) var(--hb-border-right-style, solid) var(--hb-border-right-color, transparent); border-bottom: var(--hb-border-bottom-width, 0) var(--hb-border-bottom-style, solid) var(--hb-border-bottom-color, transparent); border-left: var(--hb-border-left-width, 0) var(--hb-border-left-style, solid) var(--hb-border-left-color, transparent); border-radius: var(--hb-border-radius-tl, 4px) var(--hb-border-radius-tr, 4px) var(--hb-border-radius-br, 4px) var(--hb-border-radius-bl, 4px);"
                                                     },
                                                     "children": [
                                                         {
@@ -605,7 +615,7 @@
                                                                     "value": "{{attributes.url}}",
                                                                     "omitWhenEmpty": true
                                                                 },
-                                                                "style": "display:inline-block; padding:12px 24px; font-family: var(--hb-button-ff, Arial, Helvetica, sans-serif); font-weight: var(--hb-button-fw, 600); font-size: var(--hb-button-fs, 15px); color: var(--hb-button-color, #ffffff); text-decoration:none; border-radius:4px;"
+                                                                "style": "display:inline-block; padding: var(--hb-button-pt, 12px) var(--hb-button-pr, 24px) var(--hb-button-pb, 12px) var(--hb-button-pl, 24px); font-family: var(--hb-button-ff, Arial, Helvetica, sans-serif); font-weight: var(--hb-button-fw, 600); font-size: var(--hb-button-fs, 15px); letter-spacing: var(--hb-letter-spacing, normal); color: var(--hb-button-color, #ffffff); text-decoration:none; border-radius: var(--hb-border-radius-tl, 4px) var(--hb-border-radius-tr, 4px) var(--hb-border-radius-br, 4px) var(--hb-border-radius-bl, 4px);"
                                                             },
                                                             "children": [
                                                                 {

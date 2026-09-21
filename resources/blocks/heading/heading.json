@@ -457,10 +457,10 @@
             "tag": "table",
             "attributes": {
                 "role": "presentation",
-                "width": "100%",
                 "cellpadding": "0",
                 "cellspacing": "0",
-                "border": "0"
+                "border": "0",
+                "width": "100%"
             },
             "children": [
                 {
@@ -469,29 +469,55 @@
                         {
                             "tag": "td",
                             "attributes": {
-                                "style": "padding:0 0 12px 0;"
+                                "style": "padding: var(--hb-heading-mt, 0) var(--hb-heading-mr, 0) var(--hb-heading-mb, 12px) var(--hb-heading-ml, 0);"
                             },
                             "children": [
                                 {
-                                    "tag": "h{{attributes.level}}",
+                                    "tag": "table",
                                     "attributes": {
-                                        "style": {
-                                            "enumMap": "{{attributes.level}}",
-                                            "cases": {
-                                                "1": "margin:0; font-family: var(--hb-heading-ff, Arial, Helvetica, sans-serif); font-weight: var(--hb-heading-fw, 700); font-size: var(--hb-heading-fs, 32px); line-height: var(--hb-heading-lh, 1.3); color: var(--hb-heading-color, #0a0a0a);",
-                                                "2": "margin:0; font-family: var(--hb-heading-ff, Arial, Helvetica, sans-serif); font-weight: var(--hb-heading-fw, 700); font-size: var(--hb-heading-fs, 24px); line-height: var(--hb-heading-lh, 1.3); color: var(--hb-heading-color, #0a0a0a);",
-                                                "3": "margin:0; font-family: var(--hb-heading-ff, Arial, Helvetica, sans-serif); font-weight: var(--hb-heading-fw, 700); font-size: var(--hb-heading-fs, 20px); line-height: var(--hb-heading-lh, 1.3); color: var(--hb-heading-color, #0a0a0a);",
-                                                "4": "margin:0; font-family: var(--hb-heading-ff, Arial, Helvetica, sans-serif); font-weight: var(--hb-heading-fw, 700); font-size: var(--hb-heading-fs, 17px); line-height: var(--hb-heading-lh, 1.3); color: var(--hb-heading-color, #0a0a0a);",
-                                                "5": "margin:0; font-family: var(--hb-heading-ff, Arial, Helvetica, sans-serif); font-weight: var(--hb-heading-fw, 700); font-size: var(--hb-heading-fs, 16px); line-height: var(--hb-heading-lh, 1.3); color: var(--hb-heading-color, #0a0a0a);",
-                                                "6": "margin:0; font-family: var(--hb-heading-ff, Arial, Helvetica, sans-serif); font-weight: var(--hb-heading-fw, 700); font-size: var(--hb-heading-fs, 14px); line-height: var(--hb-heading-lh, 1.3); color: var(--hb-heading-color, #0a0a0a);"
-                                            },
-                                            "default": "margin:0; font-family: var(--hb-heading-ff, Arial, Helvetica, sans-serif); font-weight: var(--hb-heading-fw, 700); font-size: var(--hb-heading-fs, 24px); line-height: var(--hb-heading-lh, 1.3); color: var(--hb-heading-color, #0a0a0a);"
-                                        }
+                                        "role": "presentation",
+                                        "cellpadding": "0",
+                                        "cellspacing": "0",
+                                        "border": "0",
+                                        "width": "100%",
+                                        "style": "width: var(--hb-heading-w, 100%); max-width: var(--hb-heading-maxw, 100%);"
                                     },
                                     "children": [
                                         {
-                                            "type": "rich-text",
-                                            "attribute": "content"
+                                            "tag": "tr",
+                                            "children": [
+                                                {
+                                                    "tag": "td",
+                                                    "attributes": {
+                                                        "style": "padding: var(--hb-heading-pt, 0) var(--hb-heading-pr, 0) var(--hb-heading-pb, 0) var(--hb-heading-pl, 0); height: var(--hb-heading-h, auto); background-color: var(--hb-heading-bg, transparent); text-align: var(--hb-text-align, inherit);"
+                                                    },
+                                                    "children": [
+                                                        {
+                                                            "tag": "h{{attributes.level}}",
+                                                            "attributes": {
+                                                                "style": {
+                                                                    "enumMap": "{{attributes.level}}",
+                                                                    "cases": {
+                                                                        "1": "margin:0; font-family: var(--hb-heading-ff, Arial, Helvetica, sans-serif); font-weight: var(--hb-heading-fw, 700); font-size: var(--hb-heading-fs, 32px); line-height: var(--hb-heading-lh, 1.3); letter-spacing: var(--hb-letter-spacing, normal); color: var(--hb-heading-color, #0a0a0a);",
+                                                                        "2": "margin:0; font-family: var(--hb-heading-ff, Arial, Helvetica, sans-serif); font-weight: var(--hb-heading-fw, 700); font-size: var(--hb-heading-fs, 24px); line-height: var(--hb-heading-lh, 1.3); letter-spacing: var(--hb-letter-spacing, normal); color: var(--hb-heading-color, #0a0a0a);",
+                                                                        "3": "margin:0; font-family: var(--hb-heading-ff, Arial, Helvetica, sans-serif); font-weight: var(--hb-heading-fw, 700); font-size: var(--hb-heading-fs, 20px); line-height: var(--hb-heading-lh, 1.3); letter-spacing: var(--hb-letter-spacing, normal); color: var(--hb-heading-color, #0a0a0a);",
+                                                                        "4": "margin:0; font-family: var(--hb-heading-ff, Arial, Helvetica, sans-serif); font-weight: var(--hb-heading-fw, 700); font-size: var(--hb-heading-fs, 17px); line-height: var(--hb-heading-lh, 1.3); letter-spacing: var(--hb-letter-spacing, normal); color: var(--hb-heading-color, #0a0a0a);",
+                                                                        "5": "margin:0; font-family: var(--hb-heading-ff, Arial, Helvetica, sans-serif); font-weight: var(--hb-heading-fw, 700); font-size: var(--hb-heading-fs, 16px); line-height: var(--hb-heading-lh, 1.3); letter-spacing: var(--hb-letter-spacing, normal); color: var(--hb-heading-color, #0a0a0a);",
+                                                                        "6": "margin:0; font-family: var(--hb-heading-ff, Arial, Helvetica, sans-serif); font-weight: var(--hb-heading-fw, 700); font-size: var(--hb-heading-fs, 14px); line-height: var(--hb-heading-lh, 1.3); letter-spacing: var(--hb-letter-spacing, normal); color: var(--hb-heading-color, #0a0a0a);"
+                                                                    },
+                                                                    "default": "margin:0; font-family: var(--hb-heading-ff, Arial, Helvetica, sans-serif); font-weight: var(--hb-heading-fw, 700); font-size: var(--hb-heading-fs, 24px); line-height: var(--hb-heading-lh, 1.3); letter-spacing: var(--hb-letter-spacing, normal); color: var(--hb-heading-color, #0a0a0a);"
+                                                                }
+                                                            },
+                                                            "children": [
+                                                                {
+                                                                    "type": "rich-text",
+                                                                    "attribute": "content"
+                                                                }
+                                                            ]
+                                                        }
+                                                    ]
+                                                }
+                                            ]
                                         }
                                     ]
                                 }

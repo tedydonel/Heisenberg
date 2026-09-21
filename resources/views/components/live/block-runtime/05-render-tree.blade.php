@@ -16,20 +16,23 @@
     {@see BlockTreeRenderer}'s own `$surface` parameter (see that class's docblock): `'render'`
     walks a contract's `render.template` (web, byte-for-byte what this file always produced);
     `'email'` walks `email.template` instead, skips the contract-level className/classNames/align
-    injection (BlockTreeRenderer::resolveClass()'s own email carve-out), and degrades a gradient to
-    its first colour stop (styleDeclarations(), 04-render-support). A contract with no section for
+    injection (BlockTreeRenderer::resolveClass()'s own email carve-out), declares NO custom
+    properties, and instead fills every `var(--hb-…)` slot the template authored with this
+    block's own literal value (resolveEmailVars(), 04-render-support — the mirror of
+    BlockStyleCompiler::resolveEmailVars(), so the canvas and the sent mail carry the same
+    styles; a gradient degrades to its first colour stop on the way). A contract with no section for
     the current surface renders EMPTY, not an error (renderBlockEl() returning null — embed/icon
     have no `email` section at all; docs/email-system.md §4) — exactly {@see EmailRenderer}'s own
     "skip, don't fail" posture.
 
     Depends on: subst()/resolveTag() (03-style-sanitizers); readAttr() (02-doc-model);
-    styleDeclarations()/predicateMatches()/safeUrl()/injectLibraryIcon()/embedSrcFor()/
+    styleDeclarations()/resolveEmailVars()/predicateMatches()/safeUrl()/injectLibraryIcon()/embedSrcFor()/
     embedFileSrcFor()/alignmentValuesFor() (04-render-support); decorateEmailVariables()
     (01-bootstrap-and-email-variables) for rich-text nodes on the email surface; RENDER_SURFACE
     (01-bootstrap-and-email-variables) as renderNode()/renderBlockEl()'s default `surface`.
 
     Defines for later sections: MAX_NESTING_DEPTH, MAX_EMAIL_COLUMNS, emailInnerBlocksFor(),
-    renderNode(), renderBlockEl(), decorateIconBlock(), decorateImageBlock() — renderBlockEl() in
+    renderEmailFlow(), renderNode(), renderBlockEl(), decorateIconBlock(), decorateImageBlock() — renderBlockEl() in
     particular is the workhorse every tree mutation in 08-tree-ops calls to redraw a block after a
     model change.
 --}}
@@ -66,8 +69,11 @@
         const count = capped.length;
         if (!count) return capped;
         const base = Math.floor(100 / count);
+        // EmailRenderer::capColumns(): Layout direction "column" stacks the cells one per row,
+        // so each is the full width rather than a share of it.
+        const stacked = String((model.supports && model.supports.layout && model.supports.layout.direction) || '').indexOf('column') === 0;
         return capped.map(function (column, i) {
-            const percent = (i === count - 1 ? (100 - base * (count - 1)) : base) + '%';
+            const percent = (stacked ? 100 : (i === count - 1 ? (100 - base * (count - 1)) : base)) + '%';
             return Object.assign({}, column, {
                 attributes: Object.assign({}, column.attributes || {}, { _emailColWidthPercent: percent }),
             });
@@ -95,7 +101,9 @@
             span.setAttribute('data-hb-rt', node.attribute || '');
             span.setAttribute('data-ph', 'Write something…');
             span.innerHTML = (val == null ? '' : String(val));
-            if (surface === 'email') decorateEmailVariables(span);
+            // Email-variable chips belong to the DOCUMENT being an email, not to which template
+            // tree drew the field.
+            if (DOCUMENT_TYPE === 'email') decorateEmailVariables(span);
             return span;
         }
 
@@ -132,11 +140,15 @@
         if (type === 'inner-blocks') {
             const frag = document.createDocumentFragment();
             const inner = surface === 'email' ? emailInnerBlocksFor(model) : (Array.isArray(model.innerBlocks) ? model.innerBlocks : []);
+            const flow = surface === 'email' && (node.flow === 'blocks' || node.flow === 'cells') ? node.flow : null;
+            const rendered = [];
             for (let i = 0; i < inner.length; i++) {
                 if (depth >= MAX_NESTING_DEPTH) break;
                 const el = renderBlockEl(inner[i], depth + 1, surface);
-                if (el) frag.appendChild(el);
+                if (el) rendered.push(el);
             }
+            if (flow) frag.appendChild(renderEmailFlow(rendered, emailLayoutFor(model, contract), flow));
+            else rendered.forEach(function (el) { frag.appendChild(el); });
 
 
             if (!inner.length && depth < MAX_NESTING_DEPTH) {
@@ -146,7 +158,10 @@
                 add.setAttribute('data-hb-inner-appender', model.id);
                 const label = (wrapEl() && wrapEl().dataset.hbAddLabel) || 'Add block';
                 add.textContent = '+ ' + label;
-                frag.appendChild(add);
+                // When this node owns the rows (`columns`), the appender needs a cell to sit in.
+                const row = flow === 'cells' ? frag.querySelector('tr') : null;
+                if (row) row.appendChild(document.createElement('td')).appendChild(add);
+                else frag.appendChild(add);
             }
             return frag;
         }
@@ -187,11 +202,12 @@
                 const alignment = model.supports && model.supports.align;
                 if (alignmentValuesFor(model.name).indexOf(alignment) >= 0) el.classList.add('hb-align-' + alignment);
             }
-            // The root inline style IS still materialized on email (BlockStyleCompiler::
-            // blockStyleDeclarations() runs for both surfaces — "harmless here", that method's own
-            // docblock) — only the gradient-degrade rule inside it differs per surface.
-            const declarations = styleDeclarations(model, contract, surface);
-            if (declarations) el.setAttribute('style', declarations);
+            // Web only. The email surface has no custom properties to declare — its template's
+            // `var()` slots are filled per node below — mirroring BlockTreeRenderer::renderNode().
+            if (surface !== 'email') {
+                const declarations = styleDeclarations(model, contract, surface);
+                if (declarations) el.setAttribute('style', declarations);
+            }
         }
         const attrs = node.attributes || {};
         for (const an in attrs) {
@@ -229,6 +245,7 @@
                         value = safeUrl(value);
                         if (!value && (an === 'src' || an === 'srcset')) continue;
                     }
+                    if (value === '' && (raw.omitWhenEmpty === true || raw.omitEmpty === true)) continue;
                     el.setAttribute(an, value);
                     continue;
                 }
@@ -240,9 +257,69 @@
             }
             el.setAttribute(an, raw);
         }
+        // BlockTreeRenderer::renderNode(): on email a template's `var(--hb-…)` is a slot filled
+        // with THIS block's own value, on whichever node authored it — the same function, the
+        // same inputs, so the canvas and the sent mail cannot disagree about a style.
+        if (surface === 'email' && el.hasAttribute('style')) {
+            el.setAttribute('style', resolveEmailVars(el.getAttribute('style'), model, contract));
+        }
         const kids = node.children || [];
         for (let i = 0; i < kids.length; i++) { const ch = renderNode(kids[i], model, contract, false, depth, surface); if (ch) el.appendChild(ch); }
         return el;
+    }
+
+    /**
+     * BlockTreeRenderer::renderEmailFlow(), node for node: lay already-rendered children out
+     * from the container's Layout settings. `"blocks"` = ordinary child blocks (stacked, or one
+     * cell each in a row); `"cells"` = children that ARE cells (`columns`), so this owns the
+     * rows — one row for all of them, or one row each when stacked.
+     */
+    function renderEmailFlow(children, layout, flow) {
+        const frag = document.createDocumentFragment();
+        const make = function (tag, attrs, style) {
+            const el = document.createElement(tag);
+            for (const k in (attrs || {})) el.setAttribute(k, attrs[k]);
+            if (style) el.setAttribute('style', style);
+            return el;
+        };
+        const table = function (full) {
+            const attrs = { role: 'presentation', cellpadding: '0', cellspacing: '0', border: '0' };
+            if (full) attrs.width = '100%';
+            return make('table', attrs);
+        };
+        const gap = layout.gap;
+        const rowGap = function () { return make('td', null, 'height: ' + gap + '; line-height: ' + gap + '; font-size: 0;'); };
+        const cellGap = function () { return make('td', null, 'width: ' + gap + '; font-size: 0; line-height: 0;'); };
+        const valign = layout.valign || 'top';
+
+        if (flow === 'cells') {
+            let tr = frag.appendChild(make('tr', { valign: valign }));
+            children.forEach(function (child, i) {
+                if (i > 0 && layout.row && gap) tr.appendChild(cellGap());
+                if (i > 0 && !layout.row) {
+                    if (gap) frag.appendChild(make('tr')).appendChild(rowGap());
+                    tr = frag.appendChild(make('tr', { valign: valign }));
+                }
+                tr.appendChild(child);
+            });
+            return frag;
+        }
+
+        if (!layout.row) {
+            children.forEach(function (child, i) {
+                if (i > 0 && gap) frag.appendChild(table(true)).appendChild(make('tr')).appendChild(rowGap());
+                frag.appendChild(child);
+            });
+            return frag;
+        }
+        if (!children.length) return frag;
+
+        const tr = frag.appendChild(table(layout.spread)).appendChild(make('tr'));
+        children.forEach(function (child, i) {
+            if (i > 0 && gap) tr.appendChild(cellGap());
+            tr.appendChild(make('td', { valign: valign })).appendChild(child);
+        });
+        return frag;
     }
 
     function renderBlockEl(model, depth, surface) {
@@ -254,12 +331,19 @@
         // embed/icon have no `email` section at all (docs/email-system.md §4).
         const template = surface === 'email' ? c.emailTemplate : c.template;
         if (!template) return null;
-        const root = renderNode(template, model, c, true, depth || 0, surface);
-        if (!root) return null;
-        if (surface === 'email') {
-            bindEmailSupportsToCanvas(root, model, c);
-            hoistEmailSpacer(root);
+        // BlockTreeRenderer::renderJsonBlock(): a container's resolved cell alignment, handed to
+        // its template as render-pass-only attributes. A CLONE carries them — never the document
+        // model — exactly as emailInnerBlocksFor() does for `_emailColWidthPercent`.
+        let renderModel = model;
+        if (surface === 'email' && c.supports && c.supports.layout && typeof c.supports.layout === 'object') {
+            const layout = emailLayoutFor(model, c);
+            renderModel = Object.assign({}, model, {
+                attributes: Object.assign({}, model.attributes || {}, { _emailAlign: layout.align, _emailValign: layout.valign }),
+            });
         }
+        const root = renderNode(template, renderModel, c, true, depth || 0, surface);
+        if (!root) return null;
+        if (surface === 'email') hoistEmailSpacer(root);
 
         // A <div> is not valid inside a table row, and the email surface's `column` block roots
         // at a <td>. Wrapping that in the usual <div class="hb-blk"> produced <tr><div><td>,
@@ -289,75 +373,6 @@
         decorateImageBlock(wrap, model);
         decorateIconBlock(wrap, model);
         return wrap;
-    }
-
-
-    /**
-     * CANVAS ONLY: let an email block's rendered root be styled by the inspector at all.
-     *
-     * The inspector's values DO reach the email root — renderNode() writes them as custom
-     * properties (`--hb-paragraph-pt: 40px`). Nothing on the canvas read them, because both
-     * stylesheets that consume them are keyed on hooks the email carve-out strips:
-     *
-     *   - per-block styling  `.hb-block-paragraph { padding: var(--hb-paragraph-pt, 0) … }`
-     *   - the supports layer `[data-block-id].hb-supports { border-width: … ; box-shadow: … }`
-     *
-     * Email templates author no `data-block-id` and the carve-out skips the contract className,
-     * so an email document had NEITHER hook: padding, background, colour, typography, size,
-     * stroke, shadow and opacity were all inert. Not one inspector control worked, which is why
-     * it read as the inspector being disconnected rather than as a styling bug.
-     *
-     * It stayed hidden because the EXPORT was always right: EmailRenderer resolves the same
-     * properties to literal inline declarations in PHP, so preview and sent mail showed every
-     * change the canvas refused to.
-     *
-     * Restoring both hooks costs the export nothing — this function is not part of it.
-     * BlockTreeRenderer/EmailRenderer build the MIME in PHP and never run this file, and what is
-     * saved is the block MODEL, not this DOM. The carve-out stays exactly as strict for
-     * everything we send.
-     *
-     * Deliberately only `style.className`, never the CONDITIONAL classNames: `hb-flex-layout`
-     * would lay a Group out as a flex row on canvas while the email it produces stacks its
-     * children in a table — the one place the canvas must not copy the web surface.
-     */
-    function bindEmailSupportsToCanvas(root, model, contract) {
-        if (!root || root.nodeType !== 1 || !contract || !contract.style) return;
-
-        String(contract.style.className || '').split(/\s+/).forEach(function (t) {
-            if (t) root.classList.add(t);
-        });
-
-        // The supports layer keys on the ATTRIBUTE as well as `.hb-supports`, and that attribute
-        // is the export's carve-out — so stamp it on the canvas copy only.
-        if (!root.getAttribute('data-block-id')) root.setAttribute('data-block-id', model.id);
-
-        // The per-block CSS bakes the WEB box model into its fallbacks — `margin: var(--hb-
-        // paragraph-mt, 6px) …`, `padding: var(--hb-button-pt, 10px) …` — and those fire for
-        // every side the author has not set. Left alone, the class alone gave each email
-        // paragraph a 6px margin and each button 10px/20px of padding that the email itself does
-        // not have. An email block's spacing belongs to its template's <td>, so the block CSS
-        // must contribute nothing unless the inspector actually asked for it: pin the untouched
-        // sides to 0 and the fallback never applies.
-        //
-        // Names come from `contract.style.variables` — the same map styleDeclarations() reads, so
-        // it cannot drift from it. Sniffing a prefix out of the element's existing declarations
-        // fails precisely where it matters: a block with nothing set has an EMPTY style
-        // attribute, and that untouched block is exactly the one whose web defaults leak.
-        const declarations = root.getAttribute('style') || '';
-        const variables = contract.style.variables;
-        if (!variables || typeof variables !== 'object') return;
-
-        const zeroed = [];
-        for (const name in variables) {
-            if (!Object.prototype.hasOwnProperty.call(variables, name)) continue;
-            if (!/-(?:mt|mr|mb|ml|pt|pr|pb|pl)$/.test(name)) continue;
-            if (declarations.indexOf(name + ':') !== -1) continue;
-            zeroed.push(name + ': 0');
-        }
-
-        if (zeroed.length) {
-            root.setAttribute('style', declarations.replace(/;\s*$/, '') + '; ' + zeroed.join('; ') + ';');
-        }
     }
 
 

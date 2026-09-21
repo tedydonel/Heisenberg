@@ -8,6 +8,14 @@ see §5). It supersedes guesswork about "emails don't render properly" with an e
 evidenced list of what actually differs between the three surfaces, and, more importantly, what
 does **not**.
 
+> **Superseded in part, 2026-09-21.** This report measured the preview against the sent mail and
+> found them identical - which was true, and hid the real defect: BOTH were ignoring the
+> inspector. The email templates read four style variables while the Style tab wrote thirty, and
+> token resolution was scoped per fragment, so sibling blocks in a container overwrote each
+> other's values. §5.2 (`align` dropped) and §5.4 (canvas keeps custom properties live) no longer
+> describe the code, and §5.1 is moot: the canvas no longer draws `email.template` at all - an
+> email is edited on the same canvas as a post. See `docs/email-system.md` §4.1.
+
 The one-line answer the owner needs first:
 
 > **The `EmailRenderer` preview and the actual sent MIME payload do not meaningfully differ.**

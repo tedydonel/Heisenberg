@@ -29,16 +29,23 @@
     const REGISTRY = DATA.registry || {};
 
     // A document never changes type (docs/email-system.md §3), so this is read once here rather
-    // than re-queried on every render call. `render` mirrors BlockTreeRenderer's default surface
-    // (web) — `email` is the only other value it or EmailRenderer ever use ($surface, that
-    // class's own docblock) — so 05-render-tree's renderNode()/renderBlockEl() walk the SAME
-    // `render.template`/`email.template` tree the real page/send would for this document, instead
-    // of always the web one regardless of what the document actually is.
+    // than re-queried on every render call.
     const DOCUMENT_TYPE = (function () {
         const canvas = document.querySelector('[data-hb-canvas]');
         return (canvas && canvas.dataset.hbDocumentType) || 'post';
     })();
-    const RENDER_SURFACE = DOCUMENT_TYPE === 'email' ? 'email' : 'render';
+    // ONE canvas. An email document is drawn by exactly the same path as a post — the same
+    // `render.template`, the same block CSS, the same DOM — so selection, outlines, the toolbar,
+    // drag-and-drop and every inspector control behave identically in both editors. What makes
+    // a document an email is its PALETTE (contracts with no `email` section are not offered) and
+    // its EXPORT (EmailRenderer walks `email.template` in PHP) — never a second renderer here.
+    //
+    // It used to be `'email'` for email documents, which made this file a second, table-based
+    // renderer: a different DOM under the same editor chrome, and the origin of every
+    // email-only canvas defect (missing outlines, a zero-size toolbar anchor, dead inspector
+    // controls, drops landing in the wrong slot). renderNode()/renderBlockEl() still accept a
+    // `surface` argument; nothing passes `'email'` any more.
+    const RENDER_SURFACE = 'render';
 
     const EMAIL_VARIABLES = {};
     (Array.isArray(DATA.emailVariables) ? DATA.emailVariables : []).forEach((entry) => {

@@ -507,10 +507,10 @@
             "tag": "table",
             "attributes": {
                 "role": "presentation",
-                "width": "100%",
                 "cellpadding": "0",
                 "cellspacing": "0",
-                "border": "0"
+                "border": "0",
+                "width": "100%"
             },
             "children": [
                 {
@@ -519,11 +519,55 @@
                         {
                             "tag": "td",
                             "attributes": {
-                                "style": "background-color: var(--hb-group-bg, transparent); color: var(--hb-group-color, inherit);"
+                                "align": {
+                                    "enumMap": "{{supports.align}}",
+                                    "cases": {
+                                        "left": "left",
+                                        "center": "center",
+                                        "right": "right"
+                                    },
+                                    "default": "left"
+                                },
+                                "style": "padding: var(--hb-group-mt, 0) var(--hb-group-mr, 0) var(--hb-group-mb, 0) var(--hb-group-ml, 0);"
                             },
                             "children": [
                                 {
-                                    "type": "inner-blocks"
+                                    "tag": "table",
+                                    "attributes": {
+                                        "role": "presentation",
+                                        "cellpadding": "0",
+                                        "cellspacing": "0",
+                                        "border": "0",
+                                        "width": "100%",
+                                        "style": "width: var(--hb-group-w, 100%); max-width: var(--hb-group-maxw, 100%);"
+                                    },
+                                    "children": [
+                                        {
+                                            "tag": "tr",
+                                            "children": [
+                                                {
+                                                    "tag": "td",
+                                                    "attributes": {
+                                                        "align": {
+                                                            "value": "{{attributes._emailAlign}}",
+                                                            "omitWhenEmpty": true
+                                                        },
+                                                        "valign": {
+                                                            "value": "{{attributes._emailValign}}",
+                                                            "omitWhenEmpty": true
+                                                        },
+                                                        "style": "padding: var(--hb-group-pt, var(--hb-flex-padding, 0)) var(--hb-group-pr, var(--hb-flex-padding, 0)) var(--hb-group-pb, var(--hb-flex-padding, 0)) var(--hb-group-pl, var(--hb-flex-padding, 0)); height: var(--hb-group-h, auto); background-color: var(--hb-group-bg, transparent); color: var(--hb-group-color, inherit); border-top: var(--hb-border-top-width, 0) var(--hb-border-top-style, solid) var(--hb-border-top-color, transparent); border-right: var(--hb-border-right-width, 0) var(--hb-border-right-style, solid) var(--hb-border-right-color, transparent); border-bottom: var(--hb-border-bottom-width, 0) var(--hb-border-bottom-style, solid) var(--hb-border-bottom-color, transparent); border-left: var(--hb-border-left-width, 0) var(--hb-border-left-style, solid) var(--hb-border-left-color, transparent); border-radius: var(--hb-border-radius-tl, 0) var(--hb-border-radius-tr, 0) var(--hb-border-radius-br, 0) var(--hb-border-radius-bl, 0);"
+                                                    },
+                                                    "children": [
+                                                        {
+                                                            "type": "inner-blocks",
+                                                            "flow": "blocks"
+                                                        }
+                                                    ]
+                                                }
+                                            ]
+                                        }
+                                    ]
                                 }
                             ]
                         }

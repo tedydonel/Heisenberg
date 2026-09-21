@@ -425,7 +425,6 @@
             "tag": "td",
             "class": "hb-email-col",
             "attributes": {
-                "valign": "top",
                 "width": {
                     "value": "{{attributes._emailColWidthPercent}}",
                     "omitWhenEmpty": true
@@ -436,10 +435,10 @@
                     "tag": "table",
                     "attributes": {
                         "role": "presentation",
-                        "width": "100%",
                         "cellpadding": "0",
                         "cellspacing": "0",
-                        "border": "0"
+                        "border": "0",
+                        "width": "100%"
                     },
                     "children": [
                         {
@@ -448,11 +447,20 @@
                                 {
                                     "tag": "td",
                                     "attributes": {
-                                        "style": "padding:0 12px; background-color: var(--hb-column-bg, transparent); color: var(--hb-column-color, inherit);"
+                                        "align": {
+                                            "value": "{{attributes._emailAlign}}",
+                                            "omitWhenEmpty": true
+                                        },
+                                        "valign": {
+                                            "value": "{{attributes._emailValign}}",
+                                            "omitWhenEmpty": true
+                                        },
+                                        "style": "padding: var(--hb-column-pt, var(--hb-flex-padding, 0)) var(--hb-column-pr, var(--hb-flex-padding, 12px)) var(--hb-column-pb, var(--hb-flex-padding, 0)) var(--hb-column-pl, var(--hb-flex-padding, 12px)); height: var(--hb-column-h, auto); background-color: var(--hb-column-bg, transparent); color: var(--hb-column-color, inherit); border-top: var(--hb-border-top-width, 0) var(--hb-border-top-style, solid) var(--hb-border-top-color, transparent); border-right: var(--hb-border-right-width, 0) var(--hb-border-right-style, solid) var(--hb-border-right-color, transparent); border-bottom: var(--hb-border-bottom-width, 0) var(--hb-border-bottom-style, solid) var(--hb-border-bottom-color, transparent); border-left: var(--hb-border-left-width, 0) var(--hb-border-left-style, solid) var(--hb-border-left-color, transparent); border-radius: var(--hb-border-radius-tl, 0) var(--hb-border-radius-tr, 0) var(--hb-border-radius-br, 0) var(--hb-border-radius-bl, 0);"
                                     },
                                     "children": [
                                         {
-                                            "type": "inner-blocks"
+                                            "type": "inner-blocks",
+                                            "flow": "blocks"
                                         }
                                     ]
                                 }

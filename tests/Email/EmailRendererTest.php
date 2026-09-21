@@ -305,7 +305,7 @@ class EmailRendererTest extends TestCase
         $result = $this->renderer()->render($this->fullFixture(), 'en');
 
         $this->assertStringNotContainsString("\u{00A0}", $result->html);
-        $this->assertMatchesRegularExpression('/border-top:1px solid #e4e4e4[^"]*"><\/td>/', $result->html);
+        $this->assertMatchesRegularExpression('/border-top:\s*1px solid #e4e4e4[^"]*"><\/td>/', $result->html);
     }
 
     /** Regression: `<td class="hb-email-col">` cells carried no `width` — Outlook needs an
@@ -314,7 +314,9 @@ class EmailRendererTest extends TestCase
     {
         $result = $this->renderer()->render($this->fullFixture(), 'en');
 
-        $this->assertSame(2, preg_match_all('/class="hb-email-col" valign="top" width="50%"/', $result->html));
+        $this->assertSame(2, preg_match_all('/class="hb-email-col" width="50%"/', $result->html));
+        // top-alignment now rides the row (so the Layout grid can change it for every cell at once)
+        $this->assertStringContainsString('<tr valign="top">', $result->html);
     }
 
     /** Regression: the Outlook/iOS client-hack resets (`-webkit-text-size-adjust`,

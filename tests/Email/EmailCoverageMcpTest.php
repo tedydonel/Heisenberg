@@ -146,7 +146,7 @@ class EmailCoverageMcpTest extends TestCase
                 ['name' => 'heisenberg/icon'],
                 [
                     'name' => 'heisenberg/group',
-                    'supports' => ['align' => 'center'],
+                    'supports' => ['align' => 'wide'],
                 ],
             ],
         ]);

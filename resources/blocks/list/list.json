@@ -451,10 +451,10 @@
             "tag": "table",
             "attributes": {
                 "role": "presentation",
-                "width": "100%",
                 "cellpadding": "0",
                 "cellspacing": "0",
-                "border": "0"
+                "border": "0",
+                "width": "100%"
             },
             "children": [
                 {
@@ -463,19 +463,45 @@
                         {
                             "tag": "td",
                             "attributes": {
-                                "style": "padding:0 0 16px 0;"
+                                "style": "padding: var(--hb-list-mt, 0) var(--hb-list-mr, 0) var(--hb-list-mb, 16px) var(--hb-list-ml, 0);"
                             },
                             "children": [
                                 {
-                                    "tag": "ul",
+                                    "tag": "table",
                                     "attributes": {
-                                        "style": "margin:0; padding:0 0 0 20px; font-family: var(--hb-list-ff, Arial, Helvetica, sans-serif); font-size: var(--hb-list-fs, 15px); line-height: var(--hb-list-lh, 1.6); color: var(--hb-list-color, #0a0a0a);"
+                                        "role": "presentation",
+                                        "cellpadding": "0",
+                                        "cellspacing": "0",
+                                        "border": "0",
+                                        "width": "100%",
+                                        "style": "width: var(--hb-list-w, 100%); max-width: var(--hb-list-maxw, 100%);"
                                     },
                                     "children": [
                                         {
-                                            "type": "text-lines",
-                                            "attribute": "content",
-                                            "tag": "li"
+                                            "tag": "tr",
+                                            "children": [
+                                                {
+                                                    "tag": "td",
+                                                    "attributes": {
+                                                        "style": "padding: var(--hb-list-pt, 0) var(--hb-list-pr, 0) var(--hb-list-pb, 0) var(--hb-list-pl, 0); height: var(--hb-list-h, auto); background-color: var(--hb-list-bg, transparent);"
+                                                    },
+                                                    "children": [
+                                                        {
+                                                            "tag": "ul",
+                                                            "attributes": {
+                                                                "style": "margin:0; padding:0 0 0 20px; font-family: var(--hb-list-ff, Arial, Helvetica, sans-serif); font-weight: var(--hb-list-fw, 400); font-size: var(--hb-list-fs, 15px); line-height: var(--hb-list-lh, 1.6); letter-spacing: var(--hb-letter-spacing, normal); color: var(--hb-list-color, #0a0a0a);"
+                                                            },
+                                                            "children": [
+                                                                {
+                                                                    "type": "text-lines",
+                                                                    "attribute": "content",
+                                                                    "tag": "li"
+                                                                }
+                                                            ]
+                                                        }
+                                                    ]
+                                                }
+                                            ]
                                         }
                                     ]
                                 }
