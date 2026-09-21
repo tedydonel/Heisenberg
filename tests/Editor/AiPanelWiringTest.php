@@ -426,10 +426,9 @@ class AiPanelWiringTest extends TestCase
         $this->assertInlineScriptContains($html, 'result.refusedAppend');
         $this->assertInlineScriptContains($html, "addNote(msg('msgTranslateAppendRefused'), true)");
         $this->assertInlineScriptContains($html, "addNote(result.error || msg('msgTranslateMismatch'), true)");
-        $this->assertInlineScriptContains(
-            $html,
-            "(result.translating ? msg('msgTranslated') : msg('msgBuilt'))",
-        );
+        $this->assertInlineScriptContains($html, "result.translating\n");
+        $this->assertInlineScriptContains($html, "msg('msgTranslated').replace(':count'");
+        $this->assertInlineScriptContains($html, "countMsg('msgBuilt', builtCount)");
 
         // The legacy bare-shortcode fallback has no fold — it must stand down entirely while
         // translating rather than replaceDoc away the home locale's text.

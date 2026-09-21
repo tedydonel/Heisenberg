@@ -7,7 +7,15 @@
     .hb-ai-body { display: flex; flex-direction: column; flex: 1 1 auto; min-height: 0; overflow: hidden; position: relative; }
     .hb-ai-scroll { display: flex; flex-direction: column; flex: 1 1 auto; min-height: 0; overflow: hidden; }
 
-    .hb-ai-header { display: flex; flex-direction: column; gap: var(--hb-space-2, 8px); padding: 10px; flex: none; }
+    /* Sticky so the assistant title, history and settings stay reachable while a long
+       conversation scrolls under them. Needs its own background, or thread text shows
+       through, and a z-index above the message rows. */
+    .hb-ai-header {
+        display: flex; flex-direction: column; gap: var(--hb-space-2, 8px); padding: 10px; flex: none;
+        position: sticky; top: 0; z-index: 3;
+        background: var(--hb-bg-panel, var(--hb-bg, #fff));
+        border-bottom: 1px solid var(--hb-border);
+    }
     .hb-ai-header__row { display: flex; align-items: center; gap: var(--hb-space-2, 8px); }
     .hb-ai-header__badge { display: inline-flex; align-items: center; justify-content: center; width: 28px; height: 28px; flex: none; }
     .hb-ai-header__badge-icon { display: inline-flex; width: 16px; height: 16px; color: var(--hb-accent); }
@@ -89,6 +97,55 @@
     }
     .hb-ai-applied__item { display: flex; align-items: flex-start; gap: var(--hb-space-1, 4px); font-size: var(--hb-fs-xs, 11px); line-height: 15px; color: var(--hb-text-secondary); }
     .hb-ai-applied__item .hb-icon { width: 12px; height: 12px; color: var(--hb-success); flex: none; margin-top: 1px; }
+    /* Live activity row: a rotating conic-gradient orb plus a colour-shimmering label. It runs
+       for the WHOLE turn (rotating verbs while the model thinks, the tool name once one is in
+       flight), so the panel always shows that something is happening rather than a dead label. */
+    .hb-ai-activity { display: flex; align-items: center; gap: var(--hb-space-2, 8px); width: 100%; padding: var(--hb-space-2, 8px); border-radius: var(--hb-radius-md, 5px); background: var(--hb-bg-subtle); }
+    .hb-ai-activity[hidden] { display: none; }
+    /* A 4x4 pixel grid, deliberately hard-edged (no radius, no smoothing). Each cell runs the
+       same keyframe but on a delay derived from its DIAGONAL (row+col), so the lit cells sweep
+       across the grid as a wave and wrap — a lot more going on than a spinning ring, and it
+       reads as "computing" rather than "loading". Colour cycles per column so the wave also
+       shifts hue as it travels. */
+    .hb-ai-activity__px { display: grid; grid-template-columns: repeat(4, 2px); grid-auto-rows: 2px; gap: 1px; flex: none; }
+    .hb-ai-activity__px i { display: block; width: 2px; height: 2px; background: currentColor; color: #3d68f5; opacity: .18; animation: hb-ai-px 1.45s steps(1, end) infinite; }
+    /* diagonal wave: delay = (row + col) * 90ms */
+    .hb-ai-activity__px i:nth-child(1)  { animation-delay: 0ms; }
+    .hb-ai-activity__px i:nth-child(2),  .hb-ai-activity__px i:nth-child(5)  { animation-delay: 90ms; }
+    .hb-ai-activity__px i:nth-child(3),  .hb-ai-activity__px i:nth-child(6),  .hb-ai-activity__px i:nth-child(9)  { animation-delay: 180ms; }
+    .hb-ai-activity__px i:nth-child(4),  .hb-ai-activity__px i:nth-child(7),  .hb-ai-activity__px i:nth-child(10), .hb-ai-activity__px i:nth-child(13) { animation-delay: 270ms; }
+    .hb-ai-activity__px i:nth-child(8),  .hb-ai-activity__px i:nth-child(11), .hb-ai-activity__px i:nth-child(14) { animation-delay: 360ms; }
+    .hb-ai-activity__px i:nth-child(12), .hb-ai-activity__px i:nth-child(15) { animation-delay: 450ms; }
+    .hb-ai-activity__px i:nth-child(16) { animation-delay: 540ms; }
+    /* Two-tone only: editor ink and the editing blue, alternating per column so the wave
+       reads as a checker sweep rather than a rainbow. */
+    .hb-ai-activity__px i:nth-child(2n+1) { color: var(--hb-text-primary, #0a0a0a); }
+    .hb-ai-activity__px i:nth-child(2n)   { color: #3d68f5; }
+    @keyframes hb-ai-px {
+        0%   { opacity: .16; transform: scale(.7); }
+        12%  { opacity: 1;   transform: scale(1.35); }
+        34%  { opacity: .55; transform: scale(1); }
+        60%, 100% { opacity: .16; transform: scale(.7); }
+    }
+    .hb-ai-activity__text {
+        font-size: var(--hb-fs-xs, 11px); line-height: 15px; font-weight: 600; letter-spacing: .01em;
+        background: linear-gradient(90deg, #3d68f5 0%, #8fb0ff 28%, #1d47d6 52%, #8fb0ff 76%, #3d68f5 100%);
+        background-size: 220% 100%;
+        -webkit-background-clip: text; background-clip: text;
+        -webkit-text-fill-color: transparent; color: transparent;
+        animation: hb-ai-shimmer 2.4s linear infinite;
+    }
+    @keyframes hb-ai-shimmer { from { background-position: 0 0; } to { background-position: -220% 0; } }
+    @media (prefers-reduced-motion: reduce) {
+        .hb-ai-activity__px i, .hb-ai-activity__text { animation: none; opacity: 1; }
+        .hb-ai-activity__text { -webkit-text-fill-color: currentColor; color: var(--hb-accent, #3d68f5); }
+    }
+    /* Collapsible applied/tool summary. */
+    .hb-ai-applied__head { display: flex; align-items: center; justify-content: space-between; gap: var(--hb-space-1, 4px); width: 100%; padding: 0; background: none; border: 0; cursor: pointer; text-align: left; }
+    .hb-ai-applied__chevron { display: inline-flex; color: var(--hb-text-muted); transition: transform .15s ease; }
+    .hb-ai-applied__chevron .hb-icon { width: 12px; height: 12px; }
+    .hb-ai-applied:not(.is-open) [data-hb-ai-applied-list] { display: none; }
+    .hb-ai-applied:not(.is-open) .hb-ai-applied__chevron { transform: rotate(180deg); }
 
     .hb-ai-suggest { display: flex; flex-direction: column; gap: var(--hb-space-1, 4px); width: 100%; }
     .hb-ai-suggest[hidden] { display: none; }
@@ -193,8 +250,12 @@
     data-msg-thinking-label="{{ __('heisenberg::editor.panel_ai_tools.ai_thinking_label') }}"
     data-msg-thought-for="{{ __('heisenberg::editor.panel_ai_tools.ai_thought_for') }}"
     data-msg-building="{{ __('heisenberg::editor.panel_ai_tools.ai_building') }}"
+    data-msg-building-one="{{ __('heisenberg::editor.panel_ai_tools.ai_building_one') }}"
     data-msg-built="{{ __('heisenberg::editor.panel_ai_tools.ai_built') }}"
+    data-msg-built-one="{{ __('heisenberg::editor.panel_ai_tools.ai_built_one') }}"
     data-msg-translated="{{ __('heisenberg::editor.panel_ai_tools.ai_translated') }}"
+    data-msg-used-tools="{{ __('heisenberg::editor.panel_ai_tools.ai_used_tools') }}"
+    data-msg-activity-verbs="{{ __('heisenberg::editor.panel_ai_tools.ai_activity_verbs') }}"
     data-msg-translate-append-refused="{{ __('heisenberg::editor.panel_ai_tools.ai_translate_append_refused') }}"
     data-msg-translate-mismatch="{{ __('heisenberg::editor.panel_ai_tools.ai_translate_mismatch') }}"
     data-msg-set-title="{{ __('heisenberg::editor.panel_ai_tools.ai_set_title') }}"
@@ -284,8 +345,21 @@
                 </div>
             </div>
             <div class="hb-ai-msg__text" data-hb-ai-text></div>
+            {{-- Live, single-line activity while the turn runs: one animated row that REPLACES its
+                 own text as the assistant moves from tool to tool, instead of appending a line per
+                 call (ten icon searches used to print ten identical rows). Hidden on completion,
+                 when the collapsible summary below takes over. --}}
+            <div class="hb-ai-activity" data-hb-ai-activity hidden aria-live="polite">
+                <span class="hb-ai-activity__px" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i></span>
+                <span class="hb-ai-activity__text" data-hb-ai-activity-text></span>
+            </div>
             <div class="hb-ai-applied" data-hb-ai-applied hidden>
-                <span class="hb-ai-applied__label">{{ __('heisenberg::editor.panel_ai_tools.ai_applied_label') }}</span>
+                {{-- Collapsed by default to "Used N tools"; the full list is one click away. Mirrors
+                     the thinking disclosure above rather than inventing a second pattern. --}}
+                <button type="button" class="hb-ai-applied__head" data-hb-ai-applied-head>
+                    <span class="hb-ai-applied__label" data-hb-ai-applied-label>{{ __('heisenberg::editor.panel_ai_tools.ai_applied_label') }}</span>
+                    <span class="hb-ai-applied__chevron" aria-hidden="true">@include('heisenberg::components.ui.icon', ['name' => 'caret-up', 'size' => 12])</span>
+                </button>
                 <div data-hb-ai-applied-list></div>
                 <template>
                     <div class="hb-ai-applied__item">

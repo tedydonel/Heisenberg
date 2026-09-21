@@ -53,6 +53,11 @@
                 const scroller = root.querySelector('[data-hb-ai-scroll]');
                 const modelSel = root.querySelector('[data-hb-ai-model]');
                 const msg = (key) => root.dataset[key] || '';
+                // Block counts are read by the author in plain prose, so "1 blocks" is a
+                // visible defect. Locales that need no separate singular simply omit the
+                // *One string and fall back to the plural form.
+                const countMsg = (key, count) =>
+                    (count === 1 ? (msg(key + 'One') || msg(key)) : msg(key)).replace(':count', String(count));
                 const locale = () => root.dataset.locale || 'en';
 
                 let lastPrompt = '';
@@ -84,6 +89,7 @@
 
                 const selectedModel = () => (modelSel ? modelSel.dataset.value || '' : '');
 
+
                 const TAGS = '(think|thinking|reasoning|reflection)';
                 const splitReasoning = (raw) => {
                     let reasoning = '';
@@ -95,6 +101,23 @@
                     const closerHead = new RegExp('^([\\s\\S]*?)<\\/' + TAGS + '\\s*>', 'i');
                     visible = visible.replace(closerHead, (m, body) => { reasoning += body; return ''; });
                     visible = visible.replace(new RegExp('<\\/?' + TAGS + '\\b[^>]*>', 'gi'), '');
+
+                    // Not every model uses XML-ish tags. These are the other delimiters seen in
+                    // the wild - bracketed ([THINK]...[/THINK]), pipe-fenced (<|think|>) and the
+                    // unicode-bracket style some models emit. Without them the reasoning is just
+                    // part of the visible reply, which is what "thinking leaks into normal chat"
+                    // looks like.
+                    const ALT = [
+                        /\[\s*(?:think|thinking|reasoning)\s*\]([\s\S]*?)\[\s*\/\s*(?:think|thinking|reasoning)\s*\]/gi,
+                        /<\|\s*(?:think|thinking|reasoning)\s*\|>([\s\S]*?)<\|\s*\/?\s*(?:end_?)?(?:think|thinking|reasoning)\s*\|>/gi,
+                        /◁\s*(?:think|thinking)\s*▷([\s\S]*?)◁\s*\/\s*(?:think|thinking)\s*▷/gi,
+                    ];
+                    ALT.forEach((re) => {
+                        visible = visible.replace(re, (m, body) => { reasoning += (reasoning ? '\n' : '') + body; return ''; });
+                    });
+                    // An unterminated bracketed opener: everything after it is still reasoning.
+                    visible = visible.replace(/\[\s*(?:think|thinking|reasoning)\s*\]([\s\S]*)$/i,
+                        (m, body) => { reasoning += (reasoning ? '\n' : '') + body; return ''; });
                     return { reasoning: reasoning.trim(), visible: visible.trim() };
                 };
 
@@ -113,10 +136,26 @@
                 };
 
                 const proseOf = (visible) => {
-                    const fence = visible.search(/```/);
-                    const tag = visible.search(/\[[a-z][a-z0-9-]*(\s|\]|\/|=)/i);
-                    const cut = Math.min(fence === -1 ? Infinity : fence, tag === -1 ? Infinity : tag);
-                    return (cut === Infinity ? visible : visible.slice(0, cut)).trim();
+                    // Prose is whatever extractMarkup does NOT claim as block markup, on
+                    // EITHER side of it. This used to cut at the first shortcode, which threw
+                    // away the closing line a model writes after the blocks ("Done — three
+                    // blocks are on the canvas."), so those turns rendered an empty reply.
+                    // The boundaries below deliberately mirror extractMarkup's so that prose
+                    // and markup partition the same text the same way.
+                    const closed = /```[a-zA-Z0-9_-]*\r?\n[\s\S]*?```/g;
+                    if (closed.test(visible)) {
+                        closed.lastIndex = 0;
+                        return visible.replace(closed, '\n\n').trim();
+                    }
+                    const open = visible.match(/```[a-zA-Z0-9_-]*\r?\n/);
+                    if (open) return visible.slice(0, open.index).trim();
+                    const first = visible.indexOf('[');
+                    if (first === -1) return visible.trim();
+                    const last = visible.lastIndexOf(']');
+                    // An unterminated '[' is a shortcode still streaming in — nothing from it
+                    // onward is prose yet, or half-written markup flashes in the chat bubble.
+                    if (last <= first) return visible.slice(0, first).trim();
+                    return (visible.slice(0, first) + '\n\n' + visible.slice(last + 1)).trim();
                 };
 
                 const atBottom = () => !scroller
@@ -176,14 +215,25 @@
                         thinkText: node.querySelector('[data-hb-ai-think-text]'),
                         applied: node.querySelector('[data-hb-ai-applied]'),
                         appliedList: node.querySelector('[data-hb-ai-applied-list]'),
+                        appliedHead: node.querySelector('[data-hb-ai-applied-head]'),
+                        appliedLabel: node.querySelector('[data-hb-ai-applied-label]'),
+                        activity: node.querySelector('[data-hb-ai-activity]'),
+                        activityText: node.querySelector('[data-hb-ai-activity-text]'),
                         suggest: node.querySelector('[data-hb-ai-suggest]'),
                         actions: node.querySelector('[data-hb-ai-actions]'),
                         userToggledThink: false,
+                        // Interleaved reasoning bursts (see openThinkSegment).
+                        thinkSegments: [],
+                        activeThink: null,
+                        usedFirstThink: false,
                     };
                     refs.think.querySelector('[data-hb-ai-think-head]').addEventListener('click', () => {
                         refs.userToggledThink = true;
                         refs.think.classList.toggle('is-open');
                     });
+                    if (refs.appliedHead) {
+                        refs.appliedHead.addEventListener('click', () => refs.applied.classList.toggle('is-open'));
+                    }
                     thread.appendChild(node);
                     scrollToEnd();
                     return refs;
@@ -196,6 +246,108 @@
                     refs.appliedList.appendChild(item);
                     refs.applied.hidden = false;
                     return item.querySelector('[data-hb-ai-applied-text]');
+                };
+
+                /**
+                 * The live activity row: ONE line that rewrites itself as the assistant moves from
+                 * tool to tool. Replaces the old behaviour of appending an applied-list entry per
+                 * call, which turned ten icon lookups into ten identical rows.
+                 */
+                let activityTimer = null;
+
+                // How long each status verb holds before the next one replaces it. At 2.2s the
+                // row changed faster than it could be read — the eye catches the movement, not
+                // the word. ~4s is long enough to actually finish reading one.
+                const ACTIVITY_VERB_MS = 4000;
+
+                /**
+                 * A model works in bursts: reason, call a tool, reason again, call another. Piling
+                 * every burst into ONE thinking block made a long turn look stuck on a single
+                 * section. Each burst now gets its OWN collapsible block, appended in order, so the
+                 * transcript reads think -> work -> think -> work. The first burst reuses the block
+                 * already in the bubble; later ones clone it.
+                 */
+                const openThinkSegment = (refs) => {
+                    let node, label, text;
+                    if (!refs.usedFirstThink) {
+                        refs.usedFirstThink = true;
+                        node = refs.think; label = refs.thinkLabel; text = refs.thinkText;
+                    } else {
+                        node = refs.think.cloneNode(true);
+                        label = node.querySelector('[data-hb-ai-think-label]');
+                        text = node.querySelector('[data-hb-ai-think-text]');
+                        text.textContent = '';
+                        node.querySelector('[data-hb-ai-think-head]')
+                            .addEventListener('click', () => node.classList.toggle('is-open'));
+                        refs.textEl.parentNode.insertBefore(node, refs.textEl);
+                    }
+                    node.hidden = false;
+                    node.classList.add('is-open');
+                    label.textContent = msg('msgThinkingLabel');
+                    const seg = { node: node, label: label, text: text, started: Date.now() };
+                    refs.thinkSegments.push(seg);
+                    return seg;
+                };
+
+                /** Stamp "Thought for Ns" on a finished burst and collapse it, freeing the next one. */
+                const closeThinkSegment = (refs) => {
+                    const seg = refs.activeThink;
+                    if (!seg) return;
+                    const secs = Math.max(1, Math.round((Date.now() - seg.started) / 1000));
+                    seg.label.textContent = msg('msgThoughtFor').replace(':secs', String(secs));
+                    seg.node.classList.remove('is-open');
+                    refs.activeThink = null;
+                };
+
+
+                const setActivity = (refs, text) => {
+                    if (!refs.activity) return;
+                    if (!text) { refs.activity.hidden = true; return; }
+                    refs.activity.hidden = false;
+                    refs.activityText.textContent = text;
+                };
+
+                /**
+                 * Rotate playful status verbs while the model is working but has not called a tool
+                 * yet — otherwise the whole reasoning phase showed nothing at all. A real tool call
+                 * takes over the same row (stopActivity is called first), so the two never fight.
+                 */
+                const startActivityVerbs = (refs) => {
+                    const verbs = String(msg('msgActivityVerbs') || '').split(',').map((v) => v.trim()).filter(Boolean);
+                    if (!verbs.length || !refs.activity) return;
+                    let i = 0;
+                    setActivity(refs, verbs[0]);
+                    clearInterval(activityTimer);
+                    activityTimer = setInterval(() => {
+                        i = (i + 1) % verbs.length;
+                        setActivity(refs, verbs[i]);
+                    }, ACTIVITY_VERB_MS);
+                };
+
+                const stopActivity = (refs) => {
+                    clearInterval(activityTimer);
+                    activityTimer = null;
+                    setActivity(refs, '');
+                };
+
+                /**
+                 * Collapse the turn's tool calls into "Used N tools", expandable to the full list.
+                 * `counts` is an ordered Map of tool label -> times called, so a repeated tool reads
+                 * "Searching icons ×3" on one row rather than occupying three.
+                 */
+                const renderToolSummary = (refs, counts) => {
+                    stopActivity(refs);
+                    const entries = Array.from(counts.entries());
+                    if (!entries.length) return;
+
+                    const total = entries.reduce((n, [, c]) => n + c, 0);
+                    if (refs.appliedLabel) {
+                        refs.appliedLabel.textContent = msg('msgUsedTools').replace(':count', String(total));
+                    }
+                    entries.forEach(([label, count]) => {
+                        appliedItem(refs, count > 1 ? (label + ' ×' + count) : label);
+                    });
+                    refs.applied.hidden = false;
                 };
 
                 const renderSuggestions = (refs, suggestions) => {
@@ -361,7 +513,11 @@
                         history.push({ role: 'user', content: prompt });
                     }
                     const reply = replace || addAssistant();
-                    reply.textEl.textContent = msg('msgThinking');
+                    // No plain "Thinking…" here: the collapsible thinking section shows the real
+                    // reasoning, and the activity row below shows live status. A third copy in the
+                    // body just read as the word "Thinking" twice.
+                    reply.textEl.textContent = '';
+                    startActivityVerbs(reply);
                     reply.actions.hidden = true;
                     reply.suggest.hidden = true;
                     const suggestRow = reply.suggest.querySelector('[data-hb-ai-suggest-row]');
@@ -374,6 +530,15 @@
                     let tReasonStart = 0;
                     let thoughtSecs = 0;
                     let appliedLines = [];
+                    // Reasoning streamed on its own SSE channel (`reasoning_delta`), which is how
+                    // every current model sends it — Anthropic `thinking_delta`, OpenAI-compatible
+                    // `reasoning_content`/`reasoning`. splitReasoning() below still handles models
+                    // that instead type <think> tags into the visible text; the two are additive so
+                    // the panel shows reasoning either way.
+                    let reasoningAcc = '';
+                    // Ordered label -> call-count for this turn; drives the collapsed
+                    // "Used N tools" summary rendered when the stream finishes.
+                    const toolCounts = new Map();
                     let builtEl = null;
                     let toolBuilt = false;
 
@@ -386,6 +551,7 @@
                     };
                     let lastAppliedStamp = '';
                     let lastApplyAt = 0;
+                    let applyTimer = 0;
                     let builtCount = 0;
                     const applyCanvasTool = (data) => {
                         if (data.ok === false || !window.hbCodeView || !window.hbEditor) return;
@@ -408,7 +574,9 @@
                         builtCount = result.translating ? result.blocks : builtCount + result.appliedCount;
                         canvasFollow(false);
                         if (!builtEl) builtEl = appliedItem(reply, '');
-                        builtEl.textContent = (result.translating ? msg('msgTranslated') : msg('msgBuilt')).replace(':count', String(builtCount));
+                        builtEl.textContent = result.translating
+                            ? msg('msgTranslated').replace(':count', String(builtCount))
+                            : countMsg('msgBuilt', builtCount);
                         if (stick) scrollToEnd();
                     };
 
@@ -435,41 +603,66 @@
                         if (!window.hbCodeView || !window.hbEditor) return;
                         if (window.hbEditor.getEditingLocale() !== window.hbEditor.getHomeLocale()) return;
                         const now = Date.now();
-                        if (!final && now - lastApplyAt < 250) return;
+                        if (applyTimer) { clearTimeout(applyTimer); applyTimer = 0; }
+                        if (!final && now - lastApplyAt < 250) {
+                            // Throttled, not cancelled. Dropping the call outright only worked
+                            // while more text kept arriving to retry it; when the model switches
+                            // straight back to reasoning, the next delta is a thought, so the
+                            // blocks — and the section boundary sealing them — waited for the end
+                            // of the turn and every later thought piled into one block.
+                            applyTimer = setTimeout(() => { applyTimer = 0; liveApply(false); }, 250 - (now - lastApplyAt));
+                            return;
+                        }
                         const markup = extractMarkup(splitReasoning(acc).visible);
                         if (!markup) return;
                         const parsed = window.hbCodeView.parse(markup);
                         if (!parsed || !parsed.blocks.length) return;
                         const stamp = JSON.stringify(parsed.blocks);
-                        if (stamp === lastAppliedStamp) return;
+                        if (stamp === lastAppliedStamp) {
+                            // Nothing new to write. The final pass still has to retire the
+                            // "Building…" label, though — the last blocks almost always land
+                            // before the stream ends, so a finished turn kept reading as if
+                            // it were still running.
+                            if (final && builtEl) builtEl.textContent = countMsg('msgBuilt', builtCount);
+                            return;
+                        }
                         lastAppliedStamp = stamp;
                         lastApplyAt = now;
                         lastRun.applied = true;
                         builtCount = parsed.blocks.length;
                         window.hbEditor.replaceDoc(lastRun.baseline.concat(parsed.blocks));
                         canvasFollow(final);
+                        // Blocks just landed on the canvas — that is the boundary the author sees
+                        // as "a piece of work finished". Seal the reasoning burst HERE, live, so
+                        // the next thought opens a fresh section in the chat as it streams. This
+                        // used to only happen on a tool_use event, but most builds arrive as
+                        // shortcode in the visible TEXT and never emit one, so the section stayed
+                        // open and everything after it piled into the same block.
+                        closeThinkSegment(reply);
                         if (!builtEl) builtEl = appliedItem(reply, '');
-                        builtEl.textContent = (final ? msg('msgBuilt') : msg('msgBuilding')).replace(':count', String(builtCount));
+                        builtEl.textContent = countMsg(final ? 'msgBuilt' : 'msgBuilding', builtCount);
                     };
 
                     const paint = (finished) => {
                         const parts = splitReasoning(acc);
-                        if (parts.reasoning) {
+                        // Models that inline <think> tags instead of using the reasoning channel:
+                        // mirror that text into the current burst. When reasoningAcc is non-empty the
+                        // dedicated channel is already driving the segments, so do not double-write.
+                        // Real prose means the model stopped reasoning and started answering.
+                        // Without this the burst never closed on a turn that emitted no tool call
+                        // and no blocks, and the panel read "Thinking…" indefinitely.
+                        if (reply.activeThink && proseOf(parts.visible)) {
+                            closeThinkSegment(reply);
+                        }
+                        if (!reasoningAcc && parts.reasoning) {
                             if (!tReasonStart) tReasonStart = Date.now();
-                            reply.think.hidden = false;
-                            reply.thinkText.textContent = parts.reasoning;
-                            if (!parts.visible && !finished) {
-                                reply.thinkLabel.textContent = msg('msgThinkingLabel');
-                                if (!reply.userToggledThink) reply.think.classList.add('is-open');
-                            } else {
-                                if (!thoughtSecs && tReasonStart) thoughtSecs = Math.max(1, Math.round((Date.now() - tReasonStart) / 1000));
-                                reply.thinkLabel.textContent = msg('msgThoughtFor').replace(':secs', String(thoughtSecs));
-                                if (!reply.userToggledThink) reply.think.classList.remove('is-open');
-                            }
+                            if (!reply.activeThink) reply.activeThink = openThinkSegment(reply);
+                            reply.activeThink.text.textContent = parts.reasoning;
+                            if (parts.visible || finished) closeThinkSegment(reply);
                         }
                         const prose = proseOf(parts.visible);
                         if (!parts.visible) {
-                            reply.textEl.textContent = finished ? (builtCount > 0 ? '' : msg('msgEmptyReply')) : msg('msgThinking');
+                            reply.textEl.textContent = finished ? (builtCount > 0 ? '' : msg('msgEmptyReply')) : '';
                         } else {
                             renderMarkdown(reply.textEl, prose || (builtCount > 0 ? '' : parts.visible));
                         }
@@ -510,17 +703,35 @@
                                     liveApply(false);
                                     paint(false);
                                     if (stick) scrollToEnd();
+                                } else if (event.type === 'reasoning_delta') {
+                                    // Append live into the CURRENT burst so the text visibly grows;
+                                    // a tool call closes the burst, so the next reasoning opens a
+                                    // fresh block rather than extending a stale one.
+                                    reasoningAcc += event.text || '';
+                                    if (!reply.activeThink) reply.activeThink = openThinkSegment(reply);
+                                    reply.activeThink.text.textContent += (event.text || '');
+                                    if (stick) scrollToEnd();
                                 } else if (event.type === 'tool_use') {
                                     const data = event.data || {};
+                                    // A thought closes ONLY when the model actually APPLIED something
+                                    // to the document. Read-only calls (search_web, search_icons,
+                                    // list_blocks…) are part of the same train of thought — sealing on
+                                    // those produced a stack of one-second "Thought for 1s" blocks.
                                     if (String(data.name || '') === 'heisenberg__write_canvas') {
+                                        closeThinkSegment(reply);
                                         applyCanvasTool(data);
                                     } else if (String(data.name || '') === 'heisenberg__set_page_title') {
+                                        closeThinkSegment(reply);
                                         applyTitleTool(data);
                                     } else {
                                         const tool = String(data.name || '').replace(/^heisenberg__/, '').replace(/_/g, ' ');
                                         const line2 = msg('msgWorking').replace(':tool', tool || '…');
-                                        appliedLines.push(line2);
-                                        appliedItem(reply, line2);
+                                        // Live status only while running; the counted summary is
+                                        // rendered once the turn finishes (renderToolSummary).
+                                        toolCounts.set(line2, (toolCounts.get(line2) || 0) + 1);
+                                        clearInterval(activityTimer);
+                                        activityTimer = null;
+                                        setActivity(reply, line2);
                                         if (stick) scrollToEnd();
                                     }
                                 } else if (event.type === 'done') {
@@ -573,7 +784,7 @@
                             else if (stopReason === 'max_tokens' || stopReason === 'length') addNote(msg('msgLengthLimit'));
                             if (stick) scrollToEnd();
                             const turnText = parts.visible
-                                || (builtCount > 0 ? msg('msgBuilt').replace(':count', String(builtCount)) : '');
+                                || (builtCount > 0 ? countMsg('msgBuilt', builtCount) : '');
                             if (turnText) {
                                 if (replace && history.length && history[history.length - 1].role === 'assistant') {
                                     history[history.length - 1] = { role: 'assistant', content: turnText };
@@ -581,19 +792,29 @@
                                     history.push({ role: 'assistant', content: turnText });
                                 }
                                 saveTurn('assistant', turnText, {
-                                    reasoning: parts.reasoning || null,
+                                    reasoning: reply.thinkSegments.map((seg) => seg.text.textContent).filter(Boolean).join(String.fromCharCode(10, 10)).trim() || null,
                                     thoughtSecs: thoughtSecs || null,
-                                    applied: appliedLines.concat(builtCount > 0 ? [msg('msgBuilt').replace(':count', String(builtCount))] : []),
+                                    applied: appliedLines.concat(builtCount > 0 ? [countMsg('msgBuilt', builtCount)] : []),
                                     regenerated: !!replace,
                                 });
                             }
-                            if ((parts.visible || lastRun.applied) && !reply.node.classList.contains('hb-ai-msg--error')) {
+                            closeThinkSegment(reply);
+                            renderToolSummary(reply, toolCounts);
+                            // Suggestions follow a turn that produced prose OR changed the canvas OR
+                            // ran tools — the old gate missed a tool-only turn entirely, which is one
+                            // way they silently never appeared.
+                            if ((parts.visible || lastRun.applied || toolCounts.size) && !reply.node.classList.contains('hb-ai-msg--error')) {
                                 loadSuggestions(reply);
                             }
                         })
                         .catch((error) => {
                             setBusy(false);
+                            if (applyTimer) { clearTimeout(applyTimer); applyTimer = 0; }
                             canvasFollow(true);
+                            // An abort or a network failure must not leave the animation running
+                            // or a reasoning burst open with no duration stamped on it.
+                            closeThinkSegment(reply);
+                            stopActivity(reply);
                             if (error && error.name === 'AbortError') {
                                 const partial = splitReasoning(acc).visible;
                                 if (partial) renderMarkdown(reply.textEl, proseOf(partial) || partial);
