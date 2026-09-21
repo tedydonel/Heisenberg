@@ -261,9 +261,19 @@ class OpenAiCompatibleProvider implements AiProvider
                 }
 
                 $choice = (array) ($payload['choices'][0] ?? []);
-                $text = (string) ($choice['delta']['content'] ?? '');
+                $delta = (array) ($choice['delta'] ?? []);
+                $text = (string) ($delta['content'] ?? '');
                 if ($text !== '') {
                     yield AiStreamEvent::textDelta($text);
+                }
+                // Reasoning-capable gateways spell this field differently:
+                // DeepSeek/MiniMax/Moonshot send `reasoning_content`, o-series-
+                // style endpoints send `reasoning`. Both are checked — a chunk
+                // carries at most one in practice — and kept out of `$text`, the
+                // same separation Anthropic's adapter makes for `thinking_delta`.
+                $reasoning = (string) ($delta['reasoning_content'] ?? $delta['reasoning'] ?? '');
+                if ($reasoning !== '') {
+                    yield AiStreamEvent::reasoningDelta($reasoning);
                 }
                 // A streamed tool call arrives in fragments: the first frame
                 // carries `id` and `function.name`, and every frame after it

@@ -211,11 +211,21 @@ class AnthropicProvider implements AiProvider
 
                 if ($type === 'content_block_delta') {
                     $delta = (array) ($payload['delta'] ?? []);
-                    // `thinking_delta` frames also arrive when a summary is
-                    // requested; only text belongs in the response card.
-                    if (($delta['type'] ?? '') === 'text_delta' && ($delta['text'] ?? '') !== '') {
+                    $deltaType = (string) ($delta['type'] ?? '');
+                    // Adaptive thinking (see body() below) makes `thinking_delta`
+                    // frames arrive alongside `text_delta` ones; the reasoning
+                    // text lives under `thinking`, not `text`. It is routed to
+                    // its own event type rather than dropped, but kept OUT of
+                    // the response's visible text — see AiToolRunner for where
+                    // that separation is enforced.
+                    if ($deltaType === 'text_delta' && ($delta['text'] ?? '') !== '') {
                         yield AiStreamEvent::textDelta((string) $delta['text']);
+                    } elseif ($deltaType === 'thinking_delta' && ($delta['thinking'] ?? '') !== '') {
+                        yield AiStreamEvent::reasoningDelta((string) $delta['thinking']);
                     }
+                    // `signature_delta` (a cryptographic signature over the
+                    // thinking block, not text) carries nothing displayable and
+                    // is ignored deliberately.
                 } elseif ($type === 'content_block_start') {
                     $block = (array) ($payload['content_block'] ?? []);
                     if (($block['type'] ?? '') === 'tool_use') {

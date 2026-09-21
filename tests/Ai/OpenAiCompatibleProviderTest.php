@@ -288,6 +288,45 @@ class OpenAiCompatibleProviderTest extends TestCase
     }
 
     /**
+     * DeepSeek/MiniMax/Moonshot-style gateways send the model's reasoning under
+     * `reasoning_content` on the delta. It must reach the caller as a REASONING
+     * event and never be concatenated into the visible text.
+     */
+    public function test_reasoning_content_produces_a_reasoning_event_not_text(): void
+    {
+        $this->setKey('sk-test');
+        Http::fake(['*' => Http::response(
+            'data: {"choices":[{"delta":{"reasoning_content":"Thinking it over."}}]}' . "\n\n"
+            . 'data: {"choices":[{"delta":{"content":"Hello"},"finish_reason":"stop"}]}' . "\n\n"
+            . 'data: [DONE]' . "\n\n"
+        )]);
+
+        $events = iterator_to_array($this->provider()->stream($this->request()));
+        $types = array_map(static fn (AiStreamEvent $e): string => $e->type, $events);
+
+        $this->assertSame([AiStreamEvent::REASONING, AiStreamEvent::TEXT_DELTA, AiStreamEvent::DONE], $types);
+        $this->assertSame('Thinking it over.', $events[0]->text);
+        $this->assertSame('Hello', $events[1]->text);
+    }
+
+    /** An o-series-style gateway spells the same field `reasoning` instead. */
+    public function test_reasoning_field_also_produces_a_reasoning_event(): void
+    {
+        $this->setKey('sk-test');
+        Http::fake(['*' => Http::response(
+            'data: {"choices":[{"delta":{"reasoning":"Working through it."}}]}' . "\n\n"
+            . 'data: {"choices":[{"delta":{"content":"Hi"},"finish_reason":"stop"}]}' . "\n\n"
+            . 'data: [DONE]' . "\n\n"
+        )]);
+
+        $events = iterator_to_array($this->provider()->stream($this->request()));
+        $types = array_map(static fn (AiStreamEvent $e): string => $e->type, $events);
+
+        $this->assertSame([AiStreamEvent::REASONING, AiStreamEvent::TEXT_DELTA, AiStreamEvent::DONE], $types);
+        $this->assertSame('Working through it.', $events[0]->text);
+    }
+
+    /**
      * Not every gateway sends `[DONE]`; the body just ends. The stream must still
      * terminate with `done` so the panel can tell finished from dropped.
      */

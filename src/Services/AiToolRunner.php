@@ -233,6 +233,14 @@ class AiToolRunner
                 } elseif ($event->type === AiStreamEvent::TEXT_DELTA) {
                     $text .= $event->text;
                     yield $event;
+                } elseif ($event->type === AiStreamEvent::REASONING) {
+                    // Forwarded to the panel so the "thinking" section has
+                    // something to show, but deliberately NOT appended to
+                    // $text: $text is what gets replayed to the model as its
+                    // own prior turn (AiMessage::toolRequest below) and is what
+                    // the controller eventually persists — reasoning must never
+                    // ride along in either.
+                    yield $event;
                 } elseif ($event->type === AiStreamEvent::ERROR) {
                     $failed = true;
                     yield $event;

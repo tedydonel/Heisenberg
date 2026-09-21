@@ -206,6 +206,32 @@ class AiCompletionEndpointTest extends TestCase
     }
 
     /**
+     * The SSE endpoint's loop only special-cases `done`/`error` for the
+     * "did the stream already terminate" flag — everything else, reasoning
+     * included, must still be forwarded as its own frame rather than dropped
+     * or mistaken for a terminator that ends the response early.
+     */
+    public function test_reasoning_deltas_reach_the_stream_as_their_own_frame(): void
+    {
+        $this->app['env'] = 'local';
+        Http::fake(['*' => Http::response(
+            'data: {"type":"content_block_delta","delta":{"type":"thinking_delta","thinking":"Considering the ask."}}' . "\n\n"
+            . 'data: {"type":"content_block_delta","delta":{"type":"text_delta","text":"Hi"}}' . "\n\n"
+            . 'data: {"type":"message_stop"}' . "\n\n"
+        )]);
+
+        $body = $this->post('/editor/ai/stream', ['prompt' => 'hi'])->assertOk()->streamedContent();
+
+        $this->assertStringContainsString('"type":"reasoning_delta"', $body);
+        $this->assertStringContainsString('"text":"Considering the ask."', $body);
+        // Both the reasoning frame and the answer arrive — one didn't swallow
+        // or cut off the other — and the stream still ends with a terminator.
+        $this->assertStringContainsString('"type":"text_delta"', $body);
+        $this->assertStringContainsString('"text":"Hi"', $body);
+        $this->assertStringContainsString('"type":"done"', $body);
+    }
+
+    /**
      * A streamed turn runs the same tool loop as a completion. Without it the
      * assistant silently lost every platform tool as soon as streaming was on.
      */

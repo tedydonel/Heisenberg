@@ -219,6 +219,36 @@ class AnthropicProviderTest extends TestCase
         $this->assertSame('end_turn', $events[2]->data['stopReason']);
     }
 
+    /**
+     * `thinking_delta` frames (adaptive thinking, always requested — see
+     * body()) must reach the caller as REASONING events, not be discarded, and
+     * must never be folded into the visible text.
+     */
+    public function test_thinking_delta_frames_produce_reasoning_events_not_text(): void
+    {
+        Http::fake(['*' => Http::response(
+            "event: content_block_delta\n"
+            . 'data: {"type":"content_block_delta","delta":{"type":"thinking_delta","thinking":"Let me "}}' . "\n\n"
+            . 'data: {"type":"content_block_delta","delta":{"type":"thinking_delta","thinking":"consider."}}' . "\n\n"
+            . 'data: {"type":"content_block_delta","delta":{"type":"signature_delta","signature":"abc123"}}' . "\n\n"
+            . 'data: {"type":"content_block_delta","delta":{"type":"text_delta","text":"Hello"}}' . "\n\n"
+            . 'data: {"type":"message_delta","delta":{"stop_reason":"end_turn"}}' . "\n\n"
+            . 'data: {"type":"message_stop"}' . "\n\n"
+        )]);
+
+        $events = iterator_to_array($this->provider()->stream($this->request()));
+        $types = array_map(static fn (AiStreamEvent $e): string => $e->type, $events);
+
+        // signature_delta contributes no event at all — it carries no
+        // displayable text, only a signature over the thinking block.
+        $this->assertSame(
+            [AiStreamEvent::REASONING, AiStreamEvent::REASONING, AiStreamEvent::TEXT_DELTA, AiStreamEvent::DONE],
+            $types,
+        );
+        $this->assertSame('Let me consider.', $events[0]->text . $events[1]->text);
+        $this->assertSame('Hello', $events[2]->text);
+    }
+
     public function test_streaming_sets_the_stream_flag_on_the_request(): void
     {
         Http::fake(['*' => Http::response('data: {"type":"message_stop"}' . "\n\n")]);

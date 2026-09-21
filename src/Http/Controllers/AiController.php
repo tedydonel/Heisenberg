@@ -20,6 +20,7 @@ use Heisenberg\Services\AiSettingsRepository;
 use Heisenberg\Services\AiToolRunner;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
 use Symfony\Component\HttpFoundation\StreamedResponse;
 
@@ -249,28 +250,143 @@ class AiController
     }
 
     /**
-     * Pull a JSON string array out of the model's reply, tolerating a stray
-     * code fence or preamble. Anything that isn't three-ish short strings is
-     * dropped rather than shown.
+     * Pull up to 3 short suggestion strings out of the model's reply.
+     *
+     * The prompt asks for a bare JSON array, but real replies drift from that in
+     * ways worth tolerating rather than discarding outright: a fenced ```json
+     * block, an object wrapping the array (`{"suggestions": [...]}`), or — for a
+     * model that ignored the JSON instruction entirely — a short list of plain
+     * lines. Anything that doesn't resolve to 1-3 short strings is dropped.
      *
      * @return list<string>
      */
     private function parseSuggestions(string $text): array
     {
-        $text = ReasoningFilter::strip($text);
-        $start = strpos($text, '[');
-        $end = strrpos($text, ']');
-        if ($start === false || $end === false || $end <= $start) {
+        $text = trim(ReasoningFilter::strip($text));
+        if ($text === '') {
             return [];
         }
 
-        $decoded = json_decode(substr($text, $start, $end - $start + 1), true);
-        if (! is_array($decoded)) {
-            return [];
+        $suggestions = $this->extractSuggestions($text);
+
+        if ($suggestions === []) {
+            // This used to fail completely silently — the panel just showed no
+            // chips with nothing in any log to say why. Debug level only: this
+            // is a best-effort convenience feature (see suggest()'s docblock)
+            // and must never spam production logs at a level anyone would
+            // notice, but an operator diagnosing "suggestions never appear" can
+            // turn logging up and see exactly what the model sent back.
+            Log::debug('heisenberg: ai suggestions did not parse', ['reply' => Str::limit($text, 2000)]);
         }
 
+        return $suggestions;
+    }
+
+    /**
+     * Try each accepted shape in turn: a fenced code block wrapping either a
+     * bare array or an object, then the same two unfenced, then plain lines as
+     * a last resort.
+     *
+     * @return list<string>
+     */
+    private function extractSuggestions(string $text): array
+    {
+        if (preg_match('/```(?:json)?\s*(.*?)\s*```/is', $text, $match) === 1) {
+            $fenced = $this->decodeJsonSuggestions($match[1]);
+            if ($fenced !== []) {
+                return $fenced;
+            }
+        }
+
+        $bare = $this->decodeJsonSuggestions($text);
+        if ($bare !== []) {
+            return $bare;
+        }
+
+        return $this->linesAsSuggestions($text);
+    }
+
+    /**
+     * Accept either a bare JSON array of strings, or an object carrying one
+     * under a `suggestions` key — some models wrap the array even when told
+     * not to.
+     *
+     * @return list<string>
+     */
+    private function decodeJsonSuggestions(string $text): array
+    {
+        $arrayStart = strpos($text, '[');
+        $arrayEnd = strrpos($text, ']');
+        if ($arrayStart !== false && $arrayEnd !== false && $arrayEnd > $arrayStart) {
+            $decoded = json_decode(substr($text, $arrayStart, $arrayEnd - $arrayStart + 1), true);
+            if (is_array($decoded)) {
+                $list = self::stringList($decoded);
+                if ($list !== []) {
+                    return $list;
+                }
+            }
+        }
+
+        $objectStart = strpos($text, '{');
+        $objectEnd = strrpos($text, '}');
+        if ($objectStart !== false && $objectEnd !== false && $objectEnd > $objectStart) {
+            $decoded = json_decode(substr($text, $objectStart, $objectEnd - $objectStart + 1), true);
+            if (is_array($decoded) && is_array($decoded['suggestions'] ?? null)) {
+                return self::stringList($decoded['suggestions']);
+            }
+        }
+
+        return [];
+    }
+
+    /**
+     * Last resort for a model that answered in plain text instead of JSON:
+     * newline- or bullet-separated short lines. A line that isn't short — the
+     * mark of prose rather than a suggestion chip — is dropped rather than
+     * truncated into something misleading.
+     *
+     * A LONE line only counts if it was explicitly marked as a list item
+     * (`- `, `1.`, `•`, …): without that signal, a single short sentence is
+     * indistinguishable from an ordinary prose reply — "I could not think of
+     * any, sorry!" is exactly this shape, and turning a refusal into a chip
+     * the author can insert would be worse than showing nothing. Two or more
+     * candidate lines are a real list either way, marked or not.
+     *
+     * @return list<string>
+     */
+    private function linesAsSuggestions(string $text): array
+    {
         $out = [];
-        foreach ($decoded as $item) {
+        $anyMarked = false;
+
+        foreach (preg_split('/\r?\n+/', $text) ?: [] as $line) {
+            $stripped = (string) preg_replace('/^[\s*•\d.)-]+/', '', trim($line), -1, $count);
+            $stripped = trim($stripped, " \t\"'");
+            if ($stripped === '' || mb_strlen($stripped) > 80) {
+                continue;
+            }
+            $anyMarked = $anyMarked || $count > 0;
+            $out[] = Str::limit($stripped, 60, '');
+            if (count($out) === 3) {
+                break;
+            }
+        }
+
+        if (count($out) === 1 && ! $anyMarked) {
+            return [];
+        }
+
+        return $out;
+    }
+
+    /**
+     * @param array<mixed> $items
+     * @return list<string>
+     */
+    private static function stringList(array $items): array
+    {
+        $out = [];
+        foreach ($items as $item) {
             if (is_string($item) && trim($item) !== '') {
                 $out[] = Str::limit(trim($item), 60, '');
             }

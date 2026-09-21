@@ -8,7 +8,7 @@ namespace Heisenberg\Ai;
  * One event on the normalised stream.
  *
  * Anthropic and OpenAI-compatible endpoints ship completely different SSE
- * payloads. Both adapters translate into these four types so the editor's panel
+ * payloads. Both adapters translate into these five types so the editor's panel
  * JS never learns which provider is active — switching provider changes nothing
  * client-side, which is the whole point of the normalisation.
  */
@@ -22,6 +22,17 @@ class AiStreamEvent
 
     public const ERROR = 'error';
 
+    /**
+     * A slice of the model's reasoning — Anthropic's `thinking_delta` blocks,
+     * or `reasoning_content` / `reasoning` on an OpenAI-compatible chunk.
+     * Carried on the same `text` field as {@see self::TEXT_DELTA} so the panel
+     * reuses one accumulation code path, but tagged with its own `type` so it
+     * can be routed to a separate (collapsible) area rather than the answer
+     * body. Deliberately never folded into the transcript replayed to the
+     * model or into saved content — see {@see \Heisenberg\Services\AiToolRunner}.
+     */
+    public const REASONING = 'reasoning_delta';
+
     /** @param array<string, mixed> $data */
     public function __construct(
         public readonly string $type,
@@ -33,6 +44,12 @@ class AiStreamEvent
     public static function textDelta(string $text): self
     {
         return new self(self::TEXT_DELTA, $text);
+    }
+
+    /** A slice of the model's reasoning — see {@see self::REASONING}. */
+    public static function reasoningDelta(string $text): self
+    {
+        return new self(self::REASONING, $text);
     }
 
     /** @param array<string, mixed> $call */
