@@ -30,6 +30,9 @@
         background: transparent;
         color: var(--hb-text-muted);
         cursor: pointer;
+        /* The home control is an <a> when a public site is configured; without this it would
+           pick up the UA's underline and link colour and stop matching its sibling buttons. */
+        text-decoration: none;
     }
     .hb-topbar__btn:hover { background: var(--hb-surface-hover); color: var(--hb-text-secondary); }
     .hb-topbar__btn:focus-visible { outline: 2px solid var(--hb-border-focus); outline-offset: -2px; }
@@ -134,7 +137,10 @@
 ])
 @php
     $leftButtons = [
-        ['icon' => 'house-fill', 'label' => __('heisenberg::editor.topbar.aria_home'), 'toggle' => null, 'tip' => 'aria_home'],
+        // Points at the host's public site (heisenberg.site_url, falling back to app.url). With
+        // neither set there is nowhere honest to go, so it renders as an inert button rather
+        // than a link to the editor's own host — which is what it silently was before.
+        ['icon' => 'house-fill', 'label' => __('heisenberg::editor.topbar.aria_home'), 'toggle' => null, 'tip' => 'aria_home', 'href' => \Heisenberg\Support\SiteUrl::base()],
         null,
         ['icon' => 'list', 'label' => __('heisenberg::editor.topbar.aria_menu'), 'toggle' => 'sidebar', 'tip' => 'aria_menu'],
         ['icon' => 'sidebar-simple', 'label' => __('heisenberg::editor.topbar.aria_panel_left'), 'toggle' => 'panel', 'tip' => 'aria_panel_left'],
@@ -194,6 +200,17 @@
         @foreach ($leftButtons as $btn)
             @if (is_null($btn))
                 <x-heisenberg::ui.divider orientation="vertical" style="width:1px;height:16px;" />
+            @elseif (($btn['href'] ?? '') !== '')
+                <a
+                    class="hb-topbar__btn"
+                    href="{{ $btn['href'] }}"
+                    aria-label="{{ $btn['label'] }}"
+                    data-hb-home
+                >
+                    <span class="hb-topbar__icon" aria-hidden="true">
+                        @include('heisenberg::components.ui.icon', ['name' => $btn['icon'], 'size' => 14])
+                    </span>
+                </a>
             @else
                 <button
                     type="button"

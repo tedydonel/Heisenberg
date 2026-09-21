@@ -43,6 +43,18 @@ return [
     'user_model' => env('HEISENBERG_USER_MODEL', User::class),
     'users_table' => 'users',
 
+    // The host's PUBLIC website root — the address readers see, which is not necessarily the
+    // address the editor is served from. A host commonly mounts Heisenberg behind an admin or
+    // staff dashboard on its own subdomain; nothing in an incoming request can tell us the
+    // apex from there, so detecting it is always a guess and the guess is wrong exactly when
+    // it matters. Set this and the editor stops guessing: the topbar home button points here,
+    // the SEO panel shows this domain instead of whatever host the browser happens to be on,
+    // and a post's public URL is rebased onto it (see SeoUrlResolver).
+    //
+    // null (the default) keeps the previous behaviour: fall back to `app.url`, and let the SEO
+    // panel show its `yoursite.com` placeholder rather than invent a domain.
+    'site_url' => env('HEISENBERG_SITE_URL'),
+
     // Single source of truth for every locale-aware surface: the editor's footer switcher
     // (LocaleController/EditorLocaleMiddleware), the Translations section (TranslationStatusService),
     // and the MCP `locale` argument validation (McpToolRegistry). `editor.locales` below is now a

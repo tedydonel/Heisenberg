@@ -8,6 +8,7 @@ use Heisenberg\Contracts\PostUrlResolver;
 use Heisenberg\Http\Controllers\PreviewController;
 use Heisenberg\Models\Post;
 use Heisenberg\Support\LocaleConfig;
+use Heisenberg\Support\SiteUrl;
 use Illuminate\Support\Facades\Route;
 
 /**
@@ -66,8 +67,15 @@ class SeoUrlResolver implements PostUrlResolver
         // sitemap, canonical and hreflang links pointing at the editor preview below until
         // `url_template` was ALSO set by hand.
         if (Route::has('heisenberg.public.posts.show') && (string) $post->slug !== '') {
-            return route('heisenberg.public.posts.show', ['locale' => $locale, 'slug' => $post->slug]);
+            // route() builds the host from the CURRENT request, which is the editor's host —
+            // an admin/staff subdomain in most installs. The path is right, the host is not,
+            // so rebase onto the configured public site when the host has named one.
+            return SiteUrl::rebase(route('heisenberg.public.posts.show', ['locale' => $locale, 'slug' => $post->slug]));
         }
+
+        // Deliberately NOT rebased: this is the dev-only editor preview route. Moving it onto
+        // the public site would produce a confident-looking URL that 404s there, and the SEO
+        // panel's "/editor/ means not a real URL" check would stop catching it.
 
         return route('heisenberg.editor.preview.post', ['post' => $post->getKey()]);
     }

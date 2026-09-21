@@ -150,6 +150,23 @@ class SeoUrlResolverTest extends TestCase
         );
     }
 
+    /**
+     * The dev-only editor preview route stays on the editor's host even when a public site URL
+     * is configured. Rebasing it would produce a confident-looking address that 404s on the real
+     * site, and the SEO panel's "a /editor/ URL is not a real one" check would stop catching it.
+     */
+    public function test_the_dev_preview_fallback_is_never_rebased_onto_the_site_url(): void
+    {
+        $this->app['config']->set('heisenberg.seo.url_template', null);
+        $this->app['config']->set('heisenberg.site_url', 'https://example.com');
+        $post = $this->makePost();
+
+        $url = $this->app->make(PostUrlResolver::class)->url($post);
+
+        $this->assertSame(route('heisenberg.editor.preview.post', ['post' => $post->getKey()]), $url);
+        $this->assertStringNotContainsString('example.com', $url);
+    }
+
     public function test_a_custom_bound_resolver_wins_on_the_sitemap(): void
     {
         $this->app['config']->set('heisenberg.seo.url_resolver', StubPostUrlResolver::class);

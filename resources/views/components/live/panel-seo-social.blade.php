@@ -280,7 +280,13 @@
     $hbSeoHasRealUrl = $hbSeoPublicUrl !== '' && ! str_contains($hbSeoPublicUrl, '/editor/');
     $hbSeoCanonicalPlaceholder = $hbSeoHasRealUrl ? $hbSeoPublicUrl : __('heisenberg::editor.panel_seo_social.seo_canonical_ph');
     $hbSeoCrumbPrefix = $hbSeoHasRealUrl ? $hbSeoPublicUrl : str_replace(':slug', $hbSeoPreviewSlug, __('heisenberg::editor.panel_seo_social.seo_url_slug_prefix'));
-    $hbSeoDomain = $hbSeoHasRealUrl ? (parse_url($hbSeoPublicUrl, PHP_URL_HOST) ?: 'yoursite.com') : 'yoursite.com';
+    // The configured public site is the authority for the domain shown here. Falling back to
+    // the browser's own hostname (which the JS below used to do) prints the EDITOR's host —
+    // an admin/staff subdomain in most installs — into the social card preview.
+    $hbSeoConfiguredHost = \Heisenberg\Support\SiteUrl::host();
+    $hbSeoDomain = $hbSeoHasRealUrl
+        ? (parse_url($hbSeoPublicUrl, PHP_URL_HOST) ?: ($hbSeoConfiguredHost ?: 'yoursite.com'))
+        : ($hbSeoConfiguredHost ?: 'yoursite.com');
 @endphp
 <div data-hb-panel-seo
     data-hb-post-id="{{ $postId ?? '' }}"
@@ -539,7 +545,11 @@
                     const ogImageUrl = (ogMarker && ogMarker.value) || '';
                     const activeImageUrl = ogImageUrl || featuredUrl;
 
-                    const rawDomain = (root.dataset.hbSeoDomain || '').trim() || (window.location && window.location.hostname) || 'yoursite.com';
+                    // No window.location fallback: the browser's hostname is the EDITOR's host,
+                    // which is exactly wrong when the editor runs on an admin subdomain. The
+                    // server already resolved this from heisenberg.site_url; when nobody has
+                    // configured one, show the placeholder rather than a confident wrong domain.
+                    const rawDomain = (root.dataset.hbSeoDomain || '').trim() || 'yoursite.com';
                     const domainClean = rawDomain.replace(/^https?:\/\//i, '').split('/')[0];
 
                     const finalTitle = (ogTitleInput && ogTitleInput.value.trim()) ||
