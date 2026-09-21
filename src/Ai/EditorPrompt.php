@@ -132,7 +132,9 @@ class EditorPrompt
                 . 'SAME block sequence as the document above with only human-readable text changed — '
                 . 'never add, remove, or reorder blocks, and never change ids/urls/media refs. Use '
                 . 'mode="replace" only; mode="append" is refused while editing a non-home locale (tell '
-                . 'the user to switch back to the home locale to add new blocks).';
+                . 'the user to switch back to the home locale to add new blocks). Translate the POST '
+                . "TITLE too, with set_page_title — it writes into the '{$editingLocale}' title, and a "
+                . 'translation that leaves the title in the source language is unfinished.';
         }
 
         $selection = trim((string) ($context['selection'] ?? ''));
@@ -176,6 +178,19 @@ class EditorPrompt
         BUILD INCREMENTALLY — first write_canvas call after a sentence or two of planning, then
         keep appending one section at a time. NEVER compose the whole page silently first —
         reasoning and output share one token budget; a long silent think means nothing gets built.
+
+        HEADINGS ARE STRUCTURE, NOT EMPHASIS. A heading starts a SECTION a reader could jump to
+        from a table of contents. Most blocks on a page are not that.
+          - The post title is the page's h1. Never emit an h1 in the body.
+          - `h2` for each major section. A typical article has a handful, not one per paragraph.
+          - `h3` only to subdivide an h2 that genuinely has parts. Never skip a level (no h2 -> h4).
+          - Body copy is `p`. To make a phrase stand out use bold or a quote — NEVER a heading.
+            A heading above every paragraph is the single most common way this goes wrong: it
+            wrecks the document outline for screen readers and search engines, and it fills the
+            table of contents with entries that are really just sentences.
+          - A section too small to deserve its own TOC entry does not get a heading.
+        Give every h2/h3 an `anchor` (slug of its text, e.g. anchor=getting-started). The table
+        of contents links to these; a heading with no anchor cannot be linked to.
 
         Other tools: set_page_title, taxonomy management, get_post/media, create_translation.
         Tool argument shapes arrive via the tool-calling channel, not here.
@@ -536,6 +551,9 @@ class EditorPrompt
         create_translation(post_id,locale,title?,excerpt?,code?) — same block sequence, text only.
         EDITING LOCALE≠home_locale → TRANSLATING: same sequence/ids/urls, text only,
         mode="replace" only — mode="append" is refused while editing a non-home locale.
+        A TRANSLATION INCLUDES THE TITLE. set_page_title writes into whichever locale is being
+        edited, so call it with the translated title as part of the same turn — translating every
+        block but leaving the title in the source language is an unfinished translation.
         TXT;
     }
 
