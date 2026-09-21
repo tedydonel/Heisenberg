@@ -135,6 +135,14 @@ class EditorPrompt
                 . 'the user to switch back to the home locale to add new blocks). Translate the POST '
                 . "TITLE too, with set_page_title — it writes into the '{$editingLocale}' title, and a "
                 . 'translation that leaves the title in the source language is unfinished.';
+        } elseif ($editingLocale !== '' && $editingLocale === $homeLocale) {
+            // The destructive case: asked to translate while the SOURCE locale is active. Without
+            // this, write_canvas mode="replace" is the obvious-looking move and it overwrites the
+            // original text with the translation.
+            $parts[] = "You are editing the post's home locale ('{$homeLocale}'). If asked to "
+                . 'translate, call create_translation with the target locale — do NOT write the '
+                . 'translation onto the canvas with write_canvas, which would replace the source '
+                . 'text itself. The user does not need to switch locale for you to translate.';
         }
 
         $selection = trim((string) ($context['selection'] ?? ''));
@@ -548,12 +556,27 @@ class EditorPrompt
         return <<<'TXT'
         LOCALES — one post, multiple languages on the SAME row (suffixed attrs, e.g. content_fr).
         get_post `translations`: locale→{is_default,title,excerpt,blocks_translated,complete}.
-        create_translation(post_id,locale,title?,excerpt?,code?) — same block sequence, text only.
-        EDITING LOCALE≠home_locale → TRANSLATING: same sequence/ids/urls, text only,
-        mode="replace" only — mode="append" is refused while editing a non-home locale.
-        A TRANSLATION INCLUDES THE TITLE. set_page_title writes into whichever locale is being
-        edited, so call it with the translated title as part of the same turn — translating every
-        block but leaving the title in the source language is an unfinished translation.
+        create_translation(post_id,target_locale,title?,excerpt?,code?) — same block sequence,
+        text only. NOTE the argument is `target_locale`, not `locale`.
+
+        HOW TO TRANSLATE depends on which locale the author is currently editing:
+
+        * EDITING THE HOME LOCALE and asked to translate → use create_translation with
+          target_locale. NEVER write_canvas: while the home locale is active, write_canvas
+          mode="replace" overwrites the SOURCE text with the translation and the original is
+          gone. The author does not have to switch locale for you to translate — that is the
+          whole point of create_translation, and asking them to switch is a wrong answer.
+          (create_translation needs a saved post_id; if the post has never been saved, say so
+          and offer to save it first rather than writing the translation over the source.)
+
+        * EDITING LOCALE≠home_locale → TRANSLATING, i.e. this turn is itself a translation:
+          same sequence/ids/urls,
+          text only, mode="replace" only — mode="append" is refused while editing a non-home
+          locale. This is the path for an author translating alongside you by hand.
+
+        A TRANSLATION INCLUDES THE TITLE, on either path: create_translation takes `title`, and
+        set_page_title writes into whichever locale is being edited. Translating every block but
+        leaving the title in the source language is an unfinished translation.
         TXT;
     }
 
