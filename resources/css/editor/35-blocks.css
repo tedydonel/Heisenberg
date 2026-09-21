@@ -91,6 +91,20 @@ body.hb-canvas-drag, body.hb-canvas-drag * { cursor: grabbing !important; }
 .hb-blk.hb-blk--nested:hover:not(.is-selected) > * { box-shadow: 0 0 0 .6px var(--hb-border-strong); }
 .hb-blk.hb-blk--nested.is-selected > * { box-shadow: 0 0 0 .6px var(--hb-editing); }
 
+/* On the email canvas a block's rendered root carries its contract class (renderBlockEl's
+   bindEmailSupportsToCanvas), which is what lets the inspector style it at all. That class also
+   declares the block's WEB display — `.hb-block-button { display: inline-flex }` — and applying
+   that to an email button's <table> root stops it being a table, changing the layout of the very
+   thing the canvas exists to preview.
+   On this surface the TEMPLATE owns structure and the class supplies only styling, so put the
+   table semantics back. Two classes plus a type beats the single-class block rules on
+   specificity, so no !important is needed. `.hb-blk` is itself the root for table-structural
+   blocks (`column`), hence the second pair. */
+.hb-canvas--email .hb-blk table { display: table; }
+.hb-canvas--email .hb-blk td { display: table-cell; }
+.hb-canvas--email table.hb-blk { display: table; }
+.hb-canvas--email td.hb-blk { display: table-cell; }
+
 .hb-inner-appender {
     display: flex; align-items: center; justify-content: center;
     min-height: 44px; width: 100%; flex: 1 1 auto;

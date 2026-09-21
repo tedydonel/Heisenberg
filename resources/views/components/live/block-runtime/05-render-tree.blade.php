@@ -256,7 +256,10 @@
         if (!template) return null;
         const root = renderNode(template, model, c, true, depth || 0, surface);
         if (!root) return null;
-        if (surface === 'email') hoistEmailSpacer(root);
+        if (surface === 'email') {
+            bindEmailSupportsToCanvas(root, model, c);
+            hoistEmailSpacer(root);
+        }
 
         // A <div> is not valid inside a table row, and the email surface's `column` block roots
         // at a <td>. Wrapping that in the usual <div class="hb-blk"> produced <tr><div><td>,
@@ -286,6 +289,75 @@
         decorateImageBlock(wrap, model);
         decorateIconBlock(wrap, model);
         return wrap;
+    }
+
+
+    /**
+     * CANVAS ONLY: let an email block's rendered root be styled by the inspector at all.
+     *
+     * The inspector's values DO reach the email root — renderNode() writes them as custom
+     * properties (`--hb-paragraph-pt: 40px`). Nothing on the canvas read them, because both
+     * stylesheets that consume them are keyed on hooks the email carve-out strips:
+     *
+     *   - per-block styling  `.hb-block-paragraph { padding: var(--hb-paragraph-pt, 0) … }`
+     *   - the supports layer `[data-block-id].hb-supports { border-width: … ; box-shadow: … }`
+     *
+     * Email templates author no `data-block-id` and the carve-out skips the contract className,
+     * so an email document had NEITHER hook: padding, background, colour, typography, size,
+     * stroke, shadow and opacity were all inert. Not one inspector control worked, which is why
+     * it read as the inspector being disconnected rather than as a styling bug.
+     *
+     * It stayed hidden because the EXPORT was always right: EmailRenderer resolves the same
+     * properties to literal inline declarations in PHP, so preview and sent mail showed every
+     * change the canvas refused to.
+     *
+     * Restoring both hooks costs the export nothing — this function is not part of it.
+     * BlockTreeRenderer/EmailRenderer build the MIME in PHP and never run this file, and what is
+     * saved is the block MODEL, not this DOM. The carve-out stays exactly as strict for
+     * everything we send.
+     *
+     * Deliberately only `style.className`, never the CONDITIONAL classNames: `hb-flex-layout`
+     * would lay a Group out as a flex row on canvas while the email it produces stacks its
+     * children in a table — the one place the canvas must not copy the web surface.
+     */
+    function bindEmailSupportsToCanvas(root, model, contract) {
+        if (!root || root.nodeType !== 1 || !contract || !contract.style) return;
+
+        String(contract.style.className || '').split(/\s+/).forEach(function (t) {
+            if (t) root.classList.add(t);
+        });
+
+        // The supports layer keys on the ATTRIBUTE as well as `.hb-supports`, and that attribute
+        // is the export's carve-out — so stamp it on the canvas copy only.
+        if (!root.getAttribute('data-block-id')) root.setAttribute('data-block-id', model.id);
+
+        // The per-block CSS bakes the WEB box model into its fallbacks — `margin: var(--hb-
+        // paragraph-mt, 6px) …`, `padding: var(--hb-button-pt, 10px) …` — and those fire for
+        // every side the author has not set. Left alone, the class alone gave each email
+        // paragraph a 6px margin and each button 10px/20px of padding that the email itself does
+        // not have. An email block's spacing belongs to its template's <td>, so the block CSS
+        // must contribute nothing unless the inspector actually asked for it: pin the untouched
+        // sides to 0 and the fallback never applies.
+        //
+        // Names come from `contract.style.variables` — the same map styleDeclarations() reads, so
+        // it cannot drift from it. Sniffing a prefix out of the element's existing declarations
+        // fails precisely where it matters: a block with nothing set has an EMPTY style
+        // attribute, and that untouched block is exactly the one whose web defaults leak.
+        const declarations = root.getAttribute('style') || '';
+        const variables = contract.style.variables;
+        if (!variables || typeof variables !== 'object') return;
+
+        const zeroed = [];
+        for (const name in variables) {
+            if (!Object.prototype.hasOwnProperty.call(variables, name)) continue;
+            if (!/-(?:mt|mr|mb|ml|pt|pr|pb|pl)$/.test(name)) continue;
+            if (declarations.indexOf(name + ':') !== -1) continue;
+            zeroed.push(name + ': 0');
+        }
+
+        if (zeroed.length) {
+            root.setAttribute('style', declarations.replace(/;\s*$/, '') + '; ' + zeroed.join('; ') + ';');
+        }
     }
 
 
