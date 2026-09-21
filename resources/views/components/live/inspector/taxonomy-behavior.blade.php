@@ -36,7 +36,7 @@
 
             .hb-post-layout-row { display: flex; align-items: center; gap: 10px; }
             .hb-post-layout-row__label { flex: 1 1 auto; min-width: 0; font-family: var(--hb-font-sans, Rubik, sans-serif); font-size: var(--hb-fs-sm, 12px); color: var(--hb-text-secondary); }
-            .hb-post-layout-row__readout { flex: none; width: 34px; text-align: right; font-family: var(--hb-font-sans, Rubik, sans-serif); font-size: var(--hb-fs-xs, 11px); color: var(--hb-text-muted); }
+            .hb-post-layout-row__readout { flex: none; width: 26px; text-align: right; font-family: var(--hb-font-sans, Rubik, sans-serif); font-size: var(--hb-fs-xs, 11px); color: var(--hb-text-muted); }
 
             .hb-post-translations-body { display: flex; flex-direction: column; gap: 6px; padding: 0 var(--hb-space-3, 12px) var(--hb-space-3, 12px); }
             .hb-post-translations-body[hidden] { display: none; }
@@ -243,7 +243,7 @@
                     };
 
                     const onInput = (slider, readout) => {
-                        if (readout) readout.textContent = slider.value + 'px';
+                        if (readout) readout.textContent = slider.value;
                         apply();
                         scheduleSave();
                     };

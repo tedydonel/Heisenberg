@@ -74,8 +74,22 @@ body.hb-canvas-drag, body.hb-canvas-drag * { cursor: grabbing !important; }
 .hb-blk--nested { display: contents; margin: 0; }
 .hb-blk--nested:hover:not(.is-selected) { box-shadow: none; }
 .hb-blk--nested.is-selected { box-shadow: none; }
-.hb-blk--nested:hover:not(.is-selected) > [data-block-id] { box-shadow: 0 0 0 .6px var(--hb-border-strong); }
-.hb-blk--nested.is-selected > [data-block-id] { box-shadow: 0 0 0 .6px var(--hb-editing); }
+/* Drawn on the block's RENDERED ROOT, whatever element that is. `.hb-blk--nested` is
+   display:contents and generates no box, so the outline has to go on its child — but keying
+   that child as [data-block-id] only works on the web surface: EMAIL templates carry no such
+   attribute, so a nested block being hovered or selected inside an email showed no outline at
+   all. The toolbar did appear and was positioned correctly (blockBox() already falls back to
+   the first child with a box), which made this read as "nested blocks don't respond" — there
+   was simply no feedback that anything had been selected. `> *` is the same element on the web
+   surface and the <table> on the email one. */
+   The leading `.hb-blk` is load-bearing, not decoration: SupportsStyle emits
+   `[data-block-id].hb-supports { box-shadow: var(--hb-shadow, none) }` from blocksCss, which is
+   injected after this file. `.hb-blk--nested.is-selected > *` ties it on specificity and loses
+   on order, so the outline silently vanished on the web surface; the old
+   `> [data-block-id]` won only because the attribute selector added the extra weight that `*`
+   does not. Three classes puts it back above the supports rule on both surfaces. */
+.hb-blk.hb-blk--nested:hover:not(.is-selected) > * { box-shadow: 0 0 0 .6px var(--hb-border-strong); }
+.hb-blk.hb-blk--nested.is-selected > * { box-shadow: 0 0 0 .6px var(--hb-editing); }
 
 .hb-inner-appender {
     display: flex; align-items: center; justify-content: center;

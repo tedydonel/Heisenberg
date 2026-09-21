@@ -61,12 +61,12 @@
             <div class="hb-post-layout-row">
                 <span class="hb-post-layout-row__label">{{ __('heisenberg::editor.inspector.post_layout_padding_x') }}</span>
                 <x-heisenberg::ui.slider data-hb-post-layout-x :value="$postPagePaddingX" min="0" max="400" step="4" :disabled="$postId === null" />
-                <span class="hb-post-layout-row__readout" data-hb-post-layout-x-readout>{{ $postPagePaddingX }}px</span>
+                <span class="hb-post-layout-row__readout" data-hb-post-layout-x-readout>{{ $postPagePaddingX }}</span>
             </div>
             <div class="hb-post-layout-row">
                 <span class="hb-post-layout-row__label">{{ __('heisenberg::editor.inspector.post_layout_padding_y') }}</span>
                 <x-heisenberg::ui.slider data-hb-post-layout-y :value="$postPagePaddingY" min="0" max="400" step="4" :disabled="$postId === null" />
-                <span class="hb-post-layout-row__readout" data-hb-post-layout-y-readout>{{ $postPagePaddingY }}px</span>
+                <span class="hb-post-layout-row__readout" data-hb-post-layout-y-readout>{{ $postPagePaddingY }}</span>
             </div>
             <span class="hb-post-taxonomy-hint" data-hb-post-layout-hint @if ($postId !== null) hidden @endif>{{ __('heisenberg::editor.inspector.post_taxonomy_needs_save') }}</span>
         </div>

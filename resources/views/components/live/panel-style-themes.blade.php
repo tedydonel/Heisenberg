@@ -69,8 +69,8 @@
             <span class="hb-token-section__title">{{ __('heisenberg::editor.panel_style_themes.token_radius') }}</span>
             @foreach ($radii as $r)
                 <div class="hb-token-row" data-hb-token-row data-hb-token-section="radii" data-hb-token-name="{{ $r['name'] }}">
-                    <x-heisenberg::ui.input :value="$r['label']" width="70px" data-hb-token-field="label" />
-                    <x-heisenberg::ui.input :value="$r['value']" width="100%" data-hb-token-field="value" />
+                    <x-heisenberg::ui.input :value="$r['label']" width="100%" data-hb-token-field="label" />
+                    <x-heisenberg::ui.input :value="$r['value']" width="80px" data-hb-token-field="value" />
                     <span class="hb-token-row__remove" data-hb-token-remove aria-hidden="true">@include('heisenberg::components.ui.icon', ['name' => 'x', 'size' => 14])</span>
                 </div>
             @endforeach
@@ -81,8 +81,8 @@
         </div>
         <template data-hb-token-template="radii">
             <div class="hb-token-row" data-hb-token-row data-hb-token-section="radii" data-hb-token-name="">
-                <x-heisenberg::ui.input value="" width="70px" data-hb-token-field="label" />
-                <x-heisenberg::ui.input value="" width="100%" data-hb-token-field="value" />
+                <x-heisenberg::ui.input value="" width="100%" data-hb-token-field="label" />
+                <x-heisenberg::ui.input value="" width="80px" data-hb-token-field="value" />
                 <span class="hb-token-row__remove" data-hb-token-remove aria-hidden="true">@include('heisenberg::components.ui.icon', ['name' => 'x', 'size' => 14])</span>
             </div>
         </template>
@@ -137,8 +137,8 @@
             <span class="hb-token-section__title">{{ __('heisenberg::editor.panel_style_themes.token_font_sizes') }}</span>
             @foreach ($fontSizes as $fs)
                 <div class="hb-token-row" data-hb-token-row data-hb-token-section="fontSizes" data-hb-token-name="{{ $fs['name'] }}">
-                    <x-heisenberg::ui.input :value="$fs['label']" width="70px" data-hb-token-field="label" />
-                    <x-heisenberg::ui.input :value="$fs['value']" width="100%" data-hb-token-field="value" />
+                    <x-heisenberg::ui.input :value="$fs['label']" width="100%" data-hb-token-field="label" />
+                    <x-heisenberg::ui.input :value="$fs['value']" width="80px" data-hb-token-field="value" />
                     <span class="hb-token-row__remove" data-hb-token-remove aria-hidden="true">@include('heisenberg::components.ui.icon', ['name' => 'x', 'size' => 14])</span>
                 </div>
             @endforeach
@@ -149,8 +149,8 @@
         </div>
         <template data-hb-token-template="fontSizes">
             <div class="hb-token-row" data-hb-token-row data-hb-token-section="fontSizes" data-hb-token-name="">
-                <x-heisenberg::ui.input value="" width="70px" data-hb-token-field="label" />
-                <x-heisenberg::ui.input value="" width="100%" data-hb-token-field="value" />
+                <x-heisenberg::ui.input value="" width="100%" data-hb-token-field="label" />
+                <x-heisenberg::ui.input value="" width="80px" data-hb-token-field="value" />
                 <span class="hb-token-row__remove" data-hb-token-remove aria-hidden="true">@include('heisenberg::components.ui.icon', ['name' => 'x', 'size' => 14])</span>
             </div>
         </template>
