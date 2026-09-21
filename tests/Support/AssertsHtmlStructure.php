@@ -430,7 +430,17 @@ trait AssertsHtmlStructure
      */
     public static function hbFallbackCssToXPath(string $selector): string
     {
-        $compounds = preg_split('/\s+/', trim($selector)) ?: [];
+        // Selector GROUPS ("a, b, c") first: symfony/css-selector handles these natively, so
+        // until this fallback did too, any grouped selector threw here — but ONLY on a machine
+        // where symfony/css-selector was absent. It ships as a transitive dependency of some
+        // Laravel versions and not others, so assertFormControl() (which builds an
+        // input/select/textarea/#id group) passed locally and errored on other CI lanes.
+        $group = array_filter(array_map('trim', explode(',', trim($selector))), 'strlen');
+        if (count($group) > 1) {
+            return implode(' | ', array_map([self::class, 'hbFallbackCssToXPath'], $group));
+        }
+
+        $compounds = preg_split('/\s+/', trim((string) reset($group))) ?: [];
         $steps = array_map([self::class, 'hbFallbackCompoundToXPathStep'], $compounds);
 
         return '//' . implode('//', $steps);

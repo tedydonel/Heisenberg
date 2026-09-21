@@ -783,11 +783,22 @@ final class EditorController
     }
 
     /**
-     * Stat-based fingerprint for a list of files: each file's path + mtime +
-     * size, hashed. A cheap proxy for "did any of these change" that never
-     * reads file content, so it's safe to compute on every request. Exposed as
-     * public (and file-list-parameterized) so it's unit-testable without
-     * mutating the package's real shipped CSS files.
+     * Content fingerprint for a list of files: each file's path + a hash of its
+     * bytes. Exposed as public (and file-list-parameterized) so it's unit-testable
+     * without mutating the package's real shipped CSS files.
+     *
+     * This used to hash path + mtime + size, which was cheaper but wrong in two
+     * ways, both of which serve a STALE stylesheet under an `immutable` cache
+     * header — the worst possible failure for this cache:
+     *  - PHP caches stat() results per file for the life of the process, so a file
+     *    edited after its first stat kept reporting the old mtime/size. That is how
+     *    this surfaced: a test that rewrote a file with different content AND a
+     *    later mtime still produced an identical fingerprint on Linux.
+     *  - Second-resolution mtimes cannot distinguish an edit made in the same
+     *    second that happens to preserve the byte length.
+     * Reading the bytes costs nothing extra in practice: css() already reads every
+     * one of these files to build the bundle it serves, and outside `local` the
+     * computed version is memoized for 300s (see cachedVersion()).
      *
      * @param list<string> $files
      */
@@ -795,8 +806,7 @@ final class EditorController
     {
         $parts = [];
         foreach ($files as $file) {
-            $stat = @stat($file);
-            $parts[] = $file . ':' . ($stat['mtime'] ?? 0) . ':' . ($stat['size'] ?? 0);
+            $parts[] = $file . ':' . (@md5_file($file) ?: '0');
         }
 
         return substr(sha1(implode('|', $parts)), 0, 12);

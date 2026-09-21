@@ -342,4 +342,35 @@ class AssertsHtmlStructureTest extends TestCase
             AssertsHtmlStructure::hbFallbackCssToXPath('div span'),
         );
     }
+
+    /**
+     * Selector GROUPS, the case that only ever broke where symfony/css-selector was absent.
+     * assertFormControl() builds one, so on a Laravel lane whose dependency tree omits that
+     * package every form-control assertion errored while passing locally. The fallback is
+     * exercised directly here so the group support is covered on EVERY machine, not just the
+     * ones that happen to take this branch.
+     */
+    public function test_fallback_css_to_xpath_supports_selector_groups(): void
+    {
+        $this->assertSame(
+            "//input[@name='post_title'] | //select[@name='post_title'] | //*[@id='post_title']",
+            AssertsHtmlStructure::hbFallbackCssToXPath('input[name="post_title"], select[name="post_title"], #post_title'),
+        );
+    }
+
+    public function test_form_control_assertions_work_on_the_fallback_converter_too(): void
+    {
+        // The same assertion assertFormControl() makes, but forced through the fallback's
+        // XPath rather than symfony/css-selector's, proving the group translation is usable.
+        $dom = new \DOMDocument();
+        @$dom->loadHTML('<?xml encoding="UTF-8"><body>' . self::SAMPLE . '</body>');
+        $xpath = new \DOMXPath($dom);
+
+        $found = $xpath->query(AssertsHtmlStructure::hbFallbackCssToXPath(
+            'input[name="post_title"], select[name="post_title"], textarea[name="post_title"], #post_title'
+        ));
+
+        $this->assertNotFalse($found);
+        $this->assertGreaterThan(0, $found->length);
+    }
 }

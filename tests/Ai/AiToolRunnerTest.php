@@ -484,6 +484,89 @@ class AiToolRunnerTest extends TestCase
     }
 
     /**
+     * Reasoning deltas must reach the panel (so the "thinking" section has
+     * something to show) but must never ride along in the transcript replayed
+     * back to the model — that transcript is built from the same $text the
+     * next round's request carries, so a leak here would mean every follow-up
+     * turn re-reads the model's own scratch thoughts as if they were its
+     * answer.
+     */
+    public function test_reasoning_deltas_are_forwarded_but_never_replayed_to_the_model(): void
+    {
+        $provider = new class() implements AiProvider
+        {
+            /** @var list<list<AiMessage>> */
+            public array $seenMessages = [];
+
+            private int $index = 0;
+
+            public function id(): string
+            {
+                return 'fake-reasoning';
+            }
+
+            public function label(): string
+            {
+                return 'Fake reasoning';
+            }
+
+            public function isConfigured(): bool
+            {
+                return true;
+            }
+
+            public function discoverModels(): array
+            {
+                return ['x'];
+            }
+
+            public function supportsTools(): bool
+            {
+                return true;
+            }
+
+            public function complete(AiRequest $request): AiResponse
+            {
+                return new AiResponse('unused');
+            }
+
+            public function stream(AiRequest $request): iterable
+            {
+                $this->seenMessages[] = $request->messages;
+
+                if ($this->index++ === 0) {
+                    yield AiStreamEvent::reasoningDelta('Let me think about this tool call.');
+                    yield AiStreamEvent::textDelta('Checking issues...');
+                    yield AiStreamEvent::toolUse(['id' => 'c1', 'name' => 'linear__search', 'arguments' => []]);
+                    yield AiStreamEvent::done();
+
+                    return;
+                }
+
+                yield AiStreamEvent::reasoningDelta('Now I can answer.');
+                yield AiStreamEvent::textDelta('You have 42.');
+                yield AiStreamEvent::done(['stopReason' => 'end_turn']);
+            }
+        };
+
+        $events = iterator_to_array($this->runner($this->recordingClient())->stream($provider, $this->request(), ['linear__search' => $this->server()], [
+            ['name' => 'linear__search', 'description' => '', 'input_schema' => ['type' => 'object']],
+        ]));
+
+        // The panel still sees both reasoning deltas, forwarded like any other event.
+        $reasoning = array_values(array_filter($events, static fn (AiStreamEvent $e): bool => $e->type === AiStreamEvent::REASONING));
+        $this->assertCount(2, $reasoning);
+        $this->assertSame('Let me think about this tool call.', $reasoning[0]->text);
+
+        // But the SECOND pass's request — the replayed transcript — carries only
+        // the first pass's visible text, never its reasoning.
+        $replayed = collect($provider->seenMessages[1])->last(static fn (AiMessage $m): bool => $m->hasToolCalls());
+        $this->assertNotNull($replayed);
+        $this->assertSame('Checking issues...', $replayed->content);
+        $this->assertStringNotContainsString('Let me think', $replayed->content);
+    }
+
+    /**
      * Exactly one terminator, on the last pass. A `done` after the tool-calling
      * pass would tell the panel the answer had finished while the real work was
      * still to come.

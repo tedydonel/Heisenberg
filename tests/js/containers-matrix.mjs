@@ -82,22 +82,35 @@ ok('clicking and typing in the nested child writes ITS model and paints',
     typed.clicked && typedResult.model.indexOf('typed-inside') !== -1 && typedResult.dom.indexOf('typed-inside') !== -1,
     JSON.stringify({ ...typed, ...typedResult }));
 
-// The toolbar for a nested selection anchors to the TOP-LEVEL ancestor — never inside the
-// container, where it would cover sibling content.
+// The toolbar FOLLOWS the child being edited (fix(editor) 59537c6c, 2026-08-14): selecting a
+// nested block docks the bar over that child, not over its container. This test predates that
+// change and asserted the old container-anchored behaviour, so it had been failing since then.
+// It floats in the canvas layer rather than inside any .hb-blk, so assert POSITION (docked over
+// the selected child) instead of DOM parentage.
 await page.evaluate((c) => { document.activeElement?.blur(); window.hbEditor.selectById(c); }, childId);
 await page.waitForTimeout(200);
-const docked = await page.evaluate((g) => {
+const docked = await page.evaluate((c) => {
     const tb = document.querySelector('[data-hb-block-toolbar]');
-    const host = tb ? tb.closest('.hb-blk') : null;
+    const blk = document.querySelector('.hb-blk[data-block="' + c + '"]');
+    if (!tb || !blk) return { selected: window.hbEditor.getSelectedId(), visible: false };
+    const t = tb.getBoundingClientRect();
+    // .hb-blk--nested is display:contents, so measure the first descendant with a real box.
+    let b = blk.getBoundingClientRect();
+    if (b.width === 0 && b.height === 0) {
+        for (const k of blk.querySelectorAll('*')) {
+            const r = k.getBoundingClientRect();
+            if (r.width > 0 || r.height > 0) { b = r; break; }
+        }
+    }
     return {
         selected: window.hbEditor.getSelectedId(),
-        hostBlock: host ? host.getAttribute('data-block') : null,
-        hostIsNested: host ? host.classList.contains('hb-blk--nested') : null,
-        anchoredOnAncestor: !!host && host.getAttribute('data-block') === g,
+        visible: getComputedStyle(tb).visibility !== 'hidden' && !tb.hidden,
+        dockedOverChild: Math.abs(t.top - b.top) < 120,
+        delta: Math.round(t.top - b.top),
     };
-}, groupId);
-ok('a nested selection anchors the toolbar on its top-level ancestor',
-    docked.selected === childId && docked.anchoredOnAncestor && docked.hostIsNested === false,
+}, childId);
+ok('a nested selection docks the toolbar over that child, not its container',
+    docked.selected === childId && docked.visible && docked.dockedOverChild,
     JSON.stringify(docked));
 
 // ── 4: the EXTRACTED flex composition is present and WIRED ──

@@ -180,10 +180,10 @@ class EditorAssetCachingTest extends TestCase
 
         $before = EditorController::fingerprintFiles([$file]);
 
-        // A different mtime *and* size, so the fingerprint is guaranteed to change
-        // even on filesystems with coarse mtime resolution.
-        file_put_contents($file, 'body{color:red}');
-        touch($file, time() + 5);
+        // Same byte length, same second, and no mtime bump: the fingerprint hashes
+        // CONTENT, so none of that can hide an edit (it used to hash stat() output,
+        // which PHP caches per process — an edit after the first stat went unseen).
+        file_put_contents($file, 'body{}/**/');
 
         $after = EditorController::fingerprintFiles([$file]);
 
