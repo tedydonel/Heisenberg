@@ -47,7 +47,7 @@
                 "placeholder": "Add class…"
             }
         },
-        "hideXs": {
+        "hideMobile": {
             "type": "boolean",
             "default": false,
             "sanitize": "boolean",
@@ -57,7 +57,7 @@
                 "half": true
             }
         },
-        "hideSm": {
+        "hideTablet": {
             "type": "boolean",
             "default": false,
             "sanitize": "boolean",
@@ -67,37 +67,7 @@
                 "half": true
             }
         },
-        "hideMd": {
-            "type": "boolean",
-            "default": false,
-            "sanitize": "boolean",
-            "control": {
-                "type": "toggle",
-                "section": "visibility",
-                "half": true
-            }
-        },
-        "hideLg": {
-            "type": "boolean",
-            "default": false,
-            "sanitize": "boolean",
-            "control": {
-                "type": "toggle",
-                "section": "visibility",
-                "half": true
-            }
-        },
-        "hideXl": {
-            "type": "boolean",
-            "default": false,
-            "sanitize": "boolean",
-            "control": {
-                "type": "toggle",
-                "section": "visibility",
-                "half": true
-            }
-        },
-        "hideXxl": {
+        "hideDesktop": {
             "type": "boolean",
             "default": false,
             "sanitize": "boolean",
@@ -196,44 +166,23 @@
         "className": "hb-block-column hb-supports hb-flex-layout",
         "classNames": [
             {
-                "class": "hb-hide-xs",
+                "class": "hb-hide-mobile",
                 "when": {
-                    "attribute": "hideXs",
+                    "attribute": "hideMobile",
                     "equals": true
                 }
             },
             {
-                "class": "hb-hide-sm",
+                "class": "hb-hide-tablet",
                 "when": {
-                    "attribute": "hideSm",
+                    "attribute": "hideTablet",
                     "equals": true
                 }
             },
             {
-                "class": "hb-hide-md",
+                "class": "hb-hide-desktop",
                 "when": {
-                    "attribute": "hideMd",
-                    "equals": true
-                }
-            },
-            {
-                "class": "hb-hide-lg",
-                "when": {
-                    "attribute": "hideLg",
-                    "equals": true
-                }
-            },
-            {
-                "class": "hb-hide-xl",
-                "when": {
-                    "attribute": "hideXl",
-                    "equals": true
-                }
-            },
-            {
-                "class": "hb-hide-xxl",
-                "when": {
-                    "attribute": "hideXxl",
+                    "attribute": "hideDesktop",
                     "equals": true
                 }
             },

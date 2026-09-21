@@ -252,13 +252,13 @@ class EmbedBlockTest extends TestCase
             'anchor' => 'my-video',
             'titleAttr' => 'Our launch film',
             'extraClasses' => 'is-featured',
-            'hideXs' => true,
+            'hideMobile' => true,
         ]);
 
         $this->assertStringContainsString('id="my-video"', $html);
         $this->assertStringContainsString('title="Our launch film"', $html);
         $this->assertStringContainsString('is-featured', $html);
-        $this->assertStringContainsString('hb-hide-xs', $html);
+        $this->assertStringContainsString('hb-hide-mobile', $html);
     }
 
     public function test_the_id_attribute_is_omitted_when_anchor_is_blank(): void

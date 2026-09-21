@@ -8,7 +8,11 @@
     <link rel="icon" type="image/svg+xml" href="{{ route('heisenberg.editor.asset.logo') }}">
     <link rel="stylesheet" href="{{ route('heisenberg.editor.asset.css', ['v' => \Heisenberg\Http\Controllers\EditorController::cssAssetVersion()]) }}" nonce="{{ heisenberg_csp_nonce() }}">
 </head>
-<body>
+{{-- hb-editor-body marks "this is the editor shell, not a page being read". The per-block
+     hide-on-device rules use it to stand down here: inside the editor the DEVICE SWITCHER is
+     the authority (it narrows the canvas container, which a viewport media query cannot see),
+     while preview and the published page have no such class and use the real viewport. --}}
+<body class="hb-editor-body">
     <div class="hb-editor">
         @stack('hb-nav-strings')
         <script nonce="{{ heisenberg_csp_nonce() }}">

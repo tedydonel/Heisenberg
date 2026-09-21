@@ -3,16 +3,12 @@
 @endphp
 <div class="hb-blockadvanced">
     <x-heisenberg::ui.panel-section :title="__('heisenberg::editor.advanced.section_visibility')" collapsible>
-        @foreach ([
-            [['hide_xs', 'hideXs'], ['hide_sm', 'hideSm']],
-            [['hide_md', 'hideMd'], ['hide_lg', 'hideLg']],
-            [['hide_xl', 'hideXl'], ['hide_xxl', 'hideXxl']],
-        ] as $pair)
-            <div class="hb-irow">
-                @foreach ($pair as $field)
-                    <label class="hb-tglrow"><span class="hb-tglrow__l">{{ __('heisenberg::editor.advanced.' . $field[0]) }}</span><x-heisenberg::ui.toggle data-hb-control="{{ $field[1] }}" data-hb-control-kind="attributes" data-hb-control-type="toggle" /></label>
-                @endforeach
-            </div>
+        {{-- Three devices, one row each. This was six Bootstrap bands (xs/sm/md/lg/xl/xxl) that
+             were EXCLUSIVE, not cumulative: hiding on phones meant ticking both "Extra small"
+             and "Small", and ticking only "Extra small" silently did nothing on a 600px phone.
+             Names like "XXL" described a breakpoint rather than a device anyone owns. --}}
+        @foreach ([['hide_mobile', 'hideMobile'], ['hide_tablet', 'hideTablet'], ['hide_desktop', 'hideDesktop']] as $field)
+            <label class="hb-tglrow"><span class="hb-tglrow__l">{{ __('heisenberg::editor.advanced.' . $field[0]) }}</span><x-heisenberg::ui.toggle data-hb-control="{{ $field[1] }}" data-hb-control-kind="attributes" data-hb-control-type="toggle" /></label>
         @endforeach
     </x-heisenberg::ui.panel-section>
 

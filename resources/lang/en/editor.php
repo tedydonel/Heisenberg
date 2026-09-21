@@ -425,13 +425,10 @@ return [
 
     // Block Advanced tab (live/block/advanced.blade.php).
     'advanced' => [
-        'section_visibility' => 'Hide based on device screen width',
-        'hide_xs' => 'Extra small devices',
-        'hide_sm' => 'Small devices',
-        'hide_md' => 'Medium devices',
-        'hide_lg' => 'Large devices',
-        'hide_xl' => 'Xl devices',
-        'hide_xxl' => 'Xxl devices',
+        'section_visibility' => 'Hide on devices',
+        'hide_mobile' => 'Mobile',
+        'hide_tablet' => 'Tablet',
+        'hide_desktop' => 'Desktop',
         'section_animate' => 'Animate on scroll',
         'animation_type' => 'Animation type',
         'duration' => 'Duration',

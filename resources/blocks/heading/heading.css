@@ -23,9 +23,13 @@ h4.hb-block-heading { font-size: var(--hb-heading-fs, clamp(17px, 1.4vw, 19px));
 h5.hb-block-heading { font-size: var(--hb-heading-fs, 16px); }
 h6.hb-block-heading { font-size: var(--hb-heading-fs, 14px); letter-spacing: 0.01em; text-transform: uppercase; }
 
-@media (max-width: 575.98px) { .hb-block-heading.hb-hide-xs { display: none; } }
-@media (min-width: 576px) and (max-width: 767.98px) { .hb-block-heading.hb-hide-sm { display: none; } }
-@media (min-width: 768px) and (max-width: 991.98px) { .hb-block-heading.hb-hide-md { display: none; } }
-@media (min-width: 992px) and (max-width: 1199.98px) { .hb-block-heading.hb-hide-lg { display: none; } }
-@media (min-width: 1200px) and (max-width: 1399.98px) { .hb-block-heading.hb-hide-xl { display: none; } }
-@media (min-width: 1400px) { .hb-block-heading.hb-hide-xxl { display: none; } }
+/* Hide on device — three bands matching the device switcher.
+   Viewport rules are scoped OUT of the editor shell (body.hb-editor-body): in there the
+   device switcher is the authority, and it narrows the .hb-canvas CONTAINER, which a
+   viewport media query cannot observe — that is why device preview never hid anything. */
+@media (max-width: 767.98px) { body:not(.hb-editor-body) .hb-block-heading.hb-hide-mobile { display: none; } }
+@media (min-width: 768px) and (max-width: 1023.98px) { body:not(.hb-editor-body) .hb-block-heading.hb-hide-tablet { display: none; } }
+@media (min-width: 1024px) { body:not(.hb-editor-body) .hb-block-heading.hb-hide-desktop { display: none; } }
+.hb-canvas--mobile .hb-block-heading.hb-hide-mobile { display: none; }
+.hb-canvas--tablet .hb-block-heading.hb-hide-tablet { display: none; }
+.hb-canvas:not(.hb-canvas--mobile):not(.hb-canvas--tablet) .hb-block-heading.hb-hide-desktop { display: none; }

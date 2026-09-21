@@ -148,7 +148,7 @@ class RendererGoldenOutputTest extends TestCase
             self::block('heisenberg/heading', ['content' => 'Col heading', 'level' => 4], [], [], 'colh'),
             $inner,
         ], 'nc-col1');
-        $column2 = self::block('heisenberg/column', ['hideXs' => true, 'fillWidth' => true], [], [
+        $column2 = self::block('heisenberg/column', ['hideMobile' => true, 'fillWidth' => true], [], [
             self::block('heisenberg/paragraph', ['content' => 'Second column.'], [], [], 'colp'),
         ], 'nc-col2');
 
@@ -156,7 +156,7 @@ class RendererGoldenOutputTest extends TestCase
             'align' => 'wide',
         ], [$column1, $column2], 'nc-columns');
 
-        $outerGroup = self::block('heisenberg/group', ['hideMd' => true], [
+        $outerGroup = self::block('heisenberg/group', ['hideTablet' => true], [
             'align' => 'wide',
         ], [$columns], 'nc-outer-group');
 
@@ -318,7 +318,7 @@ class RendererGoldenOutputTest extends TestCase
     /**
      * Surface-conditional divergences (§ resolveClass / blockStyleDeclarations docblocks)
      * exercised on the `'email'` surface directly through `renderBlocks()` (not the full
-     * {@see EmailRenderer} pipeline): a `classNames` binding (`hideXs`) and the contract's
+     * {@see EmailRenderer} pipeline): a `classNames` binding (`hideMobile`) and the contract's
      * `align` support must NOT be auto-applied on `'email'` (defect 5), while the block's
      * OWN `style.variables` (background gradient degrading to its first colour stop per
      * §Bug A step 5, plus opacity) still materialize into the root's inline `style`.
@@ -328,7 +328,7 @@ class RendererGoldenOutputTest extends TestCase
         $button = self::block('heisenberg/button', [
             'text' => 'Email CTA',
             'url' => 'https://example.com/cta',
-            'hideXs' => true,
+            'hideMobile' => true,
         ], [
             'color' => ['text' => '#ffffff', 'background' => 'linear-gradient(45deg, #ff0000 0%, #0000ff 100%)'],
             'appearance' => ['opacity' => '0.5'],

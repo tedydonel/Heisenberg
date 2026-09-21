@@ -80,7 +80,7 @@ class ShippedContractsTest extends TestCase
         $paragraph = collect($registry['blocks'])->firstWhere('name', 'heisenberg/paragraph');
 
         $this->assertIsArray($paragraph);
-        $this->assertSame(['content', 'dropCap', 'anchor', 'titleAttr', 'extraClasses', 'hideXs', 'hideSm', 'hideMd', 'hideLg', 'hideXl', 'hideXxl', 'fillWidth', 'fillHeight', 'hugWidth', 'hugHeight', 'clipContent', 'animate', 'animateDuration', 'animateDelay', 'animateEasing', 'animateOnce'], array_keys($paragraph['attributes']));
+        $this->assertSame(['content', 'dropCap', 'anchor', 'titleAttr', 'extraClasses', 'hideMobile', 'hideTablet', 'hideDesktop', 'fillWidth', 'fillHeight', 'hugWidth', 'hugHeight', 'clipContent', 'animate', 'animateDuration', 'animateDelay', 'animateEasing', 'animateOnce'], array_keys($paragraph['attributes']));
 
         $anchor = collect($paragraph['controls'])->firstWhere('attribute', 'anchor');
         $this->assertSame('general', $anchor['section'] ?? null, 'anchor lives in the Content tab General section');
@@ -104,7 +104,7 @@ class ShippedContractsTest extends TestCase
         $this->assertSame('toggle', $dropCap['type'] ?? null);
         $classNames = array_column($paragraph['style']['classNames'] ?? [], 'class');
         $this->assertContains('has-drop-cap', $classNames);
-        foreach (['hb-hide-xs', 'hb-hide-sm', 'hb-hide-md', 'hb-hide-lg', 'hb-hide-xl', 'hb-hide-xxl', 'hb-anim-fade', 'hb-anim-slide-up', 'hb-anim-zoom'] as $conditional) {
+        foreach (['hb-hide-mobile', 'hb-hide-tablet', 'hb-hide-desktop', 'hb-anim-fade', 'hb-anim-slide-up', 'hb-anim-zoom'] as $conditional) {
             $this->assertContains($conditional, $classNames);
         }
     }
@@ -115,7 +115,7 @@ class ShippedContractsTest extends TestCase
         $heading = collect($registry['blocks'])->firstWhere('name', 'heisenberg/heading');
 
         $this->assertIsArray($heading);
-        $this->assertSame(['content', 'level', 'anchor', 'titleAttr', 'extraClasses', 'hideXs', 'hideSm', 'hideMd', 'hideLg', 'hideXl', 'hideXxl', 'fillWidth', 'fillHeight', 'hugWidth', 'hugHeight', 'clipContent', 'animate', 'animateDuration', 'animateDelay', 'animateEasing', 'animateOnce'], array_keys($heading['attributes']));
+        $this->assertSame(['content', 'level', 'anchor', 'titleAttr', 'extraClasses', 'hideMobile', 'hideTablet', 'hideDesktop', 'fillWidth', 'fillHeight', 'hugWidth', 'hugHeight', 'clipContent', 'animate', 'animateDuration', 'animateDelay', 'animateEasing', 'animateOnce'], array_keys($heading['attributes']));
         $this->assertSame([1, 2, 3, 4, 5, 6], $heading['attributes']['level']['enum']);
         // Same additions as paragraph (TODO 7.1/7.4); heading keeps its lineHeight.
         $this->assertSame(

@@ -416,13 +416,10 @@ return [
 
     // Onglet Avancé du bloc (live/block/advanced.blade.php).
     'advanced' => [
-        'section_visibility' => 'Masquer selon la largeur d\'écran',
-        'hide_xs' => 'Très petits écrans',
-        'hide_sm' => 'Petits écrans',
-        'hide_md' => 'Écrans moyens',
-        'hide_lg' => 'Grands écrans',
-        'hide_xl' => 'Écrans XL',
-        'hide_xxl' => 'Écrans XXL',
+        'section_visibility' => 'Masquer sur les appareils',
+        'hide_mobile' => 'Mobile',
+        'hide_tablet' => 'Tablette',
+        'hide_desktop' => 'Ordinateur',
         'section_animate' => 'Animer au défilement',
         'animation_type' => 'Type d\'animation',
         'duration' => 'Durée',

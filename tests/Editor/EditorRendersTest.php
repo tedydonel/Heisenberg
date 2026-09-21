@@ -475,9 +475,9 @@ class EditorRendersTest extends TestCase
         $html = $this->get('/editor')->getContent();
 
         // live/block/advanced.blade.php's visibility toggles and animation controls are keyed by
-        // real contract attributes (hideXs.../animate/animateDuration/animateDelay), not supports
+        // real contract attributes (hideMobile.../animate/animateDuration/animateDelay), not supports
         // paths, so they must route through setAttribute rather than setSupport.
-        $this->assertElementExists($html, '[data-hb-control="hideXs"][data-hb-control-kind="attributes"][data-hb-control-type="toggle"]');
+        $this->assertElementExists($html, '[data-hb-control="hideMobile"][data-hb-control-kind="attributes"][data-hb-control-type="toggle"]');
         // `animate` is a ui/combobox in static (self-filtering) mode since the Animate section went
         // catalog-driven — AnimationCatalog is ~40 presets, which is past what a select menu can be
         // scanned for. The hook contract is unchanged; only the declared control TYPE moved.

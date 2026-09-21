@@ -268,7 +268,7 @@ class EmailBlockCoverageServiceTest extends TestCase
         $blocks = [[
             'id' => 'g1',
             'name' => 'heisenberg/group',
-            'attributes' => ['hideXs' => true],
+            'attributes' => ['hideMobile' => true],
             'supports' => [],
             'innerBlocks' => [],
         ]];
@@ -284,7 +284,7 @@ class EmailBlockCoverageServiceTest extends TestCase
         $blocks = [[
             'id' => 'g1',
             'name' => 'heisenberg/group',
-            'attributes' => ['hideXs' => false],
+            'attributes' => ['hideMobile' => false],
             'supports' => [],
             'innerBlocks' => [],
         ]];
@@ -299,7 +299,7 @@ class EmailBlockCoverageServiceTest extends TestCase
         $blocks = [[
             'id' => 'g1',
             'name' => 'heisenberg/group',
-            'attributes' => ['hideXs' => true],
+            'attributes' => ['hideMobile' => true],
             'supports' => [
                 'align' => 'center',
                 'color' => ['background' => 'radial-gradient(circle, #ff0000, #0000ff)'],
