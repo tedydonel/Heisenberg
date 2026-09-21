@@ -151,8 +151,10 @@
                 </figure>
             @endif
             @if (count($toc) > 0)
-                <nav class="hb-preview-toc" aria-label="Table of contents">
-                    <p class="hb-preview-toc__title">Contents</p>
+                {{-- Same string the article template's tableOfContents capability uses, so the
+                     preview and a rendered post never disagree about what this heading says. --}}
+                <nav class="hb-preview-toc" aria-label="{{ __('heisenberg::templates.article.toc_title') }}">
+                    <p class="hb-preview-toc__title">{{ __('heisenberg::templates.article.toc_title') }}</p>
                     <ol class="hb-preview-toc__list">
                         @foreach ($toc as $entry)
                             <li><a href="#{{ $entry['anchor'] }}">{{ $entry['label'] }}</a></li>

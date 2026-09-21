@@ -190,6 +190,14 @@
                     inputs[inputs.length - 1]?.focus();
                 });
 
+                // The block runtime owns locale resolution; borrow it rather than re-deriving the
+                // suffix here. Falls back to the bare key when the runtime has not booted.
+                const readHeadingAttr = (block, key) => (
+                    window.hbEditor && typeof window.hbEditor.readAttr === 'function'
+                        ? window.hbEditor.readAttr(block, key)
+                        : (block.attributes || {})[key]
+                );
+
                 const collectHeadings = () => {
                     const out = [];
                     const walk = (blocks) => {
@@ -212,7 +220,13 @@
                     let added = 0;
                     let usable = 0;
                     headings.forEach((block) => {
-                        const label = stripTags(block.attributes && block.attributes.content);
+                        // readAttr() resolves `content_<editingLocale>` when one exists and the
+                        // author is editing a non-home locale. Reading `attributes.content`
+                        // straight (what this used to do) always returned the HOME locale, so
+                        // loading the TOC while editing French produced English labels.
+                        // `anchor` is deliberately read bare: it is a DOM id, shared by every
+                        // locale's rendering of the same heading, and is not translatable.
+                        const label = stripTags(readHeadingAttr(block, 'content'));
                         if (!label) return;
                         usable++;
                         let anchor = (block.attributes && block.attributes.anchor) || '';
