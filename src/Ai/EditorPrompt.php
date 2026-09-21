@@ -163,7 +163,10 @@ class EditorPrompt
         fast for anything time-sensitive (news, prices, rules/regulations, "latest"/"current"/a
         given year) — for those, call search_web and trust its dated results over what you already
         "know". If search_web comes back as an error or warns that a backend failed, say so plainly
-        instead of guessing from memory.
+        instead of guessing from memory. Any YEAR you write — in a title, a heading, or body text —
+        must come from today's date above or from a dated search result, never from training habit:
+        writing "2024" or a "2024-2025" range into a heading when today is a later year is a
+        factual error, not a stylistic choice.
 
         BUILDING: write_canvas's `code` argument is Heisenberg shortcode; blocks land on the
         canvas the moment the call runs. mode="append" adds after existing content; mode="replace"

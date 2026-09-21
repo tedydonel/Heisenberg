@@ -504,6 +504,23 @@ return [
             // bundle is the real fix; this flag exists only so a host stuck on such a
             // machine isn't left with a permanently broken search tool.
             'verify_ssl' => (bool) env('HEISENBERG_WEB_SEARCH_VERIFY_SSL', true),
+
+            // Keyed search providers. Read THROUGH CONFIG, never env() at call time: once a host
+            // runs `php artisan config:cache` (normal in production) env() returns null outside
+            // config files, so a key set in .env would silently stop being used and every search
+            // would quietly fall back to the keyless, rate-limited scraper. Either one, when set,
+            // takes priority over DuckDuckGo — which is the fix for "search keeps failing":
+            // DuckDuckGo throttles an IP after a burst of queries and then serves a bot-check
+            // page, while Brave's free tier allows 2,000 queries/month with real result dates.
+            // DuckDuckGo is keyless, which is why it is the default — but it rate-limits an IP
+            // that queries it in bursts and then answers every request with a bot-check page
+            // (HTTP 202) for a while. Hammering it during that window prolongs the block, so
+            // after a refusal the backend is skipped entirely for this long and the waterfall
+            // goes straight to the next one. Set to 0 to disable the backoff.
+            'duckduckgo_cooldown_seconds' => (int) env('HEISENBERG_DDG_COOLDOWN', 900),
+
+            'brave_key' => env('BRAVE_SEARCH_API_KEY'),
+            'tavily_key' => env('TAVILY_API_KEY'),
         ],
 
         'mcp' => [

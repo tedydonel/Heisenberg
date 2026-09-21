@@ -6,6 +6,7 @@ namespace Heisenberg\Services;
 
 use Heisenberg\Mcp\Tools\WebTools;
 use Illuminate\Http\Client\Response;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Http;
 
 /**
@@ -48,6 +49,18 @@ class WebSearchService
     private const DEFAULT_TIMEOUT = 10;
 
     private const USER_AGENT = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36 (Heisenberg-AI-Search/1.0)';
+
+    /**
+     * User-Agent for the documented JSON APIs (Wikipedia, Wikimedia Commons, Openverse).
+     *
+     * Deliberately NOT the browser string above. Wikimedia's User-Agent policy requires a
+     * descriptive agent identifying the software, and it rate-limits generic or
+     * browser-impersonating agents hard: the spoofed Chrome UA was being answered with
+     * HTTP 429, which the waterfall (correctly) read as "backend unreachable" — so the whole
+     * text search fell over whenever DuckDuckGo was also throttled. Scraped HTML endpoints
+     * still need the browser string; documented APIs want honesty.
+     */
+    private const API_USER_AGENT = 'Heisenberg/1.0 (+https://github.com/tedydonel/Heisenberg; block-based content engine) PHP-cURL';
 
     /**
      * A real response from any backend here (a scraped HTML page or a JSON API) is at
@@ -97,12 +110,12 @@ class WebSearchService
     {
         $backends = [];
 
-        $braveKey = env('BRAVE_SEARCH_API_KEY');
+        $braveKey = config('heisenberg.ai.web_search.brave_key');
         if (is_string($braveKey) && $braveKey !== '') {
             $backends['Brave'] = fn (): ?array => $this->searchBrave($query, $braveKey, $limit);
         }
 
-        $tavilyKey = env('TAVILY_API_KEY');
+        $tavilyKey = config('heisenberg.ai.web_search.tavily_key');
         if (is_string($tavilyKey) && $tavilyKey !== '') {
             $backends['Tavily'] = fn (): ?array => $this->searchTavily($query, $tavilyKey, $limit);
         }
@@ -237,11 +250,68 @@ class WebSearchService
      */
     private function normalizeDate(mixed $raw): ?string
     {
-        if (! is_string($raw) || $raw === '') {
+        if (! is_string($raw) || trim($raw) === '') {
             return null;
         }
 
-        return preg_match('/^(\d{4}-\d{2}-\d{2})/', $raw, $m) === 1 ? $m[1] : null;
+        $raw = trim($raw);
+
+        // ISO first and cheaply: Wikipedia/Openverse/Wikimedia all hand back ISO-8601.
+        if (preg_match('/^(\d{4}-\d{2}-\d{2})/', $raw, $m) === 1) {
+            return $m[1];
+        }
+
+        // Human-readable forms ("12 Sept 2026", "Sep 12, 2026"). This used to return null for
+        // anything non-ISO, which quietly discarded EVERY date a search engine renders for
+        // people — including DuckDuckGo's own timestamp span — leaving the model with results
+        // it could not rank by freshness.
+        try {
+            $parsed = new \DateTimeImmutable($raw);
+        } catch (\Throwable) {
+            return null;
+        }
+
+        // Sanity window: a parsed year outside this range means the string was not really a
+        // date (PHP will happily read "7" or "Friday" as something). Better no date than a
+        // wrong one the model then trusts.
+        $year = (int) $parsed->format('Y');
+        if ($year < 1990 || $year > ((int) date('Y')) + 1) {
+            return null;
+        }
+
+        return $parsed->format('Y-m-d');
+    }
+
+
+    /** Cache key for the DuckDuckGo backoff window. */
+    private const DDG_COOLDOWN_KEY = 'heisenberg:web-search:ddg-cooldown';
+
+    private function duckDuckGoIsCoolingDown(): bool
+    {
+        if ((int) config('heisenberg.ai.web_search.duckduckgo_cooldown_seconds', 900) <= 0) {
+            return false;
+        }
+
+        try {
+            return (bool) Cache::get(self::DDG_COOLDOWN_KEY, false);
+        } catch (\Throwable) {
+            // A broken cache store must never take the search down with it.
+            return false;
+        }
+    }
+
+    private function startDuckDuckGoCooldown(): void
+    {
+        $seconds = (int) config('heisenberg.ai.web_search.duckduckgo_cooldown_seconds', 900);
+        if ($seconds <= 0) {
+            return;
+        }
+
+        try {
+            Cache::put(self::DDG_COOLDOWN_KEY, true, $seconds);
+        } catch (\Throwable) {
+            // Best effort only.
+        }
     }
 
     /**
@@ -259,10 +329,36 @@ class WebSearchService
      */
     private function searchDuckDuckGoLite(string $query, int $limit): ?array
     {
+        // Still inside a cooldown from a previous refusal: do not ask again. Retrying through a
+        // block is what keeps the block alive, and the caller gets a truthful "this backend was
+        // skipped" warning either way.
+        if ($this->duckDuckGoIsCoolingDown()) {
+            return null;
+        }
+
         try {
+            // A bare POST with only a User-Agent is exactly what DuckDuckGo's bot check looks
+            // for, and it answers with HTTP 202 and an anomaly page. A request that carries the
+            // headers a browser actually sends — Accept, Accept-Language, Referer/Origin from
+            // the search form itself, and the Sec-Fetch set — is served normally. This is the
+            // difference between "DuckDuckGo keeps failing" and it simply working, without
+            // needing a paid API key.
             $response = Http::withUserAgent(self::USER_AGENT)
+                ->withHeaders([
+                    'Accept' => 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
+                    'Accept-Language' => 'en-US,en;q=0.9',
+                    'Referer' => 'https://lite.duckduckgo.com/',
+                    'Origin' => 'https://lite.duckduckgo.com',
+                    'Content-Type' => 'application/x-www-form-urlencoded',
+                    'Sec-Fetch-Dest' => 'document',
+                    'Sec-Fetch-Mode' => 'navigate',
+                    'Sec-Fetch-Site' => 'same-origin',
+                    'Sec-Fetch-User' => '?1',
+                    'Upgrade-Insecure-Requests' => '1',
+                    'DNT' => '1',
+                ])
                 ->timeout(self::DEFAULT_TIMEOUT)
-                ->withOptions(['verify' => $this->verifySsl()])
+                ->withOptions(['verify' => $this->verifySsl(), 'allow_redirects' => true])
                 ->asForm()
                 ->post('https://lite.duckduckgo.com/lite/', [
                     'q' => $query,
@@ -274,6 +370,19 @@ class WebSearchService
             }
 
             $html = $response->body();
+
+            // DuckDuckGo answers a rate-limited/automated request with its bot-check page —
+            // and does so with HTTP 202, which `successful()` accepts. Parsing that yields
+            // zero anchors, which used to be reported as "searched fine, found nothing".
+            // The model then had no way to know the search never really ran and answered from
+            // memory instead (observed live: a 2026 query returning 2024-era content). Treat
+            // it as a BACKEND FAILURE so the waterfall falls through and, if nothing else
+            // answers, the tool returns an error telling the model not to guess.
+            if ($response->status() === 202 || str_contains($html, 'anomaly-modal__')) {
+                $this->startDuckDuckGoCooldown();
+
+                return null;
+            }
 
             if (preg_match_all(
                 '/<a rel="nofollow" href="([^"]+)" class=\'result-link\'>([\s\S]*?)<\/a>/i',
@@ -306,6 +415,17 @@ class WebSearchService
                 $date = null;
                 if (preg_match('/<span class=\'timestamp\'>([^<]*)<\/span>/i', $block, $tMatch)) {
                     $date = $this->normalizeDate(trim($tMatch[1]));
+                }
+
+                // DuckDuckGo emits a `timestamp` span for only a minority of results, but it
+                // very often LEADS the snippet with the publication date instead
+                // ("12 Sept 2026 - ...", "Sep 12, 2026 - ..."). Recovering that is the
+                // difference between the model seeing every result as undated - with no way to
+                // prefer a fresh source over its own stale recall - and getting a real recency
+                // signal. The prefix is stripped once parsed so the date is not echoed back as
+                // body text.
+                if ($date === null && $snippet !== '') {
+                    [$date, $snippet] = $this->dateFromSnippetPrefix($snippet);
                 }
 
                 $results[] = [
@@ -348,13 +468,49 @@ class WebSearchService
         return $rawUrl;
     }
 
+
+    /**
+     * Pull a leading publication date off a search snippet.
+     *
+     * Matches only the shapes engines actually put IN FRONT of a snippet - "12 Sept 2026",
+     * "Sep 12, 2026", "2026-09-12" - each followed by the separator they use (em/en dash,
+     * middot, colon or hyphen). A date merely MENTIONED mid-sentence is deliberately not
+     * matched: that is a topic, not a publication date, and treating it as one would hand the
+     * model a worse signal than none.
+     *
+     * @return array{0: ?string, 1: string} the ISO date (or null), and the snippet with the
+     *                                      date prefix removed when one was found
+     */
+    private function dateFromSnippetPrefix(string $snippet): array
+    {
+        $months = 'Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Sept|Oct|Nov|Dec'
+            . '|January|February|March|April|June|July|August|September|October|November|December';
+        $sep = '\s*[\x{2014}\x{2013}\-\x{00B7}:]\s*';
+
+        $patterns = [
+            '/^(\d{1,2}\s+(?:' . $months . ')\.?\s+\d{4})' . $sep . '/iu',
+            '/^((?:' . $months . ')\.?\s+\d{1,2},?\s+\d{4})' . $sep . '/iu',
+            '/^(\d{4}-\d{2}-\d{2})' . $sep . '/u',
+        ];
+
+        foreach ($patterns as $pattern) {
+            if (preg_match($pattern, $snippet, $m) === 1) {
+                $iso = $this->normalizeDate($m[1]);
+                if ($iso !== null) {
+                    return [$iso, trim((string) preg_replace($pattern, '', $snippet))];
+                }
+            }
+        }
+
+        return [null, $snippet];
+    }
     /**
      * @return list<array{title: string, url: string, snippet: string, date: ?string}>|null
      */
     private function searchWikipedia(string $query, int $limit): ?array
     {
         try {
-            $response = Http::withUserAgent(self::USER_AGENT)
+            $response = Http::withUserAgent(self::API_USER_AGENT)
                 ->timeout(self::DEFAULT_TIMEOUT)
                 ->withOptions(['verify' => $this->verifySsl()])
                 ->get('https://en.wikipedia.org/w/api.php', [
@@ -404,7 +560,7 @@ class WebSearchService
     private function searchOpenverse(string $query, int $limit): ?array
     {
         try {
-            $response = Http::withUserAgent(self::USER_AGENT)
+            $response = Http::withUserAgent(self::API_USER_AGENT)
                 ->timeout(self::DEFAULT_TIMEOUT)
                 ->withOptions(['verify' => $this->verifySsl()])
                 ->get('https://api.openverse.org/v1/images/', [
@@ -451,7 +607,7 @@ class WebSearchService
     private function searchWikimediaCommons(string $query, int $limit): ?array
     {
         try {
-            $response = Http::withUserAgent(self::USER_AGENT)
+            $response = Http::withUserAgent(self::API_USER_AGENT)
                 ->timeout(self::DEFAULT_TIMEOUT)
                 ->withOptions(['verify' => $this->verifySsl()])
                 ->get('https://commons.wikimedia.org/w/api.php', [
