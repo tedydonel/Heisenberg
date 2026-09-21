@@ -256,6 +256,7 @@
         if (!template) return null;
         const root = renderNode(template, model, c, true, depth || 0, surface);
         if (!root) return null;
+        if (surface === 'email') hoistEmailSpacer(root);
 
         // A <div> is not valid inside a table row, and the email surface's `column` block roots
         // at a <td>. Wrapping that in the usual <div class="hb-blk"> produced <tr><div><td>,
@@ -285,6 +286,54 @@
         decorateImageBlock(wrap, model);
         decorateIconBlock(wrap, model);
         return wrap;
+    }
+
+
+    /**
+     * CANVAS ONLY: move an email block's trailing spacer from padding INSIDE the block to
+     * margin OUTSIDE it.
+     *
+     * The email templates express vertical rhythm as bottom padding on their outermost <td>
+     * (16px on paragraph/list/image/button, 12px on heading, 24px on separator, none on group).
+     * That is correct for what we SEND — margins are unreliable across mail clients — but the
+     * hover/selection outline is drawn on the block's rendered root, so that padding sits
+     * inside the outlined box and every email block grew a dead band under it the moment you
+     * hovered or selected it.
+     *
+     * Padding-in becomes margin-out: the gap between blocks is unchanged, the outline hugs the
+     * content. Nothing here touches what is exported or previewed — EmailRenderer walks the
+     * contract in PHP and never runs this, so the sent MIME is byte-for-byte what it was.
+     *
+     * The value is READ off the node rather than hardcoded, which keeps all four spacings right
+     * and stays right if a contract's padding is ever edited.
+     */
+    function hoistEmailSpacer(root) {
+        if (!root || root.tagName !== 'TABLE') return;
+
+        // Walk the template's own `table > tr > td` explicitly instead of querySelector('td').
+        // `columns` roots at `table > tr > [inner-blocks]` and its child `column` blocks each
+        // render a <td> of their own, so the first <td> in tree order can belong to a DIFFERENT
+        // block — that query would zero a column's padding and hang the margin on the wrong
+        // element. No tbody hop is normally needed (these nodes are built with createElement,
+        // and only the HTML PARSER injects tbody) but it is cheap to tolerate one.
+        let row = root.firstElementChild;
+        if (row && (row.tagName === 'TBODY' || row.tagName === 'THEAD')) row = row.firstElementChild;
+        if (!row || row.tagName !== 'TR') return;
+
+        const cell = row.firstElementChild;
+        if (!cell || cell.tagName !== 'TD') return;
+        // A cell that is itself a block is a `column`, not this block's spacer (see above).
+        if (cell.classList.contains('hb-blk')) return;
+
+        const spacer = cell.style.paddingBottom;
+        if (!spacer || parseFloat(spacer) === 0) return;
+
+        cell.style.paddingBottom = '0px';
+        // On the root, not the .hb-blk wrapper: a NESTED block's wrapper is `display: contents`
+        // and generates no box, so a margin there would be dropped and the rhythm lost inside
+        // every column. The root <table> has a box on both paths, and margin falls outside the
+        // box-shadow either way.
+        root.style.marginBottom = spacer;
     }
 
 

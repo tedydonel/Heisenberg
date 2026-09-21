@@ -18,6 +18,20 @@
     $spacings = $theme['spaces'] ?? [];
     $fonts = $theme['fonts'] ?? [];
     $fontSizes = $theme['fontSizes'] ?? [];
+
+    /**
+     * Token values are STORED with their unit (`16px`) and shown without it — the field is a
+     * number field in a panel where everything is px, so displaying the unit is noise the user
+     * then has to type back. This is the display half of a contract the server already states:
+     * ThemeRepository::validate() accepts a bare number and promotes it to `<n>px` on save
+     * ("the unit-stripping display path ... picks 16 back out of 16px", its own comment).
+     *
+     * ONLY a trailing `px` is stripped, and only from an otherwise-plain number. A value with
+     * any other unit (`0.75rem`, `50%`) is left exactly as authored, because dropping ITS unit
+     * would change the value's meaning on the way back in — validate() would read `0.75` and
+     * store `0.75px`.
+     */
+    $hbStripPx = static fn (mixed $value): string => (string) preg_replace('/^(\d+(?:\.\d+)?)px$/i', '$1', trim((string) $value));
     $themePresets = [
         ['label' => 'Default', 'colors' => ['#FFFFFF', '#000000', '#0A0A0A']],
         ['label' => 'Midnight', 'colors' => ['#12141C', '#5B8DEF', '#E8EAF0']],
@@ -70,7 +84,7 @@
             @foreach ($radii as $r)
                 <div class="hb-token-row" data-hb-token-row data-hb-token-section="radii" data-hb-token-name="{{ $r['name'] }}">
                     <x-heisenberg::ui.input :value="$r['label']" width="100%" data-hb-token-field="label" />
-                    <x-heisenberg::ui.input :value="$r['value']" width="80px" data-hb-token-field="value" />
+                    <x-heisenberg::ui.input :value="$hbStripPx($r['value'])" width="80px" data-hb-token-field="value" />
                     <span class="hb-token-row__remove" data-hb-token-remove aria-hidden="true">@include('heisenberg::components.ui.icon', ['name' => 'x', 'size' => 14])</span>
                 </div>
             @endforeach
@@ -92,7 +106,7 @@
             @foreach ($spacings as $s)
                 <div class="hb-token-row" data-hb-token-row data-hb-token-section="spaces" data-hb-token-name="{{ $s['name'] }}">
                     <x-heisenberg::ui.input :value="$s['label']" width="100%" data-hb-token-field="label" />
-                    <x-heisenberg::ui.input :value="$s['value']" width="80px" data-hb-token-field="value" />
+                    <x-heisenberg::ui.input :value="$hbStripPx($s['value'])" width="80px" data-hb-token-field="value" />
                     <span class="hb-token-row__remove" data-hb-token-remove aria-hidden="true">@include('heisenberg::components.ui.icon', ['name' => 'x', 'size' => 14])</span>
                 </div>
             @endforeach
@@ -138,7 +152,7 @@
             @foreach ($fontSizes as $fs)
                 <div class="hb-token-row" data-hb-token-row data-hb-token-section="fontSizes" data-hb-token-name="{{ $fs['name'] }}">
                     <x-heisenberg::ui.input :value="$fs['label']" width="100%" data-hb-token-field="label" />
-                    <x-heisenberg::ui.input :value="$fs['value']" width="80px" data-hb-token-field="value" />
+                    <x-heisenberg::ui.input :value="$hbStripPx($fs['value'])" width="80px" data-hb-token-field="value" />
                     <span class="hb-token-row__remove" data-hb-token-remove aria-hidden="true">@include('heisenberg::components.ui.icon', ['name' => 'x', 'size' => 14])</span>
                 </div>
             @endforeach

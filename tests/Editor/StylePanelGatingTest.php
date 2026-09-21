@@ -686,8 +686,75 @@ class StylePanelGatingTest extends TestCase
 
         // Must mirror ThemeRepository::css()'s prefix and font quoting, or preview and saved
         // render disagree.
-        $this->assertInlineScriptContains($html, "'  --hb-t-' + token.name + ': ' + token.value + ';'");
+        $this->assertInlineScriptContains($html, "'  --hb-t-' + token.name + ': ' + value + ';'");
         $this->assertInlineScriptContains($html, "', sans-serif;'");
+
+        // The token FIELDS show a bare number (the panel strips the unit — everything in it is
+        // px, so making the user retype `px` is gratuitous), which means the unit has to be put
+        // back before the value becomes CSS: `--hb-t-radius-md: 16` is not a length and every
+        // rule bound to that token would fail silently until a save-and-reload re-added the
+        // unit server-side. This is the client half of ThemeRepository::validate()'s own bare-
+        // number promotion, and the two must keep agreeing.
+        $this->assertInlineScriptContains($html, 'const withPx = (value) => {');
+        $this->assertInlineScriptContains($html, "/^\\d+(\\.\\d+)?$/.test(v) ? v + 'px' : v");
+        $this->assertInlineScriptContains($html, "section === 'colors' ? token.value : withPx(token.value)");
+    }
+
+    public function test_theme_token_fields_render_without_their_unit(): void
+    {
+        $html = $this->editorHtml();
+
+        // Every numeric token in the Style panel is px, so printing the unit in the field is
+        // noise the author then has to retype to edit the number. ThemeRepository::validate()
+        // has always accepted a bare number and promoted it to `<n>px` on save — its own
+        // comment names this panel as the display half of that contract — but the panel
+        // rendered the stored value verbatim, so the fields read "13px", "16px", "5px".
+        //
+        // Asserted on the VALUE ATTRIBUTE of those specific inputs, not by searching the panel
+        // for the substring "px": the same rows carry width="80px", which would make a naive
+        // substring assertion fail for a reason that has nothing to do with the token value.
+        foreach (['radii', 'spaces', 'fontSizes'] as $section) {
+            // `data-hb-token-field` is on the ui.input WRAPPER; the value attribute is on the
+            // <input> inside it. Selecting the wrapper reads an attribute that does not exist,
+            // so every value comes back '' and the loop below asserts nothing while the test
+            // still reports OK — which is how the first version of this test passed.
+            $selector = "[data-hb-token-section='{$section}'] [data-hb-token-field='value'] input";
+            $values = $this->attributeValues($html, $selector, 'value');
+
+            $this->assertNotEmpty($values, "no {$section} token value inputs rendered");
+
+            $checked = 0;
+            foreach ($values as $value) {
+                // Empty is the clone <template>'s blank row, which has nothing to strip.
+                if ($value === '') {
+                    continue;
+                }
+
+                $checked++;
+                $this->assertMatchesRegularExpression(
+                    '/^\d+(\.\d+)?$/',
+                    $value,
+                    "{$section} token field renders '{$value}'; it must be a bare number",
+                );
+            }
+
+            $this->assertGreaterThan(0, $checked, "{$section} rendered no populated token values to check");
+        }
+    }
+
+    /**
+     * The `value` attribute of every element matching a selector.
+     *
+     * @return list<string>
+     */
+    private function attributeValues(string $html, string $selector, string $attribute): array
+    {
+        $out = [];
+        foreach ($this->hbQuery($html, $selector) as $node) {
+            $out[] = $node->getAttribute($attribute);
+        }
+
+        return $out;
     }
 
     public function test_fill_hug_clip_reach_the_rendered_block_as_classes(): void

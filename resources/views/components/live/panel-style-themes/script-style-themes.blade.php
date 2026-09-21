@@ -53,6 +53,16 @@
                 const inputOf = (field) => field?.matches('input') ? field : field?.querySelector('input');
                 let saveTimer = null;
 
+                // The two halves of the unit contract with ThemeRepository::validate(): token values
+                // are STORED with a unit and EDITED without one. stripPx is the display direction,
+                // withPx the direction back out to CSS. Both touch only a plain px length — `0.75rem`
+                // and `50%` are authored values whose unit is meaningful and must survive a round trip.
+                const stripPx = (value) => String(value == null ? '' : value).trim().replace(/^(\d+(?:\.\d+)?)px$/i, '$1');
+                const withPx = (value) => {
+                    const v = String(value == null ? '' : value).trim();
+                    return /^\d+(\.\d+)?$/.test(v) ? v + 'px' : v;
+                };
+
                 const collectTheme = () => {
                     const theme = { colors: [], fontSizes: [], spaces: [], radii: [], fonts: [] };
                     style?.querySelectorAll('[data-hb-token-row]').forEach((row) => {
@@ -110,7 +120,14 @@
                     const lines = [];
                     ['colors', 'fontSizes', 'spaces', 'radii'].forEach((section) => {
                         (theme[section] || []).forEach((token) => {
-                            if (token.name && token.value) lines.push('  --hb-t-' + token.name + ': ' + token.value + ';');
+                            // The token fields show a BARE number (see hbStripPx in the panel), so the
+                            // unit has to come back before the value becomes CSS: `--hb-t-radius-md: 16`
+                            // is not a length and every rule using it would fail silently until the next
+                            // save-and-reload re-added the px server-side. Mirrors exactly what
+                            // ThemeRepository::validate() does on the way into storage; colors and any
+                            // value that already carries a unit pass through untouched.
+                            const value = section === 'colors' ? token.value : withPx(token.value);
+                            if (token.name && value) lines.push('  --hb-t-' + token.name + ': ' + value + ';');
                         });
                     });
                     (theme.fonts || []).forEach((token) => {
@@ -244,7 +261,10 @@
                         const label = inputOf(row.querySelector('[data-hb-token-field="label"]'));
                         if (label) label.value = token.label || '';
                         const value = inputOf(row.querySelector('[data-hb-token-field="value"]'));
-                        if (value) value.value = token.value || '';
+                        // Switching or loading a saved theme rebuilds these rows from stored tokens,
+                        // which carry the unit — strip it the same way the server-rendered rows do, or
+                        // the px the panel just stopped showing reappears the moment a theme is applied.
+                        if (value) value.value = stripPx(token.value);
                     }
                     return row;
                 };
