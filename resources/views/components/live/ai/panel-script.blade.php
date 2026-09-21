@@ -89,6 +89,35 @@
 
                 const selectedModel = () => (modelSel ? modelSel.dataset.value || '' : '');
 
+                // The composer's picker is the author's own choice, remembered per browser.
+                // It already applied to the next message, but a refresh silently dropped the
+                // author back on whatever model is marked "in use" in AI settings — so the
+                // only change that looked like it stuck was the one made in the settings
+                // modal. Deliberately NOT written to global settings: picking a model to
+                // chat with is an authoring act, changing the model everyone gets is an
+                // admin one, and the chat endpoints only require the authors tier.
+                const MODEL_KEY = 'hb:ai:model';
+                if (modelSel) {
+                    modelSel.addEventListener('change', () => {
+                        try { window.localStorage.setItem(MODEL_KEY, selectedModel()); } catch (e) { }
+                    });
+                    try {
+                        const saved = window.localStorage.getItem(MODEL_KEY);
+                        // Restore only a model the operator still offers; one removed or
+                        // disabled since must fall back to the server-rendered selection.
+                        const opt = saved && saved !== selectedModel()
+                            ? modelSel.querySelector('[data-hb-select-option="' + CSS.escape(saved) + '"]')
+                            : null;
+                        if (opt) {
+                            // Drive the component's own select() rather than reproducing it.
+                            // It focuses the trigger as it would for a real click, which is
+                            // wrong for a restore on load, so hand focus straight back.
+                            opt.click();
+                            const trigger = modelSel.querySelector('[data-hb-select-trigger]');
+                            if (trigger) trigger.blur();
+                        }
+                    } catch (e) { }
+                }
 
                 const TAGS = '(think|thinking|reasoning|reflection)';
                 const splitReasoning = (raw) => {

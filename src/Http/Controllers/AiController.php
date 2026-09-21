@@ -6,6 +6,7 @@ namespace Heisenberg\Http\Controllers;
 
 use Heisenberg\Adapters\GuestActor;
 use Heisenberg\Adapters\LocalDevRoleGate;
+use Heisenberg\Adapters\NullAiProvider;
 use Heisenberg\Ai\AiMessage;
 use Heisenberg\Ai\AiModel;
 use Heisenberg\Ai\AiRequest;
@@ -14,6 +15,7 @@ use Heisenberg\Ai\AiStreamEvent;
 use Heisenberg\Ai\EditorPrompt;
 use Heisenberg\Ai\ReasoningFilter;
 use Heisenberg\Contracts\AiCredentialStore;
+use Heisenberg\Contracts\AiProvider;
 use Heisenberg\Contracts\RoleGate;
 use Heisenberg\Services\AiProviderRegistry;
 use Heisenberg\Services\AiSettingsRepository;
@@ -145,7 +147,7 @@ class AiController
             return response()->json(['error' => __('heisenberg::editor.ai.empty_prompt')], 422);
         }
 
-        $provider = $this->providers->active();
+        $provider = $this->providerForKey($request->input('model'));
         $aiRequest = $this->buildRequest(
             $prompt,
             $text,
@@ -210,7 +212,7 @@ class AiController
             return response()->json(['suggestions' => []]);
         }
 
-        $provider = $this->providers->active();
+        $provider = $this->providerForKey($request->input('model'));
         if (! $provider->isConfigured()) {
             return response()->json(['suggestions' => []]);
         }
@@ -409,7 +411,7 @@ class AiController
         $text = trim((string) $request->input('prompt', ''));
         $context = (array) $request->input('context', []);
 
-        $provider = $this->providers->active();
+        $provider = $this->providerForKey($request->input('model'));
         $aiRequest = $this->buildRequest(
             $prompt,
             $text,
@@ -533,6 +535,28 @@ class AiController
      * the configured active model. Only models the operator has configured can
      * be named, so this widens nothing — it just lets the chat's own picker win.
      */
+    /**
+     * The adapter that actually owns the requested model.
+     *
+     * The composer's model picker sends a `provider:id` key with every call, but the
+     * work used to be handed to the registry's ACTIVE adapter regardless. Picking a
+     * model from another provider therefore changed the id in the payload and nothing
+     * else: the call went to the provider marked "in use" in AI settings, which either
+     * rejected the unknown id or quietly answered with its own default. That is why the
+     * picker only appeared to take effect after setting the model in AI settings and
+     * reloading. Resolving the adapter from the same model the request resolves to
+     * makes the picker apply on the very next message.
+     */
+    private function providerForKey(?string $modelKey): AiProvider
+    {
+        $model = $this->resolveModel($modelKey);
+        if ($model === null) {
+            return $this->providers->active();
+        }
+
+        return $this->providers->make($model->provider) ?? new NullAiProvider();
+    }
+
     private function resolveModel(?string $modelKey): ?AiModel
     {
         $active = $this->settings->activeModel();
