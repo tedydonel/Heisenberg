@@ -264,6 +264,7 @@ jobs:
         # this step once fixed. `npm run test:playwright` (unchanged) still runs it for
         # local/manual runs.
         run: |
+          node tests/js/ai-chat-structure-matrix.mjs
           node tests/js/browser-matrix.mjs
           node tests/js/code-editor-matrix.mjs
           node tests/js/containers-matrix.mjs

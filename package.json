@@ -9,7 +9,7 @@
         "test:canvas-pipeline": "node tests/js/canvas-pipeline-harness.mjs build/js-harness/editor.html",
         "test:jsdom": "npm run dump:editor && npm run test:shortcode-parity && npm run test:canvas-pipeline",
         "playwright:install": "playwright install --with-deps chromium",
-        "test:playwright": "node tests/js/browser-matrix.mjs && node tests/js/canvas-drag-matrix.mjs && node tests/js/code-editor-matrix.mjs && node tests/js/containers-matrix.mjs && node tests/js/duplicate-block-id.mjs && node tests/js/history-revisions-matrix.mjs && node tests/js/inspector-sync-matrix.mjs && node tests/js/phase-g-matrix.mjs && node tests/js/theme-update-create-button.mjs && node tests/js/theme-var-integer-fix.mjs && node tests/js/toolbar-follow-matrix.mjs",
+        "test:playwright": "node tests/js/ai-chat-structure-matrix.mjs && node tests/js/browser-matrix.mjs && node tests/js/canvas-drag-matrix.mjs && node tests/js/code-editor-matrix.mjs && node tests/js/containers-matrix.mjs && node tests/js/duplicate-block-id.mjs && node tests/js/history-revisions-matrix.mjs && node tests/js/inspector-sync-matrix.mjs && node tests/js/phase-g-matrix.mjs && node tests/js/theme-update-create-button.mjs && node tests/js/theme-var-integer-fix.mjs && node tests/js/toolbar-follow-matrix.mjs",
         "test": "npm run test:jsdom"
     },
     "devDependencies": {

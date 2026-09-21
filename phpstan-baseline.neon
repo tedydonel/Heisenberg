@@ -2119,12 +2119,6 @@ parameters:
 			path: src/Services/TranslationStatusService.php
 
 		-
-			message: '#^Called ''env'' outside of the config directory which returns null when the config is cached, use ''config''\.$#'
-			identifier: larastan.noEnvCallsOutsideOfConfig
-			count: 2
-			path: src/Services/WebSearchService.php
-
-		-
 			message: '#^Offset ''bounce''\|''ease''\|''ease\-in''\|''ease\-in\-out''\|''ease\-out''\|''linear''\|''smooth''\|''spring'' on array\{smooth\: ''Smooth'', ease\: ''Ease'', ease\-in\: ''Ease in'', ease\-out\: ''Ease out'', ease\-in\-out\: ''Ease in\-out'', spring\: ''Spring'', bounce\: ''Bounce'', linear\: ''Linear''\} on left side of \?\? always exists and is not nullable\.$#'
 			identifier: nullCoalesce.offset
 			count: 1
