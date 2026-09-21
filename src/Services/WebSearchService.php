@@ -282,7 +282,6 @@ class WebSearchService
         return $parsed->format('Y-m-d');
     }
 
-
     /** Cache key for the DuckDuckGo backoff window. */
     private const DDG_COOLDOWN_KEY = 'heisenberg:web-search:ddg-cooldown';
 
@@ -468,7 +467,6 @@ class WebSearchService
         return $rawUrl;
     }
 
-
     /**
      * Pull a leading publication date off a search snippet.
      *
@@ -504,6 +502,7 @@ class WebSearchService
 
         return [null, $snippet];
     }
+
     /**
      * @return list<array{title: string, url: string, snippet: string, date: ?string}>|null
      */

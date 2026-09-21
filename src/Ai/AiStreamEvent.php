@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace Heisenberg\Ai;
 
+use Heisenberg\Services\AiToolRunner;
+
 /**
  * One event on the normalised stream.
  *
@@ -29,7 +31,7 @@ class AiStreamEvent
      * reuses one accumulation code path, but tagged with its own `type` so it
      * can be routed to a separate (collapsible) area rather than the answer
      * body. Deliberately never folded into the transcript replayed to the
-     * model or into saved content — see {@see \Heisenberg\Services\AiToolRunner}.
+     * model or into saved content — see {@see AiToolRunner}.
      */
     public const REASONING = 'reasoning_delta';
 
