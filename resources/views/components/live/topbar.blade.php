@@ -155,7 +155,10 @@
     $rightButtons = [
         ['icon' => 'moon', 'label' => __('heisenberg::editor.topbar.aria_theme'), 'theme' => true],
         ['icon' => 'arrow-square-out', 'label' => __('heisenberg::editor.topbar.aria_preview'), 'theme' => false, 'preview' => true],
-        ['icon' => 'translate', 'label' => __('heisenberg::editor.topbar.aria_post_language'), 'lang' => true],
+        // The editing-language control lives on the CANVAS now, on the locale badge above the
+        // post title — the place that was already showing which language you are editing. Two
+        // surfaces naming the same mode invited the reading that one was a view filter; the badge
+        // sits with the content it governs. See live/canvas.blade.php.
         ['icon' => 'device-mobile', 'label' => __('heisenberg::editor.topbar.aria_device'), 'device' => true],
     ];
     if ($documentType === 'email') {
@@ -275,28 +278,6 @@
                     <div class="hb-topbar__devsel-menu hb-topbar__exportsel-menu" role="menu" hidden>
                         <button type="button" class="hb-topbar__devsel-opt" role="menuitem" data-hb-export-item data-format="html">{{ __('heisenberg::editor.topbar.export_html') }}</button>
                         <button type="button" class="hb-topbar__devsel-opt" role="menuitem" data-hb-export-item data-format="eml">{{ __('heisenberg::editor.topbar.export_eml') }}</button>
-                    </div>
-                </div>
-            @elseif ($btn['lang'] ?? false)
-                <div class="hb-topbar__langsel">
-                    <button type="button" class="hb-topbar__btn hb-topbar__btn--sm hb-topbar__lang" data-hb-lang-toggle
-                        aria-haspopup="listbox" aria-expanded="false" aria-label="{{ $btn['label'] }}">
-                        <span class="hb-topbar__icon hb-topbar__icon--sm" aria-hidden="true">
-                            @include('heisenberg::components.ui.icon', ['name' => $btn['icon'], 'size' => 13])
-                        </span>
-                        <span class="hb-topbar__lang-label" data-hb-lang-current-label>{{ $hbCurrentLocaleLabel }}</span>
-                    </button>
-                    <div class="hb-topbar__langsel-menu" role="listbox" hidden>
-                        @foreach ($contentLocales as $hbLocale)
-                            <button type="button" class="hb-topbar__langsel-opt @if ($hbLocale === $hbCurrentLocale) is-on @endif" role="option"
-                                aria-selected="{{ $hbLocale === $hbCurrentLocale ? 'true' : 'false' }}"
-                                data-hb-lang-option data-locale="{{ $hbLocale }}">
-                                <span>{{ $contentLocaleLabels[$hbLocale] ?? __('heisenberg::editor.locales.' . $hbLocale) }}</span>
-                                <span class="hb-topbar__langsel-opt__check" aria-hidden="true">
-                                    @include('heisenberg::components.ui.icon', ['name' => 'check', 'size' => 12])
-                                </span>
-                            </button>
-                        @endforeach
                     </div>
                 </div>
             @else

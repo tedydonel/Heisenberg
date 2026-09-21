@@ -78,6 +78,25 @@ class EditingLocaleTest extends TestCase
         ], $overrides);
     }
 
+    /**
+     * The control lives on the CANVAS, on the locale badge above the post title — the element
+     * that already named the language being edited. It used to sit in the topbar, far from the
+     * content it governs and alongside view-level controls like device preview, which invited
+     * reading a mode switch as a view filter.
+     */
+    public function test_the_language_control_sits_on_the_canvas_badge_not_the_topbar(): void
+    {
+        $html = $this->get('/editor')->assertOk()->getContent();
+
+        $this->assertElementExists($html, '.hb-page__locale [data-hb-lang-toggle]');
+        $this->assertElementExists($html, '.hb-page__locale [data-hb-lang-option][data-locale="fr"]');
+        // The badge is inside the control now, so it still names the current locale.
+        $this->assertElementExists($html, '.hb-page__locale [data-hb-editing-locale-badge]');
+
+        $this->assertElementMissing($html, '.hb-topbar__langsel');
+        $this->assertElementMissing($html, '.hb-topbar__zone [data-hb-lang-toggle]');
+    }
+
     public function test_topbar_language_dropdown_switches_locale_in_place_never_navigates(): void
     {
         $html = $this->get('/editor')->assertOk()->getContent();

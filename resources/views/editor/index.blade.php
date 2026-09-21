@@ -45,7 +45,8 @@
     <div class="hb-editor__canvas">
         <x-heisenberg::live.canvas :title="$postTitle ?? ''" :page-padding-x="$postPagePaddingX ?? 56" :page-padding-y="$postPagePaddingY ?? 56"
             :document-type="$hbDocumentType"
-            :post-locale="$postLocale ?? 'en'" :content-locale-labels="$contentLocaleLabels ?? []" />
+            :post-locale="$postLocale ?? 'en'" :content-locale-labels="$contentLocaleLabels ?? []"
+            :content-locales="$contentLocales ?? []" />
         <x-heisenberg::live.code-editor hidden />
         <x-heisenberg::live.quick-inserter :registry="$paletteBlocks ?? $registry" :document-type="$hbDocumentType" />
         @php
