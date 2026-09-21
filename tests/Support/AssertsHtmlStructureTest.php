@@ -373,4 +373,67 @@ class AssertsHtmlStructureTest extends TestCase
         $this->assertNotFalse($found);
         $this->assertGreaterThan(0, $found->length);
     }
+
+    /**
+     * The two gaps that broke the PHP 8.2 CI lane (where symfony/css-selector is absent, so this
+     * fallback is the only converter). Both are exercised through real DOMXPath queries, because
+     * the ^= failure was not a wrong match — it produced XPath that DOMXPath rejected outright.
+     */
+    public function test_an_attribute_value_containing_spaces_survives_the_descendant_split(): void
+    {
+        // Was split on /\s+/ into '[data-hb-ai-suggest="Write', 'a', 'post"]'.
+        $this->assertSame(
+            "//*[@data-hb-ai-suggest='Write a post']",
+            AssertsHtmlStructure::hbFallbackCssToXPath('[data-hb-ai-suggest="Write a post"]'),
+        );
+
+        $dom = new \DOMDocument();
+        @$dom->loadHTML('<?xml encoding="UTF-8"><body><button data-hb-ai-suggest="Write a post">go</button></body>');
+        $found = (new \DOMXPath($dom))->query(
+            AssertsHtmlStructure::hbFallbackCssToXPath('[data-hb-ai-suggest="Write a post"]')
+        );
+
+        $this->assertNotFalse($found);
+        $this->assertSame(1, $found->length);
+    }
+
+    public function test_attribute_operators_translate_to_valid_xpath(): void
+    {
+        // Two values chosen so that every operator below selects exactly one of them — the
+        // first version of this fixture had both ending in "-ink)", so $= matched both and the
+        // assertion was really testing document order.
+        $dom = new \DOMDocument();
+        @$dom->loadHTML('<?xml encoding="UTF-8"><body>'
+            . '<i id="token" data-vm-name="var(--hb-t-ink)"></i>'
+            . '<i id="plain" data-vm-name="plainvalue"></i>'
+            . '</body>');
+        $xpath = new \DOMXPath($dom);
+
+        $cases = [
+            '[data-vm-name^="var(--hb-t-"]' => ['token'],
+            '[data-vm-name^="plain"]' => ['plain'],
+            '[data-vm-name$="ink)"]' => ['token'],
+            '[data-vm-name$="value"]' => ['plain'],
+            '[data-vm-name*="hb-t"]' => ['token'],
+            '[data-vm-name="plainvalue"]' => ['plain'],
+        ];
+
+        foreach ($cases as $selector => $expectedIds) {
+            $expression = AssertsHtmlStructure::hbFallbackCssToXPath($selector);
+            $found = @$xpath->query($expression);
+
+            $this->assertNotFalse($found, "DOMXPath rejected [{$selector}] -> {$expression}");
+
+            $ids = [];
+            foreach ($found as $node) {
+                $ids[] = $node->getAttribute('id');
+            }
+            $this->assertSame($expectedIds, $ids, "[{$selector}] -> {$expression}");
+        }
+    }
+
+    public function test_a_bare_attribute_presence_selector_still_works(): void
+    {
+        $this->assertSame('//*[@data-flag]', AssertsHtmlStructure::hbFallbackCssToXPath('[data-flag]'));
+    }
 }

@@ -30,6 +30,22 @@ abstract class TestCase extends Orchestra
                 $_ENV[$key] = $_SERVER[$key] = $path;
                 putenv("{$key}={$path}");
             }
+
+            // Compiled Blade views are cached in the SAME shared skeleton directory
+            // (storage/framework/views, ~169 files). The manifests above were already split
+            // per worker; these were not, so after any template edit all four workers race to
+            // recompile the same view and one can read a half-written compiled file. That
+            // surfaces as a bare HTTP 500 from a random view render — a failure that depends
+            // only on timing, shows up on a cold cache (a fresh CI checkout) far more often
+            // than on a warm local one, and hits a different test each run.
+            // Absolute on purpose: config/view.php's fallback is a realpath(), and the
+            // compiler needs the directory to exist before the first write.
+            $views = sys_get_temp_dir() . DIRECTORY_SEPARATOR . 'hb-views-paratest-' . $token;
+            if (! is_dir($views)) {
+                @mkdir($views, 0777, true);
+            }
+            $_ENV['VIEW_COMPILED_PATH'] = $_SERVER['VIEW_COMPILED_PATH'] = $views;
+            putenv("VIEW_COMPILED_PATH={$views}");
         }
 
         $this->isolateFileBackedStores();

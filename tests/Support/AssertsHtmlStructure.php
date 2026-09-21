@@ -422,11 +422,15 @@ trait AssertsHtmlStructure
 
     /**
      * Minimal CSS-selector-subset -> XPath converter, used only when symfony/css-selector is not
-     * autoloadable. Supports: tag, #id, .class, [attr], [attr=value] / [attr="value"], chained on
-     * one compound (e.g. tag.class[attr=value]), and the descendant combinator (plain whitespace).
-     * Deliberately does NOT support combinators (>, +, ~), pseudo-classes, or attribute operators
-     * other than exact match — reach for symfony/css-selector (already a transitive dependency
-     * here) for anything past this.
+     * autoloadable. Supports: tag, #id, .class, [attr], every CSS attribute operator
+     * (= ^= $= *= ~= |=) with quoted or bare values — including values containing spaces or
+     * commas — chained on one compound (e.g. tag.class[attr=value]), the descendant combinator,
+     * and selector groups. Deliberately does NOT support combinators (>, +, ~) or pseudo-classes.
+     *
+     * Kept honest because symfony/css-selector is a TRANSITIVE dependency that some Laravel
+     * versions pull in and others don't: locally it is present and this code never runs, so gaps
+     * here only ever surface on another CI lane. Both the space-in-value split and the missing
+     * ^= support were found exactly that way, on the PHP 8.2 lane.
      */
     public static function hbFallbackCssToXPath(string $selector): string
     {
@@ -435,15 +439,94 @@ trait AssertsHtmlStructure
         // where symfony/css-selector was absent. It ships as a transitive dependency of some
         // Laravel versions and not others, so assertFormControl() (which builds an
         // input/select/textarea/#id group) passed locally and errored on other CI lanes.
-        $group = array_filter(array_map('trim', explode(',', trim($selector))), 'strlen');
+        $group = self::hbSplitOutsideBrackets(trim($selector), ',');
         if (count($group) > 1) {
             return implode(' | ', array_map([self::class, 'hbFallbackCssToXPath'], $group));
         }
 
-        $compounds = preg_split('/\s+/', trim((string) reset($group))) ?: [];
+        // Descendant combinator. Splitting on /\s+/ was wrong: an attribute VALUE may legally
+        // contain spaces ([data-x="Write a post"]) and got torn into three broken fragments,
+        // which surfaced as "Unsupported selector fragment: '[data-x="Write'".
+        $compounds = self::hbSplitOutsideBrackets((string) reset($group), " \t\r\n");
         $steps = array_map([self::class, 'hbFallbackCompoundToXPathStep'], $compounds);
 
         return '//' . implode('//', $steps);
+    }
+
+    /**
+     * Split on any of $delims, but only at bracket depth 0 and outside quotes — so neither a
+     * comma nor a space inside [attr="a, b"] is treated as a separator. Empty pieces dropped.
+     *
+     * @return list<string>
+     */
+    private static function hbSplitOutsideBrackets(string $selector, string $delims): array
+    {
+        $out = [];
+        $buf = '';
+        $depth = 0;
+        $quote = null;
+
+        foreach (str_split($selector) as $char) {
+            if ($quote !== null) {
+                $buf .= $char;
+                if ($char === $quote) {
+                    $quote = null;
+                }
+
+                continue;
+            }
+            if ($char === '"' || $char === "'") {
+                $quote = $char;
+                $buf .= $char;
+
+                continue;
+            }
+            if ($char === '[') {
+                $depth++;
+            } elseif ($char === ']') {
+                $depth = max(0, $depth - 1);
+            } elseif ($depth === 0 && str_contains($delims, $char)) {
+                if (trim($buf) !== '') {
+                    $out[] = trim($buf);
+                }
+                $buf = '';
+
+                continue;
+            }
+            $buf .= $char;
+        }
+
+        if (trim($buf) !== '') {
+            $out[] = trim($buf);
+        }
+
+        return $out;
+    }
+
+    /**
+     * A string as an XPath 1.0 literal. XPath 1.0 has no escape character, so a value carrying
+     * both quote kinds has to be assembled with concat().
+     */
+    private static function hbXPathLiteral(string $value): string
+    {
+        if (! str_contains($value, "'")) {
+            return "'" . $value . "'";
+        }
+        if (! str_contains($value, '"')) {
+            return '"' . $value . '"';
+        }
+
+        $parts = [];
+        foreach (explode("'", $value) as $i => $chunk) {
+            if ($i > 0) {
+                $parts[] = '"\'"';
+            }
+            if ($chunk !== '') {
+                $parts[] = "'" . $chunk . "'";
+            }
+        }
+
+        return 'concat(' . implode(', ', $parts) . ')';
     }
 
     private static function hbFallbackCompoundToXPathStep(string $compound): string
@@ -475,16 +558,33 @@ trait AssertsHtmlStructure
                 continue;
             }
 
-            // [name] or [name=value] / [name="value"] / [name='value'] — value may itself
-            // legally contain "=" or ".", so split on the FIRST "=" only.
+            // [name], or [name<op>value] with any CSS attribute operator. Matching only "="
+            // before meant `[data-vm-name^="var(--hb-t-"]` parsed its name as `data-vm-name^`
+            // and emitted `@data-vm-name^='...'`, which is not valid XPath at all — DOMXPath
+            // returned false and the assertion died as "Invalid selector".
             $inner = substr($token, 1, -1);
-            if (! str_contains($inner, '=')) {
-                $conditions[] = "@{$inner}";
+            if (! preg_match('/^\s*([A-Za-z_:][\w:.-]*)\s*(?:([~^$*|]?=)\s*(.*?)\s*)?$/s', $inner, $am)) {
+                throw new \RuntimeException("Unsupported attribute selector: '[{$inner}]'.");
+            }
+
+            $name = $am[1];
+            if (($am[2] ?? '') === '') {
+                $conditions[] = "@{$name}";
 
                 continue;
             }
-            [$name, $value] = explode('=', $inner, 2);
-            $conditions[] = "@{$name}='" . trim($value, "\"'") . "'";
+
+            $value = trim((string) ($am[3] ?? ''), "\"'");
+            $literal = self::hbXPathLiteral($value);
+            $conditions[] = match ($am[2]) {
+                '^=' => "starts-with(@{$name},{$literal})",
+                '*=' => "contains(@{$name},{$literal})",
+                // XPath 1.0 has no ends-with(); string-length counts characters, so use mb_.
+                '$=' => "substring(@{$name}, string-length(@{$name}) - " . (mb_strlen($value) - 1) . ")={$literal}",
+                '~=' => 'contains(concat(\' \', normalize-space(@' . $name . '), \' \'), ' . self::hbXPathLiteral(' ' . $value . ' ') . ')',
+                '|=' => "(@{$name}={$literal} or starts-with(@{$name}," . self::hbXPathLiteral($value . '-') . '))',
+                default => "@{$name}={$literal}",
+            };
         }
 
         return $tag . ($conditions !== [] ? '[' . implode(' and ', $conditions) . ']' : '');
