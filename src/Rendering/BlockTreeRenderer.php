@@ -96,7 +96,8 @@ final class BlockTreeRenderer
         return $this->renderBlockAtDepth($block, $locale, 0, $surface);
     }
 
-    private function renderBlockAtDepth(array $block, string $locale, int $depth, string $surface = 'render'): string
+    /** @param array<string, string> $hint render-pass-only attributes (email surface), never persisted */
+    private function renderBlockAtDepth(array $block, string $locale, int $depth, string $surface = 'render', array $hint = []): string
     {
         if ($depth > self::MAX_NESTING_DEPTH) {
             return '';
@@ -104,11 +105,12 @@ final class BlockTreeRenderer
 
         // JSON-only: a block must carry a string `name` resolving to a contract.
         return is_string($block['name'] ?? null)
-            ? $this->renderJsonBlock($block, $locale, $depth, $surface)
+            ? $this->renderJsonBlock($block, $locale, $depth, $surface, $hint)
             : '';
     }
 
-    private function renderJsonBlock(array $block, string $locale, int $depth, string $surface = 'render'): string
+    /** @param array<string, string> $hint */
+    private function renderJsonBlock(array $block, string $locale, int $depth, string $surface = 'render', array $hint = []): string
     {
         $contract = $this->registry->getBlock((string) $block['name']);
         if ($contract === null) {
@@ -120,11 +122,21 @@ final class BlockTreeRenderer
             return '';
         }
 
-        if ($surface === 'email' && is_array($contract['supports']['layout'] ?? null)) {
+        if ($surface === 'email') {
             // Render-pass-only, like EmailRenderer's `_emailColWidthPercent`: never persisted.
-            $layout = $this->styleCompiler->emailLayout($block, $contract);
-            $attributes = is_array($block['attributes'] ?? null) ? $block['attributes'] : [];
-            $block['attributes'] = ['_emailAlign' => $layout['align'], '_emailValign' => $layout['valign']] + $attributes;
+            $extra = $hint;
+            if (is_array($contract['supports']['layout'] ?? null)) {
+                $layout = $this->styleCompiler->emailLayout($block, $contract);
+                // A column's horizontal alignment is the CROSS axis: flexbox uses it to position
+                // each child box, never to align text, and renderEmailFlow() does the same with a
+                // cell around each child. Only a row's horizontal (main-axis) alignment belongs on
+                // this block's own cell.
+                $extra += ['_emailAlign' => $layout['row'] ? $layout['align'] : '', '_emailValign' => $layout['valign']];
+            }
+            if ($extra !== []) {
+                $attributes = is_array($block['attributes'] ?? null) ? $block['attributes'] : [];
+                $block['attributes'] = $extra + $attributes;
+            }
         }
 
         return $this->renderNode($template, $block, $contract, $locale, true, $depth, $surface);
@@ -315,15 +327,33 @@ final class BlockTreeRenderer
      */
     private function renderEmailFlow(array $block, array $contract, string $locale, int $depth, string $flow): string
     {
+        $layout = $this->styleCompiler->emailLayout($block, $contract);
+
+        // A COLUMN with an alignment set is flexbox `align-items: start|center|end`: children with
+        // no explicit width shrink to their content and sit at that edge, instead of stretching
+        // across the container. The email has no flexbox, so each such child is rendered at its
+        // natural width (`_emailHug`) and placed by a cell of its own.
+        $crossAligned = $flow === 'blocks' && ! $layout['row'] && $layout['align'] !== '';
+
         $children = [];
         foreach (($block['innerBlocks'] ?? []) as $child) {
-            $html = is_array($child) ? $this->renderBlockAtDepth($child, $locale, $depth + 1, 'email') : '';
-            if ($html !== '') {
-                $children[] = $html;
+            if (! is_array($child)) {
+                continue;
             }
+            $hug = $crossAligned && $this->shrinksInFlex($child);
+            $html = $this->renderBlockAtDepth($child, $locale, $depth + 1, 'email', $hug ? ['_emailHug' => '1'] : []);
+            if ($html === '') {
+                continue;
+            }
+            if ($crossAligned) {
+                // The child's own left/center/right wins over the container's, as auto margins do.
+                $own = $child['supports']['align'] ?? null;
+                $edge = is_string($own) && in_array($own, ['left', 'center', 'right'], true) ? $own : $layout['align'];
+                $html = '<table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%"><tr><td align="' . $edge . '">' . $html . '</td></tr></table>';
+            }
+            $children[] = $html;
         }
 
-        $layout = $this->styleCompiler->emailLayout($block, $contract);
         $gap = HtmlEscaper::escape($layout['gap']);
         $table = '<table role="presentation" cellpadding="0" cellspacing="0" border="0"';
         $rowGap = $gap === '' ? '' : '<td style="height: ' . $gap . '; line-height: ' . $gap . '; font-size: 0;"></td>';
@@ -352,6 +382,31 @@ final class BlockTreeRenderer
         $cells = array_map(static fn (string $html): string => '<td valign="' . $valign . '">' . $html . '</td>', $children);
 
         return $table . ($layout['spread'] ? ' width="100%"' : '') . '><tr>' . implode($cellGap, $cells) . '</tr></table>';
+    }
+
+    /**
+     * Whether a child of a cross-aligned column shrinks to its content. In the canvas every block
+     * has `width: auto` except the separator (100%), so a block shrinks unless it names a width.
+     * Images, separators and columns keep their full-width email structure (an email image is
+     * sized to the column, columns split it by percentage) and are only positioned.
+     *
+     * @param array<string, mixed> $child
+     */
+    private function shrinksInFlex(array $child): bool
+    {
+        $name = (string) ($child['name'] ?? '');
+        $slash = strrpos($name, '/');
+        $slug = $slash === false ? $name : substr($name, $slash + 1);
+        if (in_array($slug, ['separator', 'image', 'columns', 'column'], true)) {
+            return false;
+        }
+
+        $supports = is_array($child['supports'] ?? null) ? $child['supports'] : [];
+        $align = $supports['align'] ?? null;
+        $width = $supports['size']['width'] ?? null;
+
+        // `wide` / `full` alignment stretches; an explicit width is a width.
+        return trim((string) $width) === '' && ! (is_string($align) && in_array($align, ['wide', 'full'], true));
     }
 
     private function isEditorOnlyNode(array $node): bool

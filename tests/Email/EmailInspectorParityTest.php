@@ -138,8 +138,11 @@ class EmailInspectorParityTest extends TestCase
             $this->block('p', 'paragraph', ['content' => 'CHILD']),
         ]));
 
-        // column (the default): justify is the vertical main axis, align the horizontal cross axis
-        $this->assertStringContainsString('<td align="right" valign="middle" style="padding: 0 0 0 0; height: auto', $group(['justify' => 'center', 'align' => 'end']));
+        // column (the default): justify is the vertical main axis (valign on the box), align the
+        // horizontal cross axis, which positions each CHILD — flexbox never aligns text with it
+        $column = $group(['justify' => 'center', 'align' => 'end']);
+        $this->assertStringContainsString('<td valign="middle" style="padding: 0 0 0 0; height: auto', $column);
+        $this->assertStringContainsString('<td align="right"><table', $column);
         // row: the axes swap
         $this->assertStringContainsString('<td align="center" valign="bottom" style="padding: 0 0 0 0; height: auto', $group(['direction' => 'row', 'justify' => 'center', 'align' => 'end']));
         // nothing set: no attribute at all, the cell keeps inheriting
@@ -178,6 +181,52 @@ class EmailInspectorParityTest extends TestCase
         $this->assertStringNotContainsString('<td valign=', $flat($group([])));
     }
 
+    /**
+     * The shape that reached a real inbox wrong: a centred group whose children are a pill (a
+     * nested group with a background and no width), a heading and paragraph that name width 100%,
+     * and a button. In flexbox the pill and button shrink to their content and sit in the middle;
+     * the email used to stretch the pill into a full-width bar and leave the button at the left.
+     */
+    public function test_a_centred_group_shrinks_its_children_to_content_like_flexbox(): void
+    {
+        $pill = $this->block('pill', 'group', [], [
+            'layout' => ['direction' => 'column', 'justify' => 'center', 'align' => 'center'],
+            'color' => ['background' => '#79a2f2'],
+            'spacing' => ['padding' => ['top' => '4px', 'right' => '16px', 'bottom' => '4px', 'left' => '16px']],
+            'align' => 'center',
+        ], [$this->block('pt', 'heading', ['content' => 'PILLTEXT', 'level' => 2])]);
+
+        $html = $this->render($this->email(), $this->block('hero', 'group', [], [
+            'layout' => ['align' => 'center', 'gap' => '0'],
+            'color' => ['background' => '#5b8def'],
+        ], [
+            $pill,
+            $this->block('h', 'heading', ['content' => 'FULLWIDTH', 'level' => 1], ['size' => ['width' => '100%'], 'typography' => ['textAlign' => 'center']]),
+            $this->block('b', 'button', ['text' => 'GO', 'url' => 'https://example.com'], ['color' => ['background' => '#ffffff']]),
+        ]));
+        $flat = (string) preg_replace('/>\s+</', '><', $html);
+
+        // the pill's table has no width of its own: it is as wide as its text
+        $this->assertMatchesRegularExpression('/<table role="presentation" cellpadding="0" cellspacing="0" border="0" style="width: auto; max-width: 100%[^"]*"><tr><td[^>]*background-color: #79a2f2/', $flat);
+        // ...and it (and the button) sit in a centred cell rather than the page's left edge
+        $this->assertGreaterThanOrEqual(3, substr_count($flat, '<td align="center"><table'));
+        $button = strstr($flat, 'GO') ?: '';
+        $this->assertNotSame('', $button);
+        // the explicit-width heading is NOT shrunk
+        $this->assertMatchesRegularExpression('/<table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%" style="width: 100%; max-width: 100%[^"]*"><tr><td[^>]*><h1[^>]*>FULLWIDTH/', $flat);
+    }
+
+    public function test_children_of_a_stretch_column_are_left_at_full_width(): void
+    {
+        // No alignment set = `align-items: stretch`: nothing shrinks, nothing is wrapped.
+        $html = $this->render($this->email(), $this->block('g', 'group', [], [], [
+            $this->block('p', 'paragraph', ['content' => 'STRETCHED']),
+        ]));
+
+        $this->assertStringNotContainsString('style="width: auto', $html);
+        $this->assertStringNotContainsString('<td align="center"><table', $html);
+    }
+
     public function test_columns_lay_out_as_a_row_or_stack(): void
     {
         $columns = fn (array $layout, array $columnLayout = []): string => (string) preg_replace('/>\s+</', '><', $this->render($this->email(), $this->block('cs', 'columns', [], ['layout' => $layout], [
@@ -200,8 +249,8 @@ class EmailInspectorParityTest extends TestCase
         $this->assertSame(2, substr_count($stack, 'class="hb-email-col" width="100%"'));
         $this->assertSame(1, substr_count($stack, '<td style="height: 8px'));
 
-        // a column block's own layout aligns its content cell
-        $this->assertStringContainsString('<td align="center" style="padding: 0 12px 0 12px', $columns([], ['align' => 'center']));
+        // a column block's own layout positions ITS children with a cell each, like any column
+        $this->assertStringContainsString('<td align="center"><table', $columns([], ['align' => 'center']));
     }
 
     public function test_alignment_reaches_the_cell(): void

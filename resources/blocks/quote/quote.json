@@ -525,7 +525,14 @@
                 "cellpadding": "0",
                 "cellspacing": "0",
                 "border": "0",
-                "width": "100%"
+                "width": {
+                    "enumMap": "{{attributes._emailHug}}",
+                    "cases": {
+                        "1": ""
+                    },
+                    "default": "100%",
+                    "omitWhenEmpty": true
+                }
             },
             "children": [
                 {
@@ -544,8 +551,21 @@
                                         "cellpadding": "0",
                                         "cellspacing": "0",
                                         "border": "0",
-                                        "width": "100%",
-                                        "style": "width: var(--hb-quote-w, 100%); max-width: var(--hb-quote-maxw, 100%);"
+                                        "width": {
+                                            "enumMap": "{{attributes._emailHug}}",
+                                            "cases": {
+                                                "1": ""
+                                            },
+                                            "default": "100%",
+                                            "omitWhenEmpty": true
+                                        },
+                                        "style": {
+                                            "enumMap": "{{attributes._emailHug}}",
+                                            "cases": {
+                                                "1": "width: auto; max-width: var(--hb-quote-maxw, 100%);"
+                                            },
+                                            "default": "width: var(--hb-quote-w, 100%); max-width: var(--hb-quote-maxw, 100%);"
+                                        }
                                     },
                                     "children": [
                                         {
