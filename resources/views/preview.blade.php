@@ -64,7 +64,7 @@
         * { box-sizing: border-box; }
         body {
             margin: 0; background: var(--paper, #fff); color: var(--ink, #0a0a0a);
-            font-family: var(--font-sans, 'Rubik'), -apple-system, sans-serif;
+            font-family: var(--hb-t-font-base, var(--font-sans, 'Rubik'), -apple-system, sans-serif);
             -webkit-font-smoothing: antialiased;
         }
         .hb-preview-page { max-width: 760px; margin: 0 auto; padding: 56px 24px 96px; position: relative; z-index: 1; }

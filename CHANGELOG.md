@@ -8,6 +8,7 @@ All notable changes to this project are documented here. The format is based on
 
 ### Changed
 
+- **Text with no font of its own now follows the theme.** The theme's first font becomes the document's base face (a derived `--hb-t-font-base` token) on the canvas, the preview and the published page; previously such text fell back to the editor's own UI font, so a themed site still read in Rubik until every block set a font explicitly. A font set on a block still wins, and a theme with no fonts is unchanged.
 - **The icon picker paints in one request instead of one per icon.** Its feed now carries each icon's markup, so a page of 96 icons went from 97 requests (~37s against the dev server) to one (~0.9s). `url` stays for the canvas runtime and as the fallback for any file the server declines to inline — only a plain `<svg>` with no script, handler or external reference is inlined.
 
 - **The AI now always uses the theme's fonts.** The system prompt told it to set only what the user asked for, and nobody asks for a font, so blocks rendered in the editor's default face. When the theme defines fonts, the prompt now requires one on every heading, paragraph, list, quote and button (one for headings, one for body).

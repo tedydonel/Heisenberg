@@ -135,10 +135,18 @@ class ThemeRepository
         foreach ($theme['radii'] ?? [] as $token) {
             $lines[] = "  --{$p}{$token['name']}: {$token['value']};";
         }
+        $base = null;
         foreach ($theme['fonts'] ?? [] as $token) {
             $family = $token['family'];
             $quoted = str_contains($family, ' ') ? "'{$family}'" : $family;
             $lines[] = "  --{$p}{$token['name']}: {$quoted}, sans-serif;";
+            $base = $base ?? "{$quoted}, sans-serif";
+        }
+        // The document's base face: what text with no font of its own inherits, on the canvas,
+        // the preview and the published page. Without it that text fell back to the EDITOR's own
+        // UI font, so a themed site still read in Rubik until every block set a font explicitly.
+        if ($base !== null) {
+            $lines[] = "  --{$p}font-base: {$base};";
         }
 
         return ":root {\n" . implode("\n", $lines) . "\n}";

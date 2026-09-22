@@ -1,6 +1,6 @@
 .hb-editor__canvas { background: var(--hb-bg-inset); }
 .hb-canvas { position: absolute; inset: 0; overflow: auto; background: var(--hb-bg-inset); }
-.hb-page { width: 1280px; max-width: 100%; margin: 0 auto; box-sizing: border-box; padding: var(--hb-page-padding-y, 56px) var(--hb-page-padding-x, 56px); min-height: 100%; background: #FFFFFF; font-family: var(--hb-font-sans, Rubik, sans-serif); transition: width .25s ease, padding .25s ease; }
+.hb-page { width: 1280px; max-width: 100%; margin: 0 auto; box-sizing: border-box; padding: var(--hb-page-padding-y, 56px) var(--hb-page-padding-x, 56px); min-height: 100%; background: #FFFFFF; font-family: var(--hb-t-font-base, var(--hb-font-sans, Rubik, sans-serif)); transition: width .25s ease, padding .25s ease; }
 
 .hb-page__title { margin: 0 0 28px; font-size: clamp(24px, 4.6vw, 36px); font-weight: 700; letter-spacing: -0.02em; line-height: 1.2; color: var(--hb-text-primary); outline: none; }
 .hb-page__title.is-empty::before { content: attr(data-ph); color: var(--hb-text-disabled); }

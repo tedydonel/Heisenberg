@@ -89,6 +89,9 @@
             const family = hbResolveFontFamily(value);
             if (family !== '') families.add(family);
         };
+        // The page's base face (theme's first font): text that sets no font of its own inherits
+        // it, so it has to load even when no block names it.
+        add('var(--hb-t-font-base)');
         const walk = (blocks) => (blocks || []).forEach((block) => {
             add(block.supports?.typography?.fontFamily);
             ['hover', 'active', 'focus'].forEach((state) => {

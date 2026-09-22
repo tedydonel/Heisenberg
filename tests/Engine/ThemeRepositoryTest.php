@@ -146,6 +146,27 @@ class ThemeRepositoryTest extends TestCase
         $this->assertStringContainsString('--hb-t-radius-lg: 8px;', $css);
     }
 
+    /**
+     * The document's base face. Text that sets no font of its own used to inherit the EDITOR's
+     * own UI font, so a themed site still read in Rubik until every block named a font.
+     */
+    public function test_css_derives_a_base_font_from_the_first_font_token(): void
+    {
+        $defaults = $this->repo()->defaults();
+        $css = $this->repo()->css($defaults);
+
+        $this->assertStringContainsString('--hb-t-font-base: Rubik, sans-serif;', $css);
+        $this->assertSame($defaults['fonts'][0]['family'], 'Rubik', 'fixture assumption: Sans is the first font');
+
+        $multiWord = $defaults;
+        $multiWord['fonts'] = [['name' => 'font-display', 'label' => 'Display', 'family' => 'Space Grotesk', 'weights' => [400]]];
+        $this->assertStringContainsString("--hb-t-font-base: 'Space Grotesk', sans-serif;", $this->repo()->css($multiWord));
+
+        $none = $defaults;
+        $none['fonts'] = [];
+        $this->assertStringNotContainsString('--hb-t-font-base', $this->repo()->css($none));
+    }
+
     public function test_tokens_exposes_a_radius_picker_map_keyed_by_css_variable(): void
     {
         $tokens = $this->repo()->tokens($this->repo()->defaults());

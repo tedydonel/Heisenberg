@@ -130,11 +130,15 @@
                             if (token.name && value) lines.push('  --hb-t-' + token.name + ': ' + value + ';');
                         });
                     });
+                    let base = null;
                     (theme.fonts || []).forEach((token) => {
                         if (!token.name || !token.family) return;
                         const family = token.family.indexOf(' ') >= 0 ? "'" + token.family + "'" : token.family;
                         lines.push('  --hb-t-' + token.name + ': ' + family + ', sans-serif;');
+                        if (base === null) base = family + ', sans-serif';
                     });
+                    // Mirrors ThemeRepository::css(): the page's base face, live-edited.
+                    if (base !== null) lines.push('  --hb-t-font-base: ' + base + ';');
                     target.textContent = ':root {\n' + lines.join('\n') + '\n}';
                 };
 
