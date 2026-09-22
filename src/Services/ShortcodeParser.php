@@ -41,6 +41,9 @@ class ShortcodeParser
 
     private string $text = '';
 
+    /** Reject markdown pasted into text fields — see {@see self::parse()}. */
+    private bool $strict = false;
+
     /** @param array<string, array<string, mixed>>|null $registry */
     public function __construct(BlockRegistryService $blocks, ?array $registry = null)
     {
@@ -52,10 +55,17 @@ class ShortcodeParser
     }
 
     /**
+     * `$strict` is for content an AI or an API wrote (ContentBlockPipeline): text fields must be
+     * plain prose / inline HTML, and markdown structure is reported as an error with the line to
+     * fix instead of being written onto the page as literal characters. Hand-typed Code view is
+     * never strict — a person typing "- " in a paragraph is entitled to it — and it is a separate
+     * flag rather than a separate parser so the two cannot drift.
+     *
      * @return array{blocks: list<array<string, mixed>>, errors: list<array{line: int, message: string}>}
      */
-    public function parse(string $text): array
+    public function parse(string $text, bool $strict = false): array
     {
+        $this->strict = $strict;
         $this->text = $text;
         $this->errors = [];
         $this->rootBlocks = [];
@@ -225,6 +235,9 @@ class ShortcodeParser
             }
 
             $model['attributes'][$name] = $value;
+            if (is_string($value)) {
+                $this->lintText($contract, $name, $value, $line, $slug);
+            }
 
             return;
         }
@@ -278,11 +291,12 @@ class ShortcodeParser
         }
 
         $rich = ShortcodeDialect::richAttrOf($frame['contract']);
-        $body = ShortcodeDialect::dedent(implode('', $frame['body']));
+        $body = ShortcodeDialect::dedent(ShortcodeDialect::normalizeBody(implode('', $frame['body'])));
 
         if ($rich !== null) {
             if ($body !== '') {
                 $frame['model']['attributes'][$rich] = $body;
+                $this->lintText($frame['contract'], $rich, $body, $frame['line'], $frame['slug']);
             }
         } elseif (trim($body) !== '' && $frame['model']['innerBlocks'] === []) {
             $this->err($frame['line'], 'err_no_body', ['slug' => $frame['slug']]);
@@ -311,6 +325,30 @@ class ShortcodeParser
 
         if (preg_match('/\S/', $chunk, $m, PREG_OFFSET_CAPTURE) === 1) {
             $this->err($this->lineOf($at + (int) $m[0][1]), 'err_outside', []);
+        }
+    }
+
+    /**
+     * Strict mode only: markdown in a prose attribute is an error that names the fix. Nothing is
+     * applied when there are errors (ContentBlockPipeline throws), so the model must resend the
+     * content as real blocks — a [list] instead of "- " lines, a heading tag instead of "#".
+     *
+     * @param array<string, mixed> $contract
+     */
+    private function lintText(array $contract, string $attribute, string $value, int $line, string $slug): void
+    {
+        if (! $this->strict) {
+            return;
+        }
+
+        $definition = $contract['attributeDefinitions'][$attribute] ?? null;
+        if (! is_array($definition) || ! ShortcodeDialect::isProseAttribute($definition)) {
+            return;
+        }
+
+        $issue = ShortcodeDialect::markdownIssue($value);
+        if ($issue !== null) {
+            $this->err($line, $issue[0], ['slug' => $slug, 'sample' => mb_strimwidth($issue[1], 0, 60, '…')]);
         }
     }
 

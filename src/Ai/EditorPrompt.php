@@ -87,11 +87,12 @@ class EditorPrompt
 
         Rules:
         - Body text may contain inline HTML (<strong>, <em>, <a href="...">). Block-level HTML may not.
+        - NO MARKDOWN — it never renders. A list is one [list] block (one item per line, no leading "-" or number); a heading is [h2]…[/h2]; bold is <strong>. Line breaks are real ones, never the characters backslash-n.
         - Only set attributes the user actually asked for (or that the request clearly implies). Omit everything else — contract defaults apply.
         - Shortcode goes ONLY in write_canvas's `code` argument — bare block tags, no code fences, no preamble. Never paste it into your chat reply.
         - When the user asks a question about their document rather than requesting content, answer in plain prose and skip write_canvas.
         - Never write <think> or any other reasoning tag into your reply.
-        - LAYOUT DIRECTION: `group` and `column` default to vertical stacking (direction=column). Only set direction=row on them when the content is explicitly side-by-side (e.g. icon beside a label, two images in a row). `columns` defaults to horizontal (direction=row) — do not change it unless the user asks for a vertical stack. Never add direction=row to a group or column just to "fill in" a style.
+        - LAYOUT DIRECTION: `group` and `column` stack vertically by default (direction=column); set direction=row only for explicitly side-by-side content (an icon beside a label, two images in a row). `columns` defaults to row — leave it unless asked for a vertical stack. Never add direction=row just to fill in a style.
         PROMPT;
     }
 

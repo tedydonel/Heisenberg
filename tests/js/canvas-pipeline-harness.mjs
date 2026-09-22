@@ -166,6 +166,33 @@ for (const [path, value, expect] of CASES) {
     if (def) { def.click(); await sleep(20); }
 }
 
+// ── shortcode hygiene: what a MODEL means by an escape, read by the browser parser ───────────
+// The PHP parser (tests/Ai/ShortcodeHygieneTest.php) and this one are separate implementations of
+// one dialect. A literal backslash-n in a quoted value or body is a line break; a real backslash
+// (written as two) is not touched. Built with fromCharCode so no escaping layer can eat them.
+{
+    const BS = String.fromCharCode(92), NL = String.fromCharCode(10);
+    const parse = window.hbCodeView.parse;
+
+    const attr = parse('[list content="First' + BS + 'nSecond' + BS + 'nThird" /]');
+    ok('parser: backslash-n in a quoted value is a line break',
+        attr.blocks.length === 1 && attr.blocks[0].attributes.content === 'First' + NL + 'Second' + NL + 'Third',
+        JSON.stringify(attr.blocks[0] && attr.blocks[0].attributes));
+
+    const body = parse('[p]One' + BS + 'nTwo[/p]');
+    ok('parser: backslash-n in a body is a line break',
+        body.blocks.length === 1 && body.blocks[0].attributes.content === 'One' + NL + 'Two',
+        JSON.stringify(body.blocks[0] && body.blocks[0].attributes));
+
+    const real = parse('[list content="C:' + BS + BS + 'new" /]');
+    ok('parser: an escaped backslash stays a backslash',
+        real.blocks.length === 1 && real.blocks[0].attributes.content === 'C:' + BS + 'new',
+        JSON.stringify(real.blocks[0] && real.blocks[0].attributes));
+
+    const quoted = parse('[p]He said ' + BS + '"hi' + BS + '"[/p]');
+    ok('parser: an escaped quote is unchanged behaviour', quoted.errors.length === 0, JSON.stringify(quoted.errors));
+}
+
 report.push('CAUGHT: ' + (window.__caught.length ? window.__caught.join(' | ') : 'none'));
 fs.writeFileSync(htmlPath + '.payload.json', JSON.stringify(hb.buildSavePayload({ title_en: 'Harness', locale: 'en' }), null, 2));
 console.log(report.join('\n'));

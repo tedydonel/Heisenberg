@@ -48,7 +48,9 @@ class ContentBlockPipeline
         }
 
         if ($hasCode) {
-            $parsed = $this->parser->parse((string) $args['code']);
+            // Strict: this is AI/API-authored content, so markdown in text fields is an error the
+            // caller is told how to fix, not literal characters on the page.
+            $parsed = $this->parser->parse((string) $args['code'], strict: true);
             if ($parsed['errors'] !== []) {
                 $lines = array_map(
                     static fn (array $e): string => "line {$e['line']}: {$e['message']}",

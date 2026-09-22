@@ -325,7 +325,14 @@
             return out ? out + '\n' : '';
         };
 
-        const unescAttr = (v) => v.replace(/\\(["\\])/g, '$1');
+        // Mirrors ShortcodeDialect::unescAttr(). \n, \r and \t inside a quoted value are what a model MEANS
+        // by them (every JSON-shaped language spells a line break that way); left alone they landed on
+        // the canvas as a visible backslash + letter. A real backslash is written \\, consumed here
+        // first, so \\n still round-trips as backslash + n.
+        const unescAttr = (v) => v.replace(/\\(["\\nrt])/g, (m, c) => (c === 'n' ? '\n' : c === 't' ? '\t' : c === 'r' ? '' : c));
+        // Mirrors ShortcodeDialect::normalizeBody(): a tag body has no escape syntax, so only a literal
+        // \n / \r\n / \t that is not itself preceded by a backslash is read as whitespace.
+        const normalizeBody = (raw) => raw.replace(/(?<!\\)\\(r\\n|n|t)/g, (m, c) => (c === 't' ? '\t' : '\n'));
         const setPath = (obj, path, value) => {
             const parts = path.split('.');
             let node = obj;
@@ -411,7 +418,7 @@
             const attach = (frame) => {
                 if (frame.dummy) return;
                 const rich = richAttrOf(frame.contract);
-                const body = dedent(frame.body.join(''));
+                const body = dedent(normalizeBody(frame.body.join('')));
                 if (rich) {
                     if (body !== '') {
                         const richKey = window.hbEditor && window.hbEditor.resolveAttrKey ? window.hbEditor.resolveAttrKey(frame.model.name, rich) : rich;

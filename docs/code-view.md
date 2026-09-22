@@ -43,6 +43,10 @@ the canvas uses and reports line-numbered errors.
   `hover:color=#123456` ≡ `states.hover.color.text="#123456"` (Tailwind-familiar).
 - **Values** are unquoted when simple (`40px`, `#fff`, `var(--hb-t-c-1)`, `space-between`);
   anything with spaces, slashes, or quotes takes `"…"` with `\"`/`\\` escapes.
+  Inside quotes `\n`, `\r\n` and `\t` are read as a line break / tab (a model writing `content="a\nb"` means two lines;
+  before this they were printed as a visible backslash-n). A tag **body** reads the same three when not
+  already preceded by a backslash. A real backslash-n is written `\\n`. The browser and server parsers
+  agree on this (`ShortcodeHygieneTest`, `canvas-pipeline-harness.mjs`).
 - **Body** — the value of the contract's `rich-text` attribute (inline HTML allowed; the
   server sanitizes at save/render as always). Blocks whose `innerBlocks.enabled` is true
   take nested block tags as body instead.
@@ -115,6 +119,7 @@ always remain valid, and serialization normalizes to the short form.
 | [:slug] does not accept text content | Body text on a contract with no rich-text attribute |
 | Unexpected closing tag / never closed | Tag balance problems |
 | Content outside of any block | Top-level text that belongs to no tag |
+| [:slug] text contains a markdown list / starts a line with "#" / uses **bold** / has a ``` fence | **Strict mode only** — AI and MCP writes (`ContentBlockPipeline`), never hand-typed Code view. Markdown never renders; it lands on the page as literal characters. The message names the fix (a `[list]` block, a heading tag, `<strong>`), and because the tool validates before the panel applies, nothing reaches the canvas until the model resends real blocks. |
 
 Known v1 constraint: a literal `[word]` inside body text that *happens* to scan as a tag is
 parsed as one — unknown slugs then error rather than silently becoming text, which is the

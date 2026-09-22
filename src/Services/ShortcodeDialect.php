@@ -204,9 +204,89 @@ class ShortcodeDialect
         return str_replace(['\\', '"'], ['\\\\', '\\"'], $value);
     }
 
+    /**
+     * Quoted attribute value -> its text. `\"` and `\\` are the dialect's own escapes; `\n`, `\r`
+     * and `\t` are what a MODEL means when it writes them inside a quoted string, because that is
+     * how every JSON-shaped language spells a line break. The dialect never defined them, so they
+     * used to survive as a literal backslash + letter and land on the canvas as visible text
+     * ("First point\nSecond point" in one paragraph). Reading them as the whitespace they were
+     * meant to be is safe: a real backslash is written `\\` (see {@see self::escAttr()}), which
+     * this pass consumes first, so `\\n` still round-trips as backslash + n.
+     *
+     * Mirrored by unescAttr() in live/code-editor.blade.php; ShortcodeParityTest keeps them honest.
+     */
     public static function unescAttr(string $value): string
     {
-        return preg_replace('/\\\\(["\\\\])/', '$1', $value) ?? $value;
+        return preg_replace_callback(
+            '/\\\\(["\\\\nrt])/',
+            static fn (array $m): string => match ($m[1]) {
+                'n' => "\n",
+                't' => "\t",
+                'r' => '',
+                default => $m[1],
+            },
+            $value,
+        ) ?? $value;
+    }
+
+    /**
+     * A tag BODY has no escape syntax, so only the unambiguous case is read: a literal `\n`,
+     * `\r\n` or `\t` not itself preceded by a backslash. Same failure, same reason as
+     * {@see self::unescAttr()} — a model that puts `\n` in a body means a line break.
+     */
+    public static function normalizeBody(string $body): string
+    {
+        return preg_replace_callback(
+            '/(?<!\\\\)\\\\(r\\\\n|n|t)/',
+            static fn (array $m): string => $m[1] === 't' ? "\t" : "\n",
+            $body,
+        ) ?? $body;
+    }
+
+    /**
+     * Markdown pasted into a text field, as `[message-key, offending line]` — or null when clean.
+     * Markdown never renders here (a paragraph is inline HTML, structure is BLOCKS), so each of
+     * these lands on the page as literal characters: a "- " that was meant as a bullet, a "#"
+     * that was meant as a heading. Every rule is a line-start or paired marker that ordinary
+     * prose does not produce; an ordinary hyphen, an en/em dash, or "5 - 3" is never flagged.
+     *
+     * @return array{0: string, 1: string}|null
+     */
+    public static function markdownIssue(string $text): ?array
+    {
+        foreach (preg_split('/\R/u', $text) ?: [] as $line) {
+            $line = ltrim($line);
+            if ($line === '') {
+                continue;
+            }
+            if (preg_match('/^(?:[-*+•]\s+\S|\d{1,3}[.)]\s+\S)/u', $line) === 1) {
+                return ['err_md_list', $line];
+            }
+            if (preg_match('/^#{1,6}\s+\S/', $line) === 1) {
+                return ['err_md_heading', $line];
+            }
+            if (str_starts_with($line, '```')) {
+                return ['err_md_fence', $line];
+            }
+        }
+
+        if (preg_match('/\*\*(?=\S)[^*]+?(?<=\S)\*\*/', $text, $bold) === 1) {
+            return ['err_md_emphasis', $bold[0]];
+        }
+
+        return null;
+    }
+
+    /**
+     * Whether an attribute is free text the author reads as prose — a rich-text body or a
+     * multi-line textarea (the list block's items) — and so the only place markdown can hide.
+     *
+     * @param array<string, mixed> $definition
+     */
+    public static function isProseAttribute(array $definition): bool
+    {
+        return ($definition['type'] ?? null) === 'rich-text'
+            || (($definition['control']['type'] ?? null) === 'textarea');
     }
 
     public static function fmtValue(string $value): string
