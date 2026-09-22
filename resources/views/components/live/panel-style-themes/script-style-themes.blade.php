@@ -156,7 +156,13 @@
                             if (kind === 'color') {
                                 values[ref] = token.value || '';
                             } else if (kind === 'font') {
-                                values[ref] = '';
+                                // The family name IS the display value here — there is no
+                                // separate "friendly label" for a font the way a hex code or a
+                                // px number has one. Leaving this blank (as it used to be) is
+                                // exactly the PHP-side stripUnit() bug mirrored client-side: a
+                                // font bound to a theme token showed its raw var() text instead
+                                // of the family name after a live theme edit rebuilt this map.
+                                values[ref] = token.family || '';
                             } else {
                                 values[ref] = String(token.value || '').replace(/px$/i, '');
                             }
@@ -223,6 +229,7 @@
                     });
                     rebuildVarmenuRows('[data-hb-style-popup="var-color"] [data-hb-varmenu]', theme.colors, 'color');
                     rebuildVarmenuRows('[data-hb-style-popup="var-number"] [data-hb-varmenu]', theme.spaces, 'number');
+                    rebuildVarmenuRows('[data-hb-style-popup="var-fontsize"] [data-hb-varmenu]', theme.fontSizes, 'number');
                     rebuildVarmenuRows('[data-hb-style-popup="var-font"] [data-hb-varmenu]', theme.fonts, 'font');
                     document.dispatchEvent(new CustomEvent('hb:refresh'));
                     document.dispatchEvent(new CustomEvent('hb:theme-changed', { detail: { theme, labels, values } }));

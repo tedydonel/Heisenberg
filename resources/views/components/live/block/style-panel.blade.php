@@ -8,7 +8,12 @@
         return (string) (preg_match('/^(-?\d*\.?\d+)/', $value, $m) ? $m[1] : '');
     };
 
-    $hbVarMenu = static function (array $rows, string $display) use ($stripUnit): array {
+    // `$numeric` strips a trailing unit off a length ("16px" -> "16", spacing/radius/font-size —
+    // every field this display value ever lands in is a bare-number input) so it must NEVER run
+    // on a font-family name: `stripUnit('Georgia')` matches nothing and returns '', which is why
+    // a font bound to a theme token used to show its raw `var(--hb-t-…)` text everywhere instead
+    // of the family name — the "resolved value" fallback the field reads was silently empty.
+    $hbVarMenu = static function (array $rows, string $display, bool $numeric = true) use ($stripUnit): array {
         $labels = [];
         $values = [];
         foreach ($rows as $row) {
@@ -18,7 +23,7 @@
             }
             $label = trim((string) ($row['label'] ?? '')) !== '' ? $row['label'] : $name;
             $rawValue = (string) ($row[$display] ?? '');
-            $labels[$label] = $stripUnit($rawValue);
+            $labels[$label] = $numeric ? $stripUnit($rawValue) : $rawValue;
             $values[$label] = 'var(--' . \Heisenberg\Services\ThemeRepository::CSS_PREFIX . $name . ')';
         }
 
@@ -27,12 +32,17 @@
 
     [$hbColorTokens, $hbColorValues] = $hbVarMenu($theme['colors'] ?? [], 'value');
     [$hbSpaceTokens, $hbSpaceValues] = $hbVarMenu($theme['spaces'] ?? [], 'value');
-    [$hbFontTokens, $hbFontValues] = $hbVarMenu($theme['fonts'] ?? [], 'family');
+    // Never seeded here before: a font-size binding had no label to resolve at all, so it fell
+    // back to its raw var() text exactly like the font-family bug above, for a different reason.
+    [$hbFontSizeTokens, $hbFontSizeValues] = $hbVarMenu($theme['fontSizes'] ?? [], 'value');
+    [$hbFontTokens, $hbFontValues] = $hbVarMenu($theme['fonts'] ?? [], 'family', numeric: false);
     $hbColorTokens = ['Default' => null] + $hbColorTokens;
     $hbSpaceTokens = ['Default' => ''] + $hbSpaceTokens;
+    $hbFontSizeTokens = ['Default' => ''] + $hbFontSizeTokens;
     $hbFontTokens = ['Default' => ''] + $hbFontTokens;
     $hbColorValues['Default'] = '';
     $hbSpaceValues['Default'] = '';
+    $hbFontSizeValues['Default'] = '';
     $hbFontValues['Default'] = '';
 
     $hbVarLabels = [];
@@ -40,6 +50,7 @@
     foreach ([
         [$hbColorValues, $hbColorTokens],
         [$hbSpaceValues, $hbSpaceTokens],
+        [$hbFontSizeValues, $hbFontSizeTokens],
         [$hbFontValues, $hbFontTokens],
     ] as [$refs, $displays]) {
         foreach ($refs as $label => $ref) {
@@ -140,6 +151,12 @@
     </div>
     <div class="hb-style-popup" data-hb-style-popup="var-number" hidden>
         <x-heisenberg::live.pickers.variable-menu mode="number" selected="" :tokens="$hbSpaceTokens" :values="$hbSpaceValues" />
+    </div>
+    {{-- Its own popup, not "var-number": a font-size binding must offer the theme's font-size
+         scale, never the spacing scale — the two are unrelated token sets that happen to share
+         a "bare number" display shape. --}}
+    <div class="hb-style-popup" data-hb-style-popup="var-fontsize" hidden>
+        <x-heisenberg::live.pickers.variable-menu mode="number" selected="" :tokens="$hbFontSizeTokens" :values="$hbFontSizeValues" />
     </div>
     <div class="hb-style-popup" data-hb-style-popup="var-font" hidden>
         <x-heisenberg::live.pickers.variable-menu mode="number" selected="" :tokens="$hbFontTokens" :values="$hbFontValues" />
