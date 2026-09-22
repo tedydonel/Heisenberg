@@ -104,27 +104,32 @@ const runTurn = async (frames, { probeAt = 0, suggestions = null } = {}) => {
 };
 
 // ---------------------------------------------------------------------------
-// 1. Three reasoning bursts around three block writes → three sections, live.
+// 1. A SLOW model: each block is followed by more than 5s of reasoning with no block, so each
+//    thought is cut into its own section, live. (A block cuts the thought; the reasoning after it
+//    only becomes a NEW section once 5s pass without another block.)
 // ---------------------------------------------------------------------------
 {
     const r = await runTurn([
-        [0, { type: 'reasoning_delta', text: 'PHASE-A reasoning. ' }],
-        [400, { type: 'text_delta', text: '[h2]Alpha[/h2]\n' }],
-        [200, { type: 'reasoning_delta', text: 'PHASE-B reasoning. ' }],
-        [400, { type: 'text_delta', text: '[p]Beta paragraph.[/p]\n' }],
-        [200, { type: 'reasoning_delta', text: 'PHASE-C reasoning. ' }],
-        [400, { type: 'text_delta', text: '[button text="Gamma" url="https://example.com" /]\n' }],
+        [0, { type: 'reasoning_delta', text: 'PHASE-A ' }],
+        [5300, { type: 'reasoning_delta', text: 'reasoning. ' }],
+        [300, { type: 'text_delta', text: '[h2]Alpha[/h2]\n' }],
+        [200, { type: 'reasoning_delta', text: 'PHASE-B ' }],
+        [5300, { type: 'reasoning_delta', text: 'reasoning. ' }],
+        [300, { type: 'text_delta', text: '[p]Beta paragraph.[/p]\n' }],
+        [200, { type: 'reasoning_delta', text: 'PHASE-C ' }],
+        [5300, { type: 'reasoning_delta', text: 'reasoning. ' }],
+        [300, { type: 'text_delta', text: '[button text="Gamma" url="https://example.com" /]\n' }],
         [400, { type: 'text_delta', text: 'Done — three blocks are on the canvas.' }],
         [200, { type: 'done', data: { stopReason: 'end_turn' } }],
-    ], { probeAt: 1600 });
+    ], { probeAt: 11400 });
 
-    ok('three bursts split into three sections', r.sections === 3, `got ${r.sections}`);
-    ok('each section holds exactly its own burst',
+    ok('three long thoughts split into three sections', r.sections === 3, `got ${r.sections}`);
+    ok('each section holds exactly its own thought',
         JSON.stringify(r.thoughts) === JSON.stringify(['PHASE-A reasoning.', 'PHASE-B reasoning.', 'PHASE-C reasoning.']),
         JSON.stringify(r.thoughts));
-    ok('sections appear live, mid-stream', r.live === 3, `at t=1.6s saw ${r.live}`);
-    ok('every section is sealed with a duration',
-        r.labels.length === 3 && r.labels.every((l) => /^Thought for \d+s$/.test(l)),
+    ok('sections appear live, mid-stream', r.live === 2, `at t=11.4s saw ${r.live}`);
+    ok('every section is sealed with a real duration (>= 4s)',
+        r.labels.length === 3 && r.labels.every((l) => /^Thought for ([4-9]|\d\d)s$/.test(l)),
         JSON.stringify(r.labels));
     ok('reasoning never leaks into the visible reply', !/PHASE-[ABC]/.test(r.reply), r.reply);
     ok('closing prose after the blocks survives',
@@ -172,6 +177,110 @@ const runTurn = async (frames, { probeAt = 0, suggestions = null } = {}) => {
         r.applied.some((l) => /Built 1 block on the page\./.test(l)), JSON.stringify(r.applied));
     ok('suggestions render after a build', r.chips.length === 2, JSON.stringify(r.chips));
     ok('no page errors (leading prose)', r.errors.length === 0, r.errors[0] || '');
+}
+
+// ---------------------------------------------------------------------------
+// 4. A FAST model: eight quick think -> write alternations, ~150ms of reasoning each. Every
+//    canvas write used to seal the current thought and the next delta opened a fresh block, so a
+//    model that finishes in a few seconds produced a wall of "Thought for 1s" sections.
+// ---------------------------------------------------------------------------
+{
+    const frames = [];
+    for (let i = 1; i <= 8; i++) {
+        frames.push([i === 1 ? 0 : 60, { type: 'reasoning_delta', text: `quick thought ${i}. ` }]);
+        frames.push([150, { type: 'text_delta', text: `[p]Paragraph ${i}.[/p]\n` }]);
+    }
+    frames.push([200, { type: 'done', data: { stopReason: 'end_turn' } }]);
+    const r = await runTurn(frames);
+
+    ok('fast model: eight sub-second thoughts do not become eight blocks', r.sections <= 2, `got ${r.sections}: ${JSON.stringify(r.labels)}`);
+    ok('fast model: no thought is lost when they fold together',
+        Array.from({ length: 8 }, (_, i) => `quick thought ${i + 1}.`).every((t) => r.thoughts.join(' ').includes(t)),
+        JSON.stringify(r.thoughts));
+    ok('fast model: the block that remains reads one running total', r.labels.every((l) => /^Thought for \d+s$/.test(l)), JSON.stringify(r.labels));
+    ok('fast model: every block still reached the canvas', r.docLen === 8, `docLen ${r.docLen}`);
+    ok('fast model: no page errors', r.errors.length === 0, r.errors[0] || '');
+}
+
+// ---------------------------------------------------------------------------
+// 5. Reasoning I\nINED in the text stream (<think>...</think>), which is how many hosted models
+//    deliver it instead of a separate channel. splitReasoning() returns the WHOLE reasoning so
+//    far on every paint, and each paint after a seal opened a fresh block holding a copy of it:
+//    one long thought, then a column of identical "Thought for 1s" blocks.
+// ---------------------------------------------------------------------------
+{
+    const frames = [
+        [0, { type: 'text_delta', text: '<think>Planning the email: a header, one hero line, a button' }],
+        [400, { type: 'text_delta', text: ' and a quiet footer.</think>' }],
+    ];
+    for (let i = 1; i <= 10; i++) frames.push([120, { type: 'text_delta', text: `[p]Line ${i}.[/p]\n` }]);
+    frames.push([200, { type: 'done', data: { stopReason: 'end_turn' } }]);
+    const r = await runTurn(frames);
+
+    ok('inline think: one thought is one block, not a block per text chunk', r.sections === 1, `got ${r.sections}: ${JSON.stringify(r.labels)}`);
+    ok('inline think: the reasoning appears once, not repeated',
+        r.thoughts.join(' ').split('Planning the email').length - 1 === 1, JSON.stringify(r.thoughts).slice(0, 200));
+    ok('inline think: every block still reached the canvas', r.docLen === 10, `docLen ${r.docLen}`);
+    ok('inline think: no page errors', r.errors.length === 0, r.errors[0] || '');
+}
+
+// ---------------------------------------------------------------------------
+// 6. The timeline from a real fast-model session: a long first thought, a run of blocks each
+//    preceded by a moment of reasoning, then a genuinely long pause. Two sections, no more: the
+//    opening thought (with the quick ones folded into it) and the late one after 5s of quiet.
+// ---------------------------------------------------------------------------
+{
+    const frames = [
+        [0, { type: 'reasoning_delta', text: 'OPENING-THOUGHT ' }],
+        [5500, { type: 'reasoning_delta', text: 'about the layout. ' }],
+        [200, { type: 'text_delta', text: '[h2]Hello[/h2]\n' }],
+    ];
+    for (let i = 1; i <= 6; i++) {
+        frames.push([80, { type: 'reasoning_delta', text: `quick-${i} ` }]);
+        frames.push([250, { type: 'text_delta', text: `[p]Row ${i}.[/p]\n` }]);
+    }
+    frames.push([200, { type: 'reasoning_delta', text: 'LATE-THOUGHT ' }]);
+    frames.push([5400, { type: 'reasoning_delta', text: 'after a real pause. ' }]);
+    frames.push([300, { type: 'text_delta', text: '[button text="Go" url="https://example.com" /]\n' }]);
+    frames.push([200, { type: 'done', data: { stopReason: 'end_turn' } }]);
+    const r = await runTurn(frames);
+
+    ok('mixed session: exactly two sections', r.sections === 2, `got ${r.sections}: ${JSON.stringify(r.labels)}`);
+    ok('mixed session: the quick thoughts fold into the opening section',
+        r.thoughts[0] && r.thoughts[0].includes('OPENING-THOUGHT') && r.thoughts[0].includes('quick-1') && r.thoughts[0].includes('quick-6'),
+        JSON.stringify(r.thoughts).slice(0, 200));
+    ok('mixed session: the late thought is its own section',
+        r.thoughts[1] && r.thoughts[1].includes('LATE-THOUGHT') && !r.thoughts[1].includes('quick'),
+        JSON.stringify(r.thoughts).slice(0, 240));
+    ok('mixed session: no duration below a second of real thinking is stacked',
+        r.labels.length === 2 && r.labels.every((l) => /^Thought for ([2-9]|\d\d)s$/.test(l)), JSON.stringify(r.labels));
+    ok('mixed session: every block reached the canvas', r.docLen === 8, `docLen ${r.docLen}`);
+    ok('mixed session: no page errors', r.errors.length === 0, r.errors[0] || '');
+}
+
+// ---------------------------------------------------------------------------
+// 7. Real tool-loop latency. write_canvas is announced only AFTER the model finishes a round, and
+//    the next round then waits on the network and the model's first token (several seconds)
+//    before any reasoning starts. Only ~1s of that is THINKING. A clock that runs from the last
+//    block counts the wait as quiet time and gives every round its own "Thought for 1s".
+// ---------------------------------------------------------------------------
+{
+    const frames = [
+        [0, { type: 'reasoning_delta', text: 'ROUND-1 planning the whole email. ' }],
+        [900, { type: 'tool_use', data: { name: 'heisenberg__write_canvas', ok: true, arguments: { mode: 'append', code: '[h2]One[/h2]\n' } } }],
+    ];
+    for (let i = 2; i <= 4; i++) {
+        frames.push([6200, { type: 'reasoning_delta', text: `ROUND-${i} next piece. ` }]);   // 6.2s of latency, then a thought
+        frames.push([900, { type: 'tool_use', data: { name: 'heisenberg__write_canvas', ok: true, arguments: { mode: 'append', code: `[p]Row ${i}.[/p]\n` } } }]);
+    }
+    frames.push([300, { type: 'text_delta', text: 'All done.' }]);
+    frames.push([200, { type: 'done', data: { stopReason: 'end_turn' } }]);
+    const r = await runTurn(frames);
+
+    ok('tool-loop latency: four quick rounds stay in one section', r.sections === 1, `got ${r.sections}: ${JSON.stringify(r.labels)}`);
+    ok('tool-loop latency: the thought from each round is kept', [1, 2, 3, 4].every((n) => r.thoughts.join(' ').includes(`ROUND-${n}`)), JSON.stringify(r.thoughts).slice(0, 200));
+    ok('tool-loop latency: every block reached the canvas', r.docLen === 4, `docLen ${r.docLen}`);
+    ok('tool-loop latency: no page errors', r.errors.length === 0, r.errors[0] || '');
 }
 
 await browser.close();

@@ -303,35 +303,119 @@
                  * transcript reads think -> work -> think -> work. The first burst reuses the block
                  * already in the bubble; later ones clone it.
                  */
+                // WHEN a thought is split into its own section. The author reads the transcript as
+                // "was the AI placing things, or thinking for a while?", so:
+                //
+                //   - a block landing on the canvas CUTS the current thought there;
+                //   - a thought becomes its OWN section only once the AI has actually been reasoning
+                //     for THINK_OWN_SECTION_MS within that one burst;
+                //   - anything shorter is part of the same working stretch and folds into the
+                //     section before it (still streaming live, so nothing looks frozen).
+                //
+                // A fast model reasons for a second between blocks, so its bursts fold into one
+                // section instead of a "Thought for 1s" per block. A slow model reasons for many
+                // seconds in one go and splits exactly where it paused.
+                //
+                // This is measured on the burst's OWN running time, deliberately NOT on the time
+                // since the last block. write_canvas is only announced once a whole model round has
+                // finished, and the next round then waits on the network and the model's first token
+                // before any reasoning starts, so "seconds since the last block" is mostly latency.
+                // Counting it made every round look like a fresh long pause and gave each its own
+                // section holding a single second of real thinking.
+                const THINK_OWN_SECTION_MS = 5000;
+                const thinkSeparator = String.fromCharCode(10, 10);
+
+                const buildThinkNode = (refs) => {
+                    const node = refs.think.cloneNode(true);
+                    const label = node.querySelector('[data-hb-ai-think-label]');
+                    const text = node.querySelector('[data-hb-ai-think-text]');
+                    text.textContent = '';
+                    node.querySelector('[data-hb-ai-think-head]')
+                        .addEventListener('click', () => node.classList.toggle('is-open'));
+                    refs.textEl.parentNode.insertBefore(node, refs.textEl);
+                    node.hidden = false;
+                    label.textContent = msg('msgThinkingLabel');
+                    return { node: node, label: label, text: text };
+                };
+
+                /**
+                 * Open a burst. The first one always owns the block already in the bubble. A later
+                 * one is PROVISIONAL: it writes into the previous block and only becomes a section
+                 * of its own once it has run THINK_OWN_SECTION_MS (see promoteThinkSegment).
+                 */
                 const openThinkSegment = (refs) => {
-                    let node, label, text;
+                    const host = refs.thinkSegments.length ? refs.thinkSegments[refs.thinkSegments.length - 1] : null;
+                    let seg;
                     if (!refs.usedFirstThink) {
                         refs.usedFirstThink = true;
-                        node = refs.think; label = refs.thinkLabel; text = refs.thinkText;
+                        refs.think.hidden = false;
+                        refs.think.classList.add('is-open');
+                        refs.thinkLabel.textContent = msg('msgThinkingLabel');
+                        seg = { own: true, node: refs.think, label: refs.thinkLabel, text: refs.thinkText, activeMs: 0 };
+                        refs.thinkSegments.push(seg);
                     } else {
-                        node = refs.think.cloneNode(true);
-                        label = node.querySelector('[data-hb-ai-think-label]');
-                        text = node.querySelector('[data-hb-ai-think-text]');
-                        text.textContent = '';
-                        node.querySelector('[data-hb-ai-think-head]')
-                            .addEventListener('click', () => node.classList.toggle('is-open'));
-                        refs.textEl.parentNode.insertBefore(node, refs.textEl);
+                        seg = { own: false, host: host, chunk: '' };
+                        host.node.classList.add('is-open');
                     }
-                    node.hidden = false;
-                    node.classList.add('is-open');
-                    label.textContent = msg('msgThinkingLabel');
-                    const seg = { node: node, label: label, text: text, started: Date.now() };
-                    refs.thinkSegments.push(seg);
+                    seg.started = Date.now();
                     return seg;
                 };
 
-                /** Stamp "Thought for Ns" on a finished burst and collapse it, freeing the next one. */
+                const longEnough = (seg) => Date.now() - seg.started >= THINK_OWN_SECTION_MS;
+
+                /** The burst has run long enough to matter: move its text out of its host into a section of its own. */
+                const promoteThinkSegment = (refs, seg) => {
+                    if (seg.own) return;
+                    const host = seg.host;
+                    if (seg.chunk) host.text.textContent = host.text.textContent.slice(0, host.text.textContent.length - seg.chunk.length);
+                    host.node.classList.remove('is-open');
+                    const built = buildThinkNode(refs);
+                    built.node.classList.add('is-open');
+                    built.text.textContent = seg.chunk.indexOf(thinkSeparator) === 0 ? seg.chunk.slice(thinkSeparator.length) : seg.chunk;
+                    seg.own = true;
+                    seg.node = built.node; seg.label = built.label; seg.text = built.text; seg.activeMs = 0;
+                    delete seg.host; delete seg.chunk;
+                    refs.thinkSegments.push(seg);
+                };
+
+                /** Append streamed reasoning to the active burst, opening one if none is running. */
+                const appendThink = (refs, str) => {
+                    if (!str) return;
+                    if (!refs.activeThink) {
+                        // Whitespace alone is not a thought: never open a block for it.
+                        if (!str.trim()) return;
+                        refs.activeThink = openThinkSegment(refs);
+                    }
+                    const seg = refs.activeThink;
+                    if (seg.own) { seg.text.textContent += str; return; }
+                    const prefix = seg.chunk === '' && seg.host.text.textContent.trim() !== '' ? thinkSeparator : '';
+                    seg.chunk += prefix + str;
+                    seg.host.text.textContent += prefix + str;
+                    if (longEnough(seg)) promoteThinkSegment(refs, seg);
+                };
+
+                const stampThought = (seg) => {
+                    const secs = Math.max(1, Math.round(seg.activeMs / 1000));
+                    seg.label.textContent = msg('msgThoughtFor').replace(':secs', String(secs));
+                };
+
+                /** Total seconds spent reasoning across every burst (persisted so a reloaded chat shows it). */
+                const totalThoughtSecs = (refs) => Math.round(refs.thinkSegments.reduce((sum, seg) => sum + (seg.activeMs || 0), 0) / 1000);
+
+                /**
+                 * Seal a burst. If it ran long enough it becomes its own section, stamped
+                 * "Thought for Ns" and collapsed; otherwise its text is already in the section before
+                 * it, so its time is added there and the label reads the running total.
+                 */
                 const closeThinkSegment = (refs) => {
                     const seg = refs.activeThink;
                     if (!seg) return;
-                    const secs = Math.max(1, Math.round((Date.now() - seg.started) / 1000));
-                    seg.label.textContent = msg('msgThoughtFor').replace(':secs', String(secs));
-                    seg.node.classList.remove('is-open');
+                    const elapsed = Date.now() - seg.started;
+                    if (!seg.own && seg.chunk && longEnough(seg)) promoteThinkSegment(refs, seg);
+                    const target = seg.own ? seg : seg.host;
+                    target.activeMs += elapsed;
+                    stampThought(target);
+                    target.node.classList.remove('is-open');
                     refs.activeThink = null;
                 };
 
@@ -564,7 +648,7 @@
                     let stopReason = '';
                     const stick = atBottom();
                     let tReasonStart = 0;
-                    let thoughtSecs = 0;
+                    let inlineThinkLen = 0;
                     let appliedLines = [];
                     // Reasoning streamed on its own SSE channel (`reasoning_delta`), which is how
                     // every current model sends it — Anthropic `thinking_delta`, OpenAI-compatible
@@ -674,6 +758,7 @@
                         // used to only happen on a tool_use event, but most builds arrive as
                         // shortcode in the visible TEXT and never emit one, so the section stayed
                         // open and everything after it piled into the same block.
+                        // A block landing cuts the thought here.
                         closeThinkSegment(reply);
                         if (!builtEl) builtEl = appliedItem(reply, '');
                         builtEl.textContent = countMsg(final ? 'msgBuilt' : 'msgBuilding', builtCount);
@@ -692,8 +777,15 @@
                         }
                         if (!reasoningAcc && parts.reasoning) {
                             if (!tReasonStart) tReasonStart = Date.now();
-                            if (!reply.activeThink) reply.activeThink = openThinkSegment(reply);
-                            reply.activeThink.text.textContent = parts.reasoning;
+                            // splitReasoning() hands back the reasoning SO FAR on every paint, so
+                            // write only the part not yet shown. Rewriting all of it each time is
+                            // what turned one thought into a column of identical blocks.
+                            if (parts.reasoning.length < inlineThinkLen) inlineThinkLen = parts.reasoning.length;
+                            const fresh = parts.reasoning.slice(inlineThinkLen);
+                            if (fresh) {
+                                inlineThinkLen = parts.reasoning.length;
+                                appendThink(reply, fresh);
+                            }
                             if (parts.visible || finished) closeThinkSegment(reply);
                         }
                         const prose = proseOf(parts.visible);
@@ -744,8 +836,7 @@
                                     // a tool call closes the burst, so the next reasoning opens a
                                     // fresh block rather than extending a stale one.
                                     reasoningAcc += event.text || '';
-                                    if (!reply.activeThink) reply.activeThink = openThinkSegment(reply);
-                                    reply.activeThink.text.textContent += (event.text || '');
+                                    appendThink(reply, event.text || '');
                                     if (stick) scrollToEnd();
                                 } else if (event.type === 'tool_use') {
                                     const data = event.data || {};
@@ -811,6 +902,8 @@
                             setBusy(false);
                             liveApply(true);
                             canvasFollow(true);
+                            // Seal the last burst BEFORE the turn is saved so its time is counted.
+                            closeThinkSegment(reply);
                             const parts = splitReasoning(acc);
                             if (!reply.node.classList.contains('hb-ai-msg--error')) {
                                 paint(true);
@@ -829,7 +922,7 @@
                                 }
                                 saveTurn('assistant', turnText, {
                                     reasoning: reply.thinkSegments.map((seg) => seg.text.textContent).filter(Boolean).join(String.fromCharCode(10, 10)).trim() || null,
-                                    thoughtSecs: thoughtSecs || null,
+                                    thoughtSecs: totalThoughtSecs(reply) || null,
                                     applied: appliedLines.concat(builtCount > 0 ? [countMsg('msgBuilt', builtCount)] : []),
                                     regenerated: !!replace,
                                 });
