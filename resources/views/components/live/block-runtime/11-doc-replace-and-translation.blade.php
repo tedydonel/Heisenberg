@@ -22,20 +22,38 @@
     insertPattern()), renderDoc(), replaceDoc(), foldTranslation(), applyCanvasWrite() — the last
     three are exposed on window.hbEditor in 13-api.
 --}}
-    function normalizeModel(raw) {
+    function docBlockIds() {
+        const ids = new Set();
+        (function walk(list) {
+            (list || []).forEach(function (m) { if (m && m.id) ids.add(m.id); walk(m && m.innerBlocks); });
+        })(doc.blocks);
+        return ids;
+    }
+    // Every block id must be unique: canvas lookup, selection and every write resolve a block by
+    // id. A raw id is kept only while no other block claims it, and blockSeq is advanced past it —
+    // otherwise, after a saved post loads (hb1, hb2 …) with blockSeq still 0, the next insert or
+    // duplicate is handed an id already on the page and edits land on the other block.
+    // `claimed` defaults to the ids in the current doc; replaceDoc() passes a fresh set because
+    // the old doc is being discarded.
+    function normalizeModel(raw, claimed) {
         const c = raw && raw.name ? REGISTRY[raw.name] : null;
         if (!c) return null;
+        claimed = claimed || docBlockIds();
+        let id = (typeof raw.id === 'string' && /^hb\d+$/.test(raw.id) && !claimed.has(raw.id)) ? raw.id : null;
+        if (id) blockSeq = Math.max(blockSeq, Number(id.slice(2)));
+        else { do { id = 'hb' + (++blockSeq); } while (claimed.has(id)); }
+        claimed.add(id);
         const attrs = {}, defs = c.attributes || {};
         for (const k in defs) { if (Object.prototype.hasOwnProperty.call(defs, k)) attrs[k] = defs[k] == null ? '' : defs[k]; }
         const given = raw.attributes || {};
         for (const k in given) { if (Object.prototype.hasOwnProperty.call(given, k)) attrs[k] = given[k]; }
         const inner = [];
         (Array.isArray(raw.innerBlocks) ? raw.innerBlocks : []).forEach(function (child) {
-            const m = normalizeModel(child);
+            const m = normalizeModel(child, claimed);
             if (m) inner.push(m);
         });
         return {
-            id: (typeof raw.id === 'string' && /^hb\d+$/.test(raw.id)) ? raw.id : ('hb' + (++blockSeq)),
+            id: id,
             name: raw.name, schemaVersion: c.version == null ? null : c.version,
             attributes: attrs, supports: (raw.supports && typeof raw.supports === 'object') ? raw.supports : {},
             innerBlocks: inner,
@@ -58,8 +76,9 @@
     }
     function replaceDoc(blocks, opts) {
         const models = [];
+        const claimed = new Set();
         (Array.isArray(blocks) ? blocks : []).forEach(function (raw) {
-            const m = normalizeModel(raw);
+            const m = normalizeModel(raw, claimed);
             if (m) models.push(m);
         });
         if (!renderDoc(models)) return false;

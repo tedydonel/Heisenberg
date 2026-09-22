@@ -99,6 +99,31 @@ ok('typing in the duplicate keeps the source intact',
         && typed.dupModel === 'Typed into duplicate',
     JSON.stringify(typed));
 
+// 5. After a saved post LOADS (replaceDoc keeps its hb1/hb2 ids), blockSeq used to stay behind
+//    them, so the next duplicate / insert / pattern reused an id already on the page — a colour
+//    set on the copy painted the original, and the selection border landed on the other block.
+const loaded = await page.evaluate(() => {
+    const hb = window.hbEditor;
+    const p = (id, text) => ({ id, name: 'heisenberg/paragraph', attributes: { content: text }, supports: {}, innerBlocks: [] });
+    const ids = () => { const out = []; (function walk(bs) { bs.forEach((b) => { out.push(b.id); walk(b.innerBlocks || []); }); })(hb.getDoc().blocks); return out; };
+    const unique = () => new Set(ids()).size === ids().length;
+    hb.replaceDoc([p('hb1', 'one'), p('hb2', 'two')], { baseline: true });
+    const dup = hb.duplicateBlock('hb1');
+    hb.setSupport(dup, 'color.text', '#ff0000');
+    const afterDup = { dup, unique: unique(), sourceColor: hb.getModel('hb1')?.supports?.color?.text ?? null };
+    hb.insertPattern([p('hb1', 'pattern')]);
+    hb.insertBlock('heisenberg/paragraph');
+    const afterInserts = unique();
+    // A stored doc that already carries a duplicate id is repaired on load.
+    hb.replaceDoc([p('hb1', 'one'), p('hb1', 'twin')], { baseline: true });
+    return { afterDup, afterInserts, repairedOnLoad: unique() };
+});
+ok('after a doc loads, duplicating gets a fresh id and colouring it leaves the source alone',
+    loaded.afterDup.unique && loaded.afterDup.dup !== 'hb1' && loaded.afterDup.sourceColor === null,
+    JSON.stringify(loaded.afterDup));
+ok('after a doc loads, patterns and inserts never reuse an id on the page', loaded.afterInserts, JSON.stringify(loaded));
+ok('a loaded doc with a duplicate id is given unique ids', loaded.repairedOnLoad, JSON.stringify(loaded));
+
 await browser.close();
 
 console.log('\n=== Duplicate-block id collision fix ===');

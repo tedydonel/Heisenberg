@@ -8,6 +8,7 @@ All notable changes to this project are documented here. The format is based on
 
 ### Fixed
 
+- **Editing a duplicated (or newly added) block changed a different block, and the selection border landed on the wrong one.** Loading a document kept its stored block ids but never advanced the id counter past them, so the next duplicate, insert or pattern was handed an id already on the page, and every write that resolves a block by id hit the original. Incoming ids are now kept only while unique, the counter moves past them, and a stored document that already carries a duplicate id is repaired on load.
 
 - **Theme fonts were never applied on the editor canvas**, whether set from the inspector or by the AI. The block's `font-family` resolved to the theme family correctly, but the canvas font loader skipped every `var(--hb-t-…)` value, so the face was never downloaded and the text painted in the fallback font. The loader (and the font-weight list) now reads the family back off the live theme variable, and reloads after a theme edit.
 - **Picking a theme font in the inspector changed the label but never wrote the block.** The token pick only repainted the combobox; it now fires the change that reaches the block model.
