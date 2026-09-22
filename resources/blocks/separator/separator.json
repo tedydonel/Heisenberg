@@ -368,7 +368,13 @@
                                     },
                                     "default": "center"
                                 },
-                                "style": "padding: var(--hb-separator-mt, 8px) var(--hb-separator-mr, 0) var(--hb-separator-mb, 24px) var(--hb-separator-ml, 0); font-size:0; line-height:0;"
+                                "style": {
+                                    "enumMap": "{{attributes._emailNested}}",
+                                    "cases": {
+                                        "1": "padding: var(--hb-separator-mt, 0) var(--hb-separator-mr, 0) var(--hb-separator-mb, 0) var(--hb-separator-ml, 0); font-size:0; line-height:0;"
+                                    },
+                                    "default": "padding: var(--hb-separator-mt, 8px) var(--hb-separator-mr, 0) var(--hb-separator-mb, 24px) var(--hb-separator-ml, 0); font-size:0; line-height:0;"
+                                }
                             },
                             "children": [
                                 {

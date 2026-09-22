@@ -592,7 +592,13 @@
                                     "default": "",
                                     "omitWhenEmpty": true
                                 },
-                                "style": "padding: var(--hb-button-mt, 0) var(--hb-button-mr, 0) var(--hb-button-mb, 16px) var(--hb-button-ml, 0);"
+                                "style": {
+                                    "enumMap": "{{attributes._emailNested}}",
+                                    "cases": {
+                                        "1": "padding: var(--hb-button-mt, 0) var(--hb-button-mr, 0) var(--hb-button-mb, 0) var(--hb-button-ml, 0);"
+                                    },
+                                    "default": "padding: var(--hb-button-mt, 0) var(--hb-button-mr, 0) var(--hb-button-mb, 16px) var(--hb-button-ml, 0);"
+                                }
                             },
                             "children": [
                                 {

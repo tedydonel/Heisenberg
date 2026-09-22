@@ -341,7 +341,19 @@ final class BlockTreeRenderer
                 continue;
             }
             $hug = $crossAligned && $this->shrinksInFlex($child);
-            $html = $this->renderBlockAtDepth($child, $locale, $depth + 1, 'email', $hug ? ['_emailHug' => '1'] : []);
+            // `_emailNested`: this child's OWN "vertical rhythm" bottom-spacing default (baked
+            // into paragraph/heading/list/quote/button/image/separator's margin cell, since email
+            // has no reliable CSS margin to lean on for top-level rhythm) is for a block sitting
+            // directly on the document root, with no other spacing mechanism between it and its
+            // neighbour. Nested inside a container, THIS container's own `gap` is that mechanism
+            // (exactly mirroring the web canvas, where a flex `gap` provides sibling spacing and a
+            // child's own margin defaults to 0) — so every child rendered here has its rhythm
+            // default zeroed, unconditionally, whether or not this container sets a gap.
+            $hint = ['_emailNested' => '1'];
+            if ($hug) {
+                $hint['_emailHug'] = '1';
+            }
+            $html = $this->renderBlockAtDepth($child, $locale, $depth + 1, 'email', $hint);
             if ($html === '') {
                 continue;
             }

@@ -609,7 +609,13 @@
                                     },
                                     "default": "center"
                                 },
-                                "style": "padding: var(--hb-image-mt, 0) var(--hb-image-mr, 0) var(--hb-image-mb, 16px) var(--hb-image-ml, 0);"
+                                "style": {
+                                    "enumMap": "{{attributes._emailNested}}",
+                                    "cases": {
+                                        "1": "padding: var(--hb-image-mt, 0) var(--hb-image-mr, 0) var(--hb-image-mb, 0) var(--hb-image-ml, 0);"
+                                    },
+                                    "default": "padding: var(--hb-image-mt, 0) var(--hb-image-mr, 0) var(--hb-image-mb, 16px) var(--hb-image-ml, 0);"
+                                }
                             },
                             "children": [
                                 {

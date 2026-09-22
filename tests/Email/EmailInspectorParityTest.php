@@ -118,6 +118,49 @@ class EmailInspectorParityTest extends TestCase
         $this->assertStringContainsString('border-left: 4px solid #0a0a0a', $m[1]);
     }
 
+    /**
+     * A text block's "vertical rhythm" (its own bottom-margin-as-padding default — email has no
+     * reliable CSS margin, so top-level blocks space themselves this way) only makes sense for a
+     * block sitting on the document root. Nested inside a container, the container's own `gap` is
+     * the spacing mechanism (exactly mirroring the web canvas, where flex `gap` spaces siblings
+     * and a child's own margin defaults to 0) — so the SAME block, nested, must not ALSO add its
+     * own rhythm on top of the container's padding/gap. This is the "padding doesn't respect,
+     * margin does" bug: the container's own explicit padding/margin always matched (it goes
+     * through the identical code path on both surfaces); the invisible, unconditional rhythm
+     * default did not exist on the web canvas at all, so nesting always grew extra, uncancellable
+     * space in the email that had no web equivalent to compare against.
+     */
+    public function test_a_nested_text_blocks_own_rhythm_default_is_suppressed(): void
+    {
+        $html = $this->render($this->email(), $this->block('g', 'group', [], [
+            'spacing' => ['padding' => ['top' => '5px', 'right' => '12px', 'bottom' => '5px', 'left' => '12px']],
+        ], [
+            $this->block('h', 'heading', ['content' => 'PILL', 'level' => 2]),
+        ]));
+        $flat = (string) preg_replace('/>\s+</', '><', $html);
+
+        $this->assertStringContainsString('padding: 5px 12px 5px 12px', $flat);
+        // the heading's own margin cell carries none of its usual 12px bottom rhythm
+        $this->assertMatchesRegularExpression('/<td style="padding: 0 0 0 0"><table[^<]*<tr><td[^>]*><h2/', $flat);
+    }
+
+    public function test_a_top_level_text_blocks_own_rhythm_default_is_unaffected(): void
+    {
+        $html = $this->render($this->email(), $this->block('h', 'heading', ['content' => 'TOP', 'level' => 2]));
+
+        $this->assertStringContainsString('<td style="padding: 0 0 12px 0"><table', $html);
+    }
+
+    /** An explicit margin on a NESTED block still wins — only the invisible default is suppressed. */
+    public function test_an_explicit_margin_on_a_nested_block_still_applies(): void
+    {
+        $html = $this->render($this->email(), $this->block('g', 'group', [], [], [
+            $this->block('h', 'heading', ['content' => 'PILL', 'level' => 2], ['spacing' => ['margin' => ['bottom' => '30px']]]),
+        ]));
+
+        $this->assertStringContainsString('padding: 0 0 30px 0', $html);
+    }
+
     public function test_a_quoted_font_family_survives_intact(): void
     {
         // `&#039;` carries its own `;` — the custom-property strip used to split on it.

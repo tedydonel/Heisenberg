@@ -439,7 +439,13 @@
                         {
                             "tag": "td",
                             "attributes": {
-                                "style": "padding: var(--hb-paragraph-mt, 0) var(--hb-paragraph-mr, 0) var(--hb-paragraph-mb, 16px) var(--hb-paragraph-ml, 0);"
+                                "style": {
+                                    "enumMap": "{{attributes._emailNested}}",
+                                    "cases": {
+                                        "1": "padding: var(--hb-paragraph-mt, 0) var(--hb-paragraph-mr, 0) var(--hb-paragraph-mb, 0) var(--hb-paragraph-ml, 0);"
+                                    },
+                                    "default": "padding: var(--hb-paragraph-mt, 0) var(--hb-paragraph-mr, 0) var(--hb-paragraph-mb, 16px) var(--hb-paragraph-ml, 0);"
+                                }
                             },
                             "children": [
                                 {

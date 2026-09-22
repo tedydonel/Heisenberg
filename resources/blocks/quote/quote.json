@@ -541,7 +541,13 @@
                         {
                             "tag": "td",
                             "attributes": {
-                                "style": "padding: var(--hb-quote-mt, 0) var(--hb-quote-mr, 0) var(--hb-quote-mb, 16px) var(--hb-quote-ml, 0);"
+                                "style": {
+                                    "enumMap": "{{attributes._emailNested}}",
+                                    "cases": {
+                                        "1": "padding: var(--hb-quote-mt, 0) var(--hb-quote-mr, 0) var(--hb-quote-mb, 0) var(--hb-quote-ml, 0);"
+                                    },
+                                    "default": "padding: var(--hb-quote-mt, 0) var(--hb-quote-mr, 0) var(--hb-quote-mb, 16px) var(--hb-quote-ml, 0);"
+                                }
                             },
                             "children": [
                                 {
