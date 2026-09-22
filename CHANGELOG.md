@@ -6,7 +6,16 @@ All notable changes to this project are documented here. The format is based on
 
 ## [Unreleased]
 
-See [`UPGRADING.md`](UPGRADING.md) for what these mean for an existing install.
+## [0.0.8] - 2026-09-22
+
+See [`UPGRADING.md`](UPGRADING.md) for what these mean for an existing install. Three of them are
+breaking for some hosts: **email HTML has a new structure**, **MCP / AI writes that contain markdown are now
+rejected**, and **posts saved with the old six device-visibility toggles no longer hide on those devices**.
+
+**Highlights.** Emails are edited on the same canvas as posts, and the mail that is sent now honours what the
+inspector sets; the AI assistant stops stacking a "Thought for 1s" block per block and stops writing markdown and
+`\n` into your text; the inbound MCP server speaks the real Streamable HTTP transport; and a security pass closes
+several open endpoints.
 
 ### Security
 
@@ -18,6 +27,15 @@ See [`UPGRADING.md`](UPGRADING.md) for what these mean for an existing install.
 
 ### Added
 
+- **Email documents are edited on the same canvas as posts.** The canvas, its CSS, selection, drag-and-drop and the inspector are identical; only the palette (`embed` and `icon` are not offered) and the export differ. The canvas no longer draws `email.template` itself, which was a second, table-based renderer under the same editor chrome and the root of every email-only editing defect (missing nested outlines, a zero-size toolbar anchor, inert inspector controls, drops landing at the top of a container).
+- **The sent email honours the inspector.** Every email-safe style (colour, background, typography, padding, margin, border, radius, width, alignment) now reaches the markup that is sent. Before, the email templates read four variables while the Style tab wrote about thirty, so most edits changed the canvas and nothing else. Blocks share a frame — an outer margin cell around an inner box cell — so a background never bleeds into the block's own margin.
+- **Layout becomes table cells in email.** Direction, gap, the alignment grid and space-between/around on a group, columns or column are translated to what a mail client has: stacked children or one cell each, spacer rows and cells, and `align`/`valign` with flexbox's own axis swap. A centred column also now shrinks children with no explicit width to their content and places them, as flexbox does — a "pill" group is pill-sized, a button sits in the middle — where it used to stretch them across the row.
+- **`EmailBlockCoverageService`** warns in the editor when a block will not survive the send (`embed` and `icon` have no email template; a gradient collapses to its first colour; `wide` / `full` alignment is dropped). Derived from the live contracts, so it cannot rot when a block is added.
+- **`EmailBlockCoverageService`** now also warns when a rich-text field contains a hand-written `<span style="...">` beyond `color`/`background-color` (padding, border-radius, font-size, letter-spacing, ...) — `RichTextSanitizer` strips it on every real render, web or email, but the editor canvas writes stored HTML straight into the DOM without sanitizing it, so a hand-built "pill" using inline CSS looks right while editing and is silently flattened to plain coloured text everywhere else. The AI prompt now says so directly, and points at a styled block instead.
+- **MCP Streamable HTTP transport** (2025-06-18) for the inbound server: `initialize` negotiates the protocol version, and it can now be registered in an assistant that speaks the spec. The tool catalogue is unchanged.
+- **Externally-authored changes show live.** When an MCP client edits a post that is open in the editor, the tab picks it up (`GET /editor/posts/{post}/live-status`, polled) instead of showing nothing until a manual reload.
+- **AI assistant.** Reasoning streams into per-burst "Thought for Ns" sections; the composer's model picker now actually switches models; chat history is a real table; the model is taught heading structure and translated titles; and `search_web` returns real, dated results (and fails loudly instead of silently).
+- **`heisenberg.site_url`** (`HEISENBERG_SITE_URL`) names the public site. Heisenberg is often mounted in an admin dashboard on its own subdomain, so the request host says `admin.example.com` while readers are on `example.com`; SEO URLs no longer guess.
 - **Demo host app** under `workbench/` with an end-to-end adopter-path test (`tests/Demo`), screenshots, and `docs/demo.md`.
 - `UPGRADING.md`, `docs/ARCHITECTURE.md`, and `docs/STATUS.md`; the frozen `TODO.md` / `CODE_REVIEW.md` moved to `docs/archive/`.
 - CI: explicit Laravel 11 / 12 / 13 matrix, Larastan (baselined), Pint, `composer audit`, Dependabot, and the jsdom + Playwright JS harnesses. `composer test:parallel` runs the suite under paratest.
@@ -27,6 +45,9 @@ See [`UPGRADING.md`](UPGRADING.md) for what these mean for an existing install.
 ### Changed
 
 - **Internal structure, no behavior change.** `McpToolRegistry`, `BlockRegistryService` and `BlockRenderer` are now thin façades with unchanged public APIs over `src/Mcp/`, `src/Blocks/` and `src/Rendering/`; `block-runtime.blade.php` is a table of contents over 13 ordered partials emitting a byte-identical page. Pinned by a tool-catalogue snapshot test and a renderer golden-output corpus. Hosts that extended these classes by subclassing and overriding private/protected methods should re-check their overrides.
+- **Visibility toggles are three cumulative device bands** — Mobile (<768px), Tablet (768–1023px), Desktop (≥1024px) — instead of six exclusive Bootstrap bands, and they now work in the editor's device preview (the old rules were viewport media queries, which the device switcher cannot trigger). The editing-language control moved onto the canvas badge.
+- The AI panel's reasoning sections follow one rule: a block landing on the canvas cuts the thought, a thought becomes its own section only once that burst has itself run 5s, and anything shorter folds into the section before it. Saved conversations now keep their "Thought for Ns" time.
+- **AI and MCP writes are checked for markdown.** Markdown lists, `#` headings, `**bold**` and code fences in a text field are rejected with a line-numbered message naming the fix (a `list` block, a heading tag, `<strong>`), and nothing reaches the canvas until the model resends real blocks. Hand-typed Code view is unaffected.
 - Icon blocks no longer re-read the icon manifest from disk on every render.
 - Code style is now enforced by Pint (config tuned to the existing conventions) and static analysis by Larastan with a baseline.
 - `heisenberg_posts.locale` is a plain string column instead of a database ENUM; the supported locales are an application concern (`heisenberg.locales`).
@@ -36,6 +57,13 @@ See [`UPGRADING.md`](UPGRADING.md) for what these mean for an existing install.
 
 ### Fixed
 
+- **A model's `\n` is a line break.** Models write `\n` inside quoted shortcode values and tag bodies because every JSON-shaped language spells a line break that way; the dialect never defined it, so a whole list arrived as one item with visible backslash-n characters. `\n`, `\r\n` and `\t` are now read as whitespace, in both the server and browser parsers; a real backslash is written `\\` and is unchanged.
+- The assistant panel no longer stacks a "Thought for 1s" section per block. Reasoning that a model inlines as `<think>` tags used to be re-read whole on every text chunk, opening a new section holding a copy each time; and a clock based on time since the last block counted the wait between tool-loop rounds as thinking.
+- **Drag-and-drop into a container** always landed at the top of email containers, and now finds the container's children at any depth and orders side-by-side children by x.
+- Nested-block hover and selection outlines: a comment closed early in `35-blocks.css` made the rule after it parse as garbage.
+- The quoted-font stack in email (`'Times New Roman'`) was torn apart at its escaped quote and shipped as `' Times New Roman'`, a family no client matches.
+- Email export: sibling blocks in a container no longer overwrite each other's values (two paragraphs in one group both shipped the second one's colour).
+- Translating no longer overwrites the source locale; headings load in the locale being edited; the post title no longer overflows a phone screen.
 - **Bundled public route and single-row bilingual posts.** `/posts/{locale}/{slug}` now serves the same row at every locale it has content in, renders in the URL's locale, and 404s for untranslated locales — previously the page's own hreflang alternates pointed at URLs that 404'd.
 - The editor "Preview" bar no longer renders on the public post page.
 - The editor save request validates `locale` against `heisenberg.locales` instead of a hardcoded pair.

@@ -16,7 +16,37 @@ a key that exists on **both** sides, where the package changed a *list's content
 added a sibling key), does not: your old list wins verbatim, silently. `config-diff`'s `differs`
 section is where that shows up; a config-diff run is the only way to catch it.
 
-## Unreleased
+## 0.0.8 (2026-09-22)
+
+**Breaking — email HTML has a new structure.** Every email block is now a margin cell around a box
+cell (margins ship as cell padding), and layout is table cells rather than a flat sequence. The
+result renders the same or better in a client, but the markup is different: a host that snapshot-
+tests `EmailRenderer` output, post-processes it, or ships its own `email.template` contracts should
+re-check them. Contracts gain an additive `"flow"` on `inner-blocks` nodes and `omitWhenEmpty` on
+`enumMap` attributes; existing contracts keep working, they just do not get the new layout handling.
+A registry-hash change also means an editor tab opened before the upgrade needs a reload.
+
+**Breaking — MCP and AI writes containing markdown are rejected.** `write_canvas`, `create_post`,
+`update_post` and the other tools that take shortcode now fail (with a line-numbered message naming the
+fix) when a text field contains a markdown list, a `#` heading, `**bold**` or a code fence. Clients
+that used to send those got the characters printed on the page; they now have to resend real blocks.
+`\n`, `\r\n` and `\t` in a quoted value or tag body are now read as whitespace instead of printed. Hand-
+typed Code view is unchanged. `ShortcodeParser::parse()` gained an optional `$strict` argument
+(default `false`), so direct callers are unaffected.
+
+**Breaking — device visibility toggles were replaced.** Blocks used to have six exclusive bands
+(`hideXs` … `hideXxl`); they now have three cumulative ones (`hideMobile`, `hideTablet`,
+`hideDesktop`). Posts saved with the old attributes keep them, but **they no longer hide anything**;
+stored content is not migrated. If you relied on the old toggles, re-set the new ones on those blocks.
+
+**New config — `heisenberg.site_url`** (`HEISENBERG_SITE_URL`). Set it when Heisenberg is mounted on
+a different host than your readers use (an admin subdomain); canonical, sitemap and hreflang URLs
+use it instead of the request host. It falls back to `app.url`, and Laravel's default
+`http://localhost` counts as unset.
+
+**Changed — the inbound MCP server speaks the Streamable HTTP transport.** It negotiates a protocol
+version on `initialize` and validates `MCP-Protocol-Version` afterwards. The tool catalogue is
+byte-identical.
 
 **Behavior change — outbound AI/MCP URLs are now SSRF-guarded.** Outside `APP_ENV=local`, an MCP
 server URL or a custom provider `base_url` that resolves to a loopback / RFC1918 / CGNAT / IPv6-ULA
