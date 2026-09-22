@@ -52,7 +52,9 @@ stored content is not migrated. If you relied on the old toggles, re-set the new
 **New config — `heisenberg.site_url`** (`HEISENBERG_SITE_URL`). Set it when Heisenberg is mounted on
 a different host than your readers use (an admin subdomain); canonical, sitemap and hreflang URLs
 use it instead of the request host. It falls back to `app.url`, and Laravel's default
-`http://localhost` counts as unset.
+`http://localhost` counts as unset. The editor topbar's home button now also points at it —
+previously a bare `<button>` with no `href` at all, so this is the first release where clicking it
+navigates anywhere; with neither `site_url` nor `app.url` set it stays inert, as before.
 
 **Changed — the inbound MCP server speaks the Streamable HTTP transport.** It negotiates a protocol
 version on `initialize` and validates `MCP-Protocol-Version` afterwards. The tool catalogue is
