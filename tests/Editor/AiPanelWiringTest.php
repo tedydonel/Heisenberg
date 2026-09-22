@@ -300,6 +300,12 @@ class AiPanelWiringTest extends TestCase
         // set_page_title lands in the editor's title field the same way.
         $this->assertInlineScriptContains($html, "'heisenberg__set_page_title'");
         $this->assertInlineScriptContains($html, 'const applyTitleTool');
+        // REGRESSION: the first [data-hb-title] is the canvas <h1>, which only got textContent —
+        // no input event, so its "Untitled post" placeholder stayed and nothing else synced.
+        $this->assertInlineScriptMatches(
+            $html,
+            "/else field\.textContent = title;\s*field\.dispatchEvent\(new Event\('input'/",
+        );
     }
 
     /**

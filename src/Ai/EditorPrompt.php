@@ -73,9 +73,8 @@ class EditorPrompt
 
         DESIGN TOKENS — this site's theme, as CSS custom properties.
         {$tokens}
-        Prefer a token variable (var(--hb-t-…)) over a literal value for color, spacing,
-        radius and font attributes, so content follows the site theme instead of fighting it.
-        A literal is fine when nothing in the token list fits.
+        Prefer a token variable (var(--hb-t-…)) over a literal for color, spacing, radius and
+        font, so content follows the theme; use a literal only when no token fits.
 
         {$discipline}
 
@@ -88,7 +87,7 @@ class EditorPrompt
         Rules:
         - Body text may contain inline HTML (<strong>, <em>, <a href="...">); a `style=` keeps only color/background-color, so use a block for padding/radius/font-size. Block-level HTML may not.
         - NO MARKDOWN — it never renders. A list is one [list] block (one item per line, no leading "-" or number); a heading is [h2]…[/h2]; bold is <strong>. Line breaks are real ones, never the characters backslash-n.
-        - Only set attributes the user actually asked for (or that the request clearly implies). Omit everything else — contract defaults apply.
+        - Only set attributes the user asked for or clearly implied; omit the rest (contract defaults apply) — except theme fonts, always set.
         - Shortcode goes ONLY in write_canvas's `code` argument — bare block tags, no code fences, no preamble. Never paste it into your chat reply.
         - When the user asks a question about their document rather than requesting content, answer in plain prose and skip write_canvas.
         - Never write <think> or any other reasoning tag into your reply.
@@ -530,6 +529,19 @@ class EditorPrompt
         $section('Radii', $theme['radii'] ?? [], static fn ($t) => ($t['label'] ?? $t['name']) . '(' . $t['value'] . ')');
         $section('Fonts', $theme['fonts'] ?? [], static fn ($t) => ($t['label'] ?? $t['name']) . '(' . ($t['family'] ?? '') . ')');
 
+        // Without this the model follows "only set what the user asked for", nobody asks for a
+        // font, and every block renders in the editor's own default face instead of the theme's.
+        $fonts = array_values(array_filter(array_map(
+            static fn ($t) => is_array($t) && ($t['name'] ?? '') !== '' ? "var(--{$prefix}{$t['name']})" : null,
+            $theme['fonts'] ?? [],
+        )));
+        if ($fonts !== []) {
+            $lines[] = count($fonts) === 1
+                ? "THEME FONT: set font={$fonts[0]} on every heading, paragraph, list, quote and button."
+                : 'THEME FONTS: set font= on every heading, paragraph, list, quote and button, only '
+                    . implode(' or ', $fonts) . ' — one for headings, one for body, consistently.';
+        }
+
         return $lines === [] ? '(no theme tokens defined)' : implode("\n", $lines);
     }
 
@@ -565,15 +577,14 @@ class EditorPrompt
         * EDITING THE HOME LOCALE and asked to translate → use create_translation with
           target_locale. NEVER write_canvas: while the home locale is active, write_canvas
           mode="replace" overwrites the SOURCE text with the translation and the original is
-          gone. The author does not have to switch locale for you to translate — that is the
-          whole point of create_translation, and asking them to switch is a wrong answer.
+          gone. Never ask the author to switch locale first — create_translation exists for this.
           (create_translation needs a saved post_id; if the post has never been saved, say so
           and offer to save it first rather than writing the translation over the source.)
 
         * EDITING LOCALE≠home_locale → TRANSLATING, i.e. this turn is itself a translation:
           same sequence/ids/urls,
           text only, mode="replace" only — mode="append" is refused while editing a non-home
-          locale. This is the path for an author translating alongside you by hand.
+          locale.
 
         A TRANSLATION INCLUDES THE TITLE, on either path: create_translation takes `title`, and
         set_page_title writes into whichever locale is being edited. Translating every block but

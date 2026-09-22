@@ -28,7 +28,9 @@
         return [$labels, $values];
     };
 
-    [$hbColorTokens, $hbColorValues] = $hbVarMenu($theme['colors'] ?? [], 'value');
+    // Colors keep their value whole too: stripUnit('#0a0a0a') is '', which left every swatch in
+    // the color popup blank.
+    [$hbColorTokens, $hbColorValues] = $hbVarMenu($theme['colors'] ?? [], 'value', numeric: false);
     [$hbSpaceTokens, $hbSpaceValues] = $hbVarMenu($theme['spaces'] ?? [], 'value');
     [$hbFontSizeTokens, $hbFontSizeValues] = $hbVarMenu($theme['fontSizes'] ?? [], 'value');
     [$hbRadiusTokens, $hbRadiusValues] = $hbVarMenu($theme['radii'] ?? [], 'value');
@@ -36,11 +38,18 @@
     $hbColorTokens = ['Default' => null] + $hbColorTokens;
     $hbSpaceTokens = ['Default' => ''] + $hbSpaceTokens;
     $hbFontSizeTokens = ['Default' => ''] + $hbFontSizeTokens;
-    $hbFontTokens = ['Default' => ''] + $hbFontTokens;
+    // With a theme font in place, "Default" (the editor's own UI font) is never the right pick —
+    // offer it only when the theme defines no fonts. rebuildVarmenuRows() matches this after a
+    // live theme edit (it lists tokens only).
+    if ($hbFontTokens === []) {
+        $hbFontTokens = ['Default' => ''];
+    }
     $hbColorValues['Default'] = '';
     $hbSpaceValues['Default'] = '';
     $hbFontSizeValues['Default'] = '';
-    $hbFontValues['Default'] = '';
+    if (isset($hbFontTokens['Default'])) {
+        $hbFontValues['Default'] = '';
+    }
 
     // Same sections, same order as buildVarMaps() in script-style-themes, which rebuilds these
     // two maps after a live theme edit — a token must resolve identically before and after.

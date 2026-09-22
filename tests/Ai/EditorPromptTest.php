@@ -139,6 +139,32 @@ class EditorPromptTest extends TestCase
         $this->assertStringContainsString('Prefer', $system);
     }
 
+    /**
+     * REGRESSION. The model obeyed "only set attributes the user asked for" — nobody asks for a
+     * font — so every block rendered in the editor's default face instead of the theme's fonts.
+     */
+    public function test_system_prompt_requires_theme_fonts_only_when_the_theme_has_them(): void
+    {
+        $withFonts = new ThemeRepository(sys_get_temp_dir() . '/hb-theme-missing-' . uniqid() . '.json');
+        $system = (new EditorPrompt(app(BlockRegistryService::class), $withFonts))->system();
+        $this->assertStringContainsString('THEME FONTS: set font= on every heading', $system);
+        foreach ($withFonts->defaults()['fonts'] as $font) {
+            $this->assertStringContainsString('var(--hb-t-' . $font['name'] . ')', $system);
+        }
+        $this->assertStringContainsString('except theme fonts, always set', $system);
+
+        $path = sys_get_temp_dir() . '/hb-theme-nofonts-' . uniqid() . '.json';
+        $theme = $withFonts->defaults();
+        $theme['fonts'] = [];
+        file_put_contents($path, json_encode($theme));
+        try {
+            $none = (new EditorPrompt(app(BlockRegistryService::class), new ThemeRepository($path)))->system();
+            $this->assertStringNotContainsString('THEME FONT', $none);
+        } finally {
+            @unlink($path);
+        }
+    }
+
     public function test_system_prompt_teaches_discovery_discipline(): void
     {
         $system = $this->prompt()->system();

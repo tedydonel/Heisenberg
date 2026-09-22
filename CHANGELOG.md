@@ -6,7 +6,15 @@ All notable changes to this project are documented here. The format is based on
 
 ## [Unreleased]
 
+### Changed
+
+- **The AI now always uses the theme's fonts.** The system prompt told it to set only what the user asked for, and nobody asks for a font, so blocks rendered in the editor's default face. When the theme defines fonts, the prompt now requires one on every heading, paragraph, list, quote and button (one for headings, one for body).
+- **The font variable popup no longer offers "Default" when the theme defines fonts**, and the theme-variable popups no longer carry a search field.
+
 ### Fixed
+
+- **A title set by the AI still showed "Untitled post".** The title write reached the canvas heading without the input event that clears its placeholder and syncs the inspector field and tab title.
+- **The theme-variable color popup showed blank swatches.** Colors went through the same length unit-stripper as fonts (`#0a0a0a` became empty).
 
 - **Editing a duplicated (or newly added) block changed a different block, and the selection border landed on the wrong one.** Loading a document kept its stored block ids but never advanced the id counter past them, so the next duplicate, insert or pattern was handed an id already on the page, and every write that resolves a block by id hit the original. Incoming ids are now kept only while unique, the counter moves past them, and a stored document that already carries a duplicate id is repaired on load.
 

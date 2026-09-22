@@ -124,9 +124,6 @@
 .hb-shadow__box .p { color: var(--hb-text-muted); flex: none; }
 
 .hb-varmenu { width: 236px; display: flex; flex-direction: column; overflow: hidden; }
-.hb-varmenu__search { display: flex; align-items: center; gap: 8px; height: 34px; padding: 0 var(--hb-space-3, 12px); border-bottom: 1px solid var(--hb-border); }
-.hb-varmenu__search input { flex: 1 1 auto; min-width: 0; border: 0; outline: 0; background: none; font-family: inherit; font-size: var(--hb-fs-base, 13px); color: var(--hb-text-primary); }
-.hb-varmenu__search input::placeholder { color: var(--hb-text-muted); }
 .hb-varmenu__list { display: flex; flex-direction: column; gap: 1px; padding: 6px; max-height: 320px; overflow: auto; }
 .hb-vmi { display: flex; align-items: center; justify-content: space-between; gap: 10px; height: 34px; padding: 0 10px; border: 0; background: none; cursor: pointer; border-radius: var(--hb-radius-control, 6px); text-align: left; }
 .hb-vmi:hover, .hb-vmi--on { background: var(--hb-bg-muted); }

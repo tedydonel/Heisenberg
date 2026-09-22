@@ -302,7 +302,8 @@
         if (control.classList.contains('hb-colorlayer')) {
             const hex = control.querySelector('.hb-colorlayer__hex');
             if (!hex) return;
-            hex.value = resolved;
+            // A bound layer names its token, as hbRebuildLayerLists() does on every model sync.
+            hex.value = label || resolved;
             if (label) control.dataset.hbVarBound = value; else delete control.dataset.hbVarBound;
             const swatch = control.querySelector('.hb-colorlayer__swatch');
             if (swatch) swatch.style.background = value || 'transparent';

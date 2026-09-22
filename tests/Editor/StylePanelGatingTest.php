@@ -544,6 +544,37 @@ class StylePanelGatingTest extends TestCase
         $this->assertSame('Medium', $labels['var(--hb-t-fs-md)'] ?? null, 'font-size tokens are missing from the label map');
     }
 
+    /**
+     * REGRESSION. Colors went through the same unit-stripper: stripUnit('#0a0a0a') is '', so every
+     * swatch in the theme-variable color popup rendered blank.
+     */
+    public function test_the_color_variable_popup_previews_each_theme_color(): void
+    {
+        $html = $this->editorHtml();
+
+        $this->assertElementExists($html, '[data-hb-style-popup="var-color"] [data-vm-value="var(--hb-t-ink)"] .hb-vmi__sw[style*="#0a0a0a"]');
+        $values = json_decode((string) $this->hbAttr($html, '.hb-blockstyle', 'data-hb-var-values'), true);
+        $this->assertSame('#0a0a0a', $values['var(--hb-t-ink)'] ?? null);
+    }
+
+    /** The theme-variable popups are short token lists; they carry no search field. */
+    public function test_theme_variable_popups_have_no_search(): void
+    {
+        $html = $this->editorHtml();
+
+        $this->assertElementExists($html, '[data-hb-varmenu]');
+        $this->assertElementMissing($html, '[data-hb-varmenu] input[type="search"]');
+    }
+
+    /** With theme fonts defined, "Default" (the editor's own UI face) is not offered as a font. */
+    public function test_the_font_variable_popup_offers_only_theme_fonts(): void
+    {
+        $html = $this->editorHtml();
+
+        $this->assertElementExists($html, '[data-hb-style-popup="var-font"] [data-vm-value="var(--hb-t-font-serif)"]');
+        $this->assertElementMissing($html, '[data-hb-style-popup="var-font"] [data-vm-name="Default"]');
+    }
+
     /** REGRESSION. Binding font size opened the SPACING popup, binding the field to a spacing token. */
     public function test_font_size_binds_to_the_font_size_scale_not_the_spacing_scale(): void
     {

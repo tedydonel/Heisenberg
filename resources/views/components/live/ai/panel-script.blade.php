@@ -705,13 +705,14 @@
                         const title = String(((data.arguments || {}).title || '')).trim();
                         const field = document.querySelector('[data-hb-title]');
                         if (!title || !field) return;
-                        if ('value' in field) {
-                            field.value = title;
-                            field.dispatchEvent(new Event('input', { bubbles: true }));
-                            field.dispatchEvent(new Event('change', { bubbles: true }));
-                        } else {
-                            field.textContent = title;
-                        }
+                        // The first [data-hb-title] is the canvas <h1> (contenteditable), not an
+                        // input: it needs the same input event too, or its "Untitled post"
+                        // placeholder, the inspector's title field and the tab title never learn
+                        // about the new title (canvas.blade.php mirrors them from that event).
+                        if ('value' in field) field.value = title;
+                        else field.textContent = title;
+                        field.dispatchEvent(new Event('input', { bubbles: true }));
+                        field.dispatchEvent(new Event('change', { bubbles: true }));
                         const line = msg('msgSetTitle').replace(':title', title);
                         appliedLines.push(line);
                         appliedItem(reply, line);
