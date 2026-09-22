@@ -8,6 +8,7 @@ use Heisenberg\Mcp\Support\ContentBlockPipeline;
 use Heisenberg\Rendering\BlockTreeRenderer;
 use Heisenberg\Rendering\CssValueSanitizer;
 use Heisenberg\Rendering\DataPath;
+use Heisenberg\Rendering\RichTextSanitizer;
 use Heisenberg\Support\EmailSupports;
 
 /**
@@ -223,6 +224,7 @@ final class EmailBlockCoverageService
             'gradient-background' => 'its gradient background will be flattened to a single colour',
             'align' => 'its alignment will not be applied',
             'conditional-class' => 'a conditional style it uses (e.g. hide-on-device, fill/hug sizing) will not be applied',
+            'inline-style' => 'a hand-written inline style (e.g. padding, border-radius, font-size) in its text will be stripped to plain coloured text — use a styled block instead',
             default => 'it may render differently',
         };
     }
@@ -267,7 +269,7 @@ final class EmailBlockCoverageService
         }
     }
 
-    /** @return list<string> reason codes: 'gradient-background', 'align', 'conditional-class' */
+    /** @return list<string> reason codes: 'gradient-background', 'align', 'conditional-class', 'inline-style' */
     private function degradationReasons(array $block, array $contract): array
     {
         $reasons = [];
@@ -284,7 +286,76 @@ final class EmailBlockCoverageService
             $reasons[] = 'conditional-class';
         }
 
+        if ($this->hasUnsanitizableInlineStyle($block, $contract)) {
+            $reasons[] = 'inline-style';
+        }
+
         return $reasons;
+    }
+
+    /**
+     * A rich-text attribute whose CURRENT value carries a `<span style="…">` declaration
+     * outside `color`/`background-color` — padding, border-radius, font-size, letter-spacing,
+     * text-transform, display, anything pasted or hand-authored as raw inline HTML.
+     * {@see RichTextSanitizer} keeps only `color`/`background-color` on a
+     * `<span>`; everything else is silently dropped, fail-closed, EVERY time this content is
+     * actually rendered — the public web page exactly as much as the email.
+     *
+     * This is reported here, in an email-scoped service, because that is where an author is
+     * currently told about a surface difference at all — but it is not an email-only fact: the
+     * same value renders the same reduced way on `render`. What makes it look "email-only" is
+     * that the canvas never sanitizes at all — 05-render-tree.blade.php's rich-text case writes
+     * the stored HTML straight into `innerHTML` — so a hand-built "pill" using an inline
+     * `padding`/`border-radius` LOOKS right while editing and is quietly flattened to plain
+     * coloured text the moment anyone else opens the page or the email. The fix for an author is
+     * the one the block palette already offers: a `group` (or other container) block styled
+     * through the inspector, which the supports pipeline carries through to every real output —
+     * not a hand-written `<span style="…">`.
+     *
+     * A lightweight regex, not a second sanitizer: this only has to answer "would sanitizing
+     * change anything", never produce safe output — {@see RichTextSanitizer}
+     * remains the one place that actually cleans it.
+     */
+    private function hasUnsanitizableInlineStyle(array $block, array $contract): bool
+    {
+        $attributes = is_array($block['attributes'] ?? null) ? $block['attributes'] : [];
+        foreach ((array) ($contract['attributes'] ?? []) as $key => $definition) {
+            if (! is_array($definition) || ($definition['type'] ?? null) !== 'rich-text') {
+                continue;
+            }
+
+            foreach ([$key, $key . '_en', $key . '_fr'] as $variant) {
+                $value = $attributes[$variant] ?? null;
+                if (is_string($value) && $this->styleWouldBeStripped($value)) {
+                    return true;
+                }
+            }
+        }
+
+        return false;
+    }
+
+    /** Whether any `<span style="…">` in $html declares a property other than color/background-color. */
+    private function styleWouldBeStripped(string $html): bool
+    {
+        if (preg_match_all('/<span\b[^>]*\bstyle\s*=\s*("([^"]*)"|\'([^\']*)\')/i', $html, $matches, PREG_SET_ORDER) < 1) {
+            return false;
+        }
+
+        foreach ($matches as $match) {
+            $style = ($match[2] ?? '') !== '' ? $match[2] : ($match[3] ?? '');
+            foreach (explode(';', html_entity_decode($style, ENT_QUOTES)) as $declaration) {
+                if (! str_contains($declaration, ':')) {
+                    continue;
+                }
+                $property = strtolower(trim(explode(':', $declaration, 2)[0]));
+                if ($property !== '' && ! in_array($property, ['color', 'background-color'], true)) {
+                    return true;
+                }
+            }
+        }
+
+        return false;
     }
 
     /**

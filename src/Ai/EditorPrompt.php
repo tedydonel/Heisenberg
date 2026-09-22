@@ -86,7 +86,7 @@ class EditorPrompt
         {$emailVariables}
 
         Rules:
-        - Body text may contain inline HTML (<strong>, <em>, <a href="...">). Block-level HTML may not.
+        - Body text may contain inline HTML (<strong>, <em>, <a href="...">); a `style=` keeps only color/background-color, so use a block for padding/radius/font-size. Block-level HTML may not.
         - NO MARKDOWN — it never renders. A list is one [list] block (one item per line, no leading "-" or number); a heading is [h2]…[/h2]; bold is <strong>. Line breaks are real ones, never the characters backslash-n.
         - Only set attributes the user actually asked for (or that the request clearly implies). Omit everything else — contract defaults apply.
         - Shortcode goes ONLY in write_canvas's `code` argument — bare block tags, no code fences, no preamble. Never paste it into your chat reply.

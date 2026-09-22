@@ -246,6 +246,62 @@ class EmailBlockCoverageServiceTest extends TestCase
         $this->assertSame([], $report['degraded']);
     }
 
+    // ── inline-style loss (RichTextSanitizer keeps only color/background-color on a <span>) ──
+
+    /** The exact shape reported against a real document: a hand-styled "pill" span. */
+    public function test_document_report_flags_a_rich_text_span_with_a_stripped_style_property(): void
+    {
+        $report = $this->service()->documentReport([[
+            'id' => 'p1', 'name' => 'heisenberg/paragraph',
+            'attributes' => ['content' => "<span style='padding:5px 12px;border-radius:9999px;background:#eee;color:#111;'>Badge</span>"],
+            'supports' => [], 'innerBlocks' => [],
+        ]]);
+
+        $this->assertCount(1, $report['degraded']);
+        $this->assertSame(['inline-style'], $report['degraded'][0]['reasons']);
+    }
+
+    /** A span using ONLY color/background-color is exactly what the toolbar itself produces — never flagged. */
+    public function test_a_color_only_span_is_not_flagged(): void
+    {
+        $report = $this->service()->documentReport([[
+            'id' => 'p1', 'name' => 'heisenberg/paragraph',
+            'attributes' => ['content' => "<span style='color:#111;background-color:#eee'>Text</span>"],
+            'supports' => [], 'innerBlocks' => [],
+        ]]);
+
+        $this->assertSame([], $report['degraded']);
+    }
+
+    /** No span at all, or a rich-text value with no style attribute — never flagged. */
+    public function test_plain_rich_text_is_not_flagged(): void
+    {
+        $report = $this->service()->documentReport([[
+            'id' => 'p1', 'name' => 'heisenberg/paragraph',
+            'attributes' => ['content' => 'Plain <strong>text</strong>, no span at all.'],
+            'supports' => [], 'innerBlocks' => [],
+        ]]);
+
+        $this->assertSame([], $report['degraded']);
+    }
+
+    /** The locale-suffixed variant is checked too — a translation can carry its own bad markup. */
+    public function test_a_stripped_style_in_a_locale_suffixed_attribute_is_flagged(): void
+    {
+        $report = $this->service()->documentReport([[
+            'id' => 'p1', 'name' => 'heisenberg/paragraph',
+            'attributes' => ['content' => 'Clean.', 'content_fr' => "<span style='font-size:20px'>Sale</span>"],
+            'supports' => [], 'innerBlocks' => [],
+        ]]);
+
+        $this->assertSame(['inline-style'], $report['degraded'][0]['reasons']);
+    }
+
+    public function test_the_reason_description_names_the_fix(): void
+    {
+        $this->assertStringContainsString('styled block', $this->service()->reasonDescription('inline-style'));
+    }
+
     public function test_document_report_flags_an_authored_alignment_as_degraded(): void
     {
         $blocks = [[
