@@ -64,6 +64,33 @@ class IconLibraryService
     }
 
     /**
+     * The same markup, but only when it is safe to hand a client that will INLINE it (the picker
+     * injects rather than <img src>, which turns 61 requests per page into one — an <img> is an
+     * isolated document, inline markup is not). The shipped library is sanitized at import time;
+     * this is the fail-closed guard for a host that points `heisenberg.icon_root` at its own
+     * files: anything but a plain <svg> element, or carrying a script/handler/external
+     * reference, is refused here and simply falls back to the per-icon <img> URL.
+     */
+    public function inlineSvg(string $reference): ?string
+    {
+        $svg = $this->svg($reference);
+        if ($svg === null) {
+            return null;
+        }
+
+        $svg = trim($svg);
+        if (stripos($svg, '<svg') !== 0 || ! str_ends_with($svg, '</svg>')) {
+            return null;
+        }
+        // <script>/<foreignObject>/<use href> and any on* handler: an inline SVG runs them.
+        if (preg_match('/<\s*(script|foreignObject|iframe|image|use)\b|\bon[a-z]+\s*=|(href|xlink:href)\s*=/i', $svg) === 1) {
+            return null;
+        }
+
+        return $svg;
+    }
+
+    /**
      * Search the manifest by substring. Empty query lists everything (paged).
      *
      * @return array{icons: array<int, array{set: string, slug: string}>, total: int}

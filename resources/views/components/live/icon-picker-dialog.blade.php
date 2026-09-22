@@ -12,6 +12,9 @@
     .hb-icondialog__item { display: flex; flex-direction: column; align-items: center; gap: 4px; padding: 8px 4px; border: 1px solid transparent; border-radius: var(--hb-radius-md, 5px); background: none; cursor: pointer; font-family: var(--hb-font-sans, Rubik, sans-serif); }
     .hb-icondialog__item:hover { border-color: var(--hb-border); background: var(--hb-surface-hover); }
     .hb-icondialog__item img { width: 28px; height: 28px; display: block; }
+    .hb-icondialog__glyph { display: block; width: 28px; height: 28px; color: var(--hb-text-primary); }
+    .hb-icondialog__glyph svg { width: 100%; height: 100%; display: block; }
+    .hb-editor--dark .hb-icondialog__glyph--fixed,
     .hb-editor--dark .hb-icondialog__item img,
     .hb-editor--dark .hb-iconfield img { filter: invert(1); }
     .hb-icondialog__item span { max-width: 100%; font-size: 10px; color: var(--hb-text-muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
@@ -111,14 +114,28 @@
                         item.type = 'button';
                         item.className = 'hb-icondialog__item';
                         item.setAttribute('data-hb-icon-pick', row.reference);
-                        const img = document.createElement('img');
-                        img.src = row.url;
-                        img.loading = 'lazy';
-                        img.alt = '';
                         const label = document.createElement('span');
                         label.textContent = row.slug;
                         item.title = row.reference;
-                        item.appendChild(img);
+                        // The feed carries the markup, so the grid paints in ONE request instead
+                        // of one per icon. Server-sanitized (IconLibraryService::inlineSvg refuses
+                        // anything but a plain <svg>); a refused file still has its <img> URL.
+                        if (row.svg) {
+                            const holder = document.createElement('span');
+                            holder.className = 'hb-icondialog__glyph';
+                            // Most sets paint in currentColor and follow the editor's text color.
+                            // The two that ship fixed dark colors (iconsax, remix-icon) kept their
+                            // legibility from the dark-theme invert on <img>; keep that for them.
+                            if (row.svg.indexOf('currentColor') === -1) holder.classList.add('hb-icondialog__glyph--fixed');
+                            holder.innerHTML = row.svg;
+                            item.appendChild(holder);
+                        } else {
+                            const img = document.createElement('img');
+                            img.src = row.url;
+                            img.loading = 'lazy';
+                            img.alt = '';
+                            item.appendChild(img);
+                        }
                         item.appendChild(label);
                         grid.appendChild(item);
                     });

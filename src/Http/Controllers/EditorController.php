@@ -1035,11 +1035,17 @@ final class EditorController
         );
 
         return response()->json([
+            // `svg` is the markup itself: the picker inlines it instead of issuing one request
+            // per icon (a page of 60 was 61 requests, each booting the framework — the icon grid
+            // took seconds to fill). `url` stays for the canvas runtime, which fetch-injects a
+            // single icon and gets a year of browser caching out of it, and as the picker's
+            // fallback whenever inlineSvg() refuses a file.
             'icons' => array_map(fn (array $row) => [
                 'set' => $row['set'],
                 'slug' => $row['slug'],
                 'reference' => $row['set'] . '/' . $row['slug'],
                 'url' => route('heisenberg.editor.asset.icon', ['set' => $row['set'], 'slug' => $row['slug']]),
+                'svg' => $icons->inlineSvg($row['set'] . '/' . $row['slug']),
             ], $result['icons']),
             'total' => $result['total'],
             'sets' => $icons->sets(),

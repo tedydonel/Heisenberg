@@ -8,6 +8,8 @@ All notable changes to this project are documented here. The format is based on
 
 ### Changed
 
+- **The icon picker paints in one request instead of one per icon.** Its feed now carries each icon's markup, so a page of 96 icons went from 97 requests (~37s against the dev server) to one (~0.9s). `url` stays for the canvas runtime and as the fallback for any file the server declines to inline — only a plain `<svg>` with no script, handler or external reference is inlined.
+
 - **The AI now always uses the theme's fonts.** The system prompt told it to set only what the user asked for, and nobody asks for a font, so blocks rendered in the editor's default face. When the theme defines fonts, the prompt now requires one on every heading, paragraph, list, quote and button (one for headings, one for body).
 - **The font variable popup no longer offers "Default" when the theme defines fonts**, and the theme-variable popups no longer carry a search field.
 
