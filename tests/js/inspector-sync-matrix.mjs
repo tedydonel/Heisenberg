@@ -74,6 +74,49 @@ await page.waitForTimeout(200);
 const fw = await page.evaluate(() => getComputedStyle(document.querySelector('.hb-blk [data-block-id]')).fontWeight);
 ok('picking Bold from rebuilt options paints font-weight 700', fw === '700', 'computed=' + fw);
 
+// ── 2b: a theme-bound font is written by the inspector, shown by name, and its face loaded ──
+// The loader used to skip every var() value (face never downloaded, so the canvas painted the
+// fallback), and the token pick only repainted the combobox without writing the model.
+// The nested-button step above moved the selection (and its toolbar covers the paragraph).
+// Restored afterwards: later steps click around a toolbar positioned for that selection.
+const selectedBefore2b = await page.evaluate(() => window.hbEditor.getSelectedId());
+await page.evaluate((i) => window.hbEditor.selectById(i), id);
+await page.waitForFunction(() => {
+    const root = document.querySelector('[data-hb-subpanel="style"] [data-hb-block-panel="heisenberg/paragraph"] .hb-blockstyle');
+    return !!root && !root.closest('[hidden]');
+}, null, { timeout: 5000 });
+await sp.locator('[data-hb-style-var-for="typography.fontFamily"]').click();
+await page.waitForTimeout(200);
+const fontToken = sp.locator('[data-hb-style-popup="var-font"] .hb-vmi[data-vm-value^="var("]').first();
+if ((await fontToken.count()) > 0) {
+    const ref = await fontToken.getAttribute('data-vm-value');
+    await fontToken.click();
+    await page.waitForTimeout(200);
+    const bound = await page.evaluate(([i, r]) => {
+        const declared = getComputedStyle(document.documentElement).getPropertyValue(r.slice(4, -1));
+        return {
+            model: window.hbEditor.getModel(i).supports?.typography?.fontFamily,
+            family: (declared.split(',')[0] || '').trim().replace(/^(['"])(.*)\1$/, '$2'),
+            field: document.querySelector('[data-hb-subpanel="style"] [data-hb-block-panel="heisenberg/paragraph"] [data-hb-control="typography.fontFamily"] input')?.value,
+        };
+    }, [id, ref]);
+    ok('binding fontFamily to a theme token writes the model', bound.model === ref, `model=${bound.model} expected=${ref}`);
+    ok('a bound font shows its family name, not var()', bound.field === bound.family, `field=${bound.field} family=${bound.family}`);
+    const catalogued = await page.evaluate(async (family) => {
+        const url = document.querySelector('[data-hb-inspector]').dataset.hbFontsSearchUrl;
+        const body = await (await fetch(url + '?q=' + encodeURIComponent(family) + '&limit=8')).json();
+        return (body.fonts || []).some((f) => f.family.toLowerCase() === family.toLowerCase());
+    }, bound.family);
+    if (catalogued) {
+        const plus = bound.family.replace(/ /g, '+');
+        await page.waitForFunction((p) => document.getElementById('hb-canvas-fonts')?.href.includes(p), plus, { timeout: 8000 }).catch(() => {});
+        const link = await page.evaluate(() => document.getElementById('hb-canvas-fonts')?.href || null);
+        ok('a theme-bound font loads its face on the canvas', !!link && link.includes(plus), String(link));
+    }
+} else { ok('fontFamily token binding (skipped — no font tokens in theme)', true); }
+if (selectedBefore2b) await page.evaluate((i) => window.hbEditor.selectById(i), selectedBefore2b);
+await page.waitForTimeout(200);
+
 // ── 3: aggregate fields carry the var trigger and open the token menu ──
 const aggState = await sp.evaluate((el) => {
     const one = el.querySelector('[data-hb-style-all-value="padding"]');

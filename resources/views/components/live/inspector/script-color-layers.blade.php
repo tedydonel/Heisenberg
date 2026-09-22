@@ -190,6 +190,7 @@
 
     function hbVarMenuFor(path) {
         if (/fontFamily$/i.test(path)) return 'var-font';
+        if (/fontSize$/i.test(path)) return 'var-fontsize';
         return /(^|\.)color(\.|$)|color$/i.test(path) ? 'var-color' : 'var-number';
     }
 
@@ -314,7 +315,10 @@
         }
 
         if (control.getAttribute('data-hb-control-type') === 'combobox') {
+            // setValue() only repaints (it is shared with the silent model->DOM sync), so the pick
+            // needs its own 'change' to reach the write handler in script-controls-sync.
             control.__hbCombobox?.setValue(value, resolved);
+            control.dispatchEvent(new CustomEvent('change', { bubbles: true, detail: { value } }));
         } else {
             const input = control.matches('input') ? control : control.querySelector('input');
             if (!input) return;

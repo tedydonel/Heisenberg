@@ -6,6 +6,13 @@ All notable changes to this project are documented here. The format is based on
 
 ## [Unreleased]
 
+### Fixed
+
+
+- **Theme fonts were never applied on the editor canvas**, whether set from the inspector or by the AI. The block's `font-family` resolved to the theme family correctly, but the canvas font loader skipped every `var(--hb-t-…)` value, so the face was never downloaded and the text painted in the fallback font. The loader (and the font-weight list) now reads the family back off the live theme variable, and reloads after a theme edit.
+- **Picking a theme font in the inspector changed the label but never wrote the block.** The token pick only repainted the combobox; it now fires the change that reaches the block model.
+- **A font or font size bound to a theme token showed its raw `var(--hb-t-…)` text in the inspector** instead of the family name or the size. Font families were run through the length unit-stripper (which returns nothing for a name), and font-size and radius tokens were missing from the panel's resolved-value map. Binding a font size also offered the spacing scale; it now has its own popup with the theme's font sizes.
+
 ## [0.0.8] - 2026-09-22
 
 See [`UPGRADING.md`](UPGRADING.md) for what these mean for an existing install. Three of them are

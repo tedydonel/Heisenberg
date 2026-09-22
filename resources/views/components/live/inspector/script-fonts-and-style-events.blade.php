@@ -71,12 +71,23 @@
         return hbFontMetaCache.get(key);
     }
 
+    // A theme-bound font is stored as `var(--hb-t-…)`, which names no family the font catalog
+    // can serve, so skipping it left the canvas painting the CSS fallback: the block's
+    // font-family resolved correctly but the face was never downloaded. Read the family back
+    // off the live theme variable (#hb-theme-vars, kept current by the Themes panel) instead.
+    function hbResolveFontFamily(value) {
+        const text = typeof value === 'string' ? value.trim() : '';
+        const ref = /^var\(\s*(--[a-z0-9-]+)\s*\)$/i.exec(text);
+        if (!ref) return text.indexOf('var(') === -1 ? text : '';
+        const declared = getComputedStyle(document.documentElement).getPropertyValue(ref[1]);
+        return (declared.split(',')[0] || '').trim().replace(/^(['"])(.*)\1$/, '$2').trim();
+    }
+
     function hbDocFontFamilies() {
         const families = new Set();
-        const add = (family) => {
-            if (typeof family === 'string' && family.trim() !== '' && family.indexOf('var(') === -1) {
-                families.add(family.trim());
-            }
+        const add = (value) => {
+            const family = hbResolveFontFamily(value);
+            if (family !== '') families.add(family);
         };
         const walk = (blocks) => (blocks || []).forEach((block) => {
             add(block.supports?.typography?.fontFamily);
@@ -141,8 +152,8 @@
                 menu.appendChild(option);
             });
         };
-        const family = model.supports?.typography?.fontFamily;
-        if (typeof family === 'string' && family.trim() !== '' && family.indexOf('var(') === -1) {
+        const family = hbResolveFontFamily(model.supports?.typography?.fontFamily);
+        if (family !== '') {
             hbFontMeta(family).then((meta) => apply(meta && Array.isArray(meta.weights) ? meta.weights.map(Number) : null));
         } else {
             apply(null);
@@ -154,10 +165,11 @@
         hbSyncWeightOptions(root, model);
     }
 
-    document.addEventListener('hb:blocks-changed', () => {
+    // A theme edit can point a bound token at a different family without touching any block.
+    ['hb:blocks-changed', 'hb:theme-changed'].forEach((name) => document.addEventListener(name, () => {
         clearTimeout(hbSyncFonts.__timer);
         hbSyncFonts.__timer = setTimeout(hbSyncCanvasFonts, 200);
-    });
+    }));
 
     function chipValues(host) {
         return Array.from(host.querySelectorAll('[data-hb-chip]'))

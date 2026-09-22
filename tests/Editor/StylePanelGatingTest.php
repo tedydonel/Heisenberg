@@ -518,12 +518,52 @@ class StylePanelGatingTest extends TestCase
     {
         $html = $this->editorHtml();
 
-        // hbVarMenuFor() routes to one of three names; a route with no mounted popup makes
+        // hbVarMenuFor() routes to one of four names; a route with no mounted popup makes
         // showStylePopup() a silent no-op.
-        foreach (['var-color', 'var-number', 'var-font'] as $menu) {
+        foreach (['var-color', 'var-number', 'var-fontsize', 'var-font'] as $menu) {
             $this->assertElementExists($html, '[data-hb-style-popup="' . $menu . '"]', "{$menu} is routed to but not mounted");
         }
         $this->assertInlineScriptContains($html, "if (/fontFamily$/i.test(path)) return 'var-font';");
+        $this->assertInlineScriptContains($html, "if (/fontSize$/i.test(path)) return 'var-fontsize';");
+    }
+
+    /**
+     * REGRESSION. A font or font size bound to a theme token showed its raw `var(--hb-t-…)` text
+     * in the inspector: the font-family display value went through the length unit-stripper
+     * (`stripUnit('Georgia')` is ''), and font-size tokens were never put in the map at all.
+     */
+    public function test_a_bound_font_token_resolves_to_its_real_value_not_its_reference(): void
+    {
+        $html = $this->editorHtml();
+
+        $values = json_decode((string) $this->hbAttr($html, '.hb-blockstyle', 'data-hb-var-values'), true);
+        $this->assertSame('Georgia', $values['var(--hb-t-font-serif)'] ?? null, 'a font binding shows its raw var() text instead of the family name');
+        $this->assertSame('14', $values['var(--hb-t-fs-md)'] ?? null, 'a font-size binding shows its raw var() text instead of its number');
+
+        $labels = json_decode((string) $this->hbAttr($html, '.hb-blockstyle', 'data-hb-var-labels'), true);
+        $this->assertSame('Medium', $labels['var(--hb-t-fs-md)'] ?? null, 'font-size tokens are missing from the label map');
+    }
+
+    /** REGRESSION. Binding font size opened the SPACING popup, binding the field to a spacing token. */
+    public function test_font_size_binds_to_the_font_size_scale_not_the_spacing_scale(): void
+    {
+        $html = $this->editorHtml();
+
+        $this->assertElementExists($html, '[data-hb-style-popup="var-fontsize"] [data-vm-name="Medium"][data-vm-value="var(--hb-t-fs-md)"]');
+        $this->assertElementMissing($html, '[data-hb-style-popup="var-fontsize"] [data-vm-value="var(--hb-t-sp-2)"]');
+    }
+
+    /**
+     * REGRESSION. Theme fonts were never applied on the canvas: the font loader skipped every
+     * `var(...)` value, so the family resolved in CSS but its face was never downloaded. And
+     * picking a theme font from the inspector never fired the change that writes the model.
+     */
+    public function test_theme_bound_fonts_are_loaded_and_written(): void
+    {
+        $html = $this->editorHtml();
+
+        $this->assertInlineScriptContains($html, 'const family = hbResolveFontFamily(value);');
+        $this->assertInlineScriptContains($html, "control.dispatchEvent(new CustomEvent('change', { bubbles: true, detail: { value } }));");
     }
 
     public function test_the_font_clear_button_is_replaced_by_the_variable_trigger(): void

@@ -156,7 +156,8 @@
                             if (kind === 'color') {
                                 values[ref] = token.value || '';
                             } else if (kind === 'font') {
-                                values[ref] = '';
+                                // The family name is what a bound font field shows.
+                                values[ref] = token.family || '';
                             } else {
                                 values[ref] = String(token.value || '').replace(/px$/i, '');
                             }
@@ -223,6 +224,7 @@
                     });
                     rebuildVarmenuRows('[data-hb-style-popup="var-color"] [data-hb-varmenu]', theme.colors, 'color');
                     rebuildVarmenuRows('[data-hb-style-popup="var-number"] [data-hb-varmenu]', theme.spaces, 'number');
+                    rebuildVarmenuRows('[data-hb-style-popup="var-fontsize"] [data-hb-varmenu]', theme.fontSizes, 'number');
                     rebuildVarmenuRows('[data-hb-style-popup="var-font"] [data-hb-varmenu]', theme.fonts, 'font');
                     document.dispatchEvent(new CustomEvent('hb:refresh'));
                     document.dispatchEvent(new CustomEvent('hb:theme-changed', { detail: { theme, labels, values } }));

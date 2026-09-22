@@ -8,7 +8,10 @@
         return (string) (preg_match('/^(-?\d*\.?\d+)/', $value, $m) ? $m[1] : '');
     };
 
-    $hbVarMenu = static function (array $rows, string $display) use ($stripUnit): array {
+    // `$numeric` strips the unit off a length ("16px" -> "16") for the bare-number fields. It must
+    // never run on a font family: stripUnit('Georgia') returns '', which left every font token
+    // without a resolved value, so a bound font showed its raw var(--hb-t-…) text.
+    $hbVarMenu = static function (array $rows, string $display, bool $numeric = true) use ($stripUnit): array {
         $labels = [];
         $values = [];
         foreach ($rows as $row) {
@@ -18,7 +21,7 @@
             }
             $label = trim((string) ($row['label'] ?? '')) !== '' ? $row['label'] : $name;
             $rawValue = (string) ($row[$display] ?? '');
-            $labels[$label] = $stripUnit($rawValue);
+            $labels[$label] = $numeric ? $stripUnit($rawValue) : $rawValue;
             $values[$label] = 'var(--' . \Heisenberg\Services\ThemeRepository::CSS_PREFIX . $name . ')';
         }
 
@@ -27,19 +30,27 @@
 
     [$hbColorTokens, $hbColorValues] = $hbVarMenu($theme['colors'] ?? [], 'value');
     [$hbSpaceTokens, $hbSpaceValues] = $hbVarMenu($theme['spaces'] ?? [], 'value');
-    [$hbFontTokens, $hbFontValues] = $hbVarMenu($theme['fonts'] ?? [], 'family');
+    [$hbFontSizeTokens, $hbFontSizeValues] = $hbVarMenu($theme['fontSizes'] ?? [], 'value');
+    [$hbRadiusTokens, $hbRadiusValues] = $hbVarMenu($theme['radii'] ?? [], 'value');
+    [$hbFontTokens, $hbFontValues] = $hbVarMenu($theme['fonts'] ?? [], 'family', numeric: false);
     $hbColorTokens = ['Default' => null] + $hbColorTokens;
     $hbSpaceTokens = ['Default' => ''] + $hbSpaceTokens;
+    $hbFontSizeTokens = ['Default' => ''] + $hbFontSizeTokens;
     $hbFontTokens = ['Default' => ''] + $hbFontTokens;
     $hbColorValues['Default'] = '';
     $hbSpaceValues['Default'] = '';
+    $hbFontSizeValues['Default'] = '';
     $hbFontValues['Default'] = '';
 
+    // Same sections, same order as buildVarMaps() in script-style-themes, which rebuilds these
+    // two maps after a live theme edit — a token must resolve identically before and after.
     $hbVarLabels = [];
     $hbVarValues = [];
     foreach ([
         [$hbColorValues, $hbColorTokens],
         [$hbSpaceValues, $hbSpaceTokens],
+        [$hbRadiusValues, $hbRadiusTokens],
+        [$hbFontSizeValues, $hbFontSizeTokens],
         [$hbFontValues, $hbFontTokens],
     ] as [$refs, $displays]) {
         foreach ($refs as $label => $ref) {
@@ -140,6 +151,10 @@
     </div>
     <div class="hb-style-popup" data-hb-style-popup="var-number" hidden>
         <x-heisenberg::live.pickers.variable-menu mode="number" selected="" :tokens="$hbSpaceTokens" :values="$hbSpaceValues" />
+    </div>
+    {{-- Font size binds to the theme's font-size scale, never the spacing scale var-number offers. --}}
+    <div class="hb-style-popup" data-hb-style-popup="var-fontsize" hidden>
+        <x-heisenberg::live.pickers.variable-menu mode="number" selected="" :tokens="$hbFontSizeTokens" :values="$hbFontSizeValues" />
     </div>
     <div class="hb-style-popup" data-hb-style-popup="var-font" hidden>
         <x-heisenberg::live.pickers.variable-menu mode="number" selected="" :tokens="$hbFontTokens" :values="$hbFontValues" />
