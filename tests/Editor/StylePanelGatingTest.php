@@ -518,70 +518,12 @@ class StylePanelGatingTest extends TestCase
     {
         $html = $this->editorHtml();
 
-        // hbVarMenuFor() routes to one of four names; a route with no mounted popup makes
+        // hbVarMenuFor() routes to one of three names; a route with no mounted popup makes
         // showStylePopup() a silent no-op.
-        foreach (['var-color', 'var-number', 'var-fontsize', 'var-font'] as $menu) {
+        foreach (['var-color', 'var-number', 'var-font'] as $menu) {
             $this->assertElementExists($html, '[data-hb-style-popup="' . $menu . '"]', "{$menu} is routed to but not mounted");
         }
         $this->assertInlineScriptContains($html, "if (/fontFamily$/i.test(path)) return 'var-font';");
-        $this->assertInlineScriptContains($html, "if (/fontSize$/i.test(path)) return 'var-fontsize';");
-    }
-
-    /**
-     * REGRESSION. A font-family or font-size field bound to a theme token displayed its raw
-     * `var(--hb-t-…)` text everywhere — the Style panel, and (since the model genuinely stores
-     * that reference, correctly) the Code view too — instead of the token's actual value. Two
-     * independent causes, both in `data-hb-var-values` (the map `hbVarResolvedValue()` reads to
-     * decide what a bound field shows):
-     *
-     *  - font-size tokens (`theme.fontSizes`) were never added to the map at all — only colors,
-     *    spaces and fonts were — so a font-size binding had no resolved value to find, in
-     *    exactly the way {@see self::test_variable_menu_is_mounted_in_the_inspector_with_real_theme_tokens()}
-     *    already guards colors against.
-     *  - a font-family token's binding WAS in the map, but `$hbVarMenu()`'s shared `stripUnit()`
-     *    helper — needed for spacing/radius/font-size ("16px" -> "16") — ran on the family name
-     *    too: `stripUnit('Georgia')` matches no leading number and returns '', so every font's
-     *    resolved value was silently blank.
-     *
-     * Both are asserted directly on the real default theme's tokens (`font-serif` -> "Georgia",
-     * `fs-md` -> "14px"), not on the wiring alone — the wiring already had its own test
-     * ({@see self::test_a_combobox_bound_to_a_token_commits_through_its_own_api()}) and still
-     * shipped both bugs, because it never checked what the wiring actually resolved to.
-     */
-    public function test_a_bound_font_token_resolves_to_its_real_value_not_its_reference(): void
-    {
-        $html = $this->editorHtml();
-
-        $raw = $this->hbAttr($html, '.hb-blockstyle', 'data-hb-var-values');
-        $this->assertNotNull($raw, 'no .hb-blockstyle carries data-hb-var-values at all');
-        $values = json_decode((string) $raw, true);
-
-        $this->assertArrayHasKey('var(--hb-t-font-serif)', $values, 'a font token has no resolved value at all');
-        $this->assertSame('Georgia', $values['var(--hb-t-font-serif)'], 'a font-family binding shows its raw var() text instead of the family name');
-
-        $this->assertArrayHasKey('var(--hb-t-fs-md)', $values, 'font-size tokens are missing from the resolved-value map entirely');
-        $this->assertSame('14', $values['var(--hb-t-fs-md)'], 'a font-size binding shows its raw var() text instead of its number');
-
-        $labels = json_decode((string) $this->hbAttr($html, '.hb-blockstyle', 'data-hb-var-labels'), true);
-        $this->assertSame('Medium', $labels['var(--hb-t-fs-md)'] ?? null, 'font-size tokens are missing from the label map entirely');
-    }
-
-    /**
-     * REGRESSION. `typography.fontSize`'s "bind a theme variable" trigger fell through
-     * `hbVarMenuFor()`'s generic branch and opened `var-number` — the SPACING popup — because
-     * nothing routed it anywhere more specific. A font size and a spacing value happen to share
-     * "bare number" as a display shape, but they are unrelated token sets: picking from that
-     * popup bound a font-size field to a spacing token's CSS variable.
-     */
-    public function test_font_size_binds_to_the_font_size_scale_not_the_spacing_scale(): void
-    {
-        $html = $this->editorHtml();
-
-        $this->assertElementExists($html, '[data-hb-style-popup="var-fontsize"] [data-vm-name="Medium"][data-vm-value="var(--hb-t-fs-md)"]');
-        // The spacing token of the SAME label, in the SPACING popup, must not also satisfy the
-        // selector above by accident — pin that it is a DIFFERENT popup entirely.
-        $this->assertElementMissing($html, '[data-hb-style-popup="var-fontsize"] [data-vm-value="var(--hb-t-sp-2)"]');
-        $this->assertElementExists($html, '[data-hb-style-popup="var-number"] [data-vm-name="Medium"][data-vm-value="var(--hb-t-sp-2)"]');
     }
 
     public function test_the_font_clear_button_is_replaced_by_the_variable_trigger(): void

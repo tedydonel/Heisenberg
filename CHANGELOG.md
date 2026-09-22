@@ -6,11 +6,6 @@ All notable changes to this project are documented here. The format is based on
 
 ## [Unreleased]
 
-### Fixed
-
-- **A font or font size bound to a theme token showed its raw `var(--hb-t-...)` text everywhere** — the inspector, the code editor — instead of the family name or the pixel value. The panel's "strip the unit off a length" helper was being run on font-family names too (which have no leading number, so it returned nothing), and the panel never built a label/value map for the font-size scale at all, so a font-size binding fell back to the same raw text for a different reason. Font-family bindings also had no dedicated popup and were offered the spacing scale instead of the theme's font sizes.
-- **Binding a font family to a theme token from the inspector updated the label but never applied it.** The combobox's model-sync path (also used to silently repaint the field when the model changes) never fires a change event, by design — but the "pick a token" handler reused it for a real user pick too, so the write handler that pushes the value into the block model was never invoked. The canvas, and every re-open of the inspector, kept the block's previous font. Font-size bindings (a plain text field, not a combobox) were unaffected.
-
 ## [0.0.8] - 2026-09-22
 
 See [`UPGRADING.md`](UPGRADING.md) for what these mean for an existing install. Three of them are
