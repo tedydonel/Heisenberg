@@ -6,26 +6,20 @@ All notable changes to this project are documented here. The format is based on
 
 ## [Unreleased]
 
-### Fixed
-
-- **An icon ignored its Fill colour.** The icon block paints by setting `color` on its wrapper, which only reaches the glyph through `currentColor`: remix-icon's drawn paths carry no `fill` (so they defaulted to black) and iconsax's carry an empty `fill=""` left by the importer. Single-colour icons are now normalized to `currentColor` when read, so the canvas, the render and the picker all follow the block's colour. Multi-colour and gradient artwork is left untouched.
-- **Resizing an icon in one dimension did nothing visible.** Width alone gave a 96x32 box and a glyph that kept its aspect ratio, so it stayed 32px tall. Either dimension now scales the icon; setting both still wins.
-
 ### Changed
 
 - **Text with no font of its own now follows the theme.** The theme's first font becomes the document's base face (a derived `--hb-t-font-base` token) on the canvas, the preview and the published page; previously such text fell back to the editor's own UI font, so a themed site still read in Rubik until every block set a font explicitly. A font set on a block still wins, and a theme with no fonts is unchanged.
 - **The icon picker paints in one request instead of one per icon.** Its feed now carries each icon's markup, so a page of 96 icons went from 97 requests (~37s against the dev server) to one (~0.9s). `url` stays for the canvas runtime and as the fallback for any file the server declines to inline — only a plain `<svg>` with no script, handler or external reference is inlined.
-
 - **The AI now always uses the theme's fonts.** The system prompt told it to set only what the user asked for, and nobody asks for a font, so blocks rendered in the editor's default face. When the theme defines fonts, the prompt now requires one on every heading, paragraph, list, quote and button (one for headings, one for body).
 - **The font variable popup no longer offers "Default" when the theme defines fonts**, and the theme-variable popups no longer carry a search field.
 
 ### Fixed
 
+- **An icon ignored its Fill colour.** The icon block paints by setting `color` on its wrapper, which only reaches the glyph through `currentColor`: remix-icon's drawn paths carry no `fill` (so they defaulted to black) and iconsax's carry an empty `fill=""` left by the importer. Single-colour icons are now normalized to `currentColor` when read, so the canvas, the render and the picker all follow the block's colour. Multi-colour and gradient artwork is left untouched.
+- **Resizing an icon in one dimension did nothing visible.** Width alone gave a 96x32 box and a glyph that kept its aspect ratio, so it stayed 32px tall. Either dimension now scales the icon; setting both still wins.
 - **A title set by the AI still showed "Untitled post".** The title write reached the canvas heading without the input event that clears its placeholder and syncs the inspector field and tab title.
 - **The theme-variable color popup showed blank swatches.** Colors went through the same length unit-stripper as fonts (`#0a0a0a` became empty).
-
 - **Editing a duplicated (or newly added) block changed a different block, and the selection border landed on the wrong one.** Loading a document kept its stored block ids but never advanced the id counter past them, so the next duplicate, insert or pattern was handed an id already on the page, and every write that resolves a block by id hit the original. Incoming ids are now kept only while unique, the counter moves past them, and a stored document that already carries a duplicate id is repaired on load.
-
 - **Theme fonts were never applied on the editor canvas**, whether set from the inspector or by the AI. The block's `font-family` resolved to the theme family correctly, but the canvas font loader skipped every `var(--hb-t-…)` value, so the face was never downloaded and the text painted in the fallback font. The loader (and the font-weight list) now reads the family back off the live theme variable, and reloads after a theme edit.
 - **Picking a theme font in the inspector changed the label but never wrote the block.** The token pick only repainted the combobox; it now fires the change that reaches the block model.
 - **A font or font size bound to a theme token showed its raw `var(--hb-t-…)` text in the inspector** instead of the family name or the size. Font families were run through the length unit-stripper (which returns nothing for a name), and font-size and radius tokens were missing from the panel's resolved-value map. Binding a font size also offered the spacing scale; it now has its own popup with the theme's font sizes.
