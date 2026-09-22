@@ -1,6 +1,6 @@
 # Status
 
-**As of 2026-09-22 · v0.0.8 · ~6 weeks old, 215 commits, solo maintainer.**
+**As of 2026-09-22 · v0.0.8 · ~6 weeks old, 218 commits, solo maintainer.**
 
 This is the living "what's actually true right now" document. When `TODO.md`, `CODE_REVIEW.md`,
 and `docs/ROADMAP.md` went stale (frozen 2026-08-06, archived to `docs/archive/`), nothing
@@ -37,7 +37,7 @@ and wired, but with a named gap. **Decorative** = present in the UI but not func
 | Post-template rendering pipeline | **Partial** | `PostTemplateRegistryService` discovers and validates template contracts (`php artisan templates:verify`), but neither the public route nor the preview controller reads a post's template to pick a layout — the page shell is hardcoded Blade. What *is* live: the template concept's 4 capability-adapter contracts (comments/SEO/related-posts/views providers), consumed directly. A template today is validated JSON with no consumer for its layout half. |
 | Undo/redo | Finished | Snapshot-based history in `block-runtime.blade.php` (debounced 400ms, capped at 100 snapshots), covers attribute/support writes and structural edits, wired to Ctrl/Cmd+Z and the topbar buttons. Covered only by the manually-run `tests/js/history-revisions-matrix.mjs` harness, which was not part of CI as of v0.0.7. |
 | Topbar Preview button | Finished, one caveat | For an existing post it opens `/editor/{post}/preview`, which renders the **last saved** block tree, not unsaved edits — by design, documented in `routes/editor.php`. For a never-saved document it previews live in-memory state via a session-backed route. |
-| Saved block patterns | Finished | `Pattern` model + `HeisenbergPatternController` (list/save/delete) are wired into the real UI (Components panel browse/insert, toolbar save-as-pattern dialog). Unreleased on this branch: the endpoints, previously open to anonymous visitors, now require the `authors` tier and cap payload size; covered by `tests/Patterns`. Patterns are install-wide (no owner), and their block payload is only shape-checked on save — full validation happens when the inserted blocks are saved with a post. |
+| Saved block patterns | Finished | `Pattern` model + `HeisenbergPatternController` (list/save/delete) are wired into the real UI (Components panel browse/insert, toolbar save-as-pattern dialog). Since v0.0.8 the endpoints, previously open to anonymous visitors, require the `authors` tier and cap payload size; covered by `tests/Patterns`. Patterns are install-wide (no owner), and their block payload is only shape-checked on save — full validation happens when the inserted blocks are saved with a post. |
 | Accessibility sweep | **Open, not started** | No focus trapping, no `Escape` outside `ui/select`, no `role="tabpanel"`/`aria-controls`, no `aria-live` on save/autosave/conflict state. `TODO.md` item 6.4 and `code-review-2026-08-07.md` finding N10; no commit since 2026-08-07 addresses either. |
 | Media library | Finished | Upload, responsive variants, bilingual alt/caption, `VirusScanner` seam. Extension allowlist enforced inside `MediaLibraryService` itself (not just the form request) after an SVG-upload bypass was found via non-HTTP callers. |
 | Taxonomy (categories/tags) | Finished | Many-to-many via pivots (categories moved off a single FK — see `UPGRADING.md`). |
@@ -45,38 +45,16 @@ and wired, but with a named gap. **Decorative** = present in the UI but not func
 | SEO | Finished | Real storage/scoring/sitemap/hreflang since 2026-08-12 — no longer a mockup. |
 | Email builder | Finished (simpler than it was) | Same editor, email-safe block palette, CID-embedded self-contained MIME output. The value-resolving personalization layer (interpolator, admin batch ZIP export) was removed 2026-09-17 — Heisenberg renders `{{ tokens }}` verbatim and the host substitutes them at send time. What remains (re-added 2026-09-19) is authoring-only variable *metadata*: `heisenberg.email.variables` feeds `EmailVariableCatalog`, the Email Variables panel, and `{{` autocomplete; it never resolves values. See `docs/email-system.md` §6. |
 | AI assistant | Finished | Tool-calling loop with iteration budget and per-call caching; 10 provider presets, 2 actual wire formats (Anthropic, OpenAI-compatible); API keys never touch the plain-JSON settings file, only the `AiCredentialStore` seam. |
-| MCP (bidirectional) | Finished, one open gap | Server (`McpToolRegistry`, inbound) and client (`HttpMcpClient`, outbound) both exist over HTTP/JSON-RPC. Outbound calls pass through `OutboundUrlGuard` (unreleased on this branch); the one open gap is that the vetted IP is not pinned into the request — see Known debt. |
+| MCP (bidirectional) | Finished, one open gap | Server (`McpToolRegistry`, inbound) and client (`HttpMcpClient`, outbound) both exist over HTTP/JSON-RPC. The inbound server speaks the Streamable HTTP transport (v0.0.8); outbound calls pass through `OutboundUrlGuard` (v0.0.8); the one open gap is that the vetted IP is not pinned into the request — see Known debt. |
 | Revisions | Finished | Snapshot on every update; restore replays through the same document-replace path undo uses. |
-| Translations (single-row bilingual) | Finished | One post, one row, both languages; `TranslationStatusService` reports per-language completeness. A DB migration converting the `locale` column from a fixed `ENUM('en','fr')` to a plain string is unreleased on this branch (see `UPGRADING.md`). |
+| Translations (single-row bilingual) | Finished | One post, one row, both languages; `TranslationStatusService` reports per-language completeness. A DB migration converting the `locale` column from a fixed `ENUM('en','fr')` to a plain string shipped in v0.0.8 (see `UPGRADING.md`). |
 
-## Unreleased
+## Released: v0.0.8 (2026-09-22)
 
-Landed on the `chore/review-fixes` branch after a full project review (2026-09-19/20); not yet
-tagged. `CHANGELOG.md` has the itemised list and `UPGRADING.md` says what each means for a host.
-
-- **Security:** Livewire media-library `viewAny` authorization; `/editor/patterns` endpoints gated
-  on the `authors` tier (they were open to anonymous visitors); SSRF guard on every outbound AI/MCP
-  request; SVG uploads refused without a bound sanitizer; throttled warning while the local
-  anonymous bypass is active.
-- **Adopter path:** a demo host app (`workbench/`, `docs/demo.md`, `tests/Demo`) — the "client test
-  platform" that had been unstarted since 2026-08-05. It immediately found three core bugs, all
-  fixed: the bundled public route 404'd at the very hreflang URLs it advertised for single-row
-  bilingual posts, showed the editor's "Preview" bar to visitors, and left SEO URLs pointing at
-  `/editor`.
-- **Schema:** `heisenberg_posts.locale` is a string column, not a DB ENUM.
-- **Structure:** the four monoliths are split with verified-identical output — `McpToolRegistry`
-  (2,046 → 299 lines + `src/Mcp/`), `BlockRegistryService` (1,435 → 205 + `src/Blocks/`),
-  `BlockRenderer` (1,422 → 126 + `src/Rendering/`), `block-runtime.blade.php` (2,014 → a 65-line
-  table of contents + 13 partials). Each split is pinned by a regression test: the MCP tool
-  catalogue snapshot (`tests/Mcp/ToolCatalogueSnapshotTest`) and the renderer golden corpus
-  (`tests/Engine/RendererGoldenOutputTest`, incl. hostile input and email output).
-- **Tests:** a DOM/structure assertion toolkit (`tests/Support/AssertsHtmlStructure`) and five of
-  the most brittle string-matching files converted to it; first coverage for saved patterns, TOC
-  entries, `heisenberg:warm` and the encrypted credential store; the base `TestCase` now registers
-  Livewire like every real host does.
-- **Tooling:** CI matrix over Laravel 11 / 12 / 13, Larastan (baselined), Pint (tuned to the
-  existing house style), `composer audit`, Dependabot, the jsdom + Playwright harnesses in CI, and
-  `composer test:parallel`. Editor CSS is cached properly; autosave skips no-op saves.
+The project review, the single-canvas email editor, and the AI-panel fixes below are all tagged as
+`v0.0.8` — `CHANGELOG.md` has the itemised list and `UPGRADING.md` says what each breaking change
+means for an existing install. `CHANGELOG.md`'s own `## [Unreleased]` section stays empty until the
+next batch of work.
 
 ## Next 3 things
 
@@ -93,12 +71,12 @@ tagged. `CHANGELOG.md` has the itemised list and `UPGRADING.md` says what each m
    handled only in `ui/select`, no `role="tabpanel"`/`aria-controls`, no `aria-live` on
    save/autosave/conflict state. An editor that is keyboard-hostile is a hard blocker for a class
    of adopters, and it gets more expensive with every new panel.
-3. **Finish the test-quality pass, then tag a release.** Convert the remaining string-matching
-   files (largest first: `InspectorWiringTest` 76, `SupportsCapabilityFixtureTest` 55,
-   `BlockRendererTest` 54, `EditorPromptTest` 52, `ColorPickerTest` 51) and give `EditorPrompt` an
-   identifier-addressable rule table so prompt tests assert rule IDs instead of prose. Then cut a
-   release with everything above — it is a large, host-visible change set and should not sit
-   unreleased.
+3. **Finish the test-quality pass.** Still open — v0.0.8 shipped without it, since the email-canvas
+   and AI-panel fixes it landed alongside were themselves large and host-visible enough not to sit
+   unreleased any longer. Convert the remaining string-matching files (largest first:
+   `InspectorWiringTest` 76, `SupportsCapabilityFixtureTest` 55, `BlockRendererTest` 54,
+   `EditorPromptTest` 52, `ColorPickerTest` 51) and give `EditorPrompt` an identifier-addressable
+   rule table so prompt tests assert rule IDs instead of prose.
 
 ## Known debt
 

@@ -26,6 +26,16 @@ re-check them. Contracts gain an additive `"flow"` on `inner-blocks` nodes and `
 `enumMap` attributes; existing contracts keep working, they just do not get the new layout handling.
 A registry-hash change also means an editor tab opened before the upgrade needs a reload.
 
+A block nested inside a container (a group, column or columns child) also loses the fixed
+bottom-spacing default it used to carry unconditionally — that default exists for a block sitting
+directly on the document root, where nothing else spaces it from its neighbour, and was
+previously stacking on top of the container's own padding and gap with no way to cancel it. A
+document with nested blocks will render measurably tighter after upgrading; an explicit margin an
+author actually set still applies. `BlockTreeRenderer::renderBlockAtDepth()`/`renderJsonBlock()`
+gained an optional `$hint` array (render-pass-only attributes such as `_emailAlign`, `_emailValign`,
+`_emailHug`, `_emailNested` — never persisted); a custom `email.template` contract that does not
+read these hints is unaffected.
+
 **Breaking — MCP and AI writes containing markdown are rejected.** `write_canvas`, `create_post`,
 `update_post` and the other tools that take shortcode now fail (with a line-numbered message naming the
 fix) when a text field contains a markdown list, a `#` heading, `**bold**` or a code fence. Clients
