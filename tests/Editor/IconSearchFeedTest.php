@@ -82,9 +82,16 @@ class IconSearchFeedTest extends TestCase
         $this->assertStringContainsString('/heisenberg-assets/icon/demo/star.svg', (string) $rows['demo/star']['url']);
     }
 
-    public function test_a_fixed_colour_icon_is_still_inlined(): void
+    /**
+     * A single-colour icon is inlined AND normalized to currentColor (see IconColorizationTest),
+     * so the picker's glyphs follow the editor's text color in either theme.
+     */
+    public function test_a_fixed_colour_icon_is_inlined_and_follows_the_editor_colour(): void
     {
-        $this->assertStringContainsString('#292D32', (string) $this->rows()['demo/fixed']['svg']);
+        $svg = (string) $this->rows()['demo/fixed']['svg'];
+
+        $this->assertStringContainsString('currentColor', $svg);
+        $this->assertStringNotContainsString('#292D32', $svg);
     }
 
     /**

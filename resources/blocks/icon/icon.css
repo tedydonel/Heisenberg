@@ -6,8 +6,12 @@
     transition: color 140ms ease, background-color 140ms ease, box-shadow 140ms ease, transform 140ms ease;
     color: var(--hb-icon-color, inherit);
     background: var(--hb-icon-bg, transparent);
-    width: var(--hb-icon-w, 32px);
-    height: var(--hb-icon-h, 32px);
+    /* An icon is square: setting ONE dimension scales it, instead of leaving the other at 32px
+       and letterboxing the glyph inside a 96x32 box — which read as "size does nothing", since
+       a glyph that keeps its aspect ratio stayed 32px tall however wide the box grew. Setting
+       both still wins, so a deliberately non-square icon is unaffected. */
+    width: var(--hb-icon-w, var(--hb-icon-h, 32px));
+    height: var(--hb-icon-h, var(--hb-icon-w, 32px));
     min-width: var(--hb-icon-minw, 0);
     min-height: var(--hb-icon-minh, 0);
     max-width: var(--hb-icon-maxw, none);

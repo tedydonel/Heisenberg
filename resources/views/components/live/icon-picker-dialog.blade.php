@@ -14,7 +14,6 @@
     .hb-icondialog__item img { width: 28px; height: 28px; display: block; }
     .hb-icondialog__glyph { display: block; width: 28px; height: 28px; color: var(--hb-text-primary); }
     .hb-icondialog__glyph svg { width: 100%; height: 100%; display: block; }
-    .hb-editor--dark .hb-icondialog__glyph--fixed,
     .hb-editor--dark .hb-icondialog__item img,
     .hb-editor--dark .hb-iconfield img { filter: invert(1); }
     .hb-icondialog__item span { max-width: 100%; font-size: 10px; color: var(--hb-text-muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
@@ -123,10 +122,10 @@
                         if (row.svg) {
                             const holder = document.createElement('span');
                             holder.className = 'hb-icondialog__glyph';
-                            // Most sets paint in currentColor and follow the editor's text color.
-                            // The two that ship fixed dark colors (iconsax, remix-icon) kept their
-                            // legibility from the dark-theme invert on <img>; keep that for them.
-                            if (row.svg.indexOf('currentColor') === -1) holder.classList.add('hb-icondialog__glyph--fixed');
+                            // Single-colour icons arrive normalized to currentColor and follow the
+                            // editor's text color, dark theme included. What is left is
+                            // multi-colour artwork, which keeps its own colors (inverting those,
+                            // as the <img> rule did, distorted them).
                             holder.innerHTML = row.svg;
                             item.appendChild(holder);
                         } else {

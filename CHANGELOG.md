@@ -6,6 +6,11 @@ All notable changes to this project are documented here. The format is based on
 
 ## [Unreleased]
 
+### Fixed
+
+- **An icon ignored its Fill colour.** The icon block paints by setting `color` on its wrapper, which only reaches the glyph through `currentColor`: remix-icon's drawn paths carry no `fill` (so they defaulted to black) and iconsax's carry an empty `fill=""` left by the importer. Single-colour icons are now normalized to `currentColor` when read, so the canvas, the render and the picker all follow the block's colour. Multi-colour and gradient artwork is left untouched.
+- **Resizing an icon in one dimension did nothing visible.** Width alone gave a 96x32 box and a glyph that kept its aspect ratio, so it stayed 32px tall. Either dimension now scales the icon; setting both still wins.
+
 ### Changed
 
 - **Text with no font of its own now follows the theme.** The theme's first font becomes the document's base face (a derived `--hb-t-font-base` token) on the canvas, the preview and the published page; previously such text fell back to the editor's own UI font, so a themed site still read in Rubik until every block set a font explicitly. A font set on a block still wins, and a theme with no fonts is unchanged.

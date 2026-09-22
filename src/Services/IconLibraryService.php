@@ -60,7 +60,60 @@ class IconLibraryService
 
         $path = $this->root() . '/' . $parsed[0] . '/' . $parsed[1] . '.svg';
 
-        return is_file($path) ? (string) file_get_contents($path) : null;
+        return is_file($path) ? $this->colorized((string) file_get_contents($path)) : null;
+    }
+
+    /**
+     * Make a single-colour icon follow the block's `color` (the icon block paints by setting
+     * `color` on the wrapper, which only reaches the glyph through `currentColor`).
+     *
+     * Most sets already ship `currentColor` and pass through untouched. Two shipped ones cannot
+     * paint at all as imported: remix-icon's drawn paths carry no `fill`, so they default to
+     * black, and iconsax's carry an empty `fill=""` the importer left behind. Both ignored the
+     * block's colour entirely, on the canvas and in the render.
+     *
+     * Deliberately conservative — a MULTI-colour icon is left exactly as it is, since rewriting
+     * it would flatten artwork the author chose for its colours.
+     */
+    private function colorized(string $svg): string
+    {
+        if ($svg === '' || stripos($svg, 'currentColor') !== false) {
+            return $svg;
+        }
+
+        // An empty paint attribute is invalid CSS/SVG — the importer's leftover, and the whole
+        // reason these icons render as a default black (or not at all, under a `fill="none"`
+        // root). It always meant "the icon's own colour".
+        $svg = (string) preg_replace('/\b(fill|stroke)=""/i', '$1="currentColor"', $svg, -1, $emptied);
+
+        // Every explicit paint the file names, ignoring `none` (a deliberate non-paint, e.g.
+        // remix-icon's invisible bounding-box path) and the gradient/pattern references that mark
+        // artwork this must not touch.
+        preg_match_all('/\b(?:fill|stroke)="([^"]+)"/i', $svg, $matches);
+        $paints = array_values(array_unique(array_filter(
+            array_map(static fn (string $v): string => strtolower(trim($v)), $matches[1]),
+            static fn (string $v): bool => $v !== '' && $v !== 'none' && $v !== 'currentcolor',
+        )));
+        if (count($paints) > 1 || str_contains(strtolower($svg), 'url(')) {
+            return $svg; // multi-colour or gradient-painted: leave the artwork alone
+        }
+
+        if ($paints !== []) {
+            return (string) preg_replace(
+                '/\b(fill|stroke)="' . preg_quote($paints[0], '/') . '"/i',
+                '$1="currentColor"',
+                $svg,
+            );
+        }
+
+        // Nothing names a paint: the drawn shapes are inheriting, and what they inherit is either
+        // the root's `fill` or the initial black. Give the root `currentColor` so they follow the
+        // block — children that opted out with `fill="none"` keep it, since they say so.
+        if ($emptied > 0 || preg_match('/^<svg[^>]*\bfill=/i', $svg) === 1) {
+            return $svg;
+        }
+
+        return (string) preg_replace('/^<svg\b/i', '<svg fill="currentColor"', $svg, 1);
     }
 
     /**
