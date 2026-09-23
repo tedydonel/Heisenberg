@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Heisenberg\Tests\Editor;
 
+use Heisenberg\Http\Controllers\EditorController;
 use Heisenberg\Models\Pattern;
 use Heisenberg\Tests\Support\AssertsHtmlStructure;
 use Heisenberg\Tests\TestCase;
@@ -16,7 +17,7 @@ use Illuminate\Foundation\Testing\RefreshDatabase;
  * toolbar's save popover, the panel's grid and `hbEditor.insertPattern()` — but the editor view
  * never passed the panel its URLs or its rows, so `data-hb-patterns-index-url` rendered empty:
  * the tab could not list anything and the toolbar's save had nowhere to post. The controller has
- * always built those values ({@see \Heisenberg\Http\Controllers\EditorController::sharedViewData()});
+ * always built those values ({@see EditorController::sharedViewData()});
  * nothing consumed them. These assertions are on the rendered page for that reason — the wiring
  * is exactly what was missing, so it is exactly what gets pinned.
  */

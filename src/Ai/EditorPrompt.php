@@ -540,8 +540,8 @@ class EditorPrompt
         // Without this the model follows "only set what the user asked for", nobody asks for a
         // font, and every block renders in the editor's own default face instead of the theme's.
         $fonts = array_values(array_filter(array_map(
-            static fn ($t) => is_array($t) && ($t['name'] ?? '') !== '' ? "var(--{$prefix}{$t['name']})" : null,
-            $theme['fonts'] ?? [],
+            static fn (array $t): ?string => ($t['name'] ?? '') !== '' ? "var(--{$prefix}{$t['name']})" : null,
+            $theme['fonts'],
         )));
         if ($fonts !== []) {
             // Names the tokens only in the single-font case; with several it points back at the

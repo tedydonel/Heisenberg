@@ -8,6 +8,7 @@ use Heisenberg\Support\DashboardUrl;
 use Heisenberg\Tests\Support\AssertsHtmlStructure;
 use Heisenberg\Tests\Taxonomy\FakeActor;
 use Heisenberg\Tests\TestCase;
+use Illuminate\Contracts\Auth\Authenticatable;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 
 /**
@@ -61,7 +62,7 @@ class DashboardUrlTest extends TestCase
 
         // Two roles, listed editor-first — the shape ConfigRoleGate reads from a Spatie-style
         // user. The admin entry still wins, because the MAP's order is the authority.
-        $both = new class implements \Illuminate\Contracts\Auth\Authenticatable
+        $both = new class implements Authenticatable
         {
             /** @return string[] */
             public function getRoleNames(): array

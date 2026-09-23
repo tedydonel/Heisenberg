@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Heisenberg\Tests\Editor;
 
 use Heisenberg\Services\SavedThemeRepository;
+use Heisenberg\Services\ThemeRepository;
 use Heisenberg\Tests\Support\AssertsHtmlStructure;
 use Heisenberg\Tests\TestCase;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -67,7 +68,7 @@ class ThemePresetsTest extends TestCase
 
         try {
             $repo = $this->app->make(SavedThemeRepository::class);
-            $theme = $this->app->make(\Heisenberg\Services\ThemeRepository::class)->defaults();
+            $theme = $this->app->make(ThemeRepository::class)->defaults();
             $theme['colors'][0]['value'] = '#123456';
 
             $result = $repo->save('My own theme', $theme);

@@ -4,9 +4,9 @@ declare(strict_types=1);
 
 namespace Heisenberg\Services;
 
+use Heisenberg\Http\Controllers\EmailIconImageController;
 use Heisenberg\Http\Controllers\EmailPreviewController;
 use Heisenberg\Models\Post;
-use Heisenberg\Http\Controllers\EmailIconImageController;
 use Heisenberg\Models\PublicFile;
 use Heisenberg\Rendering\HtmlEscaper;
 use Heisenberg\Support\EmailRenderResult;

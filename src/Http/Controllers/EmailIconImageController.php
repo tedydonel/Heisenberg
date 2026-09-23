@@ -90,7 +90,7 @@ class EmailIconImageController
 
         // The bytes' own header decides what this is — never the request's word for it.
         $info = @getimagesizefromstring($png);
-        if ($info === false || ($info[2] ?? null) !== IMAGETYPE_PNG) {
+        if ($info === false || $info[2] !== IMAGETYPE_PNG) {
             return response()->json(['errors' => ['Payload is not a PNG image.']], 422);
         }
         if ((int) $info[0] !== $size * 2 || (int) $info[1] !== $size * 2) {

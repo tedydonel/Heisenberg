@@ -1887,7 +1887,7 @@ parameters:
 		-
 			message: '#^Access to an undefined property Heisenberg\\Models\\PublicFile\:\:\$disk\.$#'
 			identifier: property.notFound
-			count: 3
+			count: 1
 			path: src/Services/EmailRenderer.php
 
 		-
