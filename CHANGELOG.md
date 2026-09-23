@@ -4,6 +4,22 @@ All notable changes to this project are documented here. The format is based on
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project follows
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html) for tagged releases.
 
+## [0.0.10] - 2026-09-23
+
+A maintenance release: **no behaviour change from 0.0.9**. The 0.0.9 tree failed CI on static
+analysis and formatting, so this is the same code with those green — tag this one rather than
+0.0.9 if you pin by tag.
+
+### Fixed
+
+- **PHPStan.** Three dead checks the 0.0.9 work introduced (`$theme['fonts'] ?? []` and an
+  `is_array()` guard on an already-typed array in `EditorPrompt`; `$info[2] ?? null` in
+  `EmailIconImageController`, unreachable because `getimagesizefromstring()` fills that offset
+  whenever it did not return `false`), plus the `PublicFile::$disk` ignore count in the baseline,
+  which extracting `EmailRenderer::embedRef()` reduced from three occurrences to one.
+- **Pint.** Unary-operator spacing, import order, anonymous-class formatting, and line endings
+  that editing had flipped to CRLF against a repository that stores LF.
+
 ## [0.0.9] - 2026-09-23
 
 See [`UPGRADING.md`](UPGRADING.md) for what these mean for an existing install. Nothing here is

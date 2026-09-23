@@ -16,6 +16,12 @@ a key that exists on **both** sides, where the package changed a *list's content
 added a sibling key), does not: your old list wins verbatim, silently. `config-diff`'s `differs`
 section is where that shows up; a config-diff run is the only way to catch it.
 
+## 0.0.10 (2026-09-23)
+
+Nothing to do. Static-analysis and formatting fixes only — the 0.0.9 tree failed CI, and this is
+the same code with it green. Upgrading from 0.0.8 or earlier? Read the 0.0.9 section below; it
+applies unchanged.
+
 ## 0.0.9 (2026-09-23)
 
 **Email HTML changed again, in two ways a snapshot test will notice.** Every `font-family` now
