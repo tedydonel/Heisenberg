@@ -171,7 +171,11 @@ class EmailRenderer
 
         $subject = $email->title($locale);
         $shellHtml = $this->wrapShell($bodyHtml, $tokenMap, $subject);
-        $finalHtml = $this->inlineStyles($shellHtml);
+        // One line ending, whatever the checkout uses. The shell is a heredoc in THIS file, so on
+        // a Windows working tree (git's autocrlf) it carried CRLF and the same document rendered
+        // differently — byte-for-byte — than on Linux, which made `sizeBytes` (the number the
+        // Gmail clipping warning reads) ~3% larger there and any golden fixture platform-bound.
+        $finalHtml = str_replace(["\r\n", "\r"], "\n", $this->inlineStyles($shellHtml));
 
         $embedBytes = 0;
         foreach ($embeds as $embed) {

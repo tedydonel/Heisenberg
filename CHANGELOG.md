@@ -4,7 +4,18 @@ All notable changes to this project are documented here. The format is based on
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project follows
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html) for tagged releases.
 
-## [Unreleased]
+## [0.0.9] - 2026-09-23
+
+See [`UPGRADING.md`](UPGRADING.md) for what these mean for an existing install. Nothing here is
+breaking, but two changes are worth a host's attention: **email `font-family` output changed and
+the message now links the theme's faces** (re-record any `EmailRenderer` snapshot), and **icon
+PNGs are written to the media disk under `email-icons/` with no media-library row**.
+
+**Highlights.** Icons work in email, shipping as inline `cid:` PNGs, and a theme font finally
+reaches the message instead of collapsing to Arial. The Patterns tab (formerly Blocks) actually
+works — everything but the wiring already existed. The AI assistant remembers your conversation
+across a refresh. The icon picker paints in one request instead of ninety-seven. And the topbar's
+home button is configured on its own, per role, instead of pointing wherever `site_url` did.
 
 ### Added
 
@@ -23,6 +34,9 @@ All notable changes to this project are documented here. The format is based on
 
 ### Fixed
 
+- **The email a Windows checkout produced was not byte-identical to a Linux one.** The shell is a heredoc in `EmailRenderer`, so git's `autocrlf` gave it CRLF line endings on Windows — which inflated the reported `sizeBytes` (the number behind the Gmail clipping warning) by about 3% and made the golden fixture platform-bound. Output is normalized to `
+` everywhere.
+- **The AI was taught attributes no author can set.** Per-block attribute lists now skip anything with no inspector control — the icon block's rasterized-PNG fields, for instance, which the editor writes and a model could not produce.
 - **A host whose `getRoleNames()` returns a plain array no longer fatals.** `ConfigRoleGate::rolesOf()` called `method_exists()` on the return value, which raises a TypeError for an array — the simplest shape a host could hand back.
 - **Inserting a saved pattern could make the document unsaveable** — "blocks.0.attributes.anchor: expected type string" and one error per null. A stored pattern carrying an explicit `null` had it copied over the contract's own default; null now falls back to the declared default, which also heals patterns already saved that way.
 - **Saved-pattern cards lost their shape whenever the list refreshed.** The grid is rendered by Blade on load and rebuilt by JS after a save or delete, and the two had drifted — the JS built no tool-card and used a class that exists nowhere, so every card collapsed to bare text until a reload. It now clones the one template Blade renders. Each card also stretched to the full height of the scroll area, so a click well below a card still inserted that pattern.

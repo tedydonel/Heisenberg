@@ -101,6 +101,11 @@ class EditorPromptTest extends TestCase
                 if (in_array($attribute, $common, true)) {
                     continue; // documented once in the common-attributes line, not per block
                 }
+                // `control: false` = the EDITOR maintains it (the icon block's rasterized-PNG
+                // fields, say), so the model is deliberately not taught to set it.
+                if (is_array($def) && array_key_exists('control', $def) && $def['control'] === false) {
+                    continue;
+                }
                 $this->assertStringContainsString(
                     (string) $attribute,
                     $system,
@@ -112,6 +117,12 @@ class EditorPromptTest extends TestCase
         // The common attributes are still taught, just once.
         foreach ($common as $attribute) {
             $this->assertStringContainsString((string) $attribute, $system);
+        }
+
+        // And an editor-maintained attribute is not taught at all: the icon block's email PNG
+        // fields are written by the canvas rasterizer, and a model could not produce them.
+        foreach (['emailImage', 'emailImageKey', 'emailImageW', 'emailImageH'] as $editorOwned) {
+            $this->assertStringNotContainsString($editorOwned, $system);
         }
     }
 
@@ -147,7 +158,7 @@ class EditorPromptTest extends TestCase
     {
         $withFonts = new ThemeRepository(sys_get_temp_dir() . '/hb-theme-missing-' . uniqid() . '.json');
         $system = (new EditorPrompt(app(BlockRegistryService::class), $withFonts))->system();
-        $this->assertStringContainsString('THEME FONTS: set font= on every heading', $system);
+        $this->assertStringContainsString('THEME FONTS: every heading/paragraph/list/quote/button sets font=', $system);
         foreach ($withFonts->defaults()['fonts'] as $font) {
             $this->assertStringContainsString('var(--hb-t-' . $font['name'] . ')', $system);
         }

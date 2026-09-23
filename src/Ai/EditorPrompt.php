@@ -73,8 +73,8 @@ class EditorPrompt
 
         DESIGN TOKENS — this site's theme, as CSS custom properties.
         {$tokens}
-        Prefer a token variable (var(--hb-t-…)) over a literal for color, spacing, radius and
-        font, so content follows the theme; use a literal only when no token fits.
+        Prefer a token var(--hb-t-…) over a literal for color, spacing, radius and font; use a
+        literal only when no token fits.
 
         {$discipline}
 
@@ -332,6 +332,14 @@ class EditorPrompt
             if (! is_array($def) || in_array($key, $common, true)) {
                 continue;
             }
+            // `control: false` means the EDITOR maintains this attribute, not an author — the
+            // icon block's rasterized-PNG fields, say, which the canvas computes and the model
+            // could not produce if it tried. Teaching them spends budget on attributes nobody
+            // should be setting by hand. The common attributes keep their own full tokens above
+            // (fill/hug/clip live there), so this only trims the per-block lines.
+            if (array_key_exists('control', $def) && $def['control'] === false) {
+                continue;
+            }
             $attrParts[] = $this->attrToken((string) $key, $def, $key === $richAttr);
         }
 
@@ -536,10 +544,13 @@ class EditorPrompt
             $theme['fonts'] ?? [],
         )));
         if ($fonts !== []) {
+            // Names the tokens only in the single-font case; with several it points back at the
+            // Fonts line above rather than repeating every var(), so this rule costs the same
+            // whether a theme ships two fonts or ten.
             $lines[] = count($fonts) === 1
-                ? "THEME FONT: set font={$fonts[0]} on every heading, paragraph, list, quote and button."
-                : 'THEME FONTS: set font= on every heading, paragraph, list, quote and button, only '
-                    . implode(' or ', $fonts) . ' — one for headings, one for body, consistently.';
+                ? "THEME FONT: every heading/paragraph/list/quote/button sets font={$fonts[0]}."
+                : 'THEME FONTS: every heading/paragraph/list/quote/button sets font= to one of the'
+                    . ' Fonts tokens above — one for headings, one for body, consistently.';
         }
 
         return $lines === [] ? '(no theme tokens defined)' : implode("\n", $lines);

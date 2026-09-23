@@ -134,15 +134,16 @@ class EmailEditorWiringTest extends TestCase
     {
         $html = $this->get('/editor/email')->getContent();
 
-        // Email-safe (10 of 12 shipped contracts).
+        // Email-safe (11 of 12 shipped contracts).
         $this->assertStringContainsString('data-hb-insert-block="heisenberg/heading"', $html);
         $this->assertStringContainsString('data-hb-insert-block="heisenberg/paragraph"', $html);
         $this->assertStringContainsString('data-hb-insert-block="heisenberg/image"', $html);
         $this->assertStringContainsString('data-hb-insert-block="heisenberg/button"', $html);
+        // `icon` joined the palette once its glyph could ship as a rasterized PNG (§4.2).
+        $this->assertStringContainsString('data-hb-insert-block="heisenberg/icon"', $html);
 
-        // Excluded (§4: webfont/SVG dependency, revisit later).
+        // Excluded: a webfont/iframe player has no email equivalent at all.
         $this->assertStringNotContainsString('data-hb-insert-block="heisenberg/embed"', $html);
-        $this->assertStringNotContainsString('data-hb-insert-block="heisenberg/icon"', $html);
 
         // The quick-inserter reads the SAME filtered seed — no separate client-side filtering.
         $this->assertStringContainsString('data-hb-qi-block="heisenberg/heading"', $html);

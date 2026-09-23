@@ -16,7 +16,7 @@ a key that exists on **both** sides, where the package changed a *list's content
 added a sibling key), does not: your old list wins verbatim, silently. `config-diff`'s `differs`
 section is where that shows up; a config-diff run is the only way to catch it.
 
-## Unreleased
+## 0.0.9 (2026-09-23)
 
 **Email HTML changed again, in two ways a snapshot test will notice.** Every `font-family` now
 leads with the theme's real family before its web-safe fallback (`'Space Grotesk', Arial,
