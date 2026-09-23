@@ -26,3 +26,8 @@ phpunit.xml
 Thumbs.db
 tests/Builder/js/check-braces.js
 tests/Builder/js/check-syntax.js
+
+# Local secrets (SMTP credentials etc.) — never versioned.
+.env
+.env.*
+!.env.example
