@@ -55,6 +55,32 @@ return [
     // panel show its `yoursite.com` placeholder rather than invent a domain.
     'site_url' => env('HEISENBERG_SITE_URL'),
 
+    // Where the editor's home button sends someone BACK to (Heisenberg\Support\DashboardUrl).
+    //
+    // `site_url` above is IDENTITY: the address readers see, the one that belongs in a canonical
+    // tag. This is NAVIGATION: where the person editing came from. On a real platform those are
+    // different places, and different PEOPLE have different ones — an admin arrived from the
+    // admin dashboard, staff from theirs, and each expects the house icon to return them to
+    // their own rather than to the public homepage.
+    //
+    // A string sends everyone to the same place:
+    //
+    //     'dashboard_url' => env('HEISENBERG_DASHBOARD_URL'),
+    //
+    // A map keyed by YOUR OWN role names sends each person back to theirs; `default` catches
+    // anyone with no entry (including a guest, where the host allows one in). Config order
+    // decides when someone holds several roles, so write the most privileged first:
+    //
+    //     'dashboard_url' => [
+    //         'admin'   => 'https://example.com/admin',
+    //         'editor'  => 'https://example.com/staff',
+    //         'default' => 'https://example.com/account',
+    //     ],
+    //
+    // Unset (the default) falls back to `site_url`, so an existing install keeps the behaviour
+    // it already had — including the inert button when no public site is configured either.
+    'dashboard_url' => env('HEISENBERG_DASHBOARD_URL'),
+
     // Single source of truth for every locale-aware surface: the editor's footer switcher
     // (LocaleController/EditorLocaleMiddleware), the Translations section (TranslationStatusService),
     // and the MCP `locale` argument validation (McpToolRegistry). `editor.locales` below is now a

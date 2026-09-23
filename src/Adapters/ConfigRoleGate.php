@@ -42,7 +42,15 @@ class ConfigRoleGate implements RoleGate
         if (method_exists($user, 'getRoleNames')) {
             $names = $user->getRoleNames();
 
-            return method_exists($names, 'all') ? array_values($names->all()) : (array) $names;
+            // Spatie returns a Collection; a host rolling its own may return a plain array or a
+            // single string. `method_exists()` takes an object or a class name, so asking it
+            // about an array raised a TypeError — this branch fataled on the simplest shape a
+            // host could reasonably hand back.
+            if (is_object($names) && method_exists($names, 'all')) {
+                return array_values($names->all());
+            }
+
+            return array_values((array) $names);
         }
 
         // A plain `role` string column.

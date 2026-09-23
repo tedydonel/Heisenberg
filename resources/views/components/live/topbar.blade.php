@@ -140,7 +140,7 @@
         // Points at the host's public site (heisenberg.site_url, falling back to app.url). With
         // neither set there is nowhere honest to go, so it renders as an inert button rather
         // than a link to the editor's own host — which is what it silently was before.
-        ['icon' => 'house-fill', 'label' => __('heisenberg::editor.topbar.aria_home'), 'toggle' => null, 'tip' => 'aria_home', 'href' => \Heisenberg\Support\SiteUrl::base()],
+        ['icon' => 'house-fill', 'label' => __('heisenberg::editor.topbar.aria_home'), 'toggle' => null, 'tip' => 'aria_home', 'href' => \Heisenberg\Support\DashboardUrl::forUser()],
         null,
         ['icon' => 'list', 'label' => __('heisenberg::editor.topbar.aria_menu'), 'toggle' => 'sidebar', 'tip' => 'aria_menu'],
         ['icon' => 'sidebar-simple', 'label' => __('heisenberg::editor.topbar.aria_panel_left'), 'toggle' => 'panel', 'tip' => 'aria_panel_left'],
