@@ -304,12 +304,17 @@ recipient (all confirmed absent from both the preview and the real-sent HTML):
 `class="hb-blk"`/`hb-blk--nested`, `data-block`/`data-block-name`/`data-level`, and the
 `<span class="hb-ce" contenteditable="true" data-hb-rt="…">` rich-text wrapper.
 
-### 5.5 INTENDED — `embed`/`icon` render fully on the web surface, vanish entirely on email; columns cap at 3
+### 5.5 INTENDED — `embed` renders fully on the web surface, vanishes entirely on email; columns cap at 3
+
+> **Superseded for `icon` (2026-09-23):** an icon no longer vanishes. It ships as an inline `cid:`
+> PNG the editor rasterizes (`docs/email-system.md` §4.2), so the finding below still describes
+> `embed` exactly, and describes `icon` only for a block whose glyph was never rasterized — which
+> `EmailBlockCoverageService` now flags before the send.
 
 **Recipient visibility: none** (author never sees these on the email surface either — confirmed
 below, so there's no "the editor showed something the recipient never got" gap here).
 
-**Citation**: docs/email-system.md §4 — "Excluded: embed, icon (webfont/SVG dependency)"; §4 —
+**Citation**: docs/email-system.md §4 — "Excluded: embed" (this read "embed, icon (webfont/SVG dependency)" when this finding was written); §4 —
 "columns/column (rendered as table cells, capped at 2-3 columns)"; implementation:
 `src/Services/EmailRenderer.php` (`render()`'s "no email section on this contract, skip" branch,
 line 156-158; `capColumns()`/`assignColumnWidths()`, lines 194-258); JS mirror:

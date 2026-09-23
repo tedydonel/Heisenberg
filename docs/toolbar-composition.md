@@ -220,8 +220,12 @@ A block declaring none of the above still gets a usable toolbar: drag, move up/d
 1. **`select-parent` waits on real nesting UI** — the canvas now renders `innerBlocks`
    children (read-only, depth 20, same cap as `BlockRenderer`), but there is no way to
    CREATE nesting in the editor yet; the button stays hidden until `parentIdOf` finds one.
-2. **`save` (save as block) is inert** — no reusable-block/pattern capability in `hbEditor`.
-   `heisenberg_patterns` is reserved in config with no model behind it.
+2. ~~**`save` (save as block) is inert**~~ — shipped. `save` opens the save-as-pattern dialog,
+   writes through `HeisenbergPatternController`, and the composition comes back from the
+   **Patterns** tab via `hbEditor.insertPattern()`. Two things kept it inert longer than the
+   model did: the editor view never passed the panel the pattern URLs, and the dialog function
+   called `closeAll`, a helper scoped to one toolbar's `boot()` closure, so clicking the button
+   threw a ReferenceError instead of opening anything (both fixed 2026-09-23).
 3. ~~AI has no popover content~~ — the trigger was removed 2026-08-06 rather than shipped
    dead; it returns with the AI feature. (More gained its Duplicate/Delete menu the same day.)
 4. **`supports.color.background` has no affordance anywhere.**

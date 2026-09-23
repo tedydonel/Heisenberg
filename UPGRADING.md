@@ -16,6 +16,29 @@ a key that exists on **both** sides, where the package changed a *list's content
 added a sibling key), does not: your old list wins verbatim, silently. `config-diff`'s `differs`
 section is where that shows up; a config-diff run is the only way to catch it.
 
+## Unreleased
+
+**Email HTML changed again, in two ways a snapshot test will notice.** Every `font-family` now
+leads with the theme's real family before its web-safe fallback (`'Space Grotesk', Arial,
+Helvetica, sans-serif` rather than `Arial, Helvetica, sans-serif`), and the document carries a
+`<link>` to the theme's faces so clients that load webfonts render what the author picked. Nothing
+regresses where webfonts cannot load: the same web-safe stack follows in every declaration. A host
+that snapshot-tests `EmailRenderer` output should re-record. Fallbacks are also now chosen from the
+font's own catalog category rather than by keyword-matching the token's name, so a token called
+`font-serif` holding a sans family no longer ships Georgia.
+
+**`icon` blocks now render in email.** The block joins the email palette and ships its glyph as an
+inline `cid:` PNG the editor rasterizes. Those PNGs are written to the media disk under
+`email-icons/` and deliberately have no media-library row, so they never appear in the author's
+Media panel; a host that syncs or prunes that disk should leave that directory alone. Nothing is
+required to adopt this, and an icon with no rasterized PNG renders nothing rather than a broken
+image.
+
+**New optional config key: `dashboard_url`.** The topbar's home button used to point at
+`site_url`; it now resolves `heisenberg.dashboard_url` first, which takes a single URL or a map
+keyed by your own role names. It is additive and deep-merged, so it reaches a published config
+automatically, and leaving it unset keeps the previous behaviour exactly.
+
 ## 0.0.8 (2026-09-22)
 
 **Breaking — email HTML has a new structure.** Every email block is now a margin cell around a box

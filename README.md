@@ -71,6 +71,36 @@ Schema::table('users', fn (Blueprint $table) => $table->string('role')->nullable
 
 Role mappings can be customized in `config/heisenberg.php` under `roles`. You can also configure route middleware in `heisenberg.middleware.editor`, `.media`, and `.ai` (defaults to `['web']`).
 
+### Where the editor sends people back to
+
+Two separate settings, because they answer different questions:
+
+| Setting | Question | Used by |
+|---|---|---|
+| `site_url` | Where does the **public site** live? | Canonical URLs, the SEO/social preview, a post's public link |
+| `dashboard_url` | Where did the **person editing** come from? | The topbar's home button |
+
+`site_url` is identity; `dashboard_url` is navigation. They differ on most platforms — the editor is
+usually mounted on an admin or staff subdomain while readers are elsewhere — and different people
+have different dashboards:
+
+```php
+// Everyone returns to the same place:
+'dashboard_url' => env('HEISENBERG_DASHBOARD_URL'),
+
+// Or each role returns to its own (keyed by YOUR role names; `default` catches the rest):
+'dashboard_url' => [
+    'admin'   => 'https://example.com/admin',
+    'editor'  => 'https://example.com/staff',
+    'default' => 'https://example.com/account',
+],
+```
+
+Roles are read through your own `RoleGate`, so this works however roles are stored. When someone
+holds several, the **map's order decides** — write the most privileged first. Unset, the button
+falls back to `site_url`; with neither configured it stays inert rather than linking to the
+editor's own host.
+
 ## Email Document Authoring and Personalization
 
 Heisenberg includes a dedicated email builder surface sharing the same core block engine, translations, revisions, and AI assistant.

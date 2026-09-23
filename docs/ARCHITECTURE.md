@@ -89,7 +89,7 @@ All tables are configurable via `config('heisenberg.tables.*')`; defaults shown 
 | `Category` / `Tag` | `heisenberg_categories` / `heisenberg_tags` | Bilingual names; many-to-many with posts via `heisenberg_category_post` / `heisenberg_post_tag` pivots (categories moved from a single FK to a pivot in the `2026_08_03` migrations — see `UPGRADING.md`). |
 | `Comment` | `heisenberg_comments` | Self-referencing `parent_id` thread; status (`pending`/`approved`/`spam`/`trash`) is deliberately not mass-assignable. |
 | `SeoMeta` | `seo_meta` (unprefixed, polymorphic `able_type`/`able_id`) | Bilingual meta title/description/OG fields, JSON-LD `schema_data`, `in_sitemap` flag. |
-| `Pattern` | `heisenberg_patterns` | Saved/reusable block-tree snippets (Components panel). |
+| `Pattern` | `heisenberg_patterns` | Saved/reusable block-tree snippets, browsed from the **Patterns** tab and saved from a container's toolbar. |
 | `TocEntry` | `heisenberg_post_toc_entries` | Authored table-of-contents entries. |
 | `AiConversation` / `AiChatMessage` | `heisenberg_ai_conversations` / `heisenberg_ai_messages` | AI assistant chat history, scoped per author. |
 
