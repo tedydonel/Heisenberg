@@ -323,7 +323,7 @@ return [
     // Barre latérale (live/sidebar.blade.php).
     'sidebar' => [
         'nav_components' => 'Composants',
-        'nav_blocks' => 'Blocs',
+        'nav_blocks' => 'Modèles',
         'nav_seo' => 'SEO',
         'nav_socials' => 'Réseaux sociaux',
         'nav_style' => 'Style',
@@ -469,7 +469,7 @@ return [
     // Panneau Composants / Blocs (live/panel-components-blocks.blade.php).
     'panel_components_blocks' => [
         'tab_components' => 'Composants',
-        'tab_blocks' => 'Blocs',
+        'tab_blocks' => 'Modèles',
         'search_components' => 'Rechercher des composants…',
         'search_blocks' => 'Rechercher des blocs…',
         'category_base' => 'Base',
@@ -477,26 +477,26 @@ return [
         'card_image' => 'Image',
         'card_divider' => 'Séparateur',
         'card_button' => 'Bouton',
-        'empty_blocks' => 'Bientôt disponible.',
+        'empty_blocks' => 'Aucun modèle. Sélectionnez un groupe ou une colonne, puis « Enregistrer comme modèle » dans sa barre d’outils.',
     ],
 
     // Blocs réutilisables sauvegardés (« patterns », panneau Blocs, popover d'enregistrement).
     'patterns' => [
-        'name_required' => 'Donnez un nom au bloc.',
+        'name_required' => 'Donnez un nom au modèle.',
         'name_too_long' => 'Le nom doit faire 120 caractères ou moins.',
-        'name_taken' => 'Un bloc avec ce nom existe déjà. Choisissez-en un autre.',
-        'blocks_required' => 'Le contenu du bloc est manquant.',
+        'name_taken' => 'Un modèle avec ce nom existe déjà. Choisissez-en un autre.',
+        'blocks_required' => 'Le contenu du modèle est manquant.',
         'blocks_invalid_entry' => 'Le bloc n° :index n’est pas un bloc valide.',
         'blocks_too_large' => 'Ce modèle est trop volumineux pour être enregistré.',
-        'not_found' => 'Ce bloc n’existe plus.',
-        'save_dialog_title' => 'Enregistrer comme bloc',
-        'save_dialog_prompt' => 'Nommez cette composition pour la réutiliser depuis l’onglet Blocs.',
+        'not_found' => 'Ce modèle n’existe plus.',
+        'save_dialog_title' => 'Enregistrer comme modèle',
+        'save_dialog_prompt' => 'Nommez cette composition pour la réutiliser depuis l’onglet Modèles.',
         'save_dialog_placeholder' => 'ex. Héros avec image',
         'save_dialog_save' => 'Enregistrer',
         'save_dialog_cancel' => 'Annuler',
         'save_dialog_saving' => 'Enregistrement…',
         'delete' => 'Supprimer',
-        'delete_confirm' => 'Supprimer ce bloc enregistré ?',
+        'delete_confirm' => 'Supprimer ce modèle ?',
     ],
 
     // Panneau SEO / Social (live/panel-seo-social.blade.php).

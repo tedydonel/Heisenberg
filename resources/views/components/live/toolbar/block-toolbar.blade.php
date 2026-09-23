@@ -130,12 +130,17 @@
             }, 80);
         });
 
-        function openSaveBlockDialog(tb, ctx) {
+        /**
+         * `closeAll` belongs to ONE toolbar's boot() closure; this function is top-level, so it
+         * takes the callback rather than reaching for a name it cannot see — calling it directly
+         * threw a ReferenceError and the save popover never opened at all.
+         */
+        function openSaveBlockDialog(tb, ctx, closeAll) {
             if (!ctx) return;
             const root = document.querySelector('[data-hb-panel-cb]');
             const url = root ? root.getAttribute('data-hb-patterns-store-url') || '' : '';
             if (!url) return;
-            closeAll();
+            if (typeof closeAll === 'function') closeAll();
             const model = ctx.model;
             const rect = tb.getBoundingClientRect();
             const pop = document.createElement('div');
@@ -298,7 +303,7 @@
                     if (parent) window.hbEditor.selectById(parent);
                 }
                 if (action === 'save') {
-                    openSaveBlockDialog(tb, ctx);
+                    openSaveBlockDialog(tb, ctx, closeAll);
                 }
             }));
 

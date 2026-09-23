@@ -8,6 +8,7 @@ All notable changes to this project are documented here. The format is based on
 
 ### Added
 
+- **Patterns.** The Blocks tab is now **Patterns**, and saving one works: select a group or column, use "Save as pattern" on its toolbar, and it appears in the tab ready to drop back in. Everything but the wiring already existed — the editor never passed the panel its URLs or rows, so the tab could not list anything and the toolbar's save had nowhere to post.
 - **Icons can be used in email documents.** The icon block joins the email palette: no mail client renders SVG, so its glyph ships as a PNG the editor rasterizes (at 2x, with the colour and size you picked) and the send embeds inline with a `cid:` reference, exactly as an image block already does — it arrives in the body, not as a visible attachment. Rasterizing happens in the browser deliberately: converting SVG server-side needs Imagick with an SVG delegate, which is not present on every host. The PNGs are stored under a derived name, so the same icon at the same colour and size is written once and reused; they are generated artifacts and never appear in the media library. An icon whose PNG could not be produced renders nothing (rather than a broken image) and is flagged in the editor's email warnings before the send.
 
 ### Changed
@@ -20,6 +21,7 @@ All notable changes to this project are documented here. The format is based on
 
 ### Fixed
 
+- **Saved-pattern cards lost their shape whenever the list refreshed.** The grid is rendered by Blade on load and rebuilt by JS after a save or delete, and the two had drifted — the JS built no tool-card and used a class that exists nowhere, so every card collapsed to bare text until a reload. It now clones the one template Blade renders. Each card also stretched to the full height of the scroll area, so a click well below a card still inserted that pattern.
 - **The AI forgot the conversation on refresh.** A thread started by chatting was never written down (only one reopened from history was), so a reload restored nothing and the next message carried no prior turns. Reopening the editor later, or in a new tab, now continues the post's most recent thread.
 - **An icon ignored its Fill colour.** The icon block paints by setting `color` on its wrapper, which only reaches the glyph through `currentColor`: remix-icon's drawn paths carry no `fill` (so they defaulted to black) and iconsax's carry an empty `fill=""` left by the importer. Single-colour icons are now normalized to `currentColor` when read, so the canvas, the render and the picker all follow the block's colour. Multi-colour and gradient artwork is left untouched.
 - **Resizing an icon in one dimension did nothing visible.** Width alone gave a 96x32 box and a glyph that kept its aspect ratio, so it stayed 32px tall. Either dimension now scales the icon; setting both still wins.

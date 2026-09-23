@@ -16,7 +16,11 @@
     <div class="hb-editor__scrim" data-hb-scrim hidden></div>
     <x-heisenberg::live.sidebar class="hb-editor__sidebar" :document-type="$hbDocumentType" />
     <div class="hb-editor__panel">
-        <x-heisenberg::live.panel-components-blocks :registry="$paletteBlocks ?? $registry" :document-type="$hbDocumentType" />
+        <x-heisenberg::live.panel-components-blocks :registry="$paletteBlocks ?? $registry" :document-type="$hbDocumentType"
+            :patterns="$patterns ?? []"
+            :patterns-index-url="$patternsIndexUrl ?? ''"
+            :patterns-store-url="$patternsStoreUrl ?? ''"
+            :patterns-destroy-url="$patternsDestroyUrl ?? ''" />
         @if ($hbDocumentType !== 'email')
         <x-heisenberg::live.panel-seo-social hidden
             :post-id="$postId ?? null"

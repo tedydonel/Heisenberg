@@ -323,7 +323,7 @@ return [
     // Sidebar (live/sidebar.blade.php).
     'sidebar' => [
         'nav_components' => 'Components',
-        'nav_blocks' => 'Blocks',
+        'nav_blocks' => 'Patterns',
         'nav_seo' => 'SEO',
         'nav_socials' => 'Socials',
         'nav_style' => 'Style',
@@ -477,7 +477,7 @@ return [
     // Components/Blocks panel (live/panel-components-blocks.blade.php).
     'panel_components_blocks' => [
         'tab_components' => 'Components',
-        'tab_blocks' => 'Blocks',
+        'tab_blocks' => 'Patterns',
         'search_components' => 'Search components…',
         'search_blocks' => 'Search blocks…',
         'category_base' => 'Base',
@@ -485,7 +485,7 @@ return [
         'card_image' => 'Image',
         'card_divider' => 'Divider',
         'card_button' => 'Button',
-        'empty_blocks' => 'Coming soon.',
+        'empty_blocks' => 'No patterns yet. Select a group or column and use “Save as pattern” on its toolbar.',
         // Email authoring only (docs/email-system.md §4, EmailBlockCoverageService): explains
         // why some registered blocks never appear here at all — their contract has no `email`
         // template, so BlockTreeRenderer would render them as nothing. Shown once, above the
@@ -496,21 +496,21 @@ return [
     // User-saved reusable blocks ("patterns", live/panel-components-blocks.blade.php,
     //    HeisenbergPatternController, toolbar save-as-block popover).
     'patterns' => [
-        'name_required' => 'Give the block a name.',
+        'name_required' => 'Give the pattern a name.',
         'name_too_long' => 'Name must be 120 characters or fewer.',
-        'name_taken' => 'A block with that name already exists. Pick another.',
-        'blocks_required' => 'The block content is missing.',
+        'name_taken' => 'A pattern with that name already exists. Pick another.',
+        'blocks_required' => 'The pattern content is missing.',
         'blocks_invalid_entry' => 'Block # :index is not a valid block.',
         'blocks_too_large' => 'This pattern is too large to save.',
-        'not_found' => 'That block no longer exists.',
-        'save_dialog_title' => 'Save as block',
-        'save_dialog_prompt' => 'Name this composition so you can drop it again from the Blocks tab.',
+        'not_found' => 'That pattern no longer exists.',
+        'save_dialog_title' => 'Save as pattern',
+        'save_dialog_prompt' => 'Name this composition so you can drop it again from the Patterns tab.',
         'save_dialog_placeholder' => 'e.g. Hero with image',
         'save_dialog_save' => 'Save',
         'save_dialog_cancel' => 'Cancel',
         'save_dialog_saving' => 'Saving…',
         'delete' => 'Delete',
-        'delete_confirm' => 'Delete this saved block?',
+        'delete_confirm' => 'Delete this pattern?',
     ],
 
     // SEO/Social panel (live/panel-seo-social.blade.php + builder inserter).
