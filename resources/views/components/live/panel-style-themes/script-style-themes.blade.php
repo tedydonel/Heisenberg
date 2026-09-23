@@ -418,10 +418,23 @@
                         .then(({ ok, body }) => {
                             if (!ok) { showSaveError((body.errors || []).join(', ') || 'Could not save'); return; }
                             root.__hbPanelStyle.activeSavedTheme = { name };
+                            // Saving under a name makes this the AUTHOR's theme — a full, stored
+                            // copy that owes nothing to whichever preset happened to seed it. The
+                            // preset stayed visibly selected, which read as "this is still that
+                            // preset"; only the author's own card is active from here.
+                            clearPresetSelection();
                             renderSavedThemes(body.themes || []);
                             closeSaveForm();
                             refreshSaveBarLabel();
                         }).catch(() => showSaveError('Could not save'));
+                };
+
+                /** No preset is "the current theme" any more — see confirmSaveTheme(). */
+                const clearPresetSelection = () => {
+                    themes?.querySelectorAll('[data-hb-theme-preset]').forEach((card) => {
+                        card.classList.remove('hb-themepresetcard--selected');
+                        card.setAttribute('aria-pressed', 'false');
+                    });
                 };
 
                 const savedGrid = themes?.querySelector('[data-hb-saved-themes-grid]');

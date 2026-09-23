@@ -32,13 +32,16 @@
      * store `0.75px`.
      */
     $hbStripPx = static fn (mixed $value): string => (string) preg_replace('/^(\d+(?:\.\d+)?)px$/i', '$1', trim((string) $value));
+    /**
+     * Three starting points, deliberately — a light, a dark and a warm one. These are shipped
+     * CODE, not the author's data: clicking one only seeds the colour swatches, and anything
+     * saved from there is a full, independent copy in the author's own themes (see
+     * SavedThemeRepository). Nothing a preset seeds stays bound to it.
+     */
     $themePresets = [
         ['label' => 'Default', 'colors' => ['#FFFFFF', '#000000', '#0A0A0A']],
         ['label' => 'Midnight', 'colors' => ['#12141C', '#5B8DEF', '#E8EAF0']],
         ['label' => 'Sunset', 'colors' => ['#FFF6ED', '#E8703A', '#3A2A1E']],
-        ['label' => 'Ocean', 'colors' => ['#EFF6FB', '#1AA7A0', '#12324A']],
-        ['label' => 'Forest', 'colors' => ['#F1F5EE', '#5B8C3E', '#23331F']],
-        ['label' => 'Blush', 'colors' => ['#FDF1F4', '#D65F86', '#401A2B']],
     ];
     $hbPanelStyleStrings = [
         'save_to_themes' => __('heisenberg::editor.panel_style_themes.save_to_themes'),
