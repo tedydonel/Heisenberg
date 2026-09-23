@@ -61,10 +61,12 @@ class EmailBlockCoverageServiceTest extends TestCase
         sort($actual);
 
         $this->assertSame($expectedUncovered, $actual);
-        // Documents the two known gaps (§4) without hardcoding them as the SOURCE of truth above.
+        // Documents the known gap (§4) without hardcoding it as the SOURCE of truth above.
+        // `icon` left this list once its glyph could ship as a rasterized PNG; `embed` stays,
+        // a webfont/iframe player having no email equivalent at all.
         $this->assertContains('heisenberg/embed', $actual);
-        $this->assertContains('heisenberg/icon', $actual);
-        $this->assertCount(2, $actual);
+        $this->assertNotContains('heisenberg/icon', $actual);
+        $this->assertCount(1, $actual);
     }
 
     public function test_is_covered_for_email_agrees_with_uncovered_block_names(): void
@@ -122,7 +124,7 @@ class EmailBlockCoverageServiceTest extends TestCase
         $coverage = $this->service()->registryCoverage();
 
         $this->assertArrayHasKey('heisenberg/icon', $coverage);
-        $this->assertFalse($coverage['heisenberg/icon']['hasEmailTemplate']);
+        $this->assertTrue($coverage['heisenberg/icon']['hasEmailTemplate'], 'icon ships as a rasterized PNG now');
         $this->assertArrayHasKey('heisenberg/embed', $coverage);
         $this->assertFalse($coverage['heisenberg/embed']['hasEmailTemplate']);
     }
@@ -142,21 +144,36 @@ class EmailBlockCoverageServiceTest extends TestCase
         $this->assertSame([], $report['degraded']);
     }
 
-    public function test_document_report_flags_an_icon_and_an_embed_block_as_dropped(): void
+    public function test_document_report_flags_an_embed_block_as_dropped(): void
     {
         $blocks = [
-            ['id' => 'i1', 'name' => 'heisenberg/icon', 'attributes' => [], 'supports' => [], 'innerBlocks' => []],
             ['id' => 'e1', 'name' => 'heisenberg/embed', 'attributes' => [], 'supports' => [], 'innerBlocks' => []],
             ['id' => 'p1', 'name' => 'heisenberg/paragraph', 'attributes' => [], 'supports' => [], 'innerBlocks' => []],
         ];
 
         $report = $this->service()->documentReport($blocks);
 
-        $droppedNames = array_column($report['dropped'], 'name');
-        sort($droppedNames);
-        $this->assertSame(['heisenberg/embed', 'heisenberg/icon'], $droppedNames);
-        $this->assertSame(['i1', 'e1'], array_column($report['dropped'], 'id'));
+        $this->assertSame(['heisenberg/embed'], array_column($report['dropped'], 'name'));
+        $this->assertSame(['e1'], array_column($report['dropped'], 'id'));
         $this->assertSame([], $report['degraded']);
+    }
+
+    /**
+     * An icon ships as a PNG the EDITOR rasterizes, so one that never got rasterized (the
+     * endpoint was unreachable, or the block arrived from an import) renders nothing at all —
+     * present in the document, silently absent from the send.
+     */
+    public function test_an_icon_with_no_rasterized_png_is_flagged_as_degraded(): void
+    {
+        $withImage = ['id' => 'i1', 'name' => 'heisenberg/icon', 'attributes' => ['icon' => 'demo/star', 'emailImage' => '/uploads/email-icons/demo-star-ff0000-32.png'], 'supports' => [], 'innerBlocks' => []];
+        $without = ['id' => 'i2', 'name' => 'heisenberg/icon', 'attributes' => ['icon' => 'demo/star'], 'supports' => [], 'innerBlocks' => []];
+
+        $report = $this->service()->documentReport([$withImage, $without]);
+
+        $this->assertSame([], $report['dropped'], 'an icon is never dropped now — it has an email template');
+        $this->assertSame(['i2'], array_column($report['degraded'], 'id'));
+        $this->assertSame(['icon-not-rasterized'], $report['degraded'][0]['reasons']);
+        $this->assertStringContainsString('will not appear', $this->service()->reasonDescription('icon-not-rasterized'));
     }
 
     public function test_document_report_recurses_into_inner_blocks(): void
@@ -174,7 +191,7 @@ class EmailBlockCoverageServiceTest extends TestCase
                         'attributes' => [],
                         'supports' => [],
                         'innerBlocks' => [
-                            ['id' => 'i1', 'name' => 'heisenberg/icon', 'attributes' => [], 'supports' => [], 'innerBlocks' => []],
+                            ['id' => 'i1', 'name' => 'heisenberg/embed', 'attributes' => [], 'supports' => [], 'innerBlocks' => []],
                         ],
                     ],
                 ],
@@ -183,7 +200,7 @@ class EmailBlockCoverageServiceTest extends TestCase
 
         $report = $this->service()->documentReport($blocks);
 
-        $this->assertSame(['heisenberg/icon'], array_column($report['dropped'], 'name'));
+        $this->assertSame(['heisenberg/embed'], array_column($report['dropped'], 'name'));
         $this->assertSame(['i1'], array_column($report['dropped'], 'id'));
     }
 
@@ -388,7 +405,7 @@ class EmailBlockCoverageServiceTest extends TestCase
     public function test_document_summary_shape(): void
     {
         $blocks = [
-            ['id' => 'i1', 'name' => 'heisenberg/icon', 'attributes' => [], 'supports' => [], 'innerBlocks' => []],
+            ['id' => 'i1', 'name' => 'heisenberg/embed', 'attributes' => [], 'supports' => [], 'innerBlocks' => []],
             ['id' => 'g1', 'name' => 'heisenberg/group', 'attributes' => [], 'supports' => ['align' => 'wide'], 'innerBlocks' => []],
         ];
 
@@ -396,7 +413,7 @@ class EmailBlockCoverageServiceTest extends TestCase
 
         $this->assertSame(1, $summary['dropped_count']);
         $this->assertSame(1, $summary['degraded_count']);
-        $this->assertSame(['heisenberg/icon'], $summary['dropped_names']);
+        $this->assertSame(['heisenberg/embed'], $summary['dropped_names']);
         $this->assertSame(['heisenberg/group'], $summary['degraded_names']);
         $this->assertArrayHasKey('report', $summary);
     }

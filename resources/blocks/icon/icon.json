@@ -116,6 +116,30 @@
             "default": false,
             "sanitize": "boolean",
             "control": false
+        },
+        "emailImage": {
+            "type": "url",
+            "default": "",
+            "sanitize": "url",
+            "control": false
+        },
+        "emailImageKey": {
+            "type": "string",
+            "default": "",
+            "sanitize": "text",
+            "control": false
+        },
+        "emailImageW": {
+            "type": "string",
+            "default": "",
+            "sanitize": "text",
+            "control": false
+        },
+        "emailImageH": {
+            "type": "string",
+            "default": "",
+            "sanitize": "text",
+            "control": false
         }
     },
     "supports": {
@@ -455,5 +479,58 @@
         "richText": "none",
         "allowRawHtml": false,
         "allowCustomCss": false
+    },
+    "email": {
+        "template": {
+            "tag": "table",
+            "attributes": {
+                "role": "presentation",
+                "cellpadding": "0",
+                "cellspacing": "0",
+                "border": "0",
+                "width": "100%"
+            },
+            "children": [
+                {
+                    "tag": "tr",
+                    "children": [
+                        {
+                            "tag": "td",
+                            "attributes": {
+                                "align": {
+                                    "enumMap": "{{supports.align}}",
+                                    "cases": {
+                                        "left": "left",
+                                        "center": "center",
+                                        "right": "right"
+                                    },
+                                    "default": "left"
+                                },
+                                "style": {
+                                    "enumMap": "{{attributes._emailNested}}",
+                                    "cases": {
+                                        "1": "padding: var(--hb-icon-mt, 0) var(--hb-icon-mr, 0) var(--hb-icon-mb, 0) var(--hb-icon-ml, 0); font-size:0; line-height:0;"
+                                    },
+                                    "default": "padding: var(--hb-icon-mt, 0) var(--hb-icon-mr, 0) var(--hb-icon-mb, 16px) var(--hb-icon-ml, 0); font-size:0; line-height:0;"
+                                }
+                            },
+                            "children": [
+                                {
+                                    "tag": "img",
+                                    "omitTagWhenAttributeEmpty": "emailImage",
+                                    "attributes": {
+                                        "src": "{{attributes.emailImage}}",
+                                        "alt": "{{attributes.titleAttr}}",
+                                        "width": "{{attributes.emailImageW}}",
+                                        "height": "{{attributes.emailImageH}}",
+                                        "style": "display:block; border:0; outline:none; text-decoration:none; background: var(--hb-icon-bg, transparent); padding: var(--hb-icon-pt, 0) var(--hb-icon-pr, 0) var(--hb-icon-pb, 0) var(--hb-icon-pl, 0); border-radius: var(--hb-border-radius-tl, 0);"
+                                    }
+                                }
+                            ]
+                        }
+                    ]
+                }
+            ]
+        }
     }
 }

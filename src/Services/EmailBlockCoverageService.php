@@ -225,6 +225,7 @@ final class EmailBlockCoverageService
             'align' => 'its alignment will not be applied',
             'conditional-class' => 'a conditional style it uses (e.g. hide-on-device, fill/hug sizing) will not be applied',
             'inline-style' => 'a hand-written inline style (e.g. padding, border-radius, font-size) in its text will be stripped to plain coloured text — use a styled block instead',
+            'icon-not-rasterized' => 'its glyph has not been turned into an image yet, so it will not appear — open the email in the editor to let it render',
             default => 'it may render differently',
         };
     }
@@ -269,7 +270,7 @@ final class EmailBlockCoverageService
         }
     }
 
-    /** @return list<string> reason codes: 'gradient-background', 'align', 'conditional-class', 'inline-style' */
+    /** @return list<string> reason codes: 'gradient-background', 'align', 'conditional-class', 'inline-style', 'icon-not-rasterized' */
     private function degradationReasons(array $block, array $contract): array
     {
         $reasons = [];
@@ -290,7 +291,31 @@ final class EmailBlockCoverageService
             $reasons[] = 'inline-style';
         }
 
+        if ($this->iconHasNoEmailImage($block)) {
+            $reasons[] = 'icon-not-rasterized';
+        }
+
         return $reasons;
+    }
+
+    /**
+     * An icon block ships as a PNG the EDITOR rasterizes (no mail client renders SVG, and no PHP
+     * image extension that ships everywhere can convert one — see EmailIconImageController).
+     * Until that PNG exists the block's email template has nothing to point at and renders
+     * nothing, so an icon placed while the rasterizer was unreachable is silently missing from
+     * the send. That is worth saying out loud.
+     *
+     * @param array<string, mixed> $block
+     */
+    private function iconHasNoEmailImage(array $block): bool
+    {
+        if (($block['name'] ?? null) !== 'heisenberg/icon') {
+            return false;
+        }
+
+        $attributes = is_array($block['attributes'] ?? null) ? $block['attributes'] : [];
+
+        return trim((string) ($attributes['emailImage'] ?? '')) === '';
     }
 
     /**

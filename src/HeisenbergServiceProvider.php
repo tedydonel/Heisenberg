@@ -322,6 +322,9 @@ class HeisenbergServiceProvider extends ServiceProvider
         $this->app->singleton(EmailRenderer::class, fn ($app) => new EmailRenderer(
             $app->make(BlockRenderer::class),
             $app->make(ThemeRepository::class),
+            // A font's email fallback is chosen from what the font actually IS (the catalog's
+            // category), not from what its token happens to be named.
+            $app->make(FontCatalogService::class),
         ));
     }
 

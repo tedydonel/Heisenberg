@@ -75,14 +75,14 @@ class EmailCoverageMcpTest extends TestCase
             'title' => 'A newsletter',
             'type' => 'email',
             'blocks' => [
-                ['name' => 'heisenberg/icon'],
+                ['name' => 'heisenberg/embed'],
                 ['name' => 'heisenberg/paragraph'],
             ],
         ]);
 
         $this->assertArrayHasKey('warnings', $created);
         $this->assertCount(1, $created['warnings']);
-        $this->assertStringContainsString('heisenberg/icon', $created['warnings'][0]);
+        $this->assertStringContainsString('heisenberg/embed', $created['warnings'][0]);
         $this->assertStringContainsString('will not appear', $created['warnings'][0]);
     }
 
@@ -100,14 +100,14 @@ class EmailCoverageMcpTest extends TestCase
         $this->assertArrayNotHasKey('warnings', $created);
     }
 
-    public function test_create_post_type_post_never_carries_email_warnings_even_with_an_icon_block(): void
+    public function test_create_post_type_post_never_carries_email_warnings_even_with_an_email_only_defect(): void
     {
         // The `dropped`/`degraded` distinction is EMAIL-specific — a plain post's palette
         // includes every block, so an icon block there is not a defect to warn about.
         $created = $this->toolData('create_post', [
             'title' => 'A blog post',
             'blocks' => [
-                ['name' => 'heisenberg/icon'],
+                ['name' => 'heisenberg/embed'],
             ],
         ]);
 
@@ -143,7 +143,7 @@ class EmailCoverageMcpTest extends TestCase
             'title' => 'Mixed',
             'type' => 'email',
             'blocks' => [
-                ['name' => 'heisenberg/icon'],
+                ['name' => 'heisenberg/embed'],
                 [
                     'name' => 'heisenberg/group',
                     'supports' => ['align' => 'wide'],
@@ -155,7 +155,7 @@ class EmailCoverageMcpTest extends TestCase
         $this->assertCount(2, $created['warnings']);
 
         $joined = implode(' | ', $created['warnings']);
-        $this->assertStringContainsString('heisenberg/icon', $joined);
+        $this->assertStringContainsString('heisenberg/embed', $joined);
         $this->assertStringContainsString('will not appear at all', $joined);
         $this->assertStringContainsString('heisenberg/group', $joined);
         $this->assertStringContainsString('render differently', $joined);

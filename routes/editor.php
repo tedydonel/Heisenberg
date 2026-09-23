@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 use Heisenberg\Http\Controllers\CategoryController;
 use Heisenberg\Http\Controllers\EditorController;
+use Heisenberg\Http\Controllers\EmailIconImageController;
 use Heisenberg\Http\Controllers\EmailPreviewController;
 use Heisenberg\Http\Controllers\FontController;
 use Heisenberg\Http\Controllers\HeisenbergPatternController;
@@ -154,6 +155,11 @@ Route::middleware(config('heisenberg.middleware.editor', ['web']))->group(functi
     // per-icon SVG asset the canvas runtime fetch-injects. Both manifest-gated — see
     // IconLibraryService for the fail-closed set/slug allow-list.
     Route::get('/editor/icons', [EditorController::class, 'iconsSearch'])->name('heisenberg.editor.icons.search');
+    // The rasterized PNG an email document needs for an icon block: mail clients render no
+    // SVG, and no PHP image extension that ships everywhere can rasterize one, so the editor
+    // draws the glyph and posts the bytes here. See EmailIconImageController for what it
+    // refuses to trust about them.
+    Route::post('/editor/email-icon', [EmailIconImageController::class, 'store'])->name('heisenberg.editor.email.icon');
     Route::get('/heisenberg-assets/icon/{set}/{slug}.svg', [EditorController::class, 'icon'])
         ->where(['set' => '[a-z0-9-]+', 'slug' => '[a-z0-9-]+'])
         ->name('heisenberg.editor.asset.icon');

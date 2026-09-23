@@ -16,6 +16,20 @@ A built email **embeds everything - no URL paths for assets**:
 - **All CSS is inlined**; the only `<style>` block is a small head section for client hacks/dark-mode hints that inlining cannot express.
 - **Hyperlinks are not assets**: buttons/anchors keep their `href`s. Only loaded resources are embedded.
 
+
+### 2.1 Theme fonts in email (2026-09-23)
+
+A theme font becomes a stack that LEADS with the author's real family and falls back to web-safe
+names (`'Space Grotesk', Arial, Helvetica, sans-serif`), and the message links the theme's faces,
+so Apple Mail and iOS Mail render the chosen font while Gmail and Outlook use the fallback they
+always got.
+
+Until 2026-09-23 the family never reached the message at all, and the fallback was chosen by
+keyword-matching the TOKEN's name (`serif` -> Georgia) rather than the font's own catalog
+category. A token named `font-serif` holding a sans family therefore shipped a serif: picking any
+theme font but the first visibly changed the email into something unrelated to the canvas. Pinned
+by `tests/Email/EmailFontStackTest.php`.
+
 ## 3. Email documents
 
 An email is a post row with `type = 'email'` (new `type` string column on the posts table, default `'post'`). That buys revisions, autosave, locking, translations (split-row, shared slug) and AI authoring for free. Consequences, enforced in code:
@@ -34,14 +48,43 @@ A block opts into the email palette by declaring an `email` section in its contr
 }
 ```
 
-- Presence of `email` = the block appears in the email palette; absence = it does not. Initial email-safe set: heading, paragraph, image, button, separator, group (as a full-width table section), columns/column (rendered as table cells, capped at 2-3 columns), list, quote. Excluded: embed, icon (webfont/SVG dependency), and every animation/hover capability (ignored by the email renderer even if authored).
+- Presence of `email` = the block appears in the email palette; absence = it does not. Initial email-safe set: heading, paragraph, image, button, separator, group (as a full-width table section), columns/column (rendered as table cells, capped at 2-3 columns), list, quote. `icon` joined that set once its glyph could ship as a raster image (§4.2). Excluded: embed (a webfont/iframe player has no email equivalent), and every animation/hover capability (ignored by the email renderer even if authored).
 - `BlockContractValidator` validates the section (template shape identical to `render.template` rules); `BlockRegistryService` exposes surface filtering (`contractsFor('email')`).
+
+### 4.2 An icon ships as a rasterized PNG (2026-09-23)
+
+No mail client renders SVG, which is why `icon` was excluded from the palette outright. It now
+ships as a PNG instead, and the conversion happens in the BROWSER:
+
+- **Why not in PHP.** Rasterizing SVG server-side needs Imagick with an SVG delegate; GD cannot do
+  it at all. Neither is present on every host, and neither is a dependency a package can force on
+  one. The editor already has the glyph, its colour and its pixel size on screen.
+- **The editor** (`inspector/script-email-icons.blade.php`, email documents only) serializes the
+  glyph with `currentColor` replaced by the resolved colour, draws it to a canvas at 2x, and posts
+  the bytes to `POST /editor/email-icon`.
+- **The endpoint** (`EmailIconImageController`) distrusts all of it: the icon must be a
+  manifest-listed `<set>/<slug>`, the colour a plain hex, the size 8-512px, and the payload must
+  decode to a real PNG of exactly 2x those dimensions, under a byte cap. The stored name is
+  DERIVED from those validated parts - `email-icons/<set>-<slug>-<hex>-<size>.png` - so the same
+  icon at the same colour and size is written once and reused by every block, document and send.
+- **These are generated artifacts, not uploads**, so they have no media-library row: nothing
+  generated appears in the author's Media panel. `EmailRenderer::rewriteImages()` embeds them
+  anyway, through the one extra branch that recognizes that directory (and only that directory,
+  by exact name shape, on the media disk).
+- **The block** keeps the URL in a hidden `emailImage` attribute; its `email.template` renders a
+  plain `<img>` that the renderer turns into the same inline `cid:` part an uploaded image gets.
+  An icon with no PNG yet renders NOTHING rather than a broken image, and
+  `EmailBlockCoverageService` flags it (`icon-not-rasterized`) so the author hears about it
+  before the send rather than after.
+
+Pinned by `tests/Email/EmailIconTest.php` (render + embed + the directory guard) and
+`tests/Editor/EmailIconImageControllerTest.php` (what the endpoint refuses).
 
 ### 4.1 One canvas; the email is an EXPORT (2026-09-21)
 
 **An email document is edited on exactly the same canvas as a post** - the same `render.template`, the same block CSS, the same DOM, the same inspector. `block-runtime`'s `RENDER_SURFACE` is always `'render'`. Two things make a document an email, and neither is the canvas:
 
-- **the palette** - a contract with no `email` section (embed, icon) is not offered;
+- **the palette** - a contract with no `email` section (embed) is not offered;
 - **the export** - `EmailRenderer` walks each block's `email.template` in PHP and produces table markup with literal inline styles.
 
 The canvas used to draw `email.template` itself, which made the editor a second, table-based renderer under the same chrome. Every email-only editing defect came from that DOM being different: nested outlines, a zero-size toolbar anchor, inspector controls with nothing to bind to, drops into a container landing at index 0. `tests/js/email-canvas-parity.mjs` now loads the same blocks as an email and as a post and requires the two canvases and the two Style tabs to be identical.

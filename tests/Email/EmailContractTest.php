@@ -119,7 +119,7 @@ class EmailContractTest extends TestCase
         $this->assertStringContainsString('unknown type', implode(' | ', $result['errors']));
     }
 
-    public function test_registry_contracts_for_email_returns_exactly_the_ten_email_safe_blocks(): void
+    public function test_registry_contracts_for_email_returns_exactly_the_email_safe_blocks(): void
     {
         // No explicit root -> the package default (resources/blocks), the real shipped set.
         $registry = new BlockRegistryService(new BlockContractValidator('heisenberg'));
@@ -136,6 +136,7 @@ class EmailContractTest extends TestCase
             'heisenberg/columns',
             'heisenberg/group',
             'heisenberg/heading',
+            'heisenberg/icon',
             'heisenberg/image',
             'heisenberg/list',
             'heisenberg/paragraph',
@@ -143,8 +144,9 @@ class EmailContractTest extends TestCase
             'heisenberg/separator',
         ], $names);
 
+        // embed stays out: a webfont/iframe player has no email equivalent. icon joined the
+        // set once its glyph could ship as a rasterized PNG (see EmailIconImageController).
         $this->assertNotContains('heisenberg/embed', $names);
-        $this->assertNotContains('heisenberg/icon', $names);
     }
 
     public function test_registry_contracts_for_email_are_localized_like_the_web_registry(): void

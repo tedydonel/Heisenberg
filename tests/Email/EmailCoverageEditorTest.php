@@ -99,7 +99,7 @@ class EmailCoverageEditorTest extends TestCase
     public function test_an_email_with_an_uncovered_block_reports_it_will_not_appear(): void
     {
         $post = $this->makeEmail();
-        $this->addBlock($post, 0, 'heisenberg/icon');
+        $this->addBlock($post, 0, 'heisenberg/embed');
         $this->addBlock($post, 1, 'heisenberg/paragraph');
 
         $html = $this->get("/editor/email/{$post->id}")->assertOk()->getContent();
@@ -149,10 +149,10 @@ class EmailCoverageEditorTest extends TestCase
         $this->assertElementMissing($html, '[data-hb-post-meta-value="email_coverage_degraded"]');
     }
 
-    public function test_a_plain_post_never_shows_email_coverage_rows_even_with_an_icon_block(): void
+    public function test_a_plain_post_never_shows_email_coverage_rows_even_with_an_email_only_defect(): void
     {
         $post = Post::create(['title_en' => 'A Blog Post', 'locale' => 'en']);
-        $this->addBlock($post, 0, 'heisenberg/icon');
+        $this->addBlock($post, 0, 'heisenberg/embed');
 
         $html = $this->get("/editor/{$post->id}")->assertOk()->getContent();
 
@@ -163,7 +163,7 @@ class EmailCoverageEditorTest extends TestCase
     public function test_both_warning_rows_can_appear_together(): void
     {
         $post = $this->makeEmail();
-        $this->addBlock($post, 0, 'heisenberg/icon');
+        $this->addBlock($post, 0, 'heisenberg/embed');
         $this->addBlock($post, 1, 'heisenberg/group', [], ['align' => 'full']);
 
         $html = $this->get("/editor/email/{$post->id}")->assertOk()->getContent();

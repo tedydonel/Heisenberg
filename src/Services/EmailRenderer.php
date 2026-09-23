@@ -6,6 +6,7 @@ namespace Heisenberg\Services;
 
 use Heisenberg\Http\Controllers\EmailPreviewController;
 use Heisenberg\Models\Post;
+use Heisenberg\Http\Controllers\EmailIconImageController;
 use Heisenberg\Models\PublicFile;
 use Heisenberg\Rendering\HtmlEscaper;
 use Heisenberg\Support\EmailRenderResult;
@@ -20,7 +21,7 @@ use TijsVerkoyen\CssToInlineStyles\CssToInlineStyles;
  * a post always has, through the SAME substitution/sanitization engine, just reading each
  * block's `email.template` instead of `render.template` (`BlockRenderer::renderBlock($block,
  * $locale, 'email')` — the `$surface` parameter added for exactly this). A block whose contract
- * has no `email` section (embed, icon; §4) renders empty — never fatal, silently absent from the
+ * has no `email` section (embed; §4) renders empty — never fatal, silently absent from the
  * output, exactly like an unknown block name already does on the web surface.
  *
  * Pipeline per block, in order (§5):
@@ -30,9 +31,10 @@ use TijsVerkoyen\CssToInlineStyles\CssToInlineStyles;
  *     block's own inspector values as the tree is walked, so nested blocks can never read one
  *     another's. No custom-property declaration is emitted on this surface at all.
  *  2. {@see self::rewriteImages()} — every `<img src>` that resolves to a {@see PublicFile}
- *     (media library upload) is replaced with `cid:$cid` and recorded in the embeds manifest;
- *     an `src` that does not resolve (an external URL) is left untouched — best effort, no host
- *     network fetch happens here.
+ *     (media library upload), or to one of this install's GENERATED email-icon PNGs (§4.2 — an
+ *     icon block's glyph, which has no media row by design), is replaced with `cid:$cid` and
+ *     recorded in the embeds manifest; an `src` that does not resolve (an external URL) is left
+ *     untouched — best effort, no host network fetch happens here.
  *  3. {@see self::resolveTokens()} — what is left is DESIGN tokens (`var(--ink)`,
  *     `var(--hb-t-brand)`), which arrive inside resolved values and are theme-wide rather than
  *     per block: each is replaced with the active theme's literal, so the invariant "no var(
@@ -51,15 +53,19 @@ use TijsVerkoyen\CssToInlineStyles\CssToInlineStyles;
  * something ThemeRepository doesn't, and it is called out here deliberately so it doesn't read
  * as an oversight.
  *
- * FONT-FAMILY MAPPING (§2 "fonts cannot be attached"): a font TOKEN (`font-sans`, `font-serif`,
- * `font-mono`, or a custom-named one) never resolves to its literal `family` value — email
- * clients cannot load a `@font-face`, so the literal is instead an email-safe STACK, classified
- * by keyword match against the token's `name` first, then its `family` (in that order, first
- * hit wins): contains `mono` -> `'Courier New', Courier, monospace`; contains `serif` ->
- * `Georgia, 'Times New Roman', serif`; anything else (including the default `font-sans`) ->
- * `Arial, Helvetica, sans-serif`. `sans` never falsely matches the `serif` keyword test (the
- * substrings don't overlap), so the default theme's three stock tokens classify correctly with
- * no special-casing.
+ * FONT-FAMILY MAPPING (§2): a font TOKEN (`font-sans`, `font-serif`, or a custom-named one)
+ * becomes a STACK that leads with the author's real family and falls back to web-safe names:
+ * `'Space Grotesk', Arial, Helvetica, sans-serif`. The message also links the theme's faces
+ * ({@see self::webFontLink()}), so a client that loads webfonts (Apple Mail, iOS Mail) renders
+ * what the author picked, while Gmail/Outlook ignore the link and land on the fallback.
+ *
+ * It used to resolve to the web-safe stack ALONE, so the chosen family never reached the message
+ * at all and no client could render it. The stack was also picked by keyword-matching the
+ * token's NAME before its family (`mono` -> Courier, `serif` -> Georgia, else Arial), which
+ * inverted whenever the two disagreed: a token named `font-serif` holding Geist (a sans) shipped
+ * Georgia, so switching to the second theme font turned the email into an unrelated serif. The
+ * fallback now comes from {@see FontCatalogService::category()} — what the font IS — and the
+ * keyword heuristic survives only for a family the catalog doesn't know (a system font).
  *
  * SHELL + INLINING (§5.3, §5.5): {@see self::wrapShell()} builds the canonical 100%-width
  * background table around a centered 600px content table, theme background/text colors already
@@ -116,6 +122,7 @@ class EmailRenderer
     public function __construct(
         private BlockRenderer $renderer,
         private ThemeRepository $themes,
+        private FontCatalogService $fonts,
     ) {
     }
 
@@ -282,36 +289,89 @@ class EmailRenderer
             function (array $m) use (&$embeds, $preview): string {
                 $url = html_entity_decode($m[2], ENT_QUOTES);
                 $file = PublicFile::forUrl($url);
-                if ($file === null || ! $file->isImageType()) {
+                if ($file === null) {
+                    // A GENERATED icon PNG (EmailIconImageController) — the icon block's glyph,
+                    // which no mail client can render as SVG. These are artifacts, not uploads,
+                    // so they deliberately have no media-library row for forUrl() to find; they
+                    // still embed exactly like an uploaded image.
+                    $generated = $this->generatedIconSource($url);
+                    if ($generated === null) {
+                        return $m[0];
+                    }
+                    [$disk, $path, $mime] = $generated;
+
+                    return $m[1] . $this->embedRef($embeds, $disk, $path, $mime, $preview) . $m[3];
+                }
+                if (! $file->isImageType()) {
                     return $m[0];
                 }
 
                 [$path, $mime] = $this->embedSourceFor($file);
 
-                if ($preview) {
-                    return $m[1] . PublicFile::urlForPath((string) $file->disk, $path) . $m[3];
-                }
-
-                $key = $file->disk . '|' . $path;
-
-                $cid = null;
-                foreach ($embeds as $embed) {
-                    if ($embed['key'] === $key) {
-                        $cid = $embed['cid'];
-                        break;
-                    }
-                }
-
-                if ($cid === null) {
-                    $absolute = Storage::disk((string) $file->disk)->path($path);
-                    $cid = Str::random(24) . '@heisenberg';
-                    $embeds[] = ['cid' => $cid, 'path' => $absolute, 'mime' => $mime, 'key' => $key];
-                }
-
-                return $m[1] . 'cid:' . $cid . $m[3];
+                return $m[1] . $this->embedRef($embeds, (string) $file->disk, $path, $mime, $preview) . $m[3];
             },
             $html
         );
+    }
+
+    /**
+     * The `src` one image ends up with: a `cid:` reference (attaching the file once per render,
+     * reusing the cid when the same file appears again) or, in preview, its public URL.
+     *
+     * @param list<array{cid: string, path: string, mime: string, key: string}> $embeds
+     */
+    private function embedRef(array &$embeds, string $disk, string $path, string $mime, bool $preview): string
+    {
+        if ($preview) {
+            return PublicFile::urlForPath($disk, $path);
+        }
+
+        $key = $disk . '|' . $path;
+        foreach ($embeds as $embed) {
+            if ($embed['key'] === $key) {
+                return 'cid:' . $embed['cid'];
+            }
+        }
+
+        $cid = Str::random(24) . '@heisenberg';
+        $embeds[] = [
+            'cid' => $cid,
+            'path' => Storage::disk($disk)->path($path),
+            'mime' => $mime,
+            'key' => $key,
+        ];
+
+        return 'cid:' . $cid;
+    }
+
+    /**
+     * `[disk, path, mime]` when $url is one of this install's GENERATED email-icon PNGs, else
+     * null. Fail-closed on every count: the media disk only, the one generated directory, the
+     * exact name shape {@see EmailIconImageController} derives (so no traversal or arbitrary
+     * path can be reached through an authored `src`), and the file must actually be there.
+     *
+     * @return array{0: string, 1: string, 2: string}|null
+     */
+    private function generatedIconSource(string $url): ?array
+    {
+        $path = PublicFile::storedPathFromUrl($url);
+        if ($path === null) {
+            return null;
+        }
+
+        $prefix = EmailIconImageController::DIRECTORY . '/';
+        if (! str_starts_with($path, $prefix)) {
+            return null;
+        }
+
+        $name = substr($path, strlen($prefix));
+        if (preg_match('/^[a-z0-9-]+-[0-9a-f]{6}-\d{1,3}\.png$/', $name) !== 1) {
+            return null;
+        }
+
+        $disk = (string) config('heisenberg.media.disk', 'uploads');
+
+        return Storage::disk($disk)->exists($path) ? [$disk, $path, 'image/png'] : null;
     }
 
     /**
@@ -392,6 +452,60 @@ class EmailRenderer
     /** See this class's docblock ("FONT-FAMILY MAPPING") for the classification rule. */
     private function emailFontStack(string $name, string $family): string
     {
+        $family = trim($family);
+        $fallback = $this->emailFallbackStack($name, $family);
+
+        if ($family === '') {
+            return $fallback;
+        }
+
+        // The author's ACTUAL font, first. A stack of nothing but web-safe names could never
+        // render what they picked in ANY client; leading with the real family costs nothing
+        // where it can't be loaded (the very same fallback follows it) and renders correctly in
+        // the clients that can — Apple Mail and iOS Mail, which do load the linked face.
+        $quoted = str_contains($family, ' ') ? "'" . $family . "'" : $family;
+
+        return $quoted . ', ' . $fallback;
+    }
+
+    /**
+     * A stylesheet link for the theme's own faces, so the family each stack now LEADS with can
+     * actually be fetched. Apple Mail and iOS Mail honour it; Gmail and Outlook ignore or strip
+     * it and land on the web-safe fallback that follows in every stack — which is exactly the
+     * output this surface produced before, so nothing regresses where it cannot work.
+     *
+     * Empty string when the theme names no catalogued family: an email should not carry a link
+     * that fetches nothing.
+     */
+    private function webFontLink(): string
+    {
+        $href = $this->fonts->css2Url($this->themes->fontFaces($this->themes->load()));
+        if ($href === null) {
+            return '';
+        }
+
+        return '<link href="' . htmlspecialchars($href, ENT_QUOTES | ENT_HTML5, 'UTF-8') . '" rel="stylesheet" type="text/css">' . "\n";
+    }
+
+    /**
+     * The web-safe part, chosen from the CATALOG's category for the family (what the font
+     * actually is) and only falling back to keyword-matching the token's name when the family
+     * isn't catalogued — a system font, or one this install doesn't know.
+     */
+    private function emailFallbackStack(string $name, string $family): string
+    {
+        $category = strtolower((string) $this->fonts->category($family));
+
+        if ($category !== '') {
+            return match (true) {
+                str_contains($category, 'mono') => "'Courier New', Courier, monospace",
+                str_contains($category, 'serif') && ! str_contains($category, 'sans') => "Georgia, 'Times New Roman', serif",
+                // Display and Handwriting have no web-safe equivalent worth naming; a neutral
+                // sans is the least wrong thing behind them.
+                default => 'Arial, Helvetica, sans-serif',
+            };
+        }
+
         $needle = strtolower($name . ' ' . $family);
 
         if (str_contains($needle, 'mono')) {
@@ -532,6 +646,7 @@ CSS;
         $width = self::CONTENT_WIDTH;
 
         $title = htmlspecialchars($subject, ENT_QUOTES | ENT_HTML5, 'UTF-8');
+        $fontLink = $this->webFontLink();
 
         return <<<HTML
 <!doctype html>
@@ -541,7 +656,7 @@ CSS;
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <meta name="x-apple-disable-message-reformatting">
 <title>{$title}</title>
-<style>
+{$fontLink}<style>
   @media only screen and (max-width: {$width}px) {
     .hb-email-col { display:block !important; width:100% !important; }
   }

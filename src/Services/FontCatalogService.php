@@ -138,6 +138,31 @@ class FontCatalogService
         return array_slice(array_merge(array_values($curated), $rest), $offset, $limit);
     }
 
+    /**
+     * The catalog's own category for a family — 'Sans Serif', 'Serif', 'Display', 'Handwriting'
+     * or 'Monospace' — or null when the family isn't catalogued (a system font, say).
+     *
+     * This is what a fallback stack should be chosen from. Guessing from a TOKEN's name instead
+     * gets it backwards whenever the two disagree: a token called `font-serif` holding Geist (a
+     * sans) was handed a Georgia fallback, so the email read as a serif nothing like the font
+     * the author picked.
+     */
+    public function category(string $family): ?string
+    {
+        $needle = mb_strtolower(trim($family));
+        if ($needle === '') {
+            return null;
+        }
+
+        foreach ($this->all() as $entry) {
+            if (mb_strtolower($entry['f']) === $needle) {
+                return (string) $entry['c'];
+            }
+        }
+
+        return null;
+    }
+
     /** Whether a family exists in the catalog (exact, case-insensitive). */
     public function has(string $family): bool
     {

@@ -6,8 +6,13 @@ All notable changes to this project are documented here. The format is based on
 
 ## [Unreleased]
 
+### Added
+
+- **Icons can be used in email documents.** The icon block joins the email palette: no mail client renders SVG, so its glyph ships as a PNG the editor rasterizes (at 2x, with the colour and size you picked) and the send embeds inline with a `cid:` reference, exactly as an image block already does — it arrives in the body, not as a visible attachment. Rasterizing happens in the browser deliberately: converting SVG server-side needs Imagick with an SVG delegate, which is not present on every host. The PNGs are stored under a derived name, so the same icon at the same colour and size is written once and reused; they are generated artifacts and never appear in the media library. An icon whose PNG could not be produced renders nothing (rather than a broken image) and is flagged in the editor's email warnings before the send.
+
 ### Changed
 
+- **A theme font reaches the email it is used in.** Every font resolved to a web-safe stack alone, so the chosen family never arrived, and the stack was picked by keyword-matching the token's NAME: a token called `font-serif` holding a sans family shipped Georgia, which is why only the first theme font looked right in email. Stacks now lead with the real family, the message links the theme's faces (Apple Mail and iOS Mail render them; Gmail and Outlook fall back exactly as before), and the fallback comes from the font's own catalog category.
 - **Text with no font of its own now follows the theme.** The theme's first font becomes the document's base face (a derived `--hb-t-font-base` token) on the canvas, the preview and the published page; previously such text fell back to the editor's own UI font, so a themed site still read in Rubik until every block set a font explicitly. A font set on a block still wins, and a theme with no fonts is unchanged.
 - **The icon picker paints in one request instead of one per icon.** Its feed now carries each icon's markup, so a page of 96 icons went from 97 requests (~37s against the dev server) to one (~0.9s). `url` stays for the canvas runtime and as the fallback for any file the server declines to inline — only a plain `<svg>` with no script, handler or external reference is inlined.
 - **The AI now always uses the theme's fonts.** The system prompt told it to set only what the user asked for, and nobody asks for a font, so blocks rendered in the editor's default face. When the theme defines fonts, the prompt now requires one on every heading, paragraph, list, quote and button (one for headings, one for body).

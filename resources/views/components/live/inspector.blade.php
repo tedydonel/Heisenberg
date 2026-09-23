@@ -285,6 +285,7 @@
     @include('heisenberg::components.live.inspector.script-spacing-controls')
     @include('heisenberg::components.live.inspector.script-color-layers')
     @include('heisenberg::components.live.inspector.script-fonts-and-style-events')
+    @include('heisenberg::components.live.inspector.script-email-icons')
 })();
 </script>
 @endonce
