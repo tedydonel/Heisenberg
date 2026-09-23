@@ -46,7 +46,17 @@
         const attrs = {}, defs = c.attributes || {};
         for (const k in defs) { if (Object.prototype.hasOwnProperty.call(defs, k)) attrs[k] = defs[k] == null ? '' : defs[k]; }
         const given = raw.attributes || {};
-        for (const k in given) { if (Object.prototype.hasOwnProperty.call(given, k)) attrs[k] = given[k]; }
+        for (const k in given) {
+            if (!Object.prototype.hasOwnProperty.call(given, k)) continue;
+            // An explicit null must NOT overwrite the contract's own default. A saved pattern (or
+            // an imported/AI-written block) that carries `anchor: null` produced a block the
+            // server then refused on save — "blocks.0.attributes.anchor: expected type string" —
+            // because these attributes are typed, and null is not a string. The declared default
+            // is what "nothing set" means here, so null falls back to it.
+            attrs[k] = (given[k] == null && Object.prototype.hasOwnProperty.call(defs, k))
+                ? attrs[k]
+                : given[k];
+        }
         const inner = [];
         (Array.isArray(raw.innerBlocks) ? raw.innerBlocks : []).forEach(function (child) {
             const m = normalizeModel(child, claimed);

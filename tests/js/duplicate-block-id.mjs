@@ -124,6 +124,34 @@ ok('after a doc loads, duplicating gets a fresh id and colouring it leaves the s
 ok('after a doc loads, patterns and inserts never reuse an id on the page', loaded.afterInserts, JSON.stringify(loaded));
 ok('a loaded doc with a duplicate id is given unique ids', loaded.repairedOnLoad, JSON.stringify(loaded));
 
+// 6. A stored pattern (or an imported/AI-written block) may carry an explicit `null` where the
+//    contract declares a string. Copying that null over the default produced a block the server
+//    refused on save — "blocks.0.attributes.anchor: expected type string" — which is what every
+//    insert of such a pattern hit. normalizeModel() falls back to the declared default instead.
+const nulled = await page.evaluate(() => {
+    const raw = {
+        id: 'hb900',
+        name: 'heisenberg/group',
+        attributes: { anchor: null, titleAttr: null, extraClasses: null },
+        supports: {},
+        innerBlocks: [{ id: 'hb901', name: 'heisenberg/paragraph', attributes: { content: 'Inside', anchor: null }, supports: {}, innerBlocks: [] }],
+    };
+    window.hbEditor.insertPattern([raw]);
+    const blocks = window.hbEditor.getDoc().blocks;
+    const placed = blocks[blocks.length - 1];
+    const nullsIn = (m) => Object.entries(m.attributes).filter(([, v]) => v === null).map(([k]) => k);
+    return {
+        groupNulls: nullsIn(placed),
+        innerNulls: placed.innerBlocks[0] ? nullsIn(placed.innerBlocks[0]) : ['no inner block'],
+        anchor: placed.attributes.anchor,
+        innerContent: placed.innerBlocks[0]?.attributes?.content,
+    };
+});
+ok('a pattern carrying null attributes places with the contract defaults instead',
+    nulled.groupNulls.length === 0 && nulled.innerNulls.length === 0 && nulled.anchor === '',
+    JSON.stringify(nulled));
+ok('and its real content is untouched', nulled.innerContent === 'Inside', JSON.stringify(nulled));
+
 await browser.close();
 
 console.log('\n=== Duplicate-block id collision fix ===');
