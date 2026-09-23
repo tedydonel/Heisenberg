@@ -20,6 +20,7 @@ All notable changes to this project are documented here. The format is based on
 
 ### Fixed
 
+- **The AI forgot the conversation on refresh.** A thread started by chatting was never written down (only one reopened from history was), so a reload restored nothing and the next message carried no prior turns. Reopening the editor later, or in a new tab, now continues the post's most recent thread.
 - **An icon ignored its Fill colour.** The icon block paints by setting `color` on its wrapper, which only reaches the glyph through `currentColor`: remix-icon's drawn paths carry no `fill` (so they defaulted to black) and iconsax's carry an empty `fill=""` left by the importer. Single-colour icons are now normalized to `currentColor` when read, so the canvas, the render and the picker all follow the block's colour. Multi-colour and gradient artwork is left untouched.
 - **Resizing an icon in one dimension did nothing visible.** Width alone gave a 96x32 box and a glyph that kept its aspect ratio, so it stayed 32px tall. Either dimension now scales the icon; setting both still wins.
 - **A title set by the AI still showed "Untitled post".** The title write reached the canvas heading without the input event that clears its placeholder and syncs the inspector field and tab title.

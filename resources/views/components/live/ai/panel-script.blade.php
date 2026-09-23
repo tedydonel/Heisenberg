@@ -84,7 +84,18 @@
                 const postId = () => root.dataset.postId || '';
                 document.addEventListener('hb:post-id', (event) => {
                     const id = event.detail && event.detail.id != null ? String(event.detail.id) : '';
-                    if (id) root.dataset.postId = id;
+                    if (!id) return;
+                    // A thread started before the post's first save was remembered under the
+                    // empty-id key; carry it over, or the save itself would lose the thread on
+                    // the next refresh.
+                    const orphan = (() => {
+                        try { return window.sessionStorage.getItem('hb:ai:conversation:') || ''; } catch (e) { return ''; }
+                    })();
+                    root.dataset.postId = id;
+                    if (orphan && conversationId && String(conversationId) === orphan) {
+                        rememberConversation(orphan);
+                        try { window.sessionStorage.removeItem('hb:ai:conversation:'); } catch (e) { }
+                    }
                 });
 
                 const selectedModel = () => (modelSel ? modelSel.dataset.value || '' : '');
@@ -514,7 +525,15 @@
                     if (conversationId) return Promise.resolve(conversationId);
                     return api(convUrl, { method: 'POST', body: JSON.stringify({ post_id: postId() || null }) })
                         .then((r) => (r.ok ? r.json() : null))
-                        .then((data) => { conversationId = data && data.id ? data.id : null; return conversationId; })
+                        .then((data) => {
+                            conversationId = data && data.id ? data.id : null;
+                            // Remember it HERE, not only when one is reopened from history: a
+                            // thread created by simply chatting was never written down, so a
+                            // refresh found nothing to restore and the assistant came back with
+                            // an empty thread and no memory of the conversation.
+                            rememberConversation(conversationId);
+                            return conversationId;
+                        })
                         .catch(() => null);
                 };
 
@@ -1018,6 +1037,24 @@
                 const remembered = rememberedConversation();
                 if (remembered && convUrl) {
                     document.dispatchEvent(new CustomEvent('hb:ai-open-conversation', { detail: { id: remembered } }));
+                } else if (convUrl) {
+                    // Nothing remembered — a new tab, or the editor reopened another day
+                    // (sessionStorage is per tab and dies with it). The thread itself is
+                    // server-side and belongs to this post, so continue its most recent one
+                    // rather than starting cold. Only when the panel is still empty: a thread
+                    // the author started in the meantime must never be replaced underneath them.
+                    const pid = postId();
+                    if (pid) {
+                        api(convUrl + '?post_id=' + encodeURIComponent(pid), { method: 'GET' })
+                            .then((r) => (r.ok ? r.json() : null))
+                            .then((data) => {
+                                const latest = (data && data.conversations || [])
+                                    .filter((c) => (c.message_count || 0) > 0)[0];
+                                if (!latest || conversationId || thread.children.length) return;
+                                document.dispatchEvent(new CustomEvent('hb:ai-open-conversation', { detail: { id: latest.id } }));
+                            })
+                            .catch(() => {});
+                    }
                 }
             });
         };

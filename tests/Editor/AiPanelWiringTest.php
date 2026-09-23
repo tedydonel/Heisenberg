@@ -226,6 +226,28 @@ class AiPanelWiringTest extends TestCase
         $this->assertStringNotContainsString('punchy introduction', $html);
     }
 
+    /**
+     * REGRESSION. A conversation survives a refresh only if the panel wrote down WHICH one is
+     * open. `rememberConversation()` was called when a thread was reopened from history, but
+     * never when one was created by simply chatting — so after a reload the panel found nothing
+     * to restore, came back empty, and the next message carried no prior turns at all: the
+     * assistant had lost the conversation.
+     */
+    public function test_a_conversation_started_by_chatting_is_remembered_for_a_refresh(): void
+    {
+        $html = $this->editorHtml();
+
+        // Written at creation, inside ensureConversation's own then().
+        $this->assertInlineScriptMatches(
+            $html,
+            "/conversationId = data && data\.id \? data\.id : null;\s*(\/\/[^\n]*\n\s*)*rememberConversation\(conversationId\);/",
+        );
+        // And a tab that remembers nothing (a new tab, or the editor reopened another day)
+        // continues this post's most recent thread instead of starting cold.
+        $this->assertInlineScriptContains($html, "api(convUrl + '?post_id=' + encodeURIComponent(pid)");
+        $this->assertInlineScriptContains($html, 'if (!latest || conversationId || thread.children.length) return;');
+    }
+
     /** Removed on request: the header subtitle and the whole suggestion block. */
     public function test_the_subtitle_and_suggestion_rows_are_gone(): void
     {
