@@ -150,11 +150,11 @@ class InspectorWiringTest extends TestCase
         );
     }
 
-    public function test_the_anchor_field_is_labelled_anchor_with_a_hint_and_a_duplicate_warning_slot(): void
+    public function test_the_anchor_field_is_labelled_anchor_with_a_duplicate_warning_slot(): void
     {
         // "Id" read as internal/technical and the field went undiscovered (it IS the HTML id,
-        // wired to render.template on every contract) — renamed to "Anchor" with a hint tying it
-        // to the behaviour authors actually look for: links and the table of contents.
+        // wired to render.template on every contract), so it reads "Anchor". The hint that once
+        // sat under it was removed at the owner's request.
         $html = $this->editorHtml();
 
         $anchorSection = substr($html, (int) strpos($html, 'hb-section__title">General<'));
@@ -163,7 +163,7 @@ class InspectorWiringTest extends TestCase
         $this->assertStringNotContainsString('>Id<', $anchorSection, 'the field must no longer read "Id"');
         $this->assertStringContainsString('>Anchor<', $anchorSection);
         $this->assertStringContainsString('placeholder="section-anchor"', $anchorSection);
-        $this->assertStringContainsString('jump to this anchor', $anchorSection);
+        $this->assertStringNotContainsString('jump to this anchor', $anchorSection);
 
         // Presentation-only duplicate-id slot: toggled by inspector.blade.php's anchor-specific
         // input listener (anchorIsDuplicate), never a second model write path.

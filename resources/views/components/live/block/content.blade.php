@@ -71,7 +71,6 @@
                 <span class="hb-ilbl">Anchor</span>
                 <x-heisenberg::ui.input value="" placeholder="section-anchor"
                     data-hb-control="anchor" data-hb-control-kind="attributes" data-hb-control-type="text" />
-                <span class="hb-ihint">Links and the table of contents jump to this anchor.</span>
                 <span class="hb-ihint hb-ihint--warning" data-hb-anchor-warning hidden>Another block already uses this anchor.</span>
             </div>
             <div class="hb-icol">
