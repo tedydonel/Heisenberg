@@ -316,17 +316,18 @@ class EditingLocaleTest extends TestCase
     // deciding replace/append/fold itself.
 
     /**
-     * A translation names its target (docs/content-translation.md §0): foldTranslation writes
-     * `<key>_<target>` directly — never through resolveAttrKey(), which answers "the locale on
-     * screen" and is how English used to land in French slots.
+     * A translation names its target (docs/content-translation.md §0.4) and is written as text:
+     * translateSegments writes `<key>_<target>` directly — never through resolveAttrKey(), which
+     * answers "the locale on screen" and is how English used to land in French slots.
      */
     public function test_a_translation_writes_its_explicit_target_and_never_the_locale_on_screen(): void
     {
         $html = $this->get('/editor')->assertOk()->getContent();
 
-        $this->assertInlineScriptContains($html, 'function foldTranslation(blocks, target)');
+        $this->assertInlineScriptContains($html, 'function translateSegments(target, segments)');
+        $this->assertInlineScriptContains($html, "model.attributes[key + '_' + target] = text;");
         $this->assertInlineScriptContains($html, "storedNode.attributes[key + '_' + target] = value;");
-        $this->assertInlineScriptContains($html, 'translateInto: function (target, blocks) { return foldTranslation(blocks, target); },');
+        $this->assertInlineScriptContains($html, 'translationSegments: translationSegments,');
         $this->assertInlineScriptContains($html, 'if (target === homeLocale) {');
         $this->assertStringNotContainsString('storedNode.attributes[resolveAttrKey(storedName, key)] = value;', $html);
     }

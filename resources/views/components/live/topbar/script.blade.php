@@ -153,6 +153,11 @@
             // A title for an EXPLICIT locale (the AI's translate_page): stored under that locale and
             // saved with the rest, and shown in the field only when it is the locale on screen — a
             // French title never lands in the English field just because English is being viewed.
+            getTitleFor: (locale) => {
+                hbSeed();
+                const current = (window.hbEditor && window.hbEditor.getEditingLocale) ? window.hbEditor.getEditingLocale() : '';
+                return locale === current ? hbReadTitle() : String(hbTitleByLocale[locale] || '');
+            },
             setTitleFor: (locale, title) => {
                 hbSeed();
                 if (typeof locale !== 'string' || !locale) return false;

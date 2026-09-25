@@ -313,33 +313,31 @@ class EditorPromptTest extends TestCase
         $system = $this->prompt()->system();
 
         $this->assertStringContainsString('LOCALES', $system);
-        $this->assertStringContainsString('TRANSLATING is always translate_page(target_locale, code, title, toc)', $system);
+        $this->assertStringContainsString('TRANSLATING: call translation_source', $system);
+        $this->assertStringContainsString('translate_page(target_locale, segments, title, toc) ONCE', $system);
         $this->assertStringContainsString('Never translate', $system);
         $this->assertStringNotContainsString('create_translation', $system, 'the editor translates with translate_page only');
     }
 
     /**
-     * Off the home locale the turn names both languages, says translate_page is how to translate
-     * (into any language, not the one on screen), and carries the SOURCE document to translate
-     * from — the page itself then shows the on-screen language.
+     * Off the home locale the turn names both languages and says how to translate — from
+     * translation_source into any language, never into the one on screen by default.
      */
-    public function test_user_prompt_names_the_languages_and_carries_the_source_off_the_home_locale(): void
+    public function test_user_prompt_names_the_languages_off_the_home_locale(): void
     {
         $turn = $this->prompt()->user('Translate this', [
             'document' => '[p]Bonjour[/p]',
-            'sourceDocument' => '[p]Hello[/p]',
             'editingLocale' => 'fr',
             'homeLocale' => 'en',
         ]);
 
         $this->assertStringContainsString("source language is 'en'; 'fr' is on screen", $turn);
-        $this->assertStringContainsString('call translate_page with target_locale set to the language asked for', $turn);
+        $this->assertStringContainsString('call translation_source, then translate_page ONCE', $turn);
         $this->assertStringContainsString("never changes the 'en' source", $turn);
-        $this->assertStringContainsString("The SOURCE document ('en')", $turn);
-        $this->assertStringContainsString('[p]Hello[/p]', $turn);
+        $this->assertStringContainsString("While 'fr' is on screen", $turn);
     }
 
-    /** On the home locale a translation is still a translate_page call — it never rewrites the source. */
+    /** On the home locale a translation is still translation_source + translate_page — never a rewrite. */
     public function test_user_prompt_on_the_home_locale_still_translates_with_translate_page(): void
     {
         $home = $this->prompt()->user('Translate this to French', [
@@ -348,9 +346,8 @@ class EditorPromptTest extends TestCase
             'homeLocale' => 'en',
         ]);
 
-        $this->assertStringContainsString('call translate_page', $home);
+        $this->assertStringContainsString('call translation_source, then translate_page', $home);
         $this->assertStringNotContainsString('While ', $home, 'no on-screen-locale editing rule on the home locale');
-        $this->assertStringNotContainsString('SOURCE document', $home);
 
         $noContext = $this->prompt()->user('Add a heading', ['document' => '[p]Hello[/p]']);
         $this->assertStringNotContainsString('translate_page', $noContext);

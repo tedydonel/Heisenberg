@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Heisenberg\Mcp\Tools;
 
+use Heisenberg\Ai\TranslationSource;
 use Heisenberg\Mcp\Support\ContentBlockPipeline;
 use Heisenberg\Mcp\Support\ToolSchema;
 use Heisenberg\Services\McpToolException;
@@ -65,29 +66,42 @@ final class CanvasTools implements McpToolProvider
                 ], ['title']),
             ],
 
-            // THE translation tool (docs/content-translation.md §0). The target locale is always
-            // explicit, so a translation lands in that locale's slots whichever locale is on screen,
-            // and never in the home text. Validated here, applied client-side like write_canvas.
+            // Translation is TEXT (docs/content-translation.md §0.4): translation_source hands out the
+            // page's translatable text keyed by where it lives, translate_page brings it back
+            // translated under the same ids. The model never re-types the page's markup, which is
+            // what made a translation slow, and the target locale is always named.
+            'translation_source' => [
+                'description' => 'The text to translate for the page open in the editor: `segments` maps an id to each '
+                    . 'piece of source text, plus the source `title` and the saved table of contents (`toc`, empty '
+                    . 'when the page has none). Call it first whenever you are asked to translate, then call '
+                    . 'translate_page ONCE with everything translated.',
+                'tier' => self::TIER_AUTHORS,
+                'surface' => self::SURFACE_EDITOR,
+                'inputSchema' => ToolSchema::schema([]),
+            ],
+
             'translate_page' => [
-                'description' => 'Translate the page open in the editor into target_locale. This is the ONLY way to '
-                    . 'translate: use it for every translation request, whatever locale is on screen. Everything '
-                    . 'you pass lands in target_locale only — the source text and every other locale are left '
-                    . 'untouched. `code` is the whole document translated: the SAME block sequence and structure '
-                    . 'as the page, only human-readable text translated (never ids, URLs, media or attribute '
-                    . 'names); a structural mismatch is refused with nothing applied. Also pass `title` (the '
-                    . 'translated page title) and, when the page has a table of contents, `toc` — a translation '
-                    . "is unfinished without them. target_locale must not be the post's home locale: that is the "
-                    . 'source text, edit it with write_canvas instead. Nothing is saved to the database — the user '
-                    . 'reviews and saves.',
+                'description' => 'Translate the page open in the editor into target_locale — the ONLY way to translate, '
+                    . 'whatever locale is on screen. Pass, in ONE call: `segments` (every id from translation_source, '
+                    . 'its text translated; keep inline HTML tags and line breaks), `title` (translated) and, only when '
+                    . 'translation_source returned any, `toc` (each anchor unchanged, its label translated). Everything '
+                    . 'lands in target_locale only — the source and every other locale are untouched. If something was '
+                    . 'left out, call again with ONLY what is missing; never resend what was already applied. '
+                    . "target_locale must not be the post's home locale: that is the source text. Nothing is saved to "
+                    . 'the database — the user reviews and saves.',
                 'tier' => self::TIER_AUTHORS,
                 'surface' => self::SURFACE_EDITOR,
                 'inputSchema' => ToolSchema::schema([
                     'target_locale' => ['type' => 'string', 'description' => 'The language to translate INTO, e.g. "fr". Not the home locale.'],
-                    'code' => ['type' => 'string', 'description' => 'The whole document translated, as Heisenberg shortcode: same blocks and structure, text translated.'],
+                    'segments' => [
+                        'type' => 'object',
+                        'description' => 'id (from translation_source) => the translated text.',
+                        'additionalProperties' => ['type' => 'string'],
+                    ],
                     'title' => ['type' => 'string', 'description' => 'The page title translated into target_locale, plain text.'],
                     'toc' => [
                         'type' => 'array',
-                        'description' => 'The table of contents translated: one {anchor (unchanged), label (translated)} per entry.',
+                        'description' => 'The table of contents translated: one {anchor (unchanged), label (translated)} per entry translation_source returned.',
                         'items' => [
                             'type' => 'object',
                             'properties' => [
@@ -104,7 +118,7 @@ final class CanvasTools implements McpToolProvider
 
     public function handles(string $tool): bool
     {
-        return in_array($tool, ['write_canvas', 'set_page_title', 'translate_page'], true);
+        return in_array($tool, ['write_canvas', 'set_page_title', 'translation_source', 'translate_page'], true);
     }
 
     public function call(string $tool, array $arguments, string $surface): mixed
@@ -112,6 +126,7 @@ final class CanvasTools implements McpToolProvider
         return match ($tool) {
             'write_canvas' => $this->writeCanvas($arguments),
             'set_page_title' => $this->setPageTitle($arguments),
+            'translation_source' => $this->translationSource(),
             'translate_page' => $this->translatePage($arguments),
             default => throw new \LogicException("CanvasTools does not handle '{$tool}'."),
         };
@@ -134,9 +149,26 @@ final class CanvasTools implements McpToolProvider
     }
 
     /**
+     * The open page's translatable text for this turn ({@see TranslationSource}, bound per request
+     * by the AI controller from the panel's context). Read-only; empty outside an editor turn.
+     *
+     * @return array{segments: array<string, string>|\stdClass, title: string, toc: list<array{anchor: string, label: string}>}
+     */
+    private function translationSource(): array
+    {
+        $source = app()->bound(TranslationSource::class) ? app(TranslationSource::class) : new TranslationSource();
+
+        return [
+            'segments' => $source->segments === [] ? new \stdClass() : $source->segments,
+            'title' => $source->title,
+            'toc' => $source->toc,
+        ];
+    }
+
+    /**
      * Validated here, applied by the panel into target_locale's slots. What cannot be checked
-     * here — the page's structure and its home locale live in the browser — the editor checks
-     * before applying anything (block-runtime's foldTranslation()).
+     * here — the page and its home locale live in the browser — the editor checks before writing
+     * anything (block-runtime's translateSegments()).
      *
      * @param array<string, mixed> $args
      */
@@ -147,16 +179,23 @@ final class CanvasTools implements McpToolProvider
             throw new McpToolException('target_locale must be one of: ' . implode(', ', LocaleConfig::locales()) . " (got '{$target}').");
         }
 
-        $code = trim((string) ($args['code'] ?? ''));
-        $title = trim((string) ($args['title'] ?? ''));
-        $toc = $args['toc'] ?? null;
-        if ($code === '' && $title === '' && ! is_array($toc)) {
-            throw new McpToolException('Pass at least one of code, title, toc — there is nothing to translate.');
+        $segments = $args['segments'] ?? [];
+        if (! is_array($segments)) {
+            throw new McpToolException('segments must be an object of id => translated text.');
+        }
+        foreach ($segments as $id => $text) {
+            if (! is_string($id) || preg_match('/^hb\d+\.[A-Za-z][A-Za-z0-9_]*$/', $id) !== 1) {
+                throw new McpToolException("segments: '{$id}' is not an id from translation_source.");
+            }
+            if (! is_string($text)) {
+                throw new McpToolException("segments.{$id} must be the translated text.");
+            }
         }
 
-        $blocks = $code === '' ? [] : $this->blocks->contentBlocks(['code' => $code]);
-        if ($code !== '' && $blocks === []) {
-            throw new McpToolException('The code contained no blocks — supply the whole document, translated.');
+        $title = trim((string) ($args['title'] ?? ''));
+        $toc = $args['toc'] ?? null;
+        if ($segments === [] && $title === '' && ! is_array($toc)) {
+            throw new McpToolException('Pass at least one of segments, title, toc — there is nothing to translate.');
         }
         if (mb_strlen($title) > 200) {
             throw new McpToolException('title must be 200 characters or fewer.');
@@ -169,7 +208,7 @@ final class CanvasTools implements McpToolProvider
             }
         }
 
-        return ['applied' => true, 'target_locale' => $target, 'blocks' => count($blocks), 'title' => $title !== '', 'toc' => is_array($toc) ? count($toc) : 0];
+        return ['applied' => true, 'target_locale' => $target, 'segments' => count($segments), 'title' => $title !== '', 'toc' => is_array($toc) ? count($toc) : 0];
     }
 
     /** @param array<string, mixed> $args */

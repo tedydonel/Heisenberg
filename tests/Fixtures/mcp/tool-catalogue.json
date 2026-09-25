@@ -599,8 +599,17 @@
                 }
             },
             {
+                "name": "translation_source",
+                "description": "The text to translate for the page open in the editor: `segments` maps an id to each piece of source text, plus the source `title` and the saved table of contents (`toc`, empty when the page has none). Call it first whenever you are asked to translate, then call translate_page ONCE with everything translated.",
+                "inputSchema": {
+                    "type": "object",
+                    "properties": {},
+                    "required": []
+                }
+            },
+            {
                 "name": "translate_page",
-                "description": "Translate the page open in the editor into target_locale. This is the ONLY way to translate: use it for every translation request, whatever locale is on screen. Everything you pass lands in target_locale only — the source text and every other locale are left untouched. `code` is the whole document translated: the SAME block sequence and structure as the page, only human-readable text translated (never ids, URLs, media or attribute names); a structural mismatch is refused with nothing applied. Also pass `title` (the translated page title) and, when the page has a table of contents, `toc` — a translation is unfinished without them. target_locale must not be the post's home locale: that is the source text, edit it with write_canvas instead. Nothing is saved to the database — the user reviews and saves.",
+                "description": "Translate the page open in the editor into target_locale — the ONLY way to translate, whatever locale is on screen. Pass, in ONE call: `segments` (every id from translation_source, its text translated; keep inline HTML tags and line breaks), `title` (translated) and, only when translation_source returned any, `toc` (each anchor unchanged, its label translated). Everything lands in target_locale only — the source and every other locale are untouched. If something was left out, call again with ONLY what is missing; never resend what was already applied. target_locale must not be the post's home locale: that is the source text. Nothing is saved to the database — the user reviews and saves.",
                 "inputSchema": {
                     "type": "object",
                     "properties": {
@@ -608,9 +617,12 @@
                             "type": "string",
                             "description": "The language to translate INTO, e.g. \"fr\". Not the home locale."
                         },
-                        "code": {
-                            "type": "string",
-                            "description": "The whole document translated, as Heisenberg shortcode: same blocks and structure, text translated."
+                        "segments": {
+                            "type": "object",
+                            "description": "id (from translation_source) => the translated text.",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
                         },
                         "title": {
                             "type": "string",
@@ -618,7 +630,7 @@
                         },
                         "toc": {
                             "type": "array",
-                            "description": "The table of contents translated: one {anchor (unchanged), label (translated)} per entry.",
+                            "description": "The table of contents translated: one {anchor (unchanged), label (translated)} per entry translation_source returned.",
                             "items": {
                                 "type": "object",
                                 "properties": {
@@ -2121,8 +2133,17 @@
                 }
             },
             {
+                "name": "translation_source",
+                "description": "The text to translate for the page open in the editor: `segments` maps an id to each piece of source text, plus the source `title` and the saved table of contents (`toc`, empty when the page has none). Call it first whenever you are asked to translate, then call translate_page ONCE with everything translated.",
+                "inputSchema": {
+                    "type": "object",
+                    "properties": {},
+                    "required": []
+                }
+            },
+            {
                 "name": "translate_page",
-                "description": "Translate the page open in the editor into target_locale. This is the ONLY way to translate: use it for every translation request, whatever locale is on screen. Everything you pass lands in target_locale only — the source text and every other locale are left untouched. `code` is the whole document translated: the SAME block sequence and structure as the page, only human-readable text translated (never ids, URLs, media or attribute names); a structural mismatch is refused with nothing applied. Also pass `title` (the translated page title) and, when the page has a table of contents, `toc` — a translation is unfinished without them. target_locale must not be the post's home locale: that is the source text, edit it with write_canvas instead. Nothing is saved to the database — the user reviews and saves.",
+                "description": "Translate the page open in the editor into target_locale — the ONLY way to translate, whatever locale is on screen. Pass, in ONE call: `segments` (every id from translation_source, its text translated; keep inline HTML tags and line breaks), `title` (translated) and, only when translation_source returned any, `toc` (each anchor unchanged, its label translated). Everything lands in target_locale only — the source and every other locale are untouched. If something was left out, call again with ONLY what is missing; never resend what was already applied. target_locale must not be the post's home locale: that is the source text. Nothing is saved to the database — the user reviews and saves.",
                 "inputSchema": {
                     "type": "object",
                     "properties": {
@@ -2130,9 +2151,12 @@
                             "type": "string",
                             "description": "The language to translate INTO, e.g. \"fr\". Not the home locale."
                         },
-                        "code": {
-                            "type": "string",
-                            "description": "The whole document translated, as Heisenberg shortcode: same blocks and structure, text translated."
+                        "segments": {
+                            "type": "object",
+                            "description": "id (from translation_source) => the translated text.",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
                         },
                         "title": {
                             "type": "string",
@@ -2140,7 +2164,7 @@
                         },
                         "toc": {
                             "type": "array",
-                            "description": "The table of contents translated: one {anchor (unchanged), label (translated)} per entry.",
+                            "description": "The table of contents translated: one {anchor (unchanged), label (translated)} per entry translation_source returned.",
                             "items": {
                                 "type": "object",
                                 "properties": {
@@ -3559,8 +3583,13 @@
                 "tier": "authors"
             },
             {
+                "name": "translation_source",
+                "description": "The text to translate for the page open in the editor: `segments` maps an id to each piece of source text, plus the source `title` and the saved table of contents (`toc`, empty when the page has none). Call it first whenever you are asked to translate, then call translate_page ONCE with everything translated.",
+                "tier": "authors"
+            },
+            {
                 "name": "translate_page",
-                "description": "Translate the page open in the editor into target_locale. This is the ONLY way to translate: use it for every translation request, whatever locale is on screen. Everything you pass lands in target_locale only — the source text and every other locale are left untouched. `code` is the whole document translated: the SAME block sequence and structure as the page, only human-readable text translated (never ids, URLs, media or attribute names); a structural mismatch is refused with nothing applied. Also pass `title` (the translated page title) and, when the page has a table of contents, `toc` — a translation is unfinished without them. target_locale must not be the post's home locale: that is the source text, edit it with write_canvas instead. Nothing is saved to the database — the user reviews and saves.",
+                "description": "Translate the page open in the editor into target_locale — the ONLY way to translate, whatever locale is on screen. Pass, in ONE call: `segments` (every id from translation_source, its text translated; keep inline HTML tags and line breaks), `title` (translated) and, only when translation_source returned any, `toc` (each anchor unchanged, its label translated). Everything lands in target_locale only — the source and every other locale are untouched. If something was left out, call again with ONLY what is missing; never resend what was already applied. target_locale must not be the post's home locale: that is the source text. Nothing is saved to the database — the user reviews and saves.",
                 "tier": "authors"
             },
             {

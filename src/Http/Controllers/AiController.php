@@ -14,6 +14,7 @@ use Heisenberg\Ai\AiResponse;
 use Heisenberg\Ai\AiStreamEvent;
 use Heisenberg\Ai\EditorPrompt;
 use Heisenberg\Ai\ReasoningFilter;
+use Heisenberg\Ai\TranslationSource;
 use Heisenberg\Contracts\AiCredentialStore;
 use Heisenberg\Contracts\AiProvider;
 use Heisenberg\Contracts\RoleGate;
@@ -516,6 +517,9 @@ class AiController
      */
     private function withMemory(Request $request, array $context): array
     {
+        // What translation_source hands the model this turn (the page lives in the browser).
+        app()->instance(TranslationSource::class, TranslationSource::fromContext($context));
+
         $context['pastConversations'] = $this->memory->digest(
             $request->user()?->getAuthIdentifier(),
             $request->input('conversation_id'),

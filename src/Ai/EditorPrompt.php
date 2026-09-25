@@ -127,8 +127,8 @@ class EditorPrompt
         if ($homeLocale !== '') {
             $screen = $editingLocale !== '' ? $editingLocale : $homeLocale;
             $languages = "Languages: this post's source language is '{$homeLocale}'; '{$screen}' is on screen. "
-                . 'To translate — whatever is on screen — call translate_page with target_locale set to the '
-                . "language asked for: it writes only that language and never changes the '{$homeLocale}' source. "
+                . 'To translate — whatever is on screen — call translation_source, then translate_page ONCE with '
+                . "target_locale set to the language asked for: it writes only that language and never changes the '{$homeLocale}' source. "
                 . 'Never translate with write_canvas or set_page_title; they write the language on screen. '
                 . "A translation into '{$homeLocale}' is not needed: that text is the source.";
             if ($screen !== $homeLocale) {
@@ -136,16 +136,6 @@ class EditorPrompt
                     . "text for the same blocks (mode=\"replace\" only; blocks are added or removed in '{$homeLocale}').";
             }
             $parts[] = $languages;
-
-            $source = trim((string) ($context['sourceDocument'] ?? ''));
-            if ($source !== '' && $screen !== $homeLocale) {
-                $parts[] = "The SOURCE document ('{$homeLocale}') — translate from this, not from the page above:\n\n{$source}";
-            }
-        }
-
-        $toc = $this->tocContext($context, $editingLocale, $homeLocale);
-        if ($toc !== '') {
-            $parts[] = $toc;
         }
 
         $selection = trim((string) ($context['selection'] ?? ''));
@@ -169,43 +159,6 @@ class EditorPrompt
         }
 
         return implode("\n\n", $parts);
-    }
-
-    /**
-     * The post's saved table of contents, sent by the panel (`toc`: [{anchor, label, labels}],
-     * `postId`). A translation must include it, and it lives outside the canvas document, so the
-     * model is told the entries to pass as translate_page's `toc`.
-     *
-     * @param array<string, mixed> $context
-     */
-    private function tocContext(array $context, string $editingLocale, string $homeLocale): string
-    {
-        $postId = trim((string) ($context['postId'] ?? ''));
-        $entries = is_array($context['toc'] ?? null) ? $context['toc'] : [];
-        if ($postId === '' || $entries === []) {
-            return '';
-        }
-
-        $home = $homeLocale !== '' ? $homeLocale : $editingLocale;
-        $lines = [];
-        foreach (array_slice($entries, 0, 50) as $entry) {
-            if (! is_array($entry)) {
-                continue;
-            }
-            $anchor = trim((string) ($entry['anchor'] ?? ''));
-            $label = trim((string) (($entry['labels'][$home] ?? null) ?: ($entry['label'] ?? '')));
-            if ($anchor !== '' && $label !== '') {
-                $lines[] = "- {$anchor}: {$label}";
-            }
-        }
-        if ($lines === []) {
-            return '';
-        }
-
-        return "This post has a table of contents — anchor: label in '{$home}':\n"
-            . implode("\n", $lines)
-            . "\nIt is part of any translation: pass translate_page's toc=[{anchor, label}] with every label "
-            . 'translated and each anchor copied unchanged.';
     }
 
     /** §1 — what this is, where it lives, what it can do here. */
@@ -248,7 +201,7 @@ class EditorPrompt
         Give every h2/h3 an `anchor` (slug of its text, e.g. anchor=getting-started). The table
         of contents links to these; a heading with no anchor cannot be linked to.
 
-        Other tools: set_page_title, translate_page, taxonomy management, get_post/media.
+        Other tools: set_page_title, translation_source + translate_page, taxonomy management, get_post/media.
         Tool argument shapes arrive via the tool-calling channel, not here.
         TXT;
     }
@@ -633,11 +586,11 @@ class EditorPrompt
     {
         return <<<'TXT'
         LOCALES — one post, several languages on the SAME row; each language's text has its own slot.
-        TRANSLATING is always translate_page(target_locale, code, title, toc): code is the whole SOURCE
-        document with only the text translated (same blocks, ids, urls). It lands only in
-        target_locale, whatever language is on screen, and never touches the source. Never translate
-        with write_canvas or set_page_title — they write the language on screen. A translation is
-        unfinished without the title and, when the page has one, the table of contents.
+        TRANSLATING: call translation_source (the page's text as id => text, the title, the saved
+        table of contents), then translate_page(target_locale, segments, title, toc) ONCE with every
+        id's text translated. It lands only in target_locale, whatever language is on screen, and
+        never touches the source. Never translate with write_canvas or set_page_title — they write
+        the language on screen. A translation is unfinished without the title and any toc entries.
         TXT;
     }
 

@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Heisenberg\Tests\Translation;
 
+use Heisenberg\Ai\TranslationSource;
 use Heisenberg\Models\Post;
 use Heisenberg\Services\BlockRegistryService;
 use Heisenberg\Services\McpToolRegistry;
@@ -102,15 +103,38 @@ class TranslationRoutingTest extends TestCase
         $this->assertArrayNotHasKey('content_fr', $blocks[1]['attributes'], 'rewritten text is untranslated again');
     }
 
-    public function test_translate_page_requires_a_real_target_and_something_to_translate(): void
+    public function test_translate_page_takes_text_segments_for_a_real_target(): void
     {
         $call = fn (array $args) => app(McpToolRegistry::class)->call('translate_page', $args, McpToolRegistry::TIER_AUTHORS, McpToolRegistry::SURFACE_EDITOR);
 
         $this->assertTrue((bool) ($call(['target_locale' => 'de', 'title' => 'x'])['isError'] ?? false), 'an unknown locale is refused');
         $this->assertTrue((bool) ($call(['target_locale' => 'fr'])['isError'] ?? false), 'nothing to translate is refused');
+        $this->assertTrue((bool) ($call(['target_locale' => 'fr', 'segments' => ['not-an-id' => 'x']])['isError'] ?? false), 'only translation_source ids');
 
-        $ok = $call(['target_locale' => 'fr', 'code' => '[p]Bonjour[/p]', 'title' => 'Guide']);
+        $ok = $call(['target_locale' => 'fr', 'segments' => ['hb1.content' => 'Bonjour'], 'title' => 'Guide']);
         $this->assertFalse((bool) ($ok['isError'] ?? false), (string) ($ok['content'][0]['text'] ?? ''));
-        $this->assertSame('fr', json_decode((string) $ok['content'][0]['text'], true)['target_locale']);
+        $this->assertSame(1, json_decode((string) $ok['content'][0]['text'], true)['segments']);
+    }
+
+    /**
+     * The model reads the page's text — not its markup — from translation_source, bound per turn
+     * from the panel's context, and client input is bounded on the way in.
+     */
+    public function test_translation_source_returns_the_turns_text_by_id(): void
+    {
+        app()->instance(TranslationSource::class, TranslationSource::fromContext([
+            'homeLocale' => 'en',
+            'translationSource' => [
+                'segments' => ['hb1.content' => 'Hello', 'hb2.caption' => 'A cat', 'bogus id' => 'dropped', 'hb3.content' => '   '],
+                'title' => 'Guide',
+            ],
+        ]));
+
+        $result = app(McpToolRegistry::class)->call('translation_source', [], McpToolRegistry::TIER_AUTHORS, McpToolRegistry::SURFACE_EDITOR);
+        $data = json_decode((string) $result['content'][0]['text'], true);
+
+        $this->assertSame(['hb1.content' => 'Hello', 'hb2.caption' => 'A cat'], $data['segments']);
+        $this->assertSame('Guide', $data['title']);
+        $this->assertSame([], $data['toc']);
     }
 }

@@ -254,19 +254,20 @@ Two design flaws caused translations to land in the wrong language and to disapp
 
 The replacement:
 
-- **`translate_page(target_locale, code, title, toc)` is the only translation tool** in the editor.
-  It is client-applied like `write_canvas`: validated server-side (`CanvasTools`), then the panel
-  writes the page into `<key>_<target>` (`hbEditor.translateInto()` → `foldTranslation(blocks,
-  target)`), the title into that locale (`hbTopbarState.setTitleFor()`), and the TOC labels through
-  the TOC endpoint with `locale`. The target is always named, so the result never depends on the
-  locale on screen; the home locale is refused as a target (its text is the source).
+- **Translation is text, through one tool.** `translation_source` hands the model the open page's
+  translatable text as `{ "<blockId>.<key>": text }` (plus the source title and the saved table of
+  contents), bound per request from the panel's context (`TranslationSource`); the model answers
+  with `translate_page(target_locale, segments, title, toc)` in ONE call. The panel writes each
+  segment into `<key>_<target>` (`hbEditor.translateSegments()`), the title into that locale
+  (`hbTopbarState.setTitleFor()`) and the TOC labels through the TOC endpoint with `locale`. The
+  target is always named, so the result never depends on the locale on screen; the home locale is
+  refused as a target (its text is the source). The first cut of this sent the whole translated
+  document as shortcode: the model re-typed every tag and style of the page (minutes for a long
+  post, and it sometimes did it twice to add the title), so it takes text only.
 - **`write_canvas` and `set_page_title` write the locale on screen** and are never used to
   translate. Off the home locale that means editing that locale's text for the same blocks.
 - **`create_translation` is external-only** (MCP clients). The in-editor assistant never writes
   translations to the database behind the open document.
-- **A translation is made from the source.** Off the home locale the panel also sends
-  `sourceDocument` (the code view serialized from the bare, home text), and the prompt tells the
-  model to translate from it.
 - **Rebuilds keep translations** (`carryTranslations()` in the editor, `LocalizedAttributes::
   carryTranslations()` on the server — lockstep). Each `_<locale>` variant is carried to the block
   that still has the same home text (matched by name and text first, then by position per

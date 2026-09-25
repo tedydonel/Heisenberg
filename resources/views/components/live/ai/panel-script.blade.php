@@ -636,14 +636,17 @@
                     if (title) base.title = (title.value || title.textContent || '').trim();
                     if (window.hbEditor && window.hbEditor.getEditingLocale) base.editingLocale = window.hbEditor.getEditingLocale();
                     if (window.hbEditor && window.hbEditor.getHomeLocale) base.homeLocale = window.hbEditor.getHomeLocale();
-                    // Off the home locale, `document` shows the locale on screen; a translation must be
-                    // made from the SOURCE text, so that goes along as well.
-                    if (base.editingLocale && base.homeLocale && base.editingLocale !== base.homeLocale && window.hbCodeView && window.hbCodeView.serialize) {
-                        try { base.sourceDocument = window.hbCodeView.serialize({ source: true }); } catch (e) { }
+                    // What a translation is made from, as TEXT keyed by where it lives — the model reads
+                    // it through the translation_source tool, so it costs nothing on other turns.
+                    if (window.hbEditor && window.hbEditor.translationSegments) {
+                        const source = { segments: window.hbEditor.translationSegments() };
+                        if (window.hbTopbarState && base.homeLocale) source.title = window.hbTopbarState.getTitleFor(base.homeLocale);
+                        base.translationSource = source;
                     }
                     base.documentType = root.dataset.documentType || document.querySelector('[data-hb-canvas]')?.dataset.documentType || 'post';
                     // The saved table of contents lives outside the canvas document, so a translation
-                    // would miss it; EditorPrompt::tocContext() turns these into instructions.
+                    // would miss it; translation_source hands it to the model (TranslationSource).
+                    // The post id also orders the assistant's memory (this post's chats first).
                     if (postId()) base.postId = postId();
                     const tocOpener = document.querySelector('[data-hb-toc-open]');
                     if (tocOpener) {
@@ -767,20 +770,17 @@
                             addNote(msg('msgTranslateHome').replace(':locale', label), true);
                             return;
                         }
-                        const code = String(args.code || '').trim();
-                        if (code && window.hbCodeView) {
-                            const parsed = window.hbCodeView.parse(code);
-                            const result = parsed && parsed.blocks.length
-                                ? window.hbEditor.translateInto(target, parsed.blocks)
-                                : { ok: false, error: msg('msgTranslateMismatch') };
+                        const segments = args.segments && typeof args.segments === 'object' ? args.segments : null;
+                        if (segments && Object.keys(segments).length) {
+                            const result = window.hbEditor.translateSegments(target, segments);
                             if (!result.ok) {
                                 lastRun.applied = false;
-                                addNote(result.error || msg('msgTranslateMismatch'), true);
-                                return; // a refused page translation applies nothing else either
+                                addNote(result.error, true);
+                                return; // a refused translation applies nothing else either
                             }
                             toolBuilt = true;
-                            lastRun.applied = true;
-                            note(msg('msgTranslatedInto').replace(':count', String(result.blocks)).replace(':locale', label));
+                            lastRun.applied = result.applied > 0;
+                            note(msg('msgTranslatedInto').replace(':count', String(result.applied)).replace(':locale', label));
                         }
                         const title = String(args.title || '').trim();
                         if (title && window.hbTopbarState && window.hbTopbarState.setTitleFor(target, title)) {

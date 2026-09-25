@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace Heisenberg\Tests\Translation;
 
-use Heisenberg\Ai\EditorPrompt;
+use Heisenberg\Ai\TranslationSource;
 use Heisenberg\Models\Post;
 use Heisenberg\Models\TocEntry;
 use Heisenberg\Services\McpToolRegistry;
@@ -203,26 +203,21 @@ class TocTranslationTest extends TestCase
         $this->assertSame([null, null], $post->tocEntries()->pluck('label_fr')->all());
     }
 
-    /** The in-editor assistant is told the TOC is part of the translation, with the entries to translate. */
-    public function test_the_ai_turn_carries_the_toc_and_how_to_translate_it(): void
+    /** The saved TOC reaches the model through translation_source, in the home locale's labels. */
+    public function test_translation_source_hands_the_model_the_saved_toc(): void
     {
-        $context = [
-            'postId' => '42',
-            'editingLocale' => 'fr',
+        $source = TranslationSource::fromContext([
             'homeLocale' => 'en',
             'toc' => [
-                ['anchor' => 'intro', 'label' => 'Introduction', 'labels' => ['en' => 'Introduction', 'fr' => null]],
+                ['anchor' => 'intro', 'label' => 'Introduction', 'labels' => ['en' => 'Introduction', 'fr' => 'Présentation']],
                 ['anchor' => 'setup', 'label' => 'Setup', 'labels' => ['en' => 'Setup', 'fr' => null]],
             ],
-        ];
+        ]);
 
-        $turn = app(EditorPrompt::class)->user('Translate this page to French', $context);
-
-        $this->assertStringContainsString("- intro: Introduction\n- setup: Setup", $turn);
-        $this->assertStringContainsString("pass translate_page's toc=[{anchor, label}]", $turn);
-
-        unset($context['toc']);
-        $this->assertStringNotContainsString('table of contents', app(EditorPrompt::class)->user('Translate', $context));
+        $this->assertSame([
+            ['anchor' => 'intro', 'label' => 'Introduction'],
+            ['anchor' => 'setup', 'label' => 'Setup'],
+        ], $source->toc);
     }
 
     public function test_label_for_falls_back_to_the_home_label(): void

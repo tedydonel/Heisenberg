@@ -242,14 +242,7 @@
                 else out.push([path, value]);
             }
         };
-        // `source`: read the HOME text (the bare attributes) instead of the locale on screen — what
-        // a translation is made from, whichever locale the author is viewing.
-        const readFor = (model, key, source) => {
-            if (!model.attributes) return undefined;
-            if (source || !(window.hbEditor && window.hbEditor.readAttr)) return model.attributes[key];
-            return window.hbEditor.readAttr(model, key);
-        };
-        const serializeModel = (model, depth, source) => {
+        const serializeModel = (model, depth) => {
             const contract = registry()[model.name];
             if (!contract) return '';
             const t = tagFor(slugOf(model.name), model);
@@ -261,7 +254,7 @@
             for (const key in defs) {
                 if (!Object.prototype.hasOwnProperty.call(defs, key) || key === rich || t.skip.indexOf(key) !== -1) continue;
                 const def = defs[key] || {};
-                const value = readFor(model, key, source);
+                const value = model.attributes ? (window.hbEditor && window.hbEditor.readAttr ? window.hbEditor.readAttr(model, key) : model.attributes[key]) : undefined;
                 if (value === undefined || value === null) continue;
                 const dflt = def.default === undefined || def.default === null ? '' : def.default;
                 if (String(value) === String(dflt)) continue;
@@ -317,19 +310,18 @@
                 : inline;
             const inner = Array.isArray(model.innerBlocks) ? model.innerBlocks : [];
             if (inner.length) {
-                const kids = inner.map((child) => serializeModel(child, depth + 1, source)).filter(Boolean).join('\n');
+                const kids = inner.map((child) => serializeModel(child, depth + 1)).filter(Boolean).join('\n');
                 return open + ']\n' + kids + '\n' + indent + '[/' + slug + ']';
             }
-            const richVal = rich ? readFor(model, rich, source) : null;
+            const richVal = rich && model.attributes ? (window.hbEditor && window.hbEditor.readAttr ? window.hbEditor.readAttr(model, rich) : model.attributes[rich]) : null;
             const body = rich ? String(richVal != null ? richVal : '') : '';
             if (!body.trim()) return open + (rich ? '][/' + slug + ']' : (wide ? '/]' : ' /]'));
             const bodyLines = formatBody(body).map((line) => indent + '  ' + line).join('\n');
             return open + ']\n' + bodyLines + '\n' + indent + '[/' + slug + ']';
         };
-        const serializeDoc = (opts) => {
-            const source = !!(opts && opts.source);
+        const serializeDoc = () => {
             const blocks = (window.hbEditor && window.hbEditor.getDoc().blocks) || [];
-            const out = blocks.map((model) => serializeModel(model, 0, source)).filter(Boolean).join('\n\n');
+            const out = blocks.map((model) => serializeModel(model, 0)).filter(Boolean).join('\n\n');
             return out ? out + '\n' : '';
         };
 

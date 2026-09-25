@@ -95,7 +95,7 @@ class McpToolRegistry
      */
     private const TOOL_ORDER = [
         'list_blocks', 'describe_block', 'list_email_variables', 'search_icons', 'search_web',
-        'write_canvas', 'set_page_title', 'translate_page',
+        'write_canvas', 'set_page_title', 'translation_source', 'translate_page',
         'list_posts', 'get_post', 'create_post', 'update_post', 'render_preview',
         'create_translation', 'set_post_status',
         'list_categories', 'list_tags', 'create_category', 'update_category',

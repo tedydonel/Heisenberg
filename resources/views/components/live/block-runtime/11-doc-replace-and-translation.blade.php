@@ -4,9 +4,10 @@
     Owns: normalizeModel() (validates+backfills a raw block object — from a save payload, a
     pattern, or a duplicate — against the current REGISTRY, assigning a fresh id if needed);
     renderDoc()/replaceDoc() (wipe and redraw the whole canvas from a models array, optionally
-    resetting undo history as the new baseline); the translation pipeline — foldTranslation()
-    writes a translation into an EXPLICITLY named target locale (never the home text, never the
-    locale on screen), carryTranslations() keeps translations across a rebuild from code; and
+    resetting undo history as the new baseline); the translation pipeline — translationSegments()
+    hands out the text to translate, translateSegments() and foldTranslation() write into an
+    EXPLICITLY named target locale (never the home text, never the locale on screen), and
+    carryTranslations() keeps translations across a rebuild from code; and
     applyCanvasWrite(), the single entry point for code-authored content (the code view and the
     AI's write_canvas).
 
@@ -19,7 +20,7 @@
 
     Defines for later sections: normalizeModel() (also used by 08-tree-ops's duplicateBlock() and
     insertPattern()), renderDoc(), replaceDoc(), foldTranslation(), applyCanvasWrite() — the last
-    three are exposed on window.hbEditor in 13-api (foldTranslation as translateInto).
+    three are exposed on window.hbEditor in 13-api, with translationSegments/translateSegments.
 --}}
     function docBlockIds() {
         const ids = new Set();
@@ -98,9 +99,10 @@
 
     // ── Translations (docs/content-translation.md §0) ────────────────────────────────────────
     // A translation always names its TARGET locale and lands only in `<key>_<target>`: never in
-    // the bare (home) text, never in whatever locale the author happens to be viewing. There is
-    // exactly one way text gets into another locale — foldTranslation() below — and the AI's
-    // translate_page tool, the in-locale write_canvas and nothing else go through it.
+    // the bare (home) text, never in whatever locale the author happens to be viewing. The AI's
+    // translate_page writes through translateSegments(); editing another locale's text as code
+    // (the code view or write_canvas while that locale is on screen) folds through
+    // foldTranslation() into that named locale.
 
     function foldHasContent(value) {
         if (typeof value === 'string') return value.trim() !== '';
@@ -174,6 +176,61 @@
         doc.blocks.forEach(function (m) { reRenderBlock(m.id); });
         document.dispatchEvent(new CustomEvent('hb:blocks-changed'));
         return { ok: true, locale: target, blocks: doc.blocks.length };
+    }
+
+    /**
+     * The text a translation is made from: every translatable attribute that has home text, as
+     * `{ "<blockId>.<key>": text }`. A translation comes back keyed the same way, so the model only
+     * ever writes TEXT — never the page's markup, styles or structure, which is what made a
+     * translation slow (the whole document re-typed) and fragile (a structure it could get wrong).
+     */
+    function translationSegments() {
+        const out = {};
+        (function walk(list) {
+            (list || []).forEach(function (node) {
+                const attrs = node.attributes || {};
+                translatableKeys(node.name).forEach(function (key) {
+                    if (foldHasContent(attrs[key]) && typeof attrs[key] === 'string') out[node.id + '.' + key] = attrs[key];
+                });
+                walk(node.innerBlocks);
+            });
+        })(doc.blocks);
+        return out;
+    }
+
+    /**
+     * Write a translation into `target`'s slots from `{ "<blockId>.<key>": text }` — the shape
+     * translationSegments() hands out. Only `<key>_<target>` is ever written: never the home text,
+     * never the locale on screen. Refused (nothing written) for a locale that is not a content
+     * locale or is the home locale; ids that no longer match a translatable attribute are skipped
+     * and reported.
+     */
+    function translateSegments(target, segments) {
+        if (CONTENT_LOCALES.indexOf(target) === -1) {
+            return { ok: false, error: "'" + target + "' is not one of this site's languages (" + CONTENT_LOCALES.join(', ') + ').' };
+        }
+        if (target === homeLocale) {
+            return { ok: false, error: "'" + target + "' is this post's own language: its text is the source, edit it directly instead of translating into it." };
+        }
+        let applied = 0;
+        const unknown = [];
+        Object.keys(segments || {}).forEach(function (id) {
+            const dot = id.lastIndexOf('.');
+            const model = dot > 0 ? findModel(id.slice(0, dot)) : null;
+            const key = dot > 0 ? id.slice(dot + 1) : '';
+            const text = segments[id];
+            if (!model || !isTranslatableAttr(model.name, key) || typeof text !== 'string' || text.trim() === '') {
+                unknown.push(id);
+                return;
+            }
+            model.attributes[key + '_' + target] = text;
+            applied++;
+        });
+        if (applied) {
+            doc.blocks.forEach(function (m) { reRenderBlock(m.id); });
+            document.dispatchEvent(new CustomEvent('hb:blocks-changed'));
+        }
+        return { ok: true, locale: target, applied: applied, unknown: unknown };
     }
 
     /**
