@@ -515,7 +515,7 @@
                                                         {
                                                             "tag": "ul",
                                                             "attributes": {
-                                                                "style": "margin:0; padding:0 0 0 20px; font-family: var(--hb-list-ff, Arial, Helvetica, sans-serif); font-weight: var(--hb-list-fw, 400); font-size: var(--hb-list-fs, 15px); line-height: var(--hb-list-lh, 1.6); letter-spacing: var(--hb-letter-spacing, normal); color: var(--hb-list-color, #0a0a0a);"
+                                                                "style": "margin:0; padding:0 0 0 20px; font-family: var(--hb-list-ff, var(--hb-t-font-base, Arial, Helvetica, sans-serif)); font-weight: var(--hb-list-fw, 400); font-size: var(--hb-list-fs, 15px); line-height: var(--hb-list-lh, 1.6); letter-spacing: var(--hb-letter-spacing, normal); color: var(--hb-list-color, #0a0a0a);"
                                                             },
                                                             "children": [
                                                                 {

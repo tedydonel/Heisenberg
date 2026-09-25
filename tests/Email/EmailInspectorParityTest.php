@@ -8,6 +8,7 @@ use Heisenberg\Models\Block;
 use Heisenberg\Models\Post;
 use Heisenberg\Services\BlockRegistryService;
 use Heisenberg\Services\EmailRenderer;
+use Heisenberg\Services\ThemeRepository;
 use Heisenberg\Support\EmailSupports;
 use Heisenberg\Tests\TestCase;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -330,6 +331,8 @@ class EmailInspectorParityTest extends TestCase
     {
         // An undeclared name is not "ours", so it would be left for the theme-token pass and
         // — on the canvas — for the cascade, where a parent block's value could leak in.
+        // A theme design token (--hb-t-*) is the exception: it is global, never a block's own
+        // value, and is exactly what the theme-token pass exists to resolve (§4.1).
         foreach ($this->app->make(BlockRegistryService::class)->discover()['blocks'] as $contract) {
             $name = (string) $contract['name'];
             $template = $contract['email']['template'] ?? null;
@@ -338,6 +341,9 @@ class EmailInspectorParityTest extends TestCase
             }
             preg_match_all('/var\(\s*(--[a-z0-9-]+)/', (string) json_encode($template), $m);
             foreach (array_unique($m[1]) as $variable) {
+                if (str_starts_with($variable, '--' . ThemeRepository::CSS_PREFIX)) {
+                    continue;
+                }
                 $this->assertArrayHasKey($variable, $contract['style']['variables'] ?? [], "{$name}: email.template reads {$variable}, which style.variables does not declare.");
             }
         }

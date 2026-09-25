@@ -598,7 +598,7 @@
                                                         {
                                                             "tag": "p",
                                                             "attributes": {
-                                                                "style": "margin:0; font-family: var(--hb-quote-ff, Arial, Helvetica, sans-serif); font-size:14px; color:#5a5a5a;"
+                                                                "style": "margin:0; font-family: var(--hb-quote-ff, var(--hb-t-font-base, Arial, Helvetica, sans-serif)); font-size:14px; color:#5a5a5a;"
                                                             },
                                                             "children": [
                                                                 {

@@ -30,6 +30,14 @@ category. A token named `font-serif` holding a sans family therefore shipped a s
 theme font but the first visibly changed the email into something unrelated to the canvas. Pinned
 by `tests/Email/EmailFontStackTest.php`.
 
+Text that sets **no** font reads `--hb-t-font-base`: the theme's FIRST font, whatever its token is
+named, by the same rule `ThemeRepository::css()` uses for the canvas. Every email block template
+used to hard-code `Arial, Helvetica, sans-serif` as its font fallback, so an unstyled block
+overrode the shell's theme font and shipped Arial while the canvas showed the theme's face. The
+templates now fall back to `var(--hb-t-font-base, Arial, Helvetica, sans-serif)`, and the shell
+reads the same token instead of assuming one named `font-sans`. A theme with no fonts still ships
+the Arial stack.
+
 ## 3. Email documents
 
 An email is a post row with `type = 'email'` (new `type` string column on the posts table, default `'post'`). That buys revisions, autosave, locking, translations (split-row, shared slug) and AI authoring for free. Consequences, enforced in code:
@@ -76,6 +84,12 @@ ships as a PNG instead, and the conversion happens in the BROWSER:
   An icon with no PNG yet renders NOTHING rather than a broken image, and
   `EmailBlockCoverageService` flags it (`icon-not-rasterized`) so the author hears about it
   before the send rather than after.
+
+**Placement follows the button's rule.** An icon with no alignment of its own emits no `align`,
+and inside a cross-aligned column it always hugs its glyph (`_emailHug`), even with a width set,
+because an icon's width is the glyph's size rather than a box across the row. The template used to
+force `align="left"` and span 100%, so an icon centred by a group or column drifted to the left
+edge of the sent message (`tests/Email/EmailIconAlignTest.php`).
 
 Pinned by `tests/Email/EmailIconTest.php` (render + embed + the directory guard) and
 `tests/Editor/EmailIconImageControllerTest.php` (what the endpoint refuses).

@@ -478,7 +478,7 @@
                                                 {
                                                     "tag": "td",
                                                     "attributes": {
-                                                        "style": "padding: var(--hb-paragraph-pt, 0) var(--hb-paragraph-pr, 0) var(--hb-paragraph-pb, 0) var(--hb-paragraph-pl, 0); height: var(--hb-paragraph-h, auto); background-color: var(--hb-paragraph-bg, transparent); text-align: var(--hb-text-align, inherit); font-family: var(--hb-paragraph-ff, Arial, Helvetica, sans-serif); font-weight: var(--hb-paragraph-fw, 400); font-size: var(--hb-paragraph-fs, 15px); line-height: 1.6; letter-spacing: var(--hb-letter-spacing, normal); color: var(--hb-paragraph-color, #0a0a0a);"
+                                                        "style": "padding: var(--hb-paragraph-pt, 0) var(--hb-paragraph-pr, 0) var(--hb-paragraph-pb, 0) var(--hb-paragraph-pl, 0); height: var(--hb-paragraph-h, auto); background-color: var(--hb-paragraph-bg, transparent); text-align: var(--hb-text-align, inherit); font-family: var(--hb-paragraph-ff, var(--hb-t-font-base, Arial, Helvetica, sans-serif)); font-weight: var(--hb-paragraph-fw, 400); font-size: var(--hb-paragraph-fs, 15px); line-height: 1.6; letter-spacing: var(--hb-letter-spacing, normal); color: var(--hb-paragraph-color, #0a0a0a);"
                                                     },
                                                     "children": [
                                                         {

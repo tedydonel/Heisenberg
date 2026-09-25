@@ -437,6 +437,7 @@ class EmailRenderer
             }
         }
 
+        $base = null;
         foreach ((array) ($theme['fonts'] ?? []) as $token) {
             if (! is_array($token)) {
                 continue;
@@ -448,7 +449,15 @@ class EmailRenderer
             $stack = $this->emailFontStack($name, (string) ($token['family'] ?? ''));
             $map[$name] = $stack;
             $map[ThemeRepository::CSS_PREFIX . $name] = $stack;
+            $base ??= $stack;
         }
+
+        // The document's base face, by the same rule as ThemeRepository::css(): the theme's FIRST
+        // font, whatever the author named it. Text that sets no font of its own reads this, so
+        // the email matches the canvas under any theme rather than only one with a `font-sans`.
+        $base ??= 'Arial, Helvetica, sans-serif';
+        $map['font-base'] = $base;
+        $map[ThemeRepository::CSS_PREFIX . 'font-base'] = $base;
 
         return $map;
     }
@@ -646,7 +655,7 @@ CSS;
     {
         $bg = $tokenMap['paper'] ?? '#f4f4f4';
         $ink = $tokenMap['ink'] ?? '#0a0a0a';
-        $font = $tokenMap['font-sans'] ?? 'Arial, Helvetica, sans-serif';
+        $font = $tokenMap['font-base'] ?? 'Arial, Helvetica, sans-serif';
         $width = self::CONTENT_WIDTH;
 
         $title = htmlspecialchars($subject, ENT_QUOTES | ENT_HTML5, 'UTF-8');

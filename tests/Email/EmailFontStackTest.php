@@ -45,7 +45,7 @@ class EmailFontStackTest extends TestCase
         $this->app->forgetInstance(EmailRenderer::class);
     }
 
-    private function renderWith(string $fontToken): string
+    private function renderWith(?string $fontToken): string
     {
         $post = Post::create(['title_en' => 'Fonts', 'locale' => 'en']);
         $post->type = 'email';
@@ -59,7 +59,7 @@ class EmailFontStackTest extends TestCase
                 'name' => 'heisenberg/paragraph',
                 'schemaVersion' => '1.0.0',
                 'attributes' => ['content' => 'Body copy'],
-                'supports' => ['typography' => ['fontFamily' => $fontToken]],
+                'supports' => $fontToken === null ? [] : ['typography' => ['fontFamily' => $fontToken]],
                 'innerBlocks' => [],
             ],
             'order' => 0,
@@ -114,6 +114,31 @@ class EmailFontStackTest extends TestCase
             "font-family: 'JetBrains Mono', 'Courier New', Courier, monospace",
             $this->renderWith('var(--hb-t-code)'),
         );
+    }
+
+    /**
+     * Text that sets no font inherits the theme's base face, as on the canvas: the FIRST theme
+     * font, whatever its token is called. Every email block template used to hard-code Arial
+     * here, so an unstyled paragraph shipped Arial while the canvas showed the theme font.
+     */
+    public function test_a_block_with_no_font_gets_the_themes_first_font_under_any_token_name(): void
+    {
+        $this->themed([
+            ['name' => 'display', 'label' => 'Display', 'family' => 'Playfair Display', 'weights' => [400]],
+            ['name' => 'body', 'label' => 'Body', 'family' => 'Space Grotesk', 'weights' => [400]],
+        ]);
+        $html = $this->renderWith(null);
+
+        $this->assertStringContainsString("font-family: 'Playfair Display', Georgia, 'Times New Roman', serif; font-weight", $html);
+        $this->assertStringNotContainsString('font-family: Arial', $html);
+    }
+
+    /** A theme with no fonts at all still ships a web-safe stack, never an empty font-family. */
+    public function test_a_theme_with_no_fonts_falls_back_to_arial(): void
+    {
+        $this->themed([]);
+
+        $this->assertStringContainsString('font-family: Arial, Helvetica, sans-serif; font-weight', $this->renderWith(null));
     }
 
     /** The linked face is what lets a capable client render the family the stack names first. */

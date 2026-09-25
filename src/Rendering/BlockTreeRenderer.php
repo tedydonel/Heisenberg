@@ -412,6 +412,11 @@ final class BlockTreeRenderer
         if (in_array($slug, ['separator', 'image', 'columns', 'column'], true)) {
             return false;
         }
+        // An icon's width is its GLYPH's size, not a box stretched across the row: on the canvas
+        // it is always exactly that wide, so it always shrinks and is placed by its cell.
+        if ($slug === 'icon') {
+            return true;
+        }
 
         $supports = is_array($child['supports'] ?? null) ? $child['supports'] : [];
         $align = $supports['align'] ?? null;

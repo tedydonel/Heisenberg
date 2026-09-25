@@ -628,7 +628,7 @@
                                                                     "value": "{{attributes.url}}",
                                                                     "omitWhenEmpty": true
                                                                 },
-                                                                "style": "display:inline-block; padding: var(--hb-button-pt, 12px) var(--hb-button-pr, 24px) var(--hb-button-pb, 12px) var(--hb-button-pl, 24px); font-family: var(--hb-button-ff, Arial, Helvetica, sans-serif); font-weight: var(--hb-button-fw, 600); font-size: var(--hb-button-fs, 15px); letter-spacing: var(--hb-letter-spacing, normal); color: var(--hb-button-color, #ffffff); text-decoration:none; border-radius: var(--hb-border-radius-tl, 4px) var(--hb-border-radius-tr, 4px) var(--hb-border-radius-br, 4px) var(--hb-border-radius-bl, 4px);"
+                                                                "style": "display:inline-block; padding: var(--hb-button-pt, 12px) var(--hb-button-pr, 24px) var(--hb-button-pb, 12px) var(--hb-button-pl, 24px); font-family: var(--hb-button-ff, var(--hb-t-font-base, Arial, Helvetica, sans-serif)); font-weight: var(--hb-button-fw, 600); font-size: var(--hb-button-fs, 15px); letter-spacing: var(--hb-letter-spacing, normal); color: var(--hb-button-color, #ffffff); text-decoration:none; border-radius: var(--hb-border-radius-tl, 4px) var(--hb-border-radius-tr, 4px) var(--hb-border-radius-br, 4px) var(--hb-border-radius-bl, 4px);"
                                                             },
                                                             "children": [
                                                                 {
