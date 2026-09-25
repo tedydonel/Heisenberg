@@ -91,8 +91,11 @@
                                 @if ($postId === null) disabled @endif>
                                 {{ $hbPublishedDisplay ?? __('heisenberg::editor.inspector.summary_immediately') }}
                             </button>
+                        @elseif ($row['key'] === 'subject')
+                            {{-- One line, cut with an ellipsis; the full subject is on hover. --}}
+                            <span class="hb-post-meta__value hb-post-meta__value--truncate" data-hb-post-meta-value="subject" title="{{ $row['value'] }}">{{ $row['value'] }}</span>
                         @else
-                            <span class="hb-post-meta__value" @if (!empty($row['key'])) data-hb-post-meta-value="{{ $row['key'] }}" @endif>{{ $row['value'] }}</span>
+                            <span class="hb-post-meta__value" @if (!empty($row['key'])) data-hb-post-meta-value="{{ $row['key'] }}" @endif @if (!empty($row['title'])) title="{{ $row['title'] }}" @endif>{{ $row['value'] }}</span>
                         @endif
                     </div>
                 @endforeach
@@ -127,6 +130,7 @@
                 </div>
             </div>
 
+            @if ($hbUrlRow !== null)
             <div class="hb-post-popup" data-hb-post-popup="slug" hidden>
                 <div class="hb-pop hb-post-pop hb-post-slugpop" data-hb-post-slug-input data-hb-current-slug="{{ $hbUrlRow['raw'] ?? '' }}">
                     <span class="hb-post-slugpop__label">{{ __('heisenberg::editor.inspector.summary_slug_label') }}</span>
@@ -138,6 +142,7 @@
                         @if ($postId === null) disabled @endif>
                 </div>
             </div>
+            @endif
 
             <div class="hb-post-popup" data-hb-post-popup="publish" hidden>
                 <div class="hb-pop hb-post-pop">

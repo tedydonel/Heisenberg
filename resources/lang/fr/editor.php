@@ -362,11 +362,11 @@ return [
         'summary_status' => 'Statut',
         'summary_publish' => 'Publication',
         'summary_url' => 'URL',
-        'summary_email_address' => 'Adresse de l\'e-mail',
         'summary_immediately' => 'Immédiatement',
         // Le champ de slug modifiable de la ligne URL (2026-08-11).
         'summary_slug_label' => 'Slug',
         'summary_slug_placeholder' => 'slug-article',
+        'summary_email_block_count' => ':count bloc(s)',
         // Options du contrôle de statut (EditorController::statusLabel()) — le suffixe de la
         // clé est le nom de statut brut de config('heisenberg.lifecycle.transitions').
         'summary_status_draft' => 'Brouillon',

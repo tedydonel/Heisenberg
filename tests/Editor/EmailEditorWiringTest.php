@@ -178,7 +178,6 @@ class EmailEditorWiringTest extends TestCase
         $html = $this->get('/editor/email')->getContent();
 
         $this->assertStringContainsString('data-hb-post-translations-field', $html);
-        $this->assertStringContainsString('data-hb-post-popup-trigger="slug"', $html);
         $this->assertStringContainsString(__('heisenberg::editor.inspector.summary_email_subject'), $html);
     }
 
@@ -196,8 +195,11 @@ class EmailEditorWiringTest extends TestCase
         $this->assertStringNotContainsString('name="post-stick-top"', $html);
     }
 
-    /** The Summary's slug row names what the slug actually IS here: the email's serving address. */
-    public function test_the_summary_slug_row_reads_as_the_emails_serving_address(): void
+    /**
+     * An email is sent, not visited: its Summary has no address/slug row (nor the slug popup
+     * that row opens), while a post keeps its URL row.
+     */
+    public function test_the_email_summary_has_no_address_row_but_a_post_keeps_its_url(): void
     {
         $post = $this->makeEmail();
         $post->slug = 'august-letter';
@@ -206,9 +208,27 @@ class EmailEditorWiringTest extends TestCase
         $html = $this->get("/editor/email/{$post->id}")->assertOk()->getContent();
         $postHtml = $this->get('/editor')->getContent();
 
-        $this->assertStringContainsString('/emails/august-letter', $html);
-        $this->assertStringContainsString(__('heisenberg::editor.inspector.summary_email_address'), $html);
-        $this->assertStringNotContainsString(__('heisenberg::editor.inspector.summary_email_address'), $postHtml);
+        // Markup, not the literal: the summary's script queries these same selectors on any page.
+        $trigger = 'data-hb-post-popup-trigger="slug" aria-haspopup="dialog"';
+        $popup = '<div class="hb-post-popup" data-hb-post-popup="slug" hidden>';
+
+        $this->assertStringNotContainsString($trigger, $html);
+        $this->assertStringNotContainsString($popup, $html);
+        $this->assertStringContainsString($trigger, $postHtml);
+        $this->assertStringContainsString($popup, $postHtml);
+    }
+
+    /** A long subject stays on one line in the Summary, cut with an ellipsis, full text on hover. */
+    public function test_a_long_subject_is_one_truncated_line_with_the_full_text_on_hover(): void
+    {
+        $post = $this->makeEmail();
+        $post->title_en = 'Collaboration proposal: African manpower for licensed Canadian recruiters';
+        $post->save();
+
+        $html = $this->get("/editor/email/{$post->id}")->assertOk()->getContent();
+
+        $this->assertStringContainsString('class="hb-post-meta__value hb-post-meta__value--truncate" data-hb-post-meta-value="subject" title="Collaboration proposal: African manpower for licensed Canadian recruiters"', $html);
+        $this->assertStringContainsString('white-space: nowrap; text-overflow: ellipsis;', $html);
     }
 
     public function test_a_plain_post_document_still_renders_the_full_chrome(): void

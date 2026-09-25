@@ -105,10 +105,15 @@ class EmailCoverageEditorTest extends TestCase
         $html = $this->get("/editor/email/{$post->id}")->assertOk()->getContent();
 
         $this->assertElementExists($html, '[data-hb-post-meta-value="email_coverage_dropped"]');
+        // One line shows the count; the full sentence is the row's tooltip.
         $this->assertElementTextContains(
             $html,
             '[data-hb-post-meta-value="email_coverage_dropped"]',
-            str_replace(':count', '1', __('heisenberg::editor.inspector.summary_email_dropped_value'))
+            str_replace(':count', '1', __('heisenberg::editor.inspector.summary_email_block_count'))
+        );
+        $this->assertSame(
+            str_replace(':count', '1', __('heisenberg::editor.inspector.summary_email_dropped_value')),
+            $this->hbAttr($html, '[data-hb-post-meta-value="email_coverage_dropped"]', 'title')
         );
         $this->assertElementMissing($html, '[data-hb-post-meta-value="email_coverage_degraded"]');
     }
@@ -121,10 +126,15 @@ class EmailCoverageEditorTest extends TestCase
         $html = $this->get("/editor/email/{$post->id}")->assertOk()->getContent();
 
         $this->assertElementExists($html, '[data-hb-post-meta-value="email_coverage_degraded"]');
+        // One line shows the count; the full sentence is the row's tooltip.
         $this->assertElementTextContains(
             $html,
             '[data-hb-post-meta-value="email_coverage_degraded"]',
-            str_replace(':count', '1', __('heisenberg::editor.inspector.summary_email_degraded_value'))
+            str_replace(':count', '1', __('heisenberg::editor.inspector.summary_email_block_count'))
+        );
+        $this->assertSame(
+            str_replace(':count', '1', __('heisenberg::editor.inspector.summary_email_degraded_value')),
+            $this->hbAttr($html, '[data-hb-post-meta-value="email_coverage_degraded"]', 'title')
         );
         $this->assertElementMissing($html, '[data-hb-post-meta-value="email_coverage_dropped"]');
     }

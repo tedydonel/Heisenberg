@@ -38,6 +38,7 @@
                         const titleEl = document.querySelector('.hb-page__title[data-hb-title]') || document.querySelector('.hb-post-title__input[data-hb-title]');
                         const titleVal = (titleEl ? (titleEl.tagName === 'INPUT' ? titleEl.value : titleEl.textContent) : '').trim();
                         subjectEl.textContent = titleVal !== '' ? titleVal : '—';
+                        subjectEl.title = subjectEl.textContent;
                     }
 
                     if (blocksEl) {

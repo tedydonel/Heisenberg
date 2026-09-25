@@ -368,12 +368,11 @@ return [
         'summary_status' => 'Status',
         'summary_publish' => 'Publish',
         'summary_url' => 'URL',
-        // The `url` Summary row on an EMAIL document (docs/email-system.md §6.1): the same
-        // editable slug, but what it names is the one address the built email is served at.
-        'summary_email_address' => 'Email address',
         'summary_immediately' => 'Immediately',
         // The URL row's editable slug input (2026-08-11).
         'summary_slug_label' => 'Slug',
+        // What the two coverage rows show on their one line; the sentences above are the tooltip.
+        'summary_email_block_count' => ':count block(s)',
         'summary_slug_placeholder' => 'post-slug',
         // Status control options (EditorController::statusLabel()) — key suffix is the raw
         // config('heisenberg.lifecycle.transitions') status name.

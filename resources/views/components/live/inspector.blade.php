@@ -100,6 +100,9 @@
     .hb-post-meta__row { display: flex; align-items: center; justify-content: space-between; height: 32px; padding: 0 14px; }
     .hb-post-meta__label { font-family: var(--hb-font-sans, Rubik, sans-serif); font-size: var(--hb-fs-sm, 12px); color: var(--hb-text-secondary); }
     .hb-post-meta__value { font-family: var(--hb-font-sans, Rubik, sans-serif); font-size: 11px; font-weight: 500; color: var(--hb-text-primary); }
+    /* A long value (the email subject) keeps its row one line tall and ends in an ellipsis. */
+    .hb-post-meta__label { flex: none; }
+    .hb-post-meta__value--truncate { flex: 0 1 auto; min-width: 0; margin-left: 12px; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
     .hb-post-meta__value--btn {
         max-width: 175px;
         border: 0;

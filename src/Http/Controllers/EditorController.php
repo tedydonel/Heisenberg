@@ -325,21 +325,6 @@ final class EditorController
      */
     private function postMeta(?Post $model, string $documentType = 'post'): array
     {
-        $urlRow = [
-            // Same editable slug on both document types, but it means different things and so
-            // reads differently: a post's public path, or — for an email — the ONE address the
-            // built email is served at (docs/email-system.md §6.1), prefix included, so the
-            // author can see what the link they are about to send actually looks like.
-            'key' => 'url',
-            'label' => (string) __($documentType === 'email'
-                ? 'heisenberg::editor.inspector.summary_email_address'
-                : 'heisenberg::editor.inspector.summary_url'),
-            'value' => ($model !== null && (string) $model->slug !== '')
-                ? $this->slugPath($documentType) . $model->slug
-                : '—',
-            'raw' => (string) ($model?->slug ?? ''),
-        ];
-
         // An email document has no lifecycle of its own — when a campaign sends is host
         // business, not Heisenberg's — so the Summary uses authoring metrics instead of
         // post-only status/publish controls. The subject is the document title, while the
@@ -378,10 +363,12 @@ final class EditorController
             // `email` template at all), `degraded` is a real but survivable difference.
             $coverage = app(EmailBlockCoverageService::class)->documentSummary($blockContents);
             if ($coverage['dropped_count'] > 0) {
+                // The row shows a count that fits its one line; the sentence rides as its tooltip.
                 $rows[] = [
                     'key' => 'email_coverage_dropped',
                     'label' => (string) __('heisenberg::editor.inspector.summary_email_dropped_label'),
-                    'value' => str_replace(
+                    'value' => str_replace(':count', (string) $coverage['dropped_count'], (string) __('heisenberg::editor.inspector.summary_email_block_count')),
+                    'title' => str_replace(
                         ':count',
                         (string) $coverage['dropped_count'],
                         (string) __('heisenberg::editor.inspector.summary_email_dropped_value')
@@ -392,7 +379,8 @@ final class EditorController
                 $rows[] = [
                     'key' => 'email_coverage_degraded',
                     'label' => (string) __('heisenberg::editor.inspector.summary_email_degraded_label'),
-                    'value' => str_replace(
+                    'value' => str_replace(':count', (string) $coverage['degraded_count'], (string) __('heisenberg::editor.inspector.summary_email_block_count')),
+                    'title' => str_replace(
                         ':count',
                         (string) $coverage['degraded_count'],
                         (string) __('heisenberg::editor.inspector.summary_email_degraded_value')
@@ -400,8 +388,8 @@ final class EditorController
                 ];
             }
 
-            $rows[] = $urlRow;
-
+            // No address row: an email is sent, not visited, so the preview path it is served
+            // at is plumbing the author has no use for in the Summary.
             return $rows;
         }
 
@@ -428,20 +416,14 @@ final class EditorController
                 'label' => (string) __('heisenberg::editor.inspector.summary_publish'),
                 'value' => '',
             ],
-            $urlRow,
+            [
+                // The post's public path, with its editable slug. Emails have no such row.
+                'key' => 'url',
+                'label' => (string) __('heisenberg::editor.inspector.summary_url'),
+                'value' => ($model !== null && (string) $model->slug !== '') ? '/' . $model->slug : '—',
+                'raw' => (string) ($model?->slug ?? ''),
+            ],
         ];
-    }
-
-    /** `/` for a post, `/{email.route_prefix}/` for an email — see postMeta()'s `url` row. */
-    private function slugPath(string $documentType): string
-    {
-        if ($documentType !== 'email') {
-            return '/';
-        }
-
-        $prefix = trim((string) config('heisenberg.email.route_prefix', 'emails'), '/') ?: 'emails';
-
-        return '/' . $prefix . '/';
     }
 
     /**
