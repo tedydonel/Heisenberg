@@ -172,6 +172,7 @@
         syncSpacingAggregates(root);
         hbDecorateVarTriggers(root);
         hbRebuildLayerLists(root, model);
+        hbRebuildEffects(root, model);
         root.querySelectorAll('[data-hb-control], .hb-colorlayer').forEach(hbSyncVarTrigger);
         refreshConditionals(root, model);
         hbSyncFonts(root, model);

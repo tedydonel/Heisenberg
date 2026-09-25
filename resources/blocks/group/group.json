@@ -167,7 +167,8 @@
                 "topRight": true,
                 "bottomRight": true,
                 "bottomLeft": true
-            }
+            },
+            "position": true
         },
         "animation": true,
         "appearance": {
@@ -185,7 +186,9 @@
             "mode": true
         },
         "effects": {
-            "shadow": true
+            "shadow": true,
+            "filter": true,
+            "backdrop": true
         }
     },
     "style": {
@@ -474,6 +477,21 @@
                 "source": "supports.position.mode",
                 "default": "",
                 "sanitize": "position-mode"
+            },
+            "--hb-box-sizing": {
+                "source": "supports.border.position",
+                "default": "",
+                "sanitize": "box-sizing"
+            },
+            "--hb-filter": {
+                "source": "supports.effects.filter",
+                "default": "",
+                "sanitize": "filter"
+            },
+            "--hb-backdrop": {
+                "source": "supports.effects.backdrop",
+                "default": "",
+                "sanitize": "filter"
             }
         }
     },

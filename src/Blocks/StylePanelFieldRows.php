@@ -368,6 +368,18 @@ final class StylePanelFieldRows
             }
         }
 
+        if (($border['position'] ?? false) === true) {
+            $controls[] = [
+                'type' => 'select', 'sanitize' => 'box-sizing', 'half' => true,
+                'source' => 'supports.border.position',
+                'label' => 'Position',
+                'options' => [
+                    ['value' => 'border-box', 'label' => 'Inside'],
+                    ['value' => 'content-box', 'label' => 'Outside'],
+                ],
+            ];
+        }
+
         return $controls;
     }
 }

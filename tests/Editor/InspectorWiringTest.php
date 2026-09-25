@@ -601,4 +601,16 @@ class InspectorWiringTest extends TestCase
         $this->assertStringContainsString("state: 'error'", $script);
         $this->assertStringContainsString("state: 'saving'", $script);
     }
+
+    /**
+     * The Stroke section shows only its + until a stroke exists: Position, Weight and the side
+     * widths belong to a stroke, so they render hidden and the layer sync reveals them.
+     */
+    public function test_stroke_controls_stay_hidden_until_a_stroke_is_added(): void
+    {
+        $html = $this->editorHtml();
+
+        $this->assertStringContainsString('<div class="hb-style-stroke__body" data-hb-stroke-body hidden>', $html);
+        $this->assertStringContainsString('body.hidden = list.children.length === 0;', $html);
+    }
 }

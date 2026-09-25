@@ -47,7 +47,7 @@
 
 .hb-effectrow { display: flex; align-items: center; justify-content: space-between; width: 100%; }
 .hb-fxlayer { display: flex; align-items: center; width: 159px; height: 26px; padding: 0 4px; box-sizing: border-box; background: var(--hb-bg-inset); border-radius: var(--hb-radius-md, 5px); }
-.hb-fxlayer__name { flex: 0 0 75px; min-width: 0; margin: 0 20px; font-family: var(--hb-font-sans, Rubik, sans-serif); font-size: var(--hb-fs-sm, 12px); color: var(--hb-text-primary); white-space: nowrap; }
+.hb-fxlayer__name { flex: 1 1 auto; min-width: 0; margin: 0 8px 0 20px; font-family: var(--hb-font-sans, Rubik, sans-serif); font-size: var(--hb-fs-sm, 12px); color: var(--hb-text-primary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .hb-fxlayer__ic, .hb-fxlayer__rm { display: inline-flex; align-items: center; justify-content: center; width: 14px; height: 14px; padding: 0; border: 0; background: none; cursor: pointer; color: var(--hb-text-muted); flex: none; }
 .hb-fxlayer__ic:hover, .hb-fxlayer__rm:hover { color: var(--hb-text-primary); }
 
@@ -78,8 +78,11 @@
 .hb-colorlayer__rm:hover { color: var(--hb-text-primary); }
 .hb-style-popup { position: fixed; z-index: 1000; }
 .hb-style-popup[hidden] { display: none !important; }
+/* A layer section with nothing in it yet (Fill, Stroke, Effects before their first +) is just its
+   header: its body holds only an empty list, templates and hidden controls, and as a flex item it
+   still took the section's 10px gap under the title. Live, so the first layer brings it back. */
+.hb-blockstyle .hb-section__body:not(:has(> :not(template, [hidden], div:empty))) { display: none; }
 .hb-field__value--mixed { color: var(--hb-text-muted); font-style: italic; }
-.hb-fxlayer[data-hb-style-effect-hidden="true"] { opacity: .45; }
 
 .hb-field.hb-has-varbtn,
 .hb-input.hb-has-varbtn { position: relative; }

@@ -43,7 +43,7 @@ class BlockContractValidator
         // cssValueValid() in block-runtime.blade.php; never let these hit a permissive fallback.
         'opacity', 'angle', 'length-signed', 'shadow',
         'text-align', 'align-3', 'position-mode',
-        'flex-direction', 'flex-justify', 'flex-align', 'flex-wrap', 'overflow',
+        'flex-direction', 'flex-justify', 'flex-align', 'flex-wrap', 'overflow', 'box-sizing', 'filter',
     ];
 
     /** Allowed style-system support groups (align is special-cased). */
@@ -70,6 +70,8 @@ class BlockContractValidator
         'border' => [
             'style' => 'bool-or-sides', 'width' => 'bool-or-sides',
             'color' => 'bool-or-sides', 'radius' => 'bool-or-corners',
+            // Stroke → Position: whether the stroke sits inside the block's size or around it.
+            'position' => 'bool',
         ],
         'size' => [
             'width' => 'bool', 'height' => 'bool', 'minWidth' => 'bool', 'minHeight' => 'bool',
@@ -79,7 +81,9 @@ class BlockContractValidator
         'layout' => ['direction' => 'bool', 'wrap' => 'bool', 'justify' => 'bool', 'align' => 'bool', 'gap' => 'bool', 'padding' => 'bool'],
         'position' => ['mode' => 'bool', 'x' => 'bool', 'y' => 'bool', 'rotation' => 'bool'],
         'appearance' => ['opacity' => 'bool'],
-        'effects' => ['shadow' => 'bool'],
+        // shadow: drop + inner shadows (box-shadow). filter: layer blur.
+        // backdrop: background blur (backdrop-filter).
+        'effects' => ['shadow' => 'bool', 'filter' => 'bool', 'backdrop' => 'bool'],
     ];
 
     private const SIDE_KEYS = ['top', 'right', 'bottom', 'left'];

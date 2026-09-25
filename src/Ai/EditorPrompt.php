@@ -220,7 +220,8 @@ class EditorPrompt
           padding / margin / radius (CSS TRBL shorthands; per-side: padding-top..margin-left,
             radius-tl..radius-bl) | border-width / border-color / border-style / border-top..
           gap / direction / wrap / justify / align-items | position / x / y / rotate
-          opacity / shadow | hover: / active: / focus: state prefixes
+          opacity / shadow | states = hover: / active: / focus: prefixes
+          effects = shadow + effects.filter/effects.backdrop (full path, blur(4px) only)
         Full dotted path (e.g. typography.fontSize) always accepted as escape hatch.
         Values unquoted when simple (40px, #fff, var(--tok)); "..." with \\" escapes otherwise.
 
@@ -449,11 +450,16 @@ class EditorPrompt
         if (! empty($supports['appearance']['opacity'])) {
             $parts[] = 'opacity';
         }
-        if (! empty($supports['effects']) && array_key_exists('shadow', (array) $supports['effects'])) {
+        // `effects` and `states` are defined once in the style legend; spelling them out on every
+        // block line cost ~50 chars a block against the prompt's size budget.
+        $effects = (array) ($supports['effects'] ?? []);
+        if (! empty($effects['shadow']) && ! empty($effects['filter']) && ! empty($effects['backdrop'])) {
+            $parts[] = 'effects';
+        } elseif (array_key_exists('shadow', $effects)) {
             $parts[] = 'shadow';
         }
         if (! empty($supports['states'])) {
-            $parts[] = 'hover:/active:/focus:';
+            $parts[] = 'states';
         }
 
         return implode(', ', $parts);

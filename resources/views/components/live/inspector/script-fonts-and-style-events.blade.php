@@ -310,14 +310,6 @@
             return;
         }
 
-        const effectVisibility = event.target.closest('[data-hb-style-effect-visibility]');
-        if (effectVisibility) {
-            const visible = effectVisibility.getAttribute('aria-pressed') !== 'true';
-            effectVisibility.setAttribute('aria-pressed', visible ? 'true' : 'false');
-            effectVisibility.closest('.hb-fxlayer')?.setAttribute('data-hb-style-effect-hidden', visible ? 'false' : 'true');
-            return;
-        }
-
         const alignment = event.target.closest('[data-hb-style-alignment]');
         if (alignment) {
             const grid = alignment.closest('[data-hb-style-alignment-grid]');

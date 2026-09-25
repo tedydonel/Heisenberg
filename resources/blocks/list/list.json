@@ -201,6 +201,19 @@
             "hover": true,
             "active": true,
             "focus": true
+        },
+        "border": {
+            "radius": {
+                "topLeft": true,
+                "topRight": true,
+                "bottomRight": true,
+                "bottomLeft": true
+            }
+        },
+        "effects": {
+            "shadow": true,
+            "filter": true,
+            "backdrop": true
         }
     },
     "style": {
@@ -388,6 +401,41 @@
                 "source": "supports.appearance.opacity",
                 "default": "",
                 "sanitize": "opacity"
+            },
+            "--hb-border-radius-tl": {
+                "source": "supports.border.radius.topLeft",
+                "default": "",
+                "sanitize": "size-value"
+            },
+            "--hb-border-radius-tr": {
+                "source": "supports.border.radius.topRight",
+                "default": "",
+                "sanitize": "size-value"
+            },
+            "--hb-border-radius-br": {
+                "source": "supports.border.radius.bottomRight",
+                "default": "",
+                "sanitize": "size-value"
+            },
+            "--hb-border-radius-bl": {
+                "source": "supports.border.radius.bottomLeft",
+                "default": "",
+                "sanitize": "size-value"
+            },
+            "--hb-shadow": {
+                "source": "supports.effects.shadow",
+                "default": "",
+                "sanitize": "shadow"
+            },
+            "--hb-filter": {
+                "source": "supports.effects.filter",
+                "default": "",
+                "sanitize": "filter"
+            },
+            "--hb-backdrop": {
+                "source": "supports.effects.backdrop",
+                "default": "",
+                "sanitize": "filter"
             }
         }
     },

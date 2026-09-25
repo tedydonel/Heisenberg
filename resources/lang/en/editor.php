@@ -318,6 +318,15 @@ return [
         'color' => 'Color',
         'blur' => 'Blur',
         'offset' => 'Offset',
+        // The Effects section's types (live/block/style/effects.blade.php).
+        'add' => 'Add effect',
+        'edit' => 'Edit effect',
+        'toggle' => 'Toggle visibility',
+        'remove' => 'Remove effect',
+        'layer_blur' => 'Layer Blur',
+        'background_blur' => 'Background Blur',
+        'spread' => 'Spread',
+        'amount' => 'Amount',
     ],
 
     // Sidebar (live/sidebar.blade.php).
@@ -365,14 +374,14 @@ return [
         'summary_email_dropped_value' => ':count block(s) will not appear in the sent email.',
         'summary_email_degraded_label' => 'Renders differently',
         'summary_email_degraded_value' => ':count block(s) may render differently in the sent email.',
+        // What the two coverage rows show on their one line; the sentences above are the tooltip.
+        'summary_email_block_count' => ':count block(s)',
         'summary_status' => 'Status',
         'summary_publish' => 'Publish',
         'summary_url' => 'URL',
         'summary_immediately' => 'Immediately',
         // The URL row's editable slug input (2026-08-11).
         'summary_slug_label' => 'Slug',
-        // What the two coverage rows show on their one line; the sentences above are the tooltip.
-        'summary_email_block_count' => ':count block(s)',
         'summary_slug_placeholder' => 'post-slug',
         // Status control options (EditorController::statusLabel()) — key suffix is the raw
         // config('heisenberg.lifecycle.transitions') status name.

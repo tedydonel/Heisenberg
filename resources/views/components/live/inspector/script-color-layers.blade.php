@@ -96,6 +96,15 @@
             });
             list.dataset.hbLayersState = state;
         });
+        hbSyncStrokeBody(sroot);
+    }
+
+    // The Stroke section shows only its + until a stroke exists; its Position/Weight/sides
+    // controls belong to a stroke, so they appear with the first one and leave with the last.
+    function hbSyncStrokeBody(root) {
+        const body = root?.querySelector('[data-hb-stroke-body]');
+        const list = root?.querySelector('[data-hb-style-layer-list="stroke"]');
+        if (body && list) body.hidden = list.children.length === 0;
     }
 
     function hbCommitLayers(root, group) {
@@ -107,6 +116,47 @@
         const layers = hbReadLayers(list);
         window.hbEditor.setSupport(id, hbStatePath(root, path), hbCompositeLayers(layers));
         window.hbEditor.setSupport(id, hbStatePath(root, path.split('.')[0] + '.layers'), layers);
+        if (group === 'stroke') {
+            if (layers.length) hbSeedStrokeWeight(root, id);
+            else hbClearStrokeWeight(root, id);
+            hbSyncStrokeBody(root);
+        }
+    }
+
+    // Removing the last stroke takes its widths with it: a width with no stroke colour is a
+    // leftover the author can no longer see or reach (the controls hide with the last stroke).
+    function hbClearStrokeWeight(root, id) {
+        const model = window.hbEditor.getModel ? window.hbEditor.getModel(id) : null;
+        const widthPath = hbStatePath(root, 'border.width');
+        const current = model ? hbGet(model.supports || {}, widthPath) : null;
+        if (current == null || current === '') return;
+        if (typeof current === 'object') {
+            ['top', 'right', 'bottom', 'left'].forEach((side) => {
+                if (current[side] != null && String(current[side]) !== '') window.hbEditor.setSupport(id, widthPath + '.' + side, '');
+            });
+            return;
+        }
+        window.hbEditor.setSupport(id, widthPath, '');
+    }
+
+    // A stroke colour with no width draws nothing: the Weight field only SHOWS 1 as its
+    // placeholder. So the first stroke on a block writes that 1 to every side it can take,
+    // making the stroke visible the moment it is added. A width the author already set wins.
+    function hbSeedStrokeWeight(root, id) {
+        const model = window.hbEditor.getModel ? window.hbEditor.getModel(id) : null;
+        if (!model) return;
+        const widthPath = hbStatePath(root, 'border.width');
+        const current = hbGet(model.supports || {}, widthPath);
+        const sides = ['top', 'right', 'bottom', 'left'];
+        const isSet = (v) => v != null && String(v) !== '';
+        if (typeof current === 'object' && current && sides.some((s) => isSet(current[s]))) return;
+        if (isSet(current) && typeof current !== 'object') return;
+        const declared = window.hbEditor.getContract?.(model.name)?.supports?.border?.width;
+        sides.forEach((side) => {
+            if (declared === true || (declared && declared[side] === true)) {
+                window.hbEditor.setSupport(id, widthPath + '.' + side, '1');
+            }
+        });
     }
 
     function hbLayerGroupOf(el) {
@@ -134,33 +184,6 @@
         a = Math.max(0, Math.min(100, a)) / 100;
         return 'rgba(' + r + ', ' + g + ', ' + b + ', ' + Math.round(a * 1000) / 1000 + ')';
     }
-
-    function hbComposeShadow(editor) {
-        const num = (sel, fallback) => {
-            const v = Number(editor.querySelector(sel)?.value);
-            return Number.isFinite(v) ? v : fallback;
-        };
-        const colour = hbShadowRgba(editor.querySelector('[data-hb-fx-color]')?.value, num('[data-hb-fx-opacity]', 100));
-        if (!colour) return null;
-        return num('[data-hb-fx-x]', 0) + 'px '
-            + num('[data-hb-fx-y]', 0) + 'px '
-            + Math.max(0, num('[data-hb-fx-blur]', 0)) + 'px '
-            + colour;
-    }
-
-    document.addEventListener('input', (event) => {
-        const editor = event.target.closest('[data-hb-effect]');
-        if (!editor) return;
-        const root = mountedStyleRoot(editor);
-        if (!root || !window.hbEditor) return;
-        const id = window.hbEditor.getSelectedId();
-        if (!id) return;
-        const css = hbComposeShadow(editor);
-        if (css === null) return;
-        const swatch = editor.querySelector('[data-hb-fx-swatch]');
-        if (swatch) swatch.style.background = editor.querySelector('[data-hb-fx-color]')?.value || '#000000';
-        window.hbEditor.setSupport(id, hbStatePath(root, 'effects.shadow'), css);
-    });
 
     const HB_VAR_TYPES = ['text', 'number'];
 

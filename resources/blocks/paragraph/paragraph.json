@@ -174,7 +174,17 @@
             "mode": true
         },
         "effects": {
-            "shadow": true
+            "shadow": true,
+            "filter": true,
+            "backdrop": true
+        },
+        "border": {
+            "radius": {
+                "topLeft": true,
+                "topRight": true,
+                "bottomRight": true,
+                "bottomLeft": true
+            }
         }
     },
     "style": {
@@ -385,6 +395,36 @@
                 "source": "supports.position.mode",
                 "default": "",
                 "sanitize": "position-mode"
+            },
+            "--hb-border-radius-tl": {
+                "source": "supports.border.radius.topLeft",
+                "default": "",
+                "sanitize": "size-value"
+            },
+            "--hb-border-radius-tr": {
+                "source": "supports.border.radius.topRight",
+                "default": "",
+                "sanitize": "size-value"
+            },
+            "--hb-border-radius-br": {
+                "source": "supports.border.radius.bottomRight",
+                "default": "",
+                "sanitize": "size-value"
+            },
+            "--hb-border-radius-bl": {
+                "source": "supports.border.radius.bottomLeft",
+                "default": "",
+                "sanitize": "size-value"
+            },
+            "--hb-filter": {
+                "source": "supports.effects.filter",
+                "default": "",
+                "sanitize": "filter"
+            },
+            "--hb-backdrop": {
+                "source": "supports.effects.backdrop",
+                "default": "",
+                "sanitize": "filter"
             }
         }
     },

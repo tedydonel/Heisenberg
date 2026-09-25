@@ -149,6 +149,14 @@
         if (lengths.length < 2 || lengths.length > 4) return false;
         return lengths.every(isSafeLengthSignedValue);
     }
+    // LOCKSTEP with CssValueSanitizer::isSafeFilterValue().
+    function isSafeFilterValue(value) {
+        if (value === 'none') return true;
+        const fns = String(value).trim().split(/\s+/);
+        if (!fns.length || fns.length > 12) return false;
+        return fns.every((fn) => /^blur\(\d{1,3}(\.\d+)?px\)$/.test(fn));
+    }
+
     function isSafeShadowValue(value) {
         if (value === 'none') return true;
         const layers = splitTopLevel(value, ',');
@@ -195,6 +203,8 @@
         if (sanitizer === 'flex-align') return ['start', 'center', 'end', 'stretch'].indexOf(value) >= 0;
         if (sanitizer === 'flex-wrap') return ['wrap', 'nowrap', 'wrap-reverse'].indexOf(value) >= 0;
         if (sanitizer === 'overflow') return ['visible', 'hidden', 'clip'].indexOf(value) >= 0;
+        if (sanitizer === 'box-sizing') return ['border-box', 'content-box'].indexOf(value) >= 0;
+        if (sanitizer === 'filter') return isSafeFilterValue(value);
         return /^[a-z0-9\s().,%_\/-]+$/i.test(value);
     }
 

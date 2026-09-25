@@ -353,21 +353,42 @@ final class StylePanelDeriver
     }
 
     /**
-     * Effects rows: a box-shadow builder, opt-in via `supports.effects.shadow`.
+     * Effects rows, each opt-in: a box-shadow builder (`supports.effects.shadow`, drop and inner
+     * shadows), a layer blur (`supports.effects.filter`) and a
+     * background blur (`supports.effects.backdrop`).
      *
      * @return list<array<string, mixed>>
      */
     private function effectsRows(array $supports): array
     {
         $effects = $supports['effects'] ?? null;
-        if (! is_array($effects) || ($effects['shadow'] ?? false) !== true) {
+        if (! is_array($effects)) {
             return [];
         }
 
-        return [[
-            'type' => 'shadow', 'sanitize' => 'shadow',
-            'source' => 'supports.effects.shadow',
-            'label' => 'Shadow',
-        ]];
+        $controls = [];
+        if (($effects['shadow'] ?? false) === true) {
+            $controls[] = [
+                'type' => 'shadow', 'sanitize' => 'shadow',
+                'source' => 'supports.effects.shadow',
+                'label' => 'Shadow',
+            ];
+        }
+        if (($effects['filter'] ?? false) === true) {
+            $controls[] = [
+                'type' => 'text', 'sanitize' => 'filter',
+                'source' => 'supports.effects.filter',
+                'label' => 'Layer blur',
+            ];
+        }
+        if (($effects['backdrop'] ?? false) === true) {
+            $controls[] = [
+                'type' => 'text', 'sanitize' => 'filter',
+                'source' => 'supports.effects.backdrop',
+                'label' => 'Background blur',
+            ];
+        }
+
+        return $controls;
     }
 }

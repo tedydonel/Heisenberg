@@ -84,12 +84,15 @@
     ];
 
     $showFill = $has('color');
-    $showStroke = $has('border');
+    // Stroke and corners are separate features of `border`: a text block can round its corners
+    // without drawing a border, so each section keys off its own feature, not the group.
+    $showStroke = $has('border.width');
+    $showCorners = $has('border.radius');
     $hbFillPath = ($isContainer && ($supports['color']['background'] ?? false) === true)
         ? 'color.background'
         : 'color.text';
     $showEffects = $has('effects');
-    $showAppearance = $showStroke || $has('appearance');
+    $showAppearance = $showCorners || $has('appearance');
 @endphp
 <div data-hb-var-labels="{{ json_encode($hbVarLabels, JSON_UNESCAPED_SLASHES) }}" data-hb-var-values="{{ json_encode($hbVarValues, JSON_UNESCAPED_SLASHES) }}" {{ $attributes->merge(['class' => 'hb-blockstyle']) }}>
     <x-heisenberg::ui.panel-section title="State">
@@ -126,7 +129,7 @@
     @endif
 
     @if ($showAppearance)
-        <x-heisenberg::live.block.style.appearance :show-opacity="$has('appearance')" :show-corners="$showStroke" />
+        <x-heisenberg::live.block.style.appearance :show-opacity="$has('appearance')" :show-corners="$showCorners" />
     @endif
 
     @if ($showFill)
@@ -134,11 +137,11 @@
     @endif
 
     @if ($showStroke)
-        <x-heisenberg::live.block.style.stroke />
+        <x-heisenberg::live.block.style.stroke :show-position="$has('border.position')" />
     @endif
 
     @if ($showEffects)
-        <x-heisenberg::live.block.style.effects />
+        <x-heisenberg::live.block.style.effects :effects="is_array($supports['effects'] ?? null) ? $supports['effects'] : []" />
     @endif
 
     @if ($showFill || $showStroke || $showAppearance)

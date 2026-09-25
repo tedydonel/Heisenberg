@@ -70,6 +70,12 @@ final class SupportsStyle
 
     public const DEFAULT_OVERFLOW = 'visible';
 
+    /** Effects → layer blur (`filter`) and background blur (`backdrop-filter`). */
+    public const DEFAULT_FILTER = 'none';
+
+    /** Stroke → Position "Inside": the stroke sits within the block's own width/height. */
+    public const DEFAULT_BOX_SIZING = 'border-box';
+
     public const DEFAULT_BORDER_SIDE_WIDTH = '0';
 
     public const DEFAULT_BORDER_SIDE_STYLE = 'none';
@@ -120,6 +126,8 @@ final class SupportsStyle
 
         $css[] = self::inheritanceResetRule();
         $css[] = self::baseCapabilitiesRule();
+        $css[] = self::strokePositionRule();
+        $css[] = self::filterEffectsRule();
         $css[] = self::flexLayoutRule();
         $css[] = self::sizeUtilityRules();
         $css[] = self::alignBreakoutRules();
@@ -161,6 +169,8 @@ final class SupportsStyle
             '--hb-rotate: ' . self::DEFAULT_ROTATE,
             '--hb-shadow: ' . self::DEFAULT_SHADOW,
             '--hb-overflow: ' . self::DEFAULT_OVERFLOW,
+            '--hb-filter: ' . self::DEFAULT_FILTER,
+            '--hb-backdrop: ' . self::DEFAULT_FILTER,
             // The flex family: a container's gap/padding/direction must not become its
             // nested container children's, either.
             '--hb-flex-direction: ' . self::DEFAULT_FLEX_DIRECTION,
@@ -220,6 +230,37 @@ final class SupportsStyle
         }
 
         return '[data-block-id].hb-supports { ' . implode('; ', $declarations) . '; }';
+    }
+
+    /**
+     * Stroke → Position (`supports.border.position`): `border-box` keeps the stroke inside the
+     * block's set width/height ("Inside"), `content-box` adds it around that size ("Outside").
+     *
+     * Gated on the block DECLARING the variable, unlike the base rule: `box-sizing` has no
+     * no-op value. Every default here must leave an unstyled block exactly as its own CSS drew
+     * it, and a blanket `border-box` would resize text blocks that never set a stroke.
+     * `box-sizing` does not inherit, so a container's choice cannot reach its children either.
+     */
+    private static function strokePositionRule(): string
+    {
+        return '[data-block-id].hb-supports[style*="--hb-box-sizing"] { box-sizing: var(--hb-box-sizing, ' . self::DEFAULT_BOX_SIZING . '); }';
+    }
+
+    /**
+     * Effects → layer blur (`supports.effects.filter`) and background blur
+     * (`supports.effects.backdrop`). Drop/inner shadows stay in the base rule's box-shadow.
+     *
+     * At ZERO specificity (`:where`) rather than the base rule's (0,2,0): a block's own stylesheet
+     * may use `filter` for its interaction feedback (the button darkens on hover with
+     * `brightness()`), and a blanket `filter: none` must not silently switch that off. `none` is a
+     * true no-op, and the interaction-state rules set the variables, so a hover-only filter still
+     * applies through this rule.
+     */
+    private static function filterEffectsRule(): string
+    {
+        $default = self::DEFAULT_FILTER;
+
+        return ":where([data-block-id].hb-supports) { filter: var(--hb-filter, {$default}); -webkit-backdrop-filter: var(--hb-backdrop, {$default}); backdrop-filter: var(--hb-backdrop, {$default}); }";
     }
 
     /**

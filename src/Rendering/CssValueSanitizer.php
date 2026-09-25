@@ -114,8 +114,36 @@ final class CssValueSanitizer
             'flex-align' => in_array($value, ['start', 'center', 'end', 'stretch'], true),
             'flex-wrap' => in_array($value, ['wrap', 'nowrap', 'wrap-reverse'], true),
             'overflow' => in_array($value, ['visible', 'hidden', 'clip'], true),
+            'box-sizing' => in_array($value, ['border-box', 'content-box'], true),
+            'filter' => $this->isSafeFilterValue($value),
             default => preg_match('#^[a-z0-9\s().,%_/-]+$#i', $value) === 1,
         };
+    }
+
+    /**
+     * `filter` (Effects → layer blur, and background blur's `backdrop-filter`): `none`, or a
+     * space-separated list of `blur(Npx)` — nothing else. No `url()` (an SVG filter reference
+     * could fetch anything), no drop-shadow() (shadows live in box-shadow) and no colour filters.
+     * LOCKSTEP with the JS isSafeFilterValue().
+     */
+    private function isSafeFilterValue(string $value): bool
+    {
+        if ($value === 'none') {
+            return true;
+        }
+
+        $functions = preg_split('/\s+/', trim($value)) ?: [];
+        if ($functions === [] || count($functions) > 12) {
+            return false;
+        }
+
+        foreach ($functions as $function) {
+            if (preg_match('/^blur\(\d{1,3}(\.\d+)?px\)$/', $function) !== 1) {
+                return false;
+            }
+        }
+
+        return true;
     }
 
     /** `length-signed`: a signed length (letter-spacing, translate x/y, per-side border width) or the bare `0`. */

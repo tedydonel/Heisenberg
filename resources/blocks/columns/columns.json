@@ -175,13 +175,22 @@
                 "topRight": true,
                 "bottomRight": true,
                 "bottomLeft": true
-            }
+            },
+            "position": true
         },
         "animation": true,
         "states": {
             "hover": true,
             "active": true,
             "focus": true
+        },
+        "appearance": {
+            "opacity": true
+        },
+        "effects": {
+            "shadow": true,
+            "filter": true,
+            "backdrop": true
         }
     },
     "style": {
@@ -430,6 +439,31 @@
                 "source": "supports.layout.gap",
                 "default": "",
                 "sanitize": "size-value"
+            },
+            "--hb-opacity": {
+                "source": "supports.appearance.opacity",
+                "default": "",
+                "sanitize": "opacity"
+            },
+            "--hb-box-sizing": {
+                "source": "supports.border.position",
+                "default": "",
+                "sanitize": "box-sizing"
+            },
+            "--hb-shadow": {
+                "source": "supports.effects.shadow",
+                "default": "",
+                "sanitize": "shadow"
+            },
+            "--hb-filter": {
+                "source": "supports.effects.filter",
+                "default": "",
+                "sanitize": "filter"
+            },
+            "--hb-backdrop": {
+                "source": "supports.effects.backdrop",
+                "default": "",
+                "sanitize": "filter"
             }
         }
     },
