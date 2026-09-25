@@ -219,6 +219,13 @@
                                         __('heisenberg::editor.inspector.post_translations_blocks_progress')
                                     );
                                 }
+                                if (($row['toc_total'] ?? 0) > 0 && $row['toc_translated'] < $row['toc_total']) {
+                                    $hbParts[] = str_replace(
+                                        [':done', ':total'],
+                                        [$row['toc_translated'], $row['toc_total']],
+                                        __('heisenberg::editor.inspector.post_translations_toc_progress')
+                                    );
+                                }
                                 $hbSummary = $hbParts === [] ? __('heisenberg::editor.inspector.post_translations_in_progress') : implode(' · ', $hbParts);
                             }
                         @endphp

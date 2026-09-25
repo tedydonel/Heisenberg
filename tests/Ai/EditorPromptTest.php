@@ -308,51 +308,51 @@ class EditorPromptTest extends TestCase
         $this->assertStringContainsString('My Post', $withSelection);
     }
 
-    /** §6 (LOCALES) states the single-row translation model, once, in the system prompt. */
-    public function test_system_prompt_states_the_editing_locale_translating_rule(): void
+    public function test_system_prompt_names_translate_page_as_the_one_way_to_translate(): void
     {
         $system = $this->prompt()->system();
 
         $this->assertStringContainsString('LOCALES', $system);
-        $this->assertStringContainsString('EDITING LOCALE', $system);
-        $this->assertStringContainsString('TRANSLATING', $system);
-        $this->assertStringContainsString('mode="replace" only', $system);
+        $this->assertStringContainsString('TRANSLATING is always translate_page(target_locale, code, title, toc)', $system);
+        $this->assertStringContainsString('Never translate', $system);
+        $this->assertStringNotContainsString('create_translation', $system, 'the editor translates with translate_page only');
     }
 
     /**
-     * docs/content-translation.md §0/Wave 2 — the root cause of the data-loss bug this test
-     * guards: the panel sends `editingLocale`/`homeLocale` (block-runtime.blade.php's
-     * getEditingLocale()/getHomeLocale(), wired in panel-ai.blade.php's documentContext()) on
-     * every turn, and a mismatch must restate the TRANSLATING rule against the CONCRETE
-     * locales — a named pair is much harder for the model to miss than the generic system-prompt
-     * rule alone.
+     * Off the home locale the turn names both languages, says translate_page is how to translate
+     * (into any language, not the one on screen), and carries the SOURCE document to translate
+     * from — the page itself then shows the on-screen language.
      */
-    public function test_user_prompt_states_the_translating_rule_when_editing_a_non_home_locale(): void
+    public function test_user_prompt_names_the_languages_and_carries_the_source_off_the_home_locale(): void
     {
-        $translating = $this->prompt()->user('Translate this', [
-            'document' => '[p]Hello[/p]',
+        $turn = $this->prompt()->user('Translate this', [
+            'document' => '[p]Bonjour[/p]',
+            'sourceDocument' => '[p]Hello[/p]',
             'editingLocale' => 'fr',
             'homeLocale' => 'en',
         ]);
 
-        $this->assertStringContainsString("editing the 'fr' locale", $translating);
-        $this->assertStringContainsString("home locale is 'en'", $translating);
-        $this->assertStringContainsString('TRANSLATION', $translating);
-        $this->assertStringContainsString('mode="replace" only', $translating);
-        $this->assertStringContainsString('mode="append" is refused', $translating);
+        $this->assertStringContainsString("source language is 'en'; 'fr' is on screen", $turn);
+        $this->assertStringContainsString('call translate_page with target_locale set to the language asked for', $turn);
+        $this->assertStringContainsString("never changes the 'en' source", $turn);
+        $this->assertStringContainsString("The SOURCE document ('en')", $turn);
+        $this->assertStringContainsString('[p]Hello[/p]', $turn);
     }
 
-    public function test_user_prompt_omits_the_translating_rule_when_editing_the_home_locale(): void
+    /** On the home locale a translation is still a translate_page call — it never rewrites the source. */
+    public function test_user_prompt_on_the_home_locale_still_translates_with_translate_page(): void
     {
-        $home = $this->prompt()->user('Add a heading', [
+        $home = $this->prompt()->user('Translate this to French', [
             'document' => '[p]Hello[/p]',
             'editingLocale' => 'en',
             'homeLocale' => 'en',
         ]);
 
-        $this->assertStringNotContainsString('TRANSLATION', $home);
+        $this->assertStringContainsString('call translate_page', $home);
+        $this->assertStringNotContainsString('While ', $home, 'no on-screen-locale editing rule on the home locale');
+        $this->assertStringNotContainsString('SOURCE document', $home);
 
         $noContext = $this->prompt()->user('Add a heading', ['document' => '[p]Hello[/p]']);
-        $this->assertStringNotContainsString('TRANSLATION', $noContext);
+        $this->assertStringNotContainsString('translate_page', $noContext);
     }
 }

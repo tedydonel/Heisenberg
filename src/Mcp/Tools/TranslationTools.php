@@ -11,6 +11,7 @@ use Heisenberg\Mcp\Support\ToolSchema;
 use Heisenberg\Models\Post;
 use Heisenberg\Services\BlockRegistryService;
 use Heisenberg\Services\McpToolException;
+use Heisenberg\Services\TocService;
 use Heisenberg\Services\TranslationStatusService;
 use Heisenberg\Support\LocaleConfig;
 use Heisenberg\Support\LocalizedAttributes;
@@ -47,7 +48,38 @@ final class TranslationTools implements McpToolProvider
         private ContentBlockPipeline $blocks,
         private BlockRegistryService $registry,
         private TranslationStatusService $translationStatus,
+        private TocService $toc,
     ) {
+    }
+
+    /**
+     * `toc` as a clean list of {anchor, label}, or null when the call did not pass one.
+     *
+     * @return list<array{anchor: string, label: string}>|null
+     */
+    private function tocLabels(mixed $toc): ?array
+    {
+        if ($toc === null) {
+            return null;
+        }
+        if (! is_array($toc) || $toc === []) {
+            throw new McpToolException('toc must be a non-empty array of {anchor, label} objects.');
+        }
+
+        $labels = [];
+        foreach (array_values($toc) as $i => $entry) {
+            $anchor = is_array($entry) ? trim((string) ($entry['anchor'] ?? '')) : '';
+            $label = is_array($entry) ? trim((string) ($entry['label'] ?? '')) : '';
+            if ($anchor === '' || $label === '') {
+                throw new McpToolException("toc[{$i}] needs a non-empty anchor and label.");
+            }
+            if (mb_strlen($label) > 160) {
+                throw new McpToolException("toc[{$i}].label must be 160 characters or fewer.");
+            }
+            $labels[] = ['anchor' => $anchor, 'label' => $label];
+        }
+
+        return $labels;
     }
 
     public function definitions(): array
@@ -73,16 +105,35 @@ final class TranslationTools implements McpToolProvider
                     . '`title_<locale>`/`excerpt_<locale>`. `code` must be the SAME block sequence and structure as the post\'s current content '
                     . '(only human-readable text translated — never block names, attribute names, ids, URLs or media references); it is validated '
                     . 'like update_post, then folded into the existing blocks by position — a structural mismatch (different block count, or a '
-                    . 'different block at some position) is refused with an error naming where, not silently applied. Available on both surfaces '
-                    . 'without a draft-only restriction: this edits fields of an existing post, it never changes or creates its publish status. '
+                    . 'different block at some position) is refused with an error naming where, not silently applied. No draft-only '
+                    . 'restriction: this edits fields of an existing post, it never changes or creates its publish status. '
+                    . '`toc` translates the post\'s table of contents (get_post\'s `toc`): one {anchor, label} per entry, the anchor copied '
+                    . 'unchanged and only the label translated; an anchor the post does not have is refused. A translation is not complete '
+                    . 'until the title, every block and every table-of-contents label are translated. '
                     . 'Returns the target locale\'s translation completeness from get_post\'s own `translations` shape.',
                 'tier' => self::TIER_AUTHORS,
+                // External clients only. It writes straight to the database, behind any editor that
+                // has the post open; the in-editor assistant translates with translate_page, which
+                // lands in the open document that the author then saves.
+                'surface' => self::SURFACE_EXTERNAL,
                 'inputSchema' => ToolSchema::schema([
                     'post_id' => ['type' => 'integer', 'description' => 'Post id to translate.'],
                     'target_locale' => ['type' => 'string', 'description' => 'Locale to translate into (must differ from the post\'s own home locale), e.g. "fr".'],
                     'title' => ['type' => 'string', 'description' => 'Translated title, written to title_<target_locale>.'],
                     'excerpt' => ['type' => 'string', 'description' => 'Translated excerpt, written to excerpt_<target_locale>.'],
                     'code' => ['type' => 'string', 'description' => 'The translated document as Heisenberg shortcode — same block sequence and structure as the post\'s stored content, text translated. Folded into the existing blocks by position, never replaces the tree.'],
+                    'toc' => [
+                        'type' => 'array',
+                        'description' => 'Translated table-of-contents labels, one per entry of get_post\'s `toc`: {anchor (unchanged), label (translated)}.',
+                        'items' => [
+                            'type' => 'object',
+                            'properties' => [
+                                'anchor' => ['type' => 'string', 'description' => 'The entry\'s anchor, exactly as get_post returned it.'],
+                                'label' => ['type' => 'string', 'description' => 'The translated label, plain text.'],
+                            ],
+                            'required' => ['anchor', 'label'],
+                        ],
+                    ],
                 ], ['post_id', 'target_locale']),
             ],
         ];
@@ -100,7 +151,7 @@ final class TranslationTools implements McpToolProvider
 
     /**
      * @param array<string, mixed> $args
-     * @return array{post_id: int|string, locale: string, complete: bool, blocks_translated: int, blocks_total: int}
+     * @return array{post_id: int|string, locale: string, complete: bool, blocks_translated: int, blocks_total: int, toc_translated: int, toc_total: int}
      */
     private function createTranslation(array $args): array
     {
@@ -122,9 +173,21 @@ final class TranslationTools implements McpToolProvider
         $hasTitle = array_key_exists('title', $args) && is_string($args['title']);
         $hasExcerpt = array_key_exists('excerpt', $args) && is_string($args['excerpt']);
         $hasCode = array_key_exists('code', $args) && is_string($args['code']) && trim($args['code']) !== '';
+        $tocLabels = $this->tocLabels($args['toc'] ?? null);
 
-        if (! $hasTitle && ! $hasExcerpt && ! $hasCode) {
-            throw new McpToolException('Supply at least one of: title, excerpt, code — there is nothing to translate.');
+        if (! $hasTitle && ! $hasExcerpt && ! $hasCode && $tocLabels === null) {
+            throw new McpToolException('Supply at least one of: title, excerpt, code, toc — there is nothing to translate.');
+        }
+
+        // Anchors are checked BEFORE the transaction, like the block code is validated below: a
+        // bad call never lands half-applied.
+        if ($tocLabels !== null) {
+            $known = $post->tocEntries()->pluck('anchor')->all();
+            $unknown = array_values(array_diff(array_column($tocLabels, 'anchor'), $known));
+            if ($unknown !== []) {
+                $have = $known === [] ? 'it has no table of contents' : 'its anchors are: ' . implode(', ', $known);
+                throw new McpToolException('toc: unknown anchor(s) ' . implode(', ', $unknown) . " — {$have}. Copy each anchor unchanged from get_post's `toc`.");
+            }
         }
 
         // Parsed + validated through the SAME pipeline update_post uses
@@ -133,7 +196,11 @@ final class TranslationTools implements McpToolProvider
         // the transaction below, once we know nothing else about the call will fail first.
         $translatedBlocks = $hasCode ? $this->blocks->validatedContentBlocks(['code' => (string) $args['code']]) : null;
 
-        return DB::transaction(function () use ($post, $targetLocale, $args, $hasTitle, $hasExcerpt, $translatedBlocks): array {
+        return DB::transaction(function () use ($post, $targetLocale, $args, $hasTitle, $hasExcerpt, $translatedBlocks, $tocLabels): array {
+            if ($tocLabels !== null) {
+                $this->toc->translate($post, $targetLocale, $tocLabels);
+                $post->unsetRelation('tocEntries');
+            }
             if ($hasTitle) {
                 $this->setLocaleField($post, $targetLocale, 'title', trim((string) $args['title']));
             }
@@ -305,7 +372,7 @@ final class TranslationTools implements McpToolProvider
      * `translations` map reports for this locale, so a caller sees a consistent number either
      * way it asks.
      *
-     * @return array{post_id: int|string, locale: string, complete: bool, blocks_translated: int, blocks_total: int}
+     * @return array{post_id: int|string, locale: string, complete: bool, blocks_translated: int, blocks_total: int, toc_translated: int, toc_total: int}
      */
     private function translationCompleteness(Post $post, string $locale): array
     {
@@ -317,6 +384,8 @@ final class TranslationTools implements McpToolProvider
                     'complete' => $row['complete'],
                     'blocks_translated' => $row['blocks_translated'],
                     'blocks_total' => $row['blocks_total'],
+                    'toc_translated' => $row['toc_translated'],
+                    'toc_total' => $row['toc_total'],
                 ];
             }
         }
@@ -324,6 +393,6 @@ final class TranslationTools implements McpToolProvider
         // Unreachable in practice ($locale was already validated against LocaleConfig, and
         // statuses() returns one row per configured locale) — kept as a safe default rather than
         // an assertion, so a future config change degrades gracefully instead of fataling here.
-        return ['post_id' => $post->getKey(), 'locale' => $locale, 'complete' => false, 'blocks_translated' => 0, 'blocks_total' => 0];
+        return ['post_id' => $post->getKey(), 'locale' => $locale, 'complete' => false, 'blocks_translated' => 0, 'blocks_total' => 0, 'toc_translated' => 0, 'toc_total' => 0];
     }
 }

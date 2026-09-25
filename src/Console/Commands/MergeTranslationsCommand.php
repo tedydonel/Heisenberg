@@ -9,6 +9,7 @@ use Heisenberg\Models\Post;
 use Heisenberg\Models\SeoMeta;
 use Heisenberg\Models\TocEntry;
 use Heisenberg\Services\BlockRegistryService;
+use Heisenberg\Services\TocService;
 use Heisenberg\Support\LocaleConfig;
 use Heisenberg\Support\LocalizedAttributes;
 use Illuminate\Console\Command;
@@ -42,12 +43,12 @@ use Illuminate\Support\Facades\DB;
  *    thread is about the article, not about one translation row of it (docs/content-translation.md
  *    §0), so losing it on merge would be a silent, unrecoverable content loss.
  *
+ *  - TOC labels ({@see TocEntry}): each sibling entry whose anchor matches a survivor entry
+ *    gives that entry its `label_<sibling locale>`, unless the survivor already has one. The entry
+ *    LIST stays the survivor's own; a sibling anchor the survivor does not have is dropped with
+ *    the sibling row (`toc_entries.post_id` cascades on delete).
+ *
  * **What is deliberately NOT folded, and is lost when the sibling row is removed**:
- *  - TOC entries ({@see TocEntry}) — `label` has no `_<locale>` column yet
- *    (unlike title/excerpt/block attributes/SEO), so there is nowhere honest to fold a sibling's
- *    translated labels TO. The survivor keeps its own TOC untouched; the sibling's TOC rows are
- *    removed with it (`toc_entries.post_id` cascades on delete). This is a real, documented gap —
- *    bilingual TOC labels need their own migration in a later wave; see docs/content-translation.md.
  *  - Revisions — a point-in-time snapshot of the SIBLING row specifically; cascade-deleted with
  *    it (same FK `Post::delete()`'s own docblock describes). The survivor's own revision history
  *    is untouched.
@@ -402,9 +403,10 @@ class MergeTranslationsCommand extends Command
             // and would otherwise leak as an orphan pointing at a row that's about to vanish.
             $sibling->seoMeta?->delete();
 
-            // TOC entries and category/tag pivot rows ARE cascade-deleted by the FK when the
-            // sibling row is force-deleted below — see this class's own docblock for why TOC
-            // labels specifically are a documented gap rather than folded.
+            app(TocService::class)->foldLabels($survivor, $sibling, (string) $sibling->locale);
+
+            // The sibling's own TOC rows and category/tag pivot rows are cascade-deleted by the
+            // FK when the sibling row is force-deleted below.
             $sibling->forceDelete();
         }
     }

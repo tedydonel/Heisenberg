@@ -148,4 +148,113 @@ final class LocalizedAttributes
 
         return $block;
     }
+
+    /**
+     * Keep translations across a rebuild from code. Shortcode never spells out `_<locale>`
+     * variants, so a tree parsed from code carries only home text, and replacing a post's blocks
+     * with it used to drop every translation. This carries each `key_<locale>` variant from
+     * `$oldTree` onto the block in `$newTree` that still has the SAME home text it translates:
+     * matched by name and translatable text first (a moved block keeps its translations), then by
+     * position and name for each attribute whose home text is unchanged. A translation of text
+     * that was since rewritten is dropped — it no longer translates anything — and a variant the
+     * new tree spells out itself always wins. LOCKSTEP with the editor's carryTranslations().
+     *
+     * @param list<array<string, mixed>> $oldTree
+     * @param list<array<string, mixed>> $newTree
+     * @param callable(string): list<string> $translatableKeys block name => its translatable attributes
+     * @param list<string> $locales every content locale
+     * @return list<array<string, mixed>>
+     */
+    public static function carryTranslations(array $oldTree, array $newTree, callable $translatableKeys, array $locales): array
+    {
+        $variantsOf = static function (array $node) use ($translatableKeys, $locales): array {
+            $attributes = is_array($node['attributes'] ?? null) ? $node['attributes'] : [];
+            $variants = [];
+            foreach ($translatableKeys((string) ($node['name'] ?? '')) as $key) {
+                foreach ($locales as $locale) {
+                    $suffixed = $key . '_' . $locale;
+                    if (array_key_exists($suffixed, $attributes) && self::hasContent($attributes[$suffixed])) {
+                        $variants[$suffixed] = ['key' => $key, 'value' => $attributes[$suffixed]];
+                    }
+                }
+            }
+
+            return $variants;
+        };
+        $signature = static function (array $node) use ($translatableKeys): string {
+            $attributes = is_array($node['attributes'] ?? null) ? $node['attributes'] : [];
+            $name = (string) ($node['name'] ?? '');
+
+            return $name . '|' . json_encode(array_map(static fn (string $key) => $attributes[$key] ?? '', $translatableKeys($name)));
+        };
+
+        /** @var array<string, list<array<string, mixed>>> $bySignature */
+        $bySignature = [];
+        /** @var array<string, array<string, mixed>> $byPath */
+        $byPath = [];
+        $index = static function (array $list, string $path) use (&$index, &$bySignature, &$byPath, $variantsOf, $signature): void {
+            foreach (array_values($list) as $i => $node) {
+                if (! is_array($node)) {
+                    continue;
+                }
+                $at = $path . '/' . $i;
+                if ($variantsOf($node) !== []) {
+                    $node['__at'] = $at;
+                    $bySignature[$signature($node)][] = $node;
+                    $byPath[$at] = $node;
+                }
+                $index(is_array($node['innerBlocks'] ?? null) ? $node['innerBlocks'] : [], $at);
+            }
+        };
+        $index($oldTree, '');
+
+        $used = [];
+        $carry = static function (array $list, string $path) use (&$carry, &$used, $bySignature, $byPath, $variantsOf, $signature): array {
+            $out = [];
+            foreach (array_values($list) as $i => $node) {
+                if (! is_array($node)) {
+                    $out[] = $node;
+
+                    continue;
+                }
+                $at = $path . '/' . $i;
+                $source = null;
+                $exact = false;
+                foreach ($bySignature[$signature($node)] ?? [] as $candidate) {
+                    if (! isset($used[$candidate['__at']])) {
+                        $source = $candidate;
+                        $exact = true;
+                        break;
+                    }
+                }
+                if ($source === null && isset($byPath[$at]) && ! isset($used[$at]) && ($byPath[$at]['name'] ?? null) === ($node['name'] ?? null)) {
+                    $source = $byPath[$at];
+                }
+
+                if ($source !== null) {
+                    $used[$source['__at']] = true;
+                    $attributes = is_array($node['attributes'] ?? null) ? $node['attributes'] : [];
+                    foreach ($variantsOf($source) as $suffixed => $variant) {
+                        if (array_key_exists($suffixed, $attributes)) {
+                            continue; // the new code spelled it out
+                        }
+                        // Only onto the text it translates: unchanged home text for this attribute.
+                        if ($exact || ($source['attributes'][$variant['key']] ?? '') === ($attributes[$variant['key']] ?? '')) {
+                            $attributes[$suffixed] = $variant['value'];
+                        }
+                    }
+                    $node['attributes'] = $attributes;
+                }
+
+                if (is_array($node['innerBlocks'] ?? null)) {
+                    $node['innerBlocks'] = $carry($node['innerBlocks'], $at);
+                }
+                $out[] = $node;
+            }
+
+            return $out;
+        };
+
+        return $carry($newTree, '');
+    }
 }

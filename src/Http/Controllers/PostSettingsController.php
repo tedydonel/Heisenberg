@@ -7,10 +7,13 @@ namespace Heisenberg\Http\Controllers;
 use Heisenberg\Adapters\GuestActor;
 use Heisenberg\Models\Post;
 use Heisenberg\Models\TocEntry;
+use Heisenberg\Services\TocService;
 use Illuminate\Contracts\Auth\Authenticatable;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Gate;
+use Illuminate\Validation\Rule;
+use Illuminate\Validation\ValidationException;
 
 /**
  * Lightweight per-post settings (Page layout, Discussion, Featured image — inspector.blade.php's
@@ -104,17 +107,23 @@ class PostSettingsController
     }
 
     /**
-     * PUT /editor/posts/{post}/toc — body: { entries: [{label, anchor}, ...] }. Replace-all
-     * semantics inside a transaction: every existing row is deleted and the submitted list is
-     * re-inserted with `order` set to its array index, so the client never has to reconcile ids —
-     * it just posts the list it wants. An empty `entries` array is a legal, deliberate way to
-     * remove the post's TOC (the render side treats "no rows" as "not authored"; see
-     * TocEntry/Post::tocEntries()'s own docblocks). `anchor` is server-validated against
-     * `/^[A-Za-z][\w-]*$/` — a legal CSS/HTML id — because that's what a #fragment link and the
-     * heading's own `id` attribute both need; sanitizing a client-derived slug into that shape is
-     * the client's job (the modal's "Load from headings" flow), not this endpoint's.
+     * PUT /editor/posts/{post}/toc — body: { entries: [{label, anchor}, ...], locale? }.
+     *
+     * In the post's HOME locale (or with no `locale`): replace-all semantics inside a transaction —
+     * the submitted list is the new list, `order` set from its array index, so the client never
+     * reconciles ids. An empty `entries` array is a legal, deliberate way to remove the post's TOC
+     * (the render side treats "no rows" as "not authored"). Labels other locales already gave a
+     * surviving anchor are kept ({@see TocService::replace()}).
+     *
+     * In ANY OTHER locale it is a translation: each entry relabels one of the post's EXISTING
+     * anchors (a translation changes text, never structure — the same rule blocks follow), so an
+     * anchor the post does not have is refused. A partial list is fine: entries left out keep
+     * whatever that locale already had ({@see TocService::translate()}).
+     *
+     * `anchor` is server-validated against `/^[A-Za-z][\w-]*$/` — a legal CSS/HTML id — because
+     * that's what a #fragment link and the heading's own `id` attribute both need.
      */
-    public function updateToc(Request $request, string $post): JsonResponse
+    public function updateToc(Request $request, string $post, TocService $toc): JsonResponse
     {
         $model = $this->findPostOrFail($post);
         Gate::forUser($this->actor($request))->authorize('update', $model);
@@ -123,27 +132,26 @@ class PostSettingsController
             'entries' => ['present', 'array'],
             'entries.*.label' => ['required', 'string', 'max:160'],
             'entries.*.anchor' => ['required', 'string', 'max:160', 'regex:/^[A-Za-z][\w-]*$/'],
+            'locale' => ['sometimes', 'nullable', 'string', Rule::in(TocEntry::LABEL_LOCALES)],
         ]);
 
         $entries = array_values($validated['entries']);
+        $locale = (string) ($validated['locale'] ?? '') ?: $toc->homeLocale($model);
 
-        $model->getConnection()->transaction(function () use ($model, $entries): void {
-            $model->tocEntries()->delete();
-            foreach ($entries as $index => $entry) {
-                $model->tocEntries()->create([
-                    'label' => $entry['label'],
-                    'anchor' => $entry['anchor'],
-                    'order' => $index,
-                ]);
+        if ($locale === $toc->homeLocale($model)) {
+            $toc->replace($model, $entries);
+        } else {
+            $current = $model->tocEntries()->pluck('anchor')->all();
+            if (array_diff(array_column($entries, 'anchor'), $current) !== []) {
+                throw ValidationException::withMessages(['entries' => __('heisenberg::editor.toc.translation_structure')]);
             }
-        });
+            $toc->translate($model, $locale, $entries);
+        }
 
         return response()->json([
             'post_id' => $model->id,
-            'entries' => $model->tocEntries()->get(['label', 'anchor'])->map(fn (TocEntry $e) => [
-                'label' => $e->label,
-                'anchor' => $e->anchor,
-            ])->values()->all(),
+            'locale' => $locale,
+            'entries' => $toc->payload($model, $locale),
         ]);
     }
 

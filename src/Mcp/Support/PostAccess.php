@@ -11,9 +11,11 @@ use Heisenberg\Mcp\Tools\RevisionTools;
 use Heisenberg\Mcp\Tools\TranslationTools;
 use Heisenberg\Models\Post;
 use Heisenberg\Models\Revision;
+use Heisenberg\Services\BlockRegistryService;
 use Heisenberg\Services\EmailBlockCoverageService;
 use Heisenberg\Services\McpToolException;
 use Heisenberg\Support\LocaleConfig;
+use Heisenberg\Support\LocalizedAttributes;
 use Illuminate\Contracts\Auth\Authenticatable;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
@@ -33,6 +35,7 @@ class PostAccess
     public function __construct(
         private ContentBlockPipeline $blocks,
         private EmailBlockCoverageService $emailCoverage,
+        private BlockRegistryService $registry,
     ) {
     }
 
@@ -154,6 +157,17 @@ class PostAccess
                 // PostController::captureRevision().
                 if ($existing !== null) {
                     $this->captureRevision($post, $revisionType);
+                    // Code carries only home text, so a rebuild from `code` keeps every
+                    // translation whose home text survived (docs/content-translation.md §0).
+                    // Raw `blocks` (a revision restore) are written exactly as given.
+                    if (is_string($args['code'] ?? null)) {
+                        $blocks = LocalizedAttributes::carryTranslations(
+                            $this->currentBlocks($post),
+                            $blocks,
+                            fn (string $name): array => $this->registry->translatableAttributes($name),
+                            LocaleConfig::locales(),
+                        );
+                    }
                 }
 
                 $this->replaceBlocks($post, $blocks);

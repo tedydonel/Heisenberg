@@ -130,7 +130,7 @@ class SitemapController
     {
         $locales = [];
         foreach ($this->status->statuses($post) as $status) {
-            if (($status['title'] ?? false) === true) {
+            if ($status['title'] === true) {
                 $locales[] = (string) $status['locale'];
             }
         }

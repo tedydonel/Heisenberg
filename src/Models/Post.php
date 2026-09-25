@@ -22,6 +22,8 @@ use Illuminate\Support\Str;
  * Cascade soft-delete/restore (blueprint §2.3.1, §2.4): `delete()`/`restore()`
  * are overridden below to keep `blocks` and `revisions` in lockstep with the
  * post via a shared `deleted_batch_id` UUID — see the method docblocks.
+ *
+ * @property string|null $locale The post's home locale (docs/content-translation.md §0).
  */
 class Post extends Model
 {

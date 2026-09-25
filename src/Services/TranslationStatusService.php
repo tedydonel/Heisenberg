@@ -6,6 +6,7 @@ namespace Heisenberg\Services;
 
 use Heisenberg\Models\Block;
 use Heisenberg\Models\Post;
+use Heisenberg\Models\TocEntry;
 use Heisenberg\Support\LocaleConfig;
 use Heisenberg\Support\LocalizedAttributes;
 
@@ -35,6 +36,8 @@ use Heisenberg\Support\LocalizedAttributes;
  *   excerpt:            bool,     // excerpt_<locale> has non-empty content
  *   blocks_translated:  int,     // count of translatable blocks with FULL content in this locale
  *   blocks_total:       int,     // count of blocks that declare at least one translatable attribute
+ *   toc_translated:     int,     // table-of-contents entries with a label in this locale
+ *   toc_total:          int,     // the post's table-of-contents entries (0 = none authored)
  *   complete:           bool,    // see completeness rule below
  * }
  * ```
@@ -49,7 +52,8 @@ use Heisenberg\Support\LocalizedAttributes;
  * so a paragraph nested three columns deep still counts.
  *
  * Completeness rule: `complete` requires `title` AND every block counted in `blocks_total` to be
- * translated (`blocks_total === 0 || blocks_translated === blocks_total`). `excerpt` does NOT gate
+ * translated (`blocks_total === 0 || blocks_translated === blocks_total`) AND every authored
+ * table-of-contents entry to have a label in the locale (the home locale's own labels always do). `excerpt` does NOT gate
  * completeness on its own — an excerpt is optional editorial metadata, and a post that never uses
  * excerpts in ANY locale should not read as "incomplete" forever; it only gates completeness when
  * the post has excerpt content in at least one configured locale (i.e. an excerpt was authored
@@ -62,7 +66,7 @@ class TranslationStatusService
     }
 
     /**
-     * @return list<array{locale: string, is_default: bool, title: bool, excerpt: bool, blocks_translated: int, blocks_total: int, complete: bool}>
+     * @return list<array{locale: string, is_default: bool, title: bool, excerpt: bool, blocks_translated: int, blocks_total: int, toc_translated: int, toc_total: int, complete: bool}>
      */
     public function statuses(Post $post): array
     {
@@ -80,6 +84,9 @@ class TranslationStatusService
 
         $excerptUsedElsewhere = $this->excerptUsedIn($post, $locales);
 
+        $toc = app(TocService::class)->entries($post);
+        $tocTotal = count($toc);
+
         $rows = [];
         foreach ($locales as $locale) {
             $locale = (string) $locale;
@@ -94,6 +101,11 @@ class TranslationStatusService
                 }
             }
 
+            // The home locale's labels are the source text: the bare `label` counts for it.
+            $tocTranslated = count(array_filter($toc, static fn (TocEntry $entry): bool => LocalizedAttributes::hasContent(
+                $entry->getAttribute("label_{$locale}") ?? ($locale === $ownLocale ? $entry->label : null)
+            )));
+
             $rows[] = [
                 'locale' => $locale,
                 'is_default' => $locale === $default,
@@ -101,8 +113,11 @@ class TranslationStatusService
                 'excerpt' => $excerpt,
                 'blocks_translated' => $translated,
                 'blocks_total' => $total,
+                'toc_translated' => $tocTranslated,
+                'toc_total' => $tocTotal,
                 'complete' => $title
                     && ($total === 0 || $translated === $total)
+                    && $tocTranslated === $tocTotal
                     && (! $excerptUsedElsewhere || $excerpt),
             ];
         }

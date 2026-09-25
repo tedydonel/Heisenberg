@@ -9,6 +9,7 @@ use Heisenberg\Mcp\Support\ToolSchema;
 use Heisenberg\Models\Post;
 use Heisenberg\Services\McpToolException;
 use Heisenberg\Services\ShortcodeSerializer;
+use Heisenberg\Services\TocService;
 use Heisenberg\Services\TranslationStatusService;
 
 /**
@@ -23,6 +24,7 @@ final class PostTools implements McpToolProvider
         private PostAccess $posts,
         private ShortcodeSerializer $serializer,
         private TranslationStatusService $translationStatus,
+        private TocService $toc,
     ) {
     }
 
@@ -40,7 +42,7 @@ final class PostTools implements McpToolProvider
             ],
 
             'get_post' => [
-                'description' => 'One post with its content as BOTH shortcode (`code` — edit this) and raw block JSON. To change the content, edit the shortcode and pass it back to update_post; pass content_version back too, to avoid clobbering a concurrent edit. `translations` maps every configured locale to its translation COMPLETENESS on this SAME row (docs/content-translation.md §0 — a translation is locale-suffixed attribute variants on the one post, not a separate row): `{is_default, title, excerpt, blocks_translated, blocks_total, complete}` — `title`/`excerpt` are booleans (that locale\'s column has content), `blocks_translated`/`blocks_total` count translatable blocks, `complete` is overall per-locale readiness. Use create_translation to fill in a gap.',
+                'description' => 'One post with its content as BOTH shortcode (`code` — edit this) and raw block JSON. To change the content, edit the shortcode and pass it back to update_post; pass content_version back too, to avoid clobbering a concurrent edit. `translations` maps every configured locale to its translation COMPLETENESS on this SAME row (docs/content-translation.md §0 — a translation is locale-suffixed attribute variants on the one post, not a separate row): `{is_default, title, excerpt, blocks_translated, blocks_total, toc_translated, toc_total, complete}` — `title`/`excerpt` are booleans (that locale\'s column has content), `blocks_translated`/`blocks_total` count translatable blocks, `toc_translated`/`toc_total` count table-of-contents labels, `complete` is overall per-locale readiness. `toc` lists the table of contents: each entry\'s `anchor` and `labels` per locale (null = untranslated). Use create_translation to fill in a gap.',
                 'tier' => self::TIER_READ,
                 'inputSchema' => ToolSchema::schema([
                     'id' => ['type' => 'integer', 'description' => 'Post id.'],
@@ -138,6 +140,8 @@ final class PostTools implements McpToolProvider
                 'excerpt' => $row['excerpt'],
                 'blocks_translated' => $row['blocks_translated'],
                 'blocks_total' => $row['blocks_total'],
+                'toc_translated' => $row['toc_translated'],
+                'toc_total' => $row['toc_total'],
                 'complete' => $row['complete'],
             ];
         }
@@ -150,6 +154,12 @@ final class PostTools implements McpToolProvider
             'code' => $this->serializer->serialize($blocks),
             'blocks' => $blocks,
             'translations' => $translations,
+            // The authored table of contents: each entry's anchor and its label in every locale
+            // (null = not translated yet) — what create_translation's `toc` translates.
+            'toc' => array_map(
+                static fn (array $entry): array => ['anchor' => $entry['anchor'], 'labels' => $entry['labels']],
+                $this->toc->payload($post),
+            ),
         ];
     }
 }

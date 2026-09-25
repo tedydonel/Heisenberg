@@ -127,12 +127,6 @@ parameters:
 			path: src/Blocks/StylePanelFieldRows.php
 
 		-
-			message: '#^Access to an undefined property Heisenberg\\Models\\Post\:\:\$locale\.$#'
-			identifier: property.notFound
-			count: 3
-			path: src/Console/Commands/MergeTranslationsCommand.php
-
-		-
 			message: '#^Access to an undefined property Heisenberg\\Models\\Post\:\:\$translation_group_id\.$#'
 			identifier: property.notFound
 			count: 1
@@ -397,12 +391,6 @@ parameters:
 			path: src/Http/Controllers/EditorController.php
 
 		-
-			message: '#^Access to an undefined property Heisenberg\\Models\\Post\:\:\$locale\.$#'
-			identifier: property.notFound
-			count: 3
-			path: src/Http/Controllers/EditorController.php
-
-		-
 			message: '#^Access to an undefined property Heisenberg\\Models\\Post\:\:\$published_at\.$#'
 			identifier: property.notFound
 			count: 1
@@ -439,12 +427,6 @@ parameters:
 			path: src/Http/Controllers/EditorController.php
 
 		-
-			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$anchor\.$#'
-			identifier: property.notFound
-			count: 1
-			path: src/Http/Controllers/EditorController.php
-
-		-
 			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$canonical_url\.$#'
 			identifier: property.notFound
 			count: 1
@@ -464,12 +446,6 @@ parameters:
 
 		-
 			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$in_sitemap\.$#'
-			identifier: property.notFound
-			count: 1
-			path: src/Http/Controllers/EditorController.php
-
-		-
-			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$label\.$#'
 			identifier: property.notFound
 			count: 1
 			path: src/Http/Controllers/EditorController.php
@@ -536,12 +512,6 @@ parameters:
 
 		-
 			message: '#^Parameter \#1 \$callback of method Illuminate\\Database\\Eloquent\\Collection\<int,Heisenberg\\Models\\Pattern\>\:\:map\(\) contains unresolvable type\.$#'
-			identifier: argument.unresolvableType
-			count: 1
-			path: src/Http/Controllers/EditorController.php
-
-		-
-			message: '#^Parameter \#1 \$callback of method Illuminate\\Database\\Eloquent\\Collection\<int,Illuminate\\Database\\Eloquent\\Model\>\:\:map\(\) contains unresolvable type\.$#'
 			identifier: argument.unresolvableType
 			count: 1
 			path: src/Http/Controllers/EditorController.php
@@ -736,12 +706,6 @@ parameters:
 			message: '#^Access to an undefined property Heisenberg\\Models\\Post\:\:\$excerpt_fr\.$#'
 			identifier: property.notFound
 			count: 1
-			path: src/Http/Controllers/PostController.php
-
-		-
-			message: '#^Access to an undefined property Heisenberg\\Models\\Post\:\:\$locale\.$#'
-			identifier: property.notFound
-			count: 5
 			path: src/Http/Controllers/PostController.php
 
 		-
@@ -949,32 +913,8 @@ parameters:
 			path: src/Http/Controllers/PostPublicController.php
 
 		-
-			message: '#^Access to an undefined property Heisenberg\\Models\\Post\:\:\$locale\.$#'
-			identifier: property.notFound
-			count: 1
-			path: src/Http/Controllers/PostPublicController.php
-
-		-
-			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$anchor\.$#'
-			identifier: property.notFound
-			count: 1
-			path: src/Http/Controllers/PostPublicController.php
-
-		-
 			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$content\.$#'
 			identifier: property.notFound
-			count: 1
-			path: src/Http/Controllers/PostPublicController.php
-
-		-
-			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$label\.$#'
-			identifier: property.notFound
-			count: 1
-			path: src/Http/Controllers/PostPublicController.php
-
-		-
-			message: '#^Parameter \#1 \$callback of method Illuminate\\Database\\Eloquent\\Collection\<int,Illuminate\\Database\\Eloquent\\Model\>\:\:map\(\) contains unresolvable type\.$#'
-			identifier: argument.unresolvableType
 			count: 1
 			path: src/Http/Controllers/PostPublicController.php
 
@@ -1033,30 +973,6 @@ parameters:
 			path: src/Http/Controllers/PostSettingsController.php
 
 		-
-			message: '#^Access to an undefined property Heisenberg\\Models\\TocEntry\:\:\$anchor\.$#'
-			identifier: property.notFound
-			count: 1
-			path: src/Http/Controllers/PostSettingsController.php
-
-		-
-			message: '#^Access to an undefined property Heisenberg\\Models\\TocEntry\:\:\$label\.$#'
-			identifier: property.notFound
-			count: 1
-			path: src/Http/Controllers/PostSettingsController.php
-
-		-
-			message: '#^Parameter \#1 \$callback of method Illuminate\\Database\\Eloquent\\Collection\<int,Illuminate\\Database\\Eloquent\\Model\>\:\:map\(\) contains unresolvable type\.$#'
-			identifier: argument.unresolvableType
-			count: 1
-			path: src/Http/Controllers/PostSettingsController.php
-
-		-
-			message: '#^Parameter \#1 \$callback of method Illuminate\\Database\\Eloquent\\Collection\<int,Illuminate\\Database\\Eloquent\\Model\>\:\:map\(\) expects callable\(Illuminate\\Database\\Eloquent\\Model, int\)\: array\{label\: mixed, anchor\: mixed\}, Closure\(Heisenberg\\Models\\TocEntry\)\: array\{label\: mixed, anchor\: mixed\} given\.$#'
-			identifier: argument.type
-			count: 1
-			path: src/Http/Controllers/PostSettingsController.php
-
-		-
 			message: '#^Access to an undefined property Heisenberg\\Models\\Tag\:\:\$name_en\.$#'
 			identifier: property.notFound
 			count: 1
@@ -1085,12 +1001,6 @@ parameters:
 			identifier: argument.type
 			count: 1
 			path: src/Http/Controllers/PostTagController.php
-
-		-
-			message: '#^Access to an undefined property Heisenberg\\Models\\Post\:\:\$locale\.$#'
-			identifier: property.notFound
-			count: 1
-			path: src/Http/Controllers/PostTranslationsApiController.php
 
 		-
 			message: '#^Access to an undefined property Heisenberg\\Models\\Post\:\:\$slug\.$#'
@@ -1123,19 +1033,7 @@ parameters:
 			path: src/Http/Controllers/PreviewController.php
 
 		-
-			message: '#^Access to an undefined property Heisenberg\\Models\\Post\:\:\$locale\.$#'
-			identifier: property.notFound
-			count: 1
-			path: src/Http/Controllers/PreviewController.php
-
-		-
 			message: '#^Access to an undefined property Heisenberg\\Models\\Post\:\:\$type\.$#'
-			identifier: property.notFound
-			count: 1
-			path: src/Http/Controllers/PreviewController.php
-
-		-
-			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$anchor\.$#'
 			identifier: property.notFound
 			count: 1
 			path: src/Http/Controllers/PreviewController.php
@@ -1145,30 +1043,6 @@ parameters:
 			identifier: property.notFound
 			count: 1
 			path: src/Http/Controllers/PreviewController.php
-
-		-
-			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$label\.$#'
-			identifier: property.notFound
-			count: 1
-			path: src/Http/Controllers/PreviewController.php
-
-		-
-			message: '#^Parameter \#1 \$callback of method Illuminate\\Database\\Eloquent\\Collection\<int,Illuminate\\Database\\Eloquent\\Model\>\:\:map\(\) contains unresolvable type\.$#'
-			identifier: argument.unresolvableType
-			count: 1
-			path: src/Http/Controllers/PreviewController.php
-
-		-
-			message: '#^Access to an undefined property Heisenberg\\Models\\Post\:\:\$locale\.$#'
-			identifier: property.notFound
-			count: 1
-			path: src/Http/Controllers/SeoAnalysisController.php
-
-		-
-			message: '#^Access to an undefined property Heisenberg\\Models\\Post\:\:\$locale\.$#'
-			identifier: property.notFound
-			count: 2
-			path: src/Http/Controllers/SitemapController.php
 
 		-
 			message: '#^Access to an undefined property Heisenberg\\Models\\Post\:\:\$updated_at\.$#'
@@ -1185,12 +1059,6 @@ parameters:
 		-
 			message: '#^Access to an undefined property Heisenberg\\Models\\SeoMeta\:\:\$robots\.$#'
 			identifier: property.notFound
-			count: 1
-			path: src/Http/Controllers/SitemapController.php
-
-		-
-			message: '#^Offset ''title'' on array\{locale\: string, is_default\: bool, title\: bool, excerpt\: bool, blocks_translated\: int, blocks_total\: int, complete\: bool\} on left side of \?\? always exists and is not nullable\.$#'
-			identifier: nullCoalesce.offset
 			count: 1
 			path: src/Http/Controllers/SitemapController.php
 
@@ -1286,12 +1154,6 @@ parameters:
 
 		-
 			message: '#^Access to an undefined property Heisenberg\\Models\\Post\:\:\$excerpt_fr\.$#'
-			identifier: property.notFound
-			count: 1
-			path: src/Mcp/Support/PostAccess.php
-
-		-
-			message: '#^Access to an undefined property Heisenberg\\Models\\Post\:\:\$locale\.$#'
 			identifier: property.notFound
 			count: 1
 			path: src/Mcp/Support/PostAccess.php
@@ -1417,12 +1279,6 @@ parameters:
 			path: src/Mcp/Tools/RevisionTools.php
 
 		-
-			message: '#^Access to an undefined property Heisenberg\\Models\\Post\:\:\$locale\.$#'
-			identifier: property.notFound
-			count: 1
-			path: src/Mcp/Tools/SeoTools.php
-
-		-
 			message: '#^Access to an undefined property Heisenberg\\Models\\SeoMeta\:\:\$canonical_url\.$#'
 			identifier: property.notFound
 			count: 1
@@ -1531,12 +1387,6 @@ parameters:
 			path: src/Mcp/Tools/ThemeTools.php
 
 		-
-			message: '#^Access to an undefined property Heisenberg\\Models\\Post\:\:\$locale\.$#'
-			identifier: property.notFound
-			count: 1
-			path: src/Mcp/Tools/TranslationTools.php
-
-		-
 			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$content\.$#'
 			identifier: property.notFound
 			count: 3
@@ -1600,12 +1450,6 @@ parameters:
 			message: '#^Access to an undefined property Heisenberg\\Models\\Post\:\:\$excerpt_fr\.$#'
 			identifier: property.notFound
 			count: 2
-			path: src/Models/Post.php
-
-		-
-			message: '#^Access to an undefined property Heisenberg\\Models\\Post\:\:\$locale\.$#'
-			identifier: property.notFound
-			count: 4
 			path: src/Models/Post.php
 
 		-
@@ -2065,12 +1909,6 @@ parameters:
 			path: src/Services/SeoAnalyzer.php
 
 		-
-			message: '#^Access to an undefined property Heisenberg\\Models\\Post\:\:\$locale\.$#'
-			identifier: property.notFound
-			count: 1
-			path: src/Services/SeoUrlResolver.php
-
-		-
 			message: '#^Access to an undefined property Heisenberg\\Models\\Post\:\:\$slug\.$#'
 			identifier: property.notFound
 			count: 3
@@ -2093,12 +1931,6 @@ parameters:
 			identifier: arrayValues.list
 			count: 1
 			path: src/Services/ShortcodeParser.php
-
-		-
-			message: '#^Access to an undefined property Heisenberg\\Models\\Post\:\:\$locale\.$#'
-			identifier: property.notFound
-			count: 1
-			path: src/Services/TranslationStatusService.php
 
 		-
 			message: '#^Parameter \#1 \$blockModels of method Heisenberg\\Services\\TranslationStatusService\:\:flattenTranslatable\(\) expects iterable\<Heisenberg\\Models\\Block\>, Illuminate\\Database\\Eloquent\\Collection\<int, Illuminate\\Database\\Eloquent\\Model\> given\.$#'

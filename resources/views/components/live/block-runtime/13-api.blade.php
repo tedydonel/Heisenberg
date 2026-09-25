@@ -12,7 +12,7 @@
     previewState/moveBlock/removeBlock from 06-selection-support & 08-tree-ops; getEditingLocale/
     getHomeLocale/getContentLocales/setEditingLocale/resolveAttrKey/readAttr from
     01-bootstrap-and-email-variables, 02-doc-model & 12-history-and-locale-switch; selectById/
-    reRenderBlock from 07-toolbar-and-selection; replaceDoc/foldTranslation/applyCanvasWrite from
+    reRenderBlock from 07-toolbar-and-selection; replaceDoc/foldTranslation (as translateInto)/applyCanvasWrite from
     11-doc-replace-and-translation; undo/redo/canUndo/canRedo/history from
     12-history-and-locale-switch; DATA.registryHash from 01-bootstrap-and-email-variables).
 
@@ -46,7 +46,8 @@
         selectById: selectById,
         reRenderBlock: reRenderBlock,
         replaceDoc: replaceDoc,
-        foldTranslation: foldTranslation,
+        // A translation into an explicitly named locale (never the home text, never the locale on screen).
+        translateInto: function (target, blocks) { return foldTranslation(blocks, target); },
         applyCanvasWrite: applyCanvasWrite,
         undo: undo,
         redo: redo,

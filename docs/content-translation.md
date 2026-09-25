@@ -124,10 +124,9 @@ with more than one row back into one:
   `in_sitemap`) are NOT folded — technical/single-value, the survivor's own value (or lack of one)
   is left untouched. The sibling's own now-redundant `SeoMeta` row is deleted (it has no cascading
   FK, so it would otherwise leak as an orphan).
-- **TOC entries are a known, documented gap**: `TocEntry::label` has no `_<locale>` column (unlike
-  title/excerpt/block attributes/SEO), so there is nowhere honest to fold a sibling's translated
-  labels TO. The survivor keeps its own TOC untouched; the sibling's TOC rows are removed with it
-  (cascading FK). Bilingual TOC labels need their own migration in a later wave.
+- **TOC labels are folded by anchor** (§0.3): a sibling entry whose anchor matches a survivor entry
+  gives it `label_<sibling locale>` unless the survivor already has one. The entry list stays the
+  survivor's; a sibling-only anchor is removed with the sibling row (cascading FK).
 - **Revisions and category/tag pivot rows** on the sibling are cascade-deleted with it (same FKs
   `Post::delete()`'s own docblock describes) — not folded, not mentioned as in-scope by the original
   brief. `page_padding_x`/`page_padding_y`/`allow_comments`/`featured_image_id` are left as the
@@ -214,6 +213,66 @@ the whole fetch-and-navigate flow are gone from both `topbar.blade.php` and
 **Still open**: `McpToolRegistry`, `PostTranslationsApiController`, and `PreviewController`'s
 hreflang payload — unowned by this wave (a parallel wave), see §0.1's own "what's now broken" for
 the exact fatals.
+
+### 0.3 Translatable table of contents (2026-09-25)
+
+A post's authored TOC ({@see TocEntry}) is translated like its title: `label_en`/`label_fr`
+columns beside the bare `label` (which keeps mirroring the home-locale label for hosts that read it
+directly). Every existing label was backfilled into its post's home-locale column.
+
+- **The list belongs to the home locale.** Which anchors, in what order, is edited only there —
+  the same rule blocks follow. Another locale supplies a label per existing anchor and nothing
+  else. `TocService` holds the rule; both writers go through it.
+- **Editor.** The TOC dialog edits the locale being edited. In a non-home locale it is a
+  translation view: labels only (the home label is the placeholder), no add/remove/reorder, anchors
+  read-only, and "Load headings" relabels existing anchors from the translated headings.
+  `PUT /editor/posts/{post}/toc` takes an optional `locale`; a non-home save whose anchors differ
+  from the post's is refused (422) with a message saying why.
+- **Readers.** The public page and preview show `TocEntry::labelFor($locale)`: that locale's label,
+  else the home label.
+- **Completeness.** `TranslationStatusService` rows gain `toc_translated`/`toc_total`; a locale is
+  `complete` only when every entry has a label in it. The Translations section shows the gap.
+- **AI.** `get_post` returns `toc` (each anchor with its labels per locale) and the
+  `toc_translated`/`toc_total` counts. `create_translation` takes `toc: [{anchor, label}]`; an
+  anchor the post does not have is refused before anything is written. The in-editor assistant is
+  sent the post id and the TOC with each turn, is told the TOC is part of any translation, and the
+  panel mirrors a successful `create_translation` `toc` into the dialog (an after-run `tool_use`
+  frame with `done: true`, `HeisenbergToolSource::MIRRORED_AFTER_RUN_TOOLS`).
+
+### 0.4 One translation path, and translations that survive edits (2026-09-25)
+
+Two design flaws caused translations to land in the wrong language and to disappear:
+
+- **The target was implicit.** A translation was written into whichever locale was *on screen*
+  (`applyCanvasWrite()`/`foldTranslation()` wrote through `resolveAttrKey()`, which means "the
+  editing locale"), so asking for English while French was on screen wrote English into the French
+  slots. The home locale had a second, different path (`create_translation`, straight to the
+  database behind the open editor), so the model had to pick a path from where the author stood.
+- **Rebuilds dropped translations.** Shortcode never carries `_<locale>` variants, so every rebuild
+  from code — the code view, the AI's `write_canvas` replace, MCP `update_post` — replaced the
+  blocks with home-text-only copies and every translation was gone.
+
+The replacement:
+
+- **`translate_page(target_locale, code, title, toc)` is the only translation tool** in the editor.
+  It is client-applied like `write_canvas`: validated server-side (`CanvasTools`), then the panel
+  writes the page into `<key>_<target>` (`hbEditor.translateInto()` → `foldTranslation(blocks,
+  target)`), the title into that locale (`hbTopbarState.setTitleFor()`), and the TOC labels through
+  the TOC endpoint with `locale`. The target is always named, so the result never depends on the
+  locale on screen; the home locale is refused as a target (its text is the source).
+- **`write_canvas` and `set_page_title` write the locale on screen** and are never used to
+  translate. Off the home locale that means editing that locale's text for the same blocks.
+- **`create_translation` is external-only** (MCP clients). The in-editor assistant never writes
+  translations to the database behind the open document.
+- **A translation is made from the source.** Off the home locale the panel also sends
+  `sourceDocument` (the code view serialized from the bare, home text), and the prompt tells the
+  model to translate from it.
+- **Rebuilds keep translations** (`carryTranslations()` in the editor, `LocalizedAttributes::
+  carryTranslations()` on the server — lockstep). Each `_<locale>` variant is carried to the block
+  that still has the same home text (matched by name and text first, then by position per
+  unchanged attribute). A translation of text that was rewritten is dropped, so the locale reads
+  as untranslated there instead of showing a stale translation. MCP `update_post` applies it when
+  it rebuilds from `code`; a revision restore writes its snapshot exactly.
 
 ## 1. The model: split-row translations (finish what the schema intends)
 
@@ -409,7 +468,6 @@ shape), and `url_resolver` is the full override seam for anything a template can
 
 - Block-level attribute translation UI (`_en`/`_fr` suffixes stay renderer-only).
 - More locales than en/fr (config generalizes; columns don't yet).
-- TocEntry bilingual labels (each sibling row owns its own TOC — split-row makes this moot).
 - Auto-publish of translations; comment threads are per-row by design (discussions differ per language).
 
 ## 9. Test surface

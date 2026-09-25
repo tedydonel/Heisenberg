@@ -50,6 +50,7 @@ class HeisenbergToolSource
     public const CLIENT_APPLIED_TOOLS = [
         self::CANVAS_TOOL,
         self::PREFIX . 'set_page_title',
+        self::PREFIX . 'translate_page',
     ];
 
     public static function appliesClientSide(string $name): bool

@@ -119,30 +119,33 @@ class EditorPrompt
                 . 'becomes the page content, live in front of the user.';
         }
 
-        // The editor's editing locale (docs/content-translation.md §0/Wave 2), sent by the
-        // panel every turn (block-runtime.blade.php's getEditingLocale()/getHomeLocale()).
-        // When it differs from the post's own home locale, write_canvas is TRANSLATING —
-        // restate the LOCALES-section rule against the CONCRETE locales this turn, since a
-        // named pair ("fr" vs "en") is much harder to miss than the generic rule alone.
+        // Which language is the source, which is on screen, and the ONE way to translate
+        // (docs/content-translation.md §0): translate_page, with the target named explicitly, so a
+        // translation can never land in the source or in whatever language happens to be on screen.
         $editingLocale = trim((string) ($context['editingLocale'] ?? ''));
         $homeLocale = trim((string) ($context['homeLocale'] ?? ''));
-        if ($editingLocale !== '' && $homeLocale !== '' && $editingLocale !== $homeLocale) {
-            $parts[] = "You are editing the '{$editingLocale}' locale; the post's home locale is "
-                . "'{$homeLocale}'. This turn is a TRANSLATION: any write_canvas call must reproduce the "
-                . 'SAME block sequence as the document above with only human-readable text changed — '
-                . 'never add, remove, or reorder blocks, and never change ids/urls/media refs. Use '
-                . 'mode="replace" only; mode="append" is refused while editing a non-home locale (tell '
-                . 'the user to switch back to the home locale to add new blocks). Translate the POST '
-                . "TITLE too, with set_page_title — it writes into the '{$editingLocale}' title, and a "
-                . 'translation that leaves the title in the source language is unfinished.';
-        } elseif ($editingLocale !== '' && $editingLocale === $homeLocale) {
-            // The destructive case: asked to translate while the SOURCE locale is active. Without
-            // this, write_canvas mode="replace" is the obvious-looking move and it overwrites the
-            // original text with the translation.
-            $parts[] = "You are editing the post's home locale ('{$homeLocale}'). If asked to "
-                . 'translate, call create_translation with the target locale — do NOT write the '
-                . 'translation onto the canvas with write_canvas, which would replace the source '
-                . 'text itself. The user does not need to switch locale for you to translate.';
+        if ($homeLocale !== '') {
+            $screen = $editingLocale !== '' ? $editingLocale : $homeLocale;
+            $languages = "Languages: this post's source language is '{$homeLocale}'; '{$screen}' is on screen. "
+                . 'To translate — whatever is on screen — call translate_page with target_locale set to the '
+                . "language asked for: it writes only that language and never changes the '{$homeLocale}' source. "
+                . 'Never translate with write_canvas or set_page_title; they write the language on screen. '
+                . "A translation into '{$homeLocale}' is not needed: that text is the source.";
+            if ($screen !== $homeLocale) {
+                $languages .= " While '{$screen}' is on screen, write_canvas and set_page_title edit its '{$screen}' "
+                    . "text for the same blocks (mode=\"replace\" only; blocks are added or removed in '{$homeLocale}').";
+            }
+            $parts[] = $languages;
+
+            $source = trim((string) ($context['sourceDocument'] ?? ''));
+            if ($source !== '' && $screen !== $homeLocale) {
+                $parts[] = "The SOURCE document ('{$homeLocale}') — translate from this, not from the page above:\n\n{$source}";
+            }
+        }
+
+        $toc = $this->tocContext($context, $editingLocale, $homeLocale);
+        if ($toc !== '') {
+            $parts[] = $toc;
         }
 
         $selection = trim((string) ($context['selection'] ?? ''));
@@ -158,6 +161,43 @@ class EditorPrompt
         }
 
         return implode("\n\n", $parts);
+    }
+
+    /**
+     * The post's saved table of contents, sent by the panel (`toc`: [{anchor, label, labels}],
+     * `postId`). A translation must include it, and it lives outside the canvas document, so the
+     * model is told the entries to pass as translate_page's `toc`.
+     *
+     * @param array<string, mixed> $context
+     */
+    private function tocContext(array $context, string $editingLocale, string $homeLocale): string
+    {
+        $postId = trim((string) ($context['postId'] ?? ''));
+        $entries = is_array($context['toc'] ?? null) ? $context['toc'] : [];
+        if ($postId === '' || $entries === []) {
+            return '';
+        }
+
+        $home = $homeLocale !== '' ? $homeLocale : $editingLocale;
+        $lines = [];
+        foreach (array_slice($entries, 0, 50) as $entry) {
+            if (! is_array($entry)) {
+                continue;
+            }
+            $anchor = trim((string) ($entry['anchor'] ?? ''));
+            $label = trim((string) (($entry['labels'][$home] ?? null) ?: ($entry['label'] ?? '')));
+            if ($anchor !== '' && $label !== '') {
+                $lines[] = "- {$anchor}: {$label}";
+            }
+        }
+        if ($lines === []) {
+            return '';
+        }
+
+        return "This post has a table of contents — anchor: label in '{$home}':\n"
+            . implode("\n", $lines)
+            . "\nIt is part of any translation: pass translate_page's toc=[{anchor, label}] with every label "
+            . 'translated and each anchor copied unchanged.';
     }
 
     /** §1 — what this is, where it lives, what it can do here. */
@@ -200,7 +240,7 @@ class EditorPrompt
         Give every h2/h3 an `anchor` (slug of its text, e.g. anchor=getting-started). The table
         of contents links to these; a heading with no anchor cannot be linked to.
 
-        Other tools: set_page_title, taxonomy management, get_post/media, create_translation.
+        Other tools: set_page_title, translate_page, taxonomy management, get_post/media.
         Tool argument shapes arrive via the tool-calling channel, not here.
         TXT;
     }
@@ -579,33 +619,17 @@ class EditorPrompt
         TXT;
     }
 
-    /** §6 — the single-row translation model, create_translation, and the live editing locale
+    /** §6 — the single-row translation model and translate_page, the one way to translate
      *  (docs/content-translation.md §0). */
     private function locales(): string
     {
         return <<<'TXT'
-        LOCALES — one post, multiple languages on the SAME row (suffixed attrs, e.g. content_fr).
-        get_post `translations`: locale→{is_default,title,excerpt,blocks_translated,complete}.
-        create_translation(post_id,target_locale,title?,excerpt?,code?) — same block sequence,
-        text only. NOTE the argument is `target_locale`, not `locale`.
-
-        HOW TO TRANSLATE depends on which locale the author is currently editing:
-
-        * EDITING THE HOME LOCALE and asked to translate → use create_translation with
-          target_locale. NEVER write_canvas: while the home locale is active, write_canvas
-          mode="replace" overwrites the SOURCE text with the translation and the original is
-          gone. Never ask the author to switch locale first — create_translation exists for this.
-          (create_translation needs a saved post_id; if the post has never been saved, say so
-          and offer to save it first rather than writing the translation over the source.)
-
-        * EDITING LOCALE≠home_locale → TRANSLATING, i.e. this turn is itself a translation:
-          same sequence/ids/urls,
-          text only, mode="replace" only — mode="append" is refused while editing a non-home
-          locale.
-
-        A TRANSLATION INCLUDES THE TITLE, on either path: create_translation takes `title`, and
-        set_page_title writes into whichever locale is being edited. Translating every block but
-        leaving the title in the source language is an unfinished translation.
+        LOCALES — one post, several languages on the SAME row; each language's text has its own slot.
+        TRANSLATING is always translate_page(target_locale, code, title, toc): code is the whole SOURCE
+        document with only the text translated (same blocks, ids, urls). It lands only in
+        target_locale, whatever language is on screen, and never touches the source. Never translate
+        with write_canvas or set_page_title — they write the language on screen. A translation is
+        unfinished without the title and, when the page has one, the table of contents.
         TXT;
     }
 

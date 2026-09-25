@@ -169,9 +169,10 @@ class PostSettingsControllerTest extends TestCase
         ]);
 
         $response->assertOk();
+        // Each entry also reports every locale's own label (docs/content-translation.md §0.3).
         $this->assertSame([
-            ['label' => 'Introduction', 'anchor' => 'introduction'],
-            ['label' => 'Deep Dive', 'anchor' => 'deep-dive'],
+            ['label' => 'Introduction', 'anchor' => 'introduction', 'labels' => ['en' => 'Introduction', 'fr' => null]],
+            ['label' => 'Deep Dive', 'anchor' => 'deep-dive', 'labels' => ['en' => 'Deep Dive', 'fr' => null]],
         ], $response->json('entries'));
 
         $stored = $post->fresh()->tocEntries()->orderBy('order')->get();

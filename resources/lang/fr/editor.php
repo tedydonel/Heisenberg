@@ -266,6 +266,8 @@ return [
         'needs_save' => 'Enregistrez d\'abord l\'article pour ajouter une table des matières.',
         'incomplete' => 'Chaque entrée doit avoir un libellé et une ancre.',
         'invalid_anchor' => 'Les ancres doivent commencer par une lettre et ne contenir que des lettres, chiffres, « - » ou « _ ».',
+        'translation_structure' => 'Une traduction ne peut modifier que les libellés. Ajoutez, supprimez ou réordonnez les entrées dans la langue d’origine.',
+        'translating_note' => 'Traduction :locale — modifiez les libellés ; les entrées se gèrent dans la langue d’origine.',
     ],
 
     // Historique des conversations IA (live/ai/ai-history-dialog.blade.php).
@@ -417,6 +419,7 @@ return [
         'post_translations_in_progress' => 'En cours',
         'post_translations_title_missing' => 'Titre manquant',
         'post_translations_blocks_progress' => ':done/:total blocs',
+        'post_translations_toc_progress' => ':done/:total sommaire',
         'post_page_layout' => 'Mise en page',
         'layer_opacity' => 'Opacité du calque',
         'pick_colour' => 'Choisir une couleur',
@@ -620,6 +623,10 @@ return [
         'ai_translate_append_refused' => 'Impossible d\'ajouter de nouveaux blocs pendant une traduction — passez d\'abord à la langue d\'origine de l\'article, ajoutez-les là, puis revenez traduire.',
         'ai_translate_mismatch' => 'Cette réponse ne correspond pas à la structure de blocs de cet article : rien n\'a été appliqué. Demandez une traduction des mêmes blocs, avec uniquement le texte modifié.',
         'ai_set_title' => 'Titre défini — « :title ».',
+        'ai_translated_into' => ':count blocs traduits en :locale.',
+        'ai_translated_title_into' => 'Titre traduit en :locale — « :title ».',
+        'ai_translated_toc_into' => ':count entrées du sommaire traduites en :locale.',
+        'ai_translate_home' => ':locale est la langue de cet article : rien n’a été traduit dedans, son texte est la source.',
         'ai_working_tool' => 'En cours — :tool…',
         'ai_used_tools' => ':count outil(s) utilisé(s)',
         'ai_activity_verbs' => 'Réflexion…,Calculs…,Mijotage…,Méditation…,Bricolage…,Infusion…,Ajustements…,Démêlage…,Préparation…,Manigances…,Tri des idées…,Liens en cours…,Pesée des options…,En route…,Presque fini…,Un instant…,Petits calculs…,Plan en cours…,Gardez cette pensée…,On y travaille…,Retournement…,Piste à suivre…,Estimation…,Mise en ordre…,Bientôt prêt…',

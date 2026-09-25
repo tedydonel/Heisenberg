@@ -374,33 +374,21 @@ class EditorAssistantTest extends TestCase
     }
 
     /**
-     * write_canvas cannot see the editor's current document (it lives in the browser, possibly
-     * unsaved), so it cannot itself compare a translated call's structure against what's already
-     * on the canvas — that fold/refuse rule is enforced client-side (block-runtime.blade.php's
-     * foldTranslation, mirroring McpToolRegistry::foldTranslatedBlocks()). The tool's DESCRIPTION
-     * still states the rule, since a model that skims tool descriptions rather than the system
-     * prompt (EditorPrompt::locales()) needs to hit it there too.
+     * Translation has ONE tool (docs/content-translation.md §0): translate_page, which names its
+     * target locale. write_canvas writes the language on screen and says it is not for translating
+     * — the old "whatever is on screen is the target" rule is what put English into French slots.
      */
-    public function test_write_canvas_description_teaches_the_translating_rule(): void
+    public function test_translation_goes_through_translate_page_and_never_write_canvas(): void
     {
-        $registry = app(McpToolRegistry::class);
-        $tool = collect($registry->listFor(McpToolRegistry::TIER_AUTHORS, McpToolRegistry::SURFACE_EDITOR))
-            ->firstWhere('name', 'write_canvas');
+        $tools = collect(app(McpToolRegistry::class)->listFor(McpToolRegistry::TIER_AUTHORS, McpToolRegistry::SURFACE_EDITOR))->keyBy('name');
 
-        $this->assertNotNull($tool);
-        $description = $tool['description'];
+        $this->assertMatchesRegularExpression('/NEVER use it to translate/', $tools['write_canvas']['description']);
+        $this->assertStringContainsString('translate_page is the only translation tool', $tools['write_canvas']['description']);
 
-        // Prose a model reads (Mcp\Tools\CanvasTools), same brittleness class as the system
-        // prompt — tolerant of wording/casing/punctuation, anchored to the three concepts the
-        // docblock above promises: the operation is named a translation, the block sequence
-        // must stay identical, and append is refused during one.
-        $this->assertMatchesRegularExpression('/\btranslating\b/i', $description);
-        $this->assertMatchesRegularExpression('/\bsame\b[^.\n]*\bblock\s+sequence\b/i', $description);
-        $this->assertMatchesRegularExpression(
-            '/\bappend\b[^.\n]{0,40}\brefused\b[^.\n]{0,40}\btranslat/i',
-            $description,
-            'the description must state that append is refused while translating',
-        );
+        $translate = $tools['translate_page'];
+        $this->assertSame(['target_locale'], $translate['inputSchema']['required']);
+        $this->assertStringContainsString('lands in target_locale only', $translate['description']);
+        $this->assertStringContainsString("must not be the post's home locale", $translate['description']);
     }
 
     public function test_a_local_tool_runs_in_process_without_any_mcp_server(): void

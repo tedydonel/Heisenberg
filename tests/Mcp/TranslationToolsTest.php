@@ -48,13 +48,18 @@ class TranslationToolsTest extends TestCase
         return (array) json_decode($call['text'], true);
     }
 
-    public function test_create_translation_is_offered_on_both_surfaces(): void
+    /**
+     * create_translation writes straight to the database, behind any editor holding the post
+     * open; the in-editor assistant translates with translate_page instead, into the open document.
+     */
+    public function test_create_translation_is_for_external_clients_only(): void
     {
         $registry = app(McpToolRegistry::class);
         $editorNames = array_column($registry->listFor(McpToolRegistry::TIER_AUTHORS, McpToolRegistry::SURFACE_EDITOR), 'name');
         $externalNames = array_column($registry->listFor(McpToolRegistry::TIER_AUTHORS, McpToolRegistry::SURFACE_EXTERNAL), 'name');
 
-        $this->assertContains('create_translation', $editorNames);
+        $this->assertNotContains('create_translation', $editorNames);
+        $this->assertContains('translate_page', $editorNames);
         $this->assertContains('create_translation', $externalNames);
     }
 

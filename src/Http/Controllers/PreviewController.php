@@ -13,6 +13,7 @@ use Heisenberg\Services\BlockRegistryService;
 use Heisenberg\Services\BlockRenderer;
 use Heisenberg\Services\FontCatalogService;
 use Heisenberg\Services\ThemeRepository;
+use Heisenberg\Services\TocService;
 use Heisenberg\Services\TranslationStatusService;
 use Heisenberg\Support\BlockViewData;
 use Heisenberg\Support\LocaleConfig;
@@ -157,10 +158,8 @@ class PreviewController
             // has rows here; see preview.blade.php and Post::tocEntries()'s own docblock for why
             // this is deliberately distinct from the tableOfContents capability's render-time
             // "derive from headings" path (docs/post-template-schema.md, source: "entries").
-            toc: $model->tocEntries->map(fn ($entry) => [
-                'label' => $entry->label,
-                'anchor' => $entry->anchor,
-            ])->values()->all(),
+            // Each label in the request's locale, falling back to the home label.
+            toc: app(TocService::class)->visitorPayload($model, app()->getLocale()),
             // Native comments section (docs/ai-mcp-plan.md's sibling, PostCommentProvider) —
             // absent entirely (null) when the post opted out via allow_comments === false;
             // `null` (the default, "use the built-in default") and `true` both render it.

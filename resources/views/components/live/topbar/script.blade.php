@@ -150,6 +150,25 @@
                 }
             },
             isSaving: () => !!hbSaveInFlight,
+            // A title for an EXPLICIT locale (the AI's translate_page): stored under that locale and
+            // saved with the rest, and shown in the field only when it is the locale on screen — a
+            // French title never lands in the English field just because English is being viewed.
+            setTitleFor: (locale, title) => {
+                hbSeed();
+                if (typeof locale !== 'string' || !locale) return false;
+                hbTitleByLocale[locale] = String(title || '');
+                const current = (window.hbEditor && window.hbEditor.getEditingLocale) ? window.hbEditor.getEditingLocale() : '';
+                if (locale === current) {
+                    const el = document.querySelector('[data-hb-title]');
+                    if (el) {
+                        if (el.tagName === 'INPUT') el.value = hbTitleByLocale[locale]; else el.textContent = hbTitleByLocale[locale];
+                        el.dispatchEvent(new Event('input', { bubbles: true }));
+                    }
+                } else {
+                    hbMarkDirty();
+                }
+                return true;
+            },
             // Called after the live-refresh listener has applied an externally-authored update
             // via window.hbEditor.replaceDoc(): adopts the new content_version as our own
             // baseline and clears the dirty/pending-autosave state that replaceDoc()'s own

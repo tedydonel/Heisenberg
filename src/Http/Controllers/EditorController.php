@@ -22,6 +22,7 @@ use Heisenberg\Services\IconLibraryService;
 use Heisenberg\Services\SavedThemeRepository;
 use Heisenberg\Services\SeoAnalyzer;
 use Heisenberg\Services\ThemeRepository;
+use Heisenberg\Services\TocService;
 use Heisenberg\Services\TranslationStatusService;
 use Heisenberg\Support\AnimationCatalog;
 use Heisenberg\Support\BlockViewData;
@@ -246,14 +247,13 @@ final class EditorController
             'postScheduledAt' => $model->scheduled_at?->format('Y-m-d\TH:i'),
             'postPublishedAt' => $model->published_at?->format('Y-m-d\TH:i'),
             // The Post tab's authored table of contents (Post::tocEntries(), ordered) — {label,
-            // anchor} pairs only; the modal's own script owns render/reorder/save.
-            'postTocEntries' => $model->tocEntries->map(fn ($entry) => [
-                'label' => $entry->label,
-                'anchor' => $entry->anchor,
-            ])->values()->all(),
+            // anchor, labels}: `label` in the home locale and `labels` per locale, so the dialog
+            // shows whichever locale the author is editing. The modal's script owns the rest.
+            'postTocEntries' => app(TocService::class)->payload($model),
             // The Post tab's Translations section + topbar language dropdown (docs/
             // content-translation.md §0/Wave 2): per-locale COMPLETENESS on this one row —
-            // {locale, is_default, title, excerpt, blocks_translated, blocks_total, complete}.
+            // {locale, is_default, title, excerpt, blocks_translated, blocks_total, toc_translated,
+            // toc_total, complete}.
             'postTranslations' => app(TranslationStatusService::class)->statuses($model),
             'documentType' => $documentType,
             // See index()'s own note — filtered server-side to the email surface once this

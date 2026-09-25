@@ -269,7 +269,7 @@ class AiToolRunner
             foreach ($calls as $call) {
                 $name = (string) ($call['name'] ?? '');
 
-                // Client-applied tools (write_canvas, set_page_title) invert the
+                // Client-applied tools (write_canvas, set_page_title, translate_page) invert the
                 // usual order: validate FIRST, then ship the frame — their
                 // arguments are the payload the panel applies to the editor, and
                 // the panel must never apply what validation rejected. `ok`

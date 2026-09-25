@@ -37,6 +37,8 @@
         color: var(--hb-text-muted); border-radius: var(--hb-radius-sm, 3px);
     }
     .hb-tocdialog__remove:hover { background: var(--hb-danger-subtle); color: var(--hb-danger); }
+    /* Hidden while translating: a translation relabels entries, it never removes them. */
+    .hb-tocdialog__remove[hidden] { display: none; }
 
     .hb-tocdialog__foot {
         flex: none; display: flex; align-items: center; gap: 8px;
@@ -120,13 +122,39 @@
                 let urlTemplate = '';
                 let opener = null;
                 let saveEnabled = false;
+                // docs/content-translation.md §0: the entry LIST belongs to the home locale; any other
+                // locale only relabels it, so the dialog locks the structure while translating.
+                let editingLocale = '';
+                let homeLocale = '';
+                let translating = false;
+
+                const localeState = () => {
+                    const ed = window.hbEditor;
+                    homeLocale = (ed && ed.getHomeLocale && ed.getHomeLocale()) || '';
+                    editingLocale = (ed && ed.getEditingLocale && ed.getEditingLocale()) || homeLocale;
+                    translating = !!editingLocale && !!homeLocale && editingLocale !== homeLocale;
+                };
+
+                // One entry as the dialog edits it: the label in the locale being edited, and the
+                // home label (the placeholder while translating).
+                const toEditable = (e) => {
+                    const labels = (e && e.labels && typeof e.labels === 'object') ? e.labels : {};
+                    const home = String(labels[homeLocale] || (e && e.label) || '');
+                    return {
+                        anchor: String((e && e.anchor) || ''),
+                        labels: labels,
+                        homeLabel: home,
+                        label: translating ? String(labels[editingLocale] || '') : home,
+                    };
+                };
 
                 const paintMessages = (statusText) => {
                     if (status) {
                         status.textContent = statusText || '';
                         status.hidden = !statusText;
                     }
-                    if (note) note.hidden = saveEnabled || !!statusText;
+                    // The translating note stays up after a save; the needs-save note only before one.
+                    if (note) note.hidden = (saveEnabled && !translating) || !!statusText;
                 };
 
                 const setStatus = (text) => paintMessages(text);
@@ -148,8 +176,11 @@
                         const anchorInput = node.querySelector('[data-hb-toc-anchor]');
                         const removeBtn = node.querySelector('[data-hb-toc-remove]');
 
-                        up.disabled = index === 0;
-                        down.disabled = index === entries.length - 1;
+                        up.disabled = translating || index === 0;
+                        down.disabled = translating || index === entries.length - 1;
+                        removeBtn.hidden = translating;
+                        anchorInput.readOnly = translating;
+                        if (translating && entry.homeLabel) labelInput.placeholder = entry.homeLabel;
                         up.addEventListener('click', () => {
                             if (index === 0) return;
                             const tmp = entries[index - 1];
@@ -170,7 +201,7 @@
                         labelInput.addEventListener('input', () => { entries[index].label = labelInput.value; });
                         anchorInput.addEventListener('input', () => { entries[index].anchor = anchorInput.value; });
                         labelInput.addEventListener('blur', () => {
-                            if (anchorInput.value.trim() !== '') return;
+                            if (translating || anchorInput.value.trim() !== '') return;
                             const used = new Set(entries.map((e, i) => (i !== index ? e.anchor : null)).filter(Boolean));
                             const slug = labelInput.value.trim() ? uniqueSlug(slugify(labelInput.value), used) : '';
                             if (slug) { anchorInput.value = slug; entries[index].anchor = slug; }
@@ -184,7 +215,8 @@
                 };
 
                 addBtn?.addEventListener('click', () => {
-                    entries.push({ label: '', anchor: '' });
+                    if (translating) return;
+                    entries.push({ label: '', anchor: '', labels: {}, homeLabel: '' });
                     render();
                     const inputs = list.querySelectorAll('[data-hb-toc-label]');
                     inputs[inputs.length - 1]?.focus();
@@ -216,6 +248,21 @@
                     const headings = collectHeadings();
                     if (!headings.length) { setStatus(msg('msgNoHeadings')); return; }
 
+                    if (translating) {
+                        // Relabel only: each existing entry takes the editing-locale text of the
+                        // heading that carries its anchor. Nothing is added.
+                        let relabelled = 0;
+                        headings.forEach((block) => {
+                            const anchor = (block.attributes && block.attributes.anchor) || '';
+                            const entry = anchor ? entries.find((e) => e.anchor === anchor) : null;
+                            const label = entry ? stripTags(readHeadingAttr(block, 'content')) : '';
+                            if (entry && label) { entry.label = label; relabelled++; }
+                        });
+                        render();
+                        setStatus(relabelled ? '' : msg('msgNoNewHeadings'));
+                        return;
+                    }
+
                     const used = new Set(entries.map((e) => e.anchor).filter(Boolean));
                     let added = 0;
                     let usable = 0;
@@ -238,7 +285,7 @@
                         }
                         if (used.has(anchor)) return;
                         used.add(anchor);
-                        entries.push({ label: label, anchor: anchor });
+                        entries.push({ label: label, anchor: anchor, labels: {}, homeLabel: label });
                         added++;
                     });
                     render();
@@ -246,8 +293,8 @@
                 });
 
                 const applySaved = (saved) => {
-                    entries = saved.map((e) => ({ label: e.label || '', anchor: e.anchor || '' }));
-                    if (opener) opener.dataset.hbTocEntries = JSON.stringify(entries);
+                    if (opener) opener.dataset.hbTocEntries = JSON.stringify(saved);
+                    entries = saved.map(toEditable);
                     const field = opener ? opener.closest('[data-hb-post-toc-field]') : null;
                     const summary = field ? field.querySelector('[data-hb-post-toc-summary]') : null;
                     if (summary) {
@@ -259,8 +306,11 @@
 
                 saveBtn?.addEventListener('click', () => {
                     if (!postId || !urlTemplate) return;
-                    const payload = entries.map((e) => ({ label: (e.label || '').trim(), anchor: (e.anchor || '').trim() }));
-                    if (payload.some((e) => !e.label || !e.anchor)) { setStatus(msg('msgIncomplete')); return; }
+                    let payload = entries.map((e) => ({ label: (e.label || '').trim(), anchor: (e.anchor || '').trim() }));
+                    // A translation may be partial: only the labels written so far are sent, and the
+                    // rest keep reading as the home label until they are translated.
+                    if (translating) payload = payload.filter((e) => e.label);
+                    if ((translating && !payload.length) || payload.some((e) => !e.label || !e.anchor)) { setStatus(msg('msgIncomplete')); return; }
                     if (payload.some((e) => !/^[A-Za-z][\w-]*$/.test(e.anchor))) { setStatus(msg('msgInvalidAnchor')); return; }
 
                     saveBtn.disabled = true;
@@ -274,16 +324,24 @@
                             'X-Requested-With': 'XMLHttpRequest',
                         },
                         credentials: 'same-origin',
-                        body: JSON.stringify({ entries: payload }),
+                        body: JSON.stringify({ entries: payload, locale: editingLocale || undefined }),
                     })
-                        .then((r) => { if (!r.ok) throw new Error('http-' + r.status); return r.json(); })
+                        .then((r) => r.json().catch(() => ({})).then((data) => {
+                            if (!r.ok) throw Object.assign(new Error('http-' + r.status), { data });
+                            return data;
+                        }))
                         .then((data) => {
                             saveBtn.disabled = false;
                             applySaved(Array.isArray(data.entries) ? data.entries : payload);
                             render();
                             setStatus(msg('msgSaved'));
                         })
-                        .catch(() => { saveBtn.disabled = false; setStatus(msg('msgError')); });
+                        .catch((err) => {
+                            saveBtn.disabled = false;
+                            // A translation that changed the list is refused with its own message.
+                            const refused = err && err.data && err.data.errors && err.data.errors.entries;
+                            setStatus(Array.isArray(refused) && refused[0] ? refused[0] : msg('msgError'));
+                        });
                 });
 
                 closeBtn?.addEventListener('click', () => {
@@ -303,7 +361,12 @@
                         urlTemplate = trigger.dataset.hbTocUrlTemplate || '';
                         let seeded = [];
                         try { seeded = JSON.parse(trigger.dataset.hbTocEntries || '[]'); } catch (e) { seeded = []; }
-                        entries = Array.isArray(seeded) ? seeded.map((e) => ({ label: String((e && e.label) || ''), anchor: String((e && e.anchor) || '') })) : [];
+                        localeState();
+                        entries = Array.isArray(seeded) ? seeded.map(toEditable) : [];
+                        if (addBtn) addBtn.hidden = translating;
+                        if (note) note.textContent = translating
+                            ? msg('msgTranslatingNote').replace(':locale', editingLocale.toUpperCase())
+                            : msg('msgNeedsSave');
                         setStatus('');
                         setSaveEnabled(postId !== '');
                         render();
@@ -336,7 +399,9 @@
     data-msg-error="{{ __('heisenberg::editor.toc.error') }}"
     data-msg-saved="{{ __('heisenberg::editor.common.saved') }}"
     data-msg-summary-count="{{ __('heisenberg::editor.toc.summary_count') }}"
-    data-msg-summary-empty="{{ __('heisenberg::editor.toc.summary_empty') }}">
+    data-msg-summary-empty="{{ __('heisenberg::editor.toc.summary_empty') }}"
+    data-msg-needs-save="{{ __('heisenberg::editor.toc.needs_save') }}"
+    data-msg-translating-note="{{ __('heisenberg::editor.toc.translating_note') }}">
     <div class="hb-mediadialog hb-tocdialog" role="dialog" aria-modal="true" aria-label="{{ __('heisenberg::editor.toc.title') }}" tabindex="-1">
         <div class="hb-mediadialog__top">
             <span class="hb-mediadialog__title">{{ __('heisenberg::editor.toc.title') }}</span>

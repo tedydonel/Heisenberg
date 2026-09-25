@@ -266,6 +266,10 @@ return [
         'needs_save' => 'Save the post first to store a table of contents.',
         'incomplete' => 'Every entry needs a label and an anchor.',
         'invalid_anchor' => 'Anchors must start with a letter and contain only letters, numbers, "-" or "_".',
+        // Translating the TOC (docs/content-translation.md §0): the list itself belongs to the
+        // home locale; another locale only relabels it.
+        'translation_structure' => 'A translation can only change the labels. Add, remove or reorder entries in the home language.',
+        'translating_note' => 'Translating :locale — edit the labels; entries are managed in the home language.',
     ],
 
     // AI chat history (live/ai/ai-history-dialog.blade.php).
@@ -425,6 +429,7 @@ return [
         'post_translations_in_progress' => 'In progress',
         'post_translations_title_missing' => 'Title missing',
         'post_translations_blocks_progress' => ':done/:total blocks',
+        'post_translations_toc_progress' => ':done/:total contents',
         'post_page_layout' => 'Page layout',
         'layer_opacity' => 'Layer opacity',
         'pick_colour' => 'Pick a colour',
@@ -634,6 +639,11 @@ return [
         'ai_translate_append_refused' => 'Can\'t add new blocks while translating — switch to the post\'s home language first, add them there, then come back to translate.',
         'ai_translate_mismatch' => 'That reply doesn\'t match this post\'s block structure, so nothing was applied. Ask for a translation of the same blocks, with only the text changed.',
         'ai_set_title' => 'Set the title — “:title”.',
+        // translate_page (docs/content-translation.md §0): always names the language it wrote.
+        'ai_translated_into' => 'Translated :count blocks into :locale.',
+        'ai_translated_title_into' => 'Translated the title into :locale — “:title”.',
+        'ai_translated_toc_into' => 'Translated :count table-of-contents entries into :locale.',
+        'ai_translate_home' => ':locale is this post’s own language, so nothing was translated into it — its text is the source.',
         'ai_working_tool' => 'Working — :tool…',
         'ai_used_tools' => 'Used :count tool(s)',
         'ai_activity_verbs' => 'Thinking…,Crunching…,Cooking…,Pondering…,Noodling…,Percolating…,Tinkering…,Untangling…,Brewing…,Plotting…,Wrangling ideas…,Connecting dots…,Weighing options…,On it…,Almost there…,One moment…,Doing the math…,Sketching a plan…,Hold that thought…,Working it out…,Turning it over…,Chasing a hunch…,Sizing it up…,Lining things up…,Nearly ready…',

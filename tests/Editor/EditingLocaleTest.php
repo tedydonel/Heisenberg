@@ -315,30 +315,34 @@ class EditingLocaleTest extends TestCase
     // wired into a new window.hbEditor.applyCanvasWrite that applyCanvasTool now calls instead of
     // deciding replace/append/fold itself.
 
-    public function test_fold_translation_is_exposed_on_the_runtime_and_reuses_the_shared_resolver(): void
+    /**
+     * A translation names its target (docs/content-translation.md §0): foldTranslation writes
+     * `<key>_<target>` directly — never through resolveAttrKey(), which answers "the locale on
+     * screen" and is how English used to land in French slots.
+     */
+    public function test_a_translation_writes_its_explicit_target_and_never_the_locale_on_screen(): void
     {
         $html = $this->get('/editor')->assertOk()->getContent();
 
-        $this->assertInlineScriptContains($html, 'function foldTranslation(blocks)');
-        $this->assertInlineScriptContains($html, 'foldTranslation: foldTranslation,');
-        $this->assertInlineScriptContains($html, 'applyCanvasWrite: applyCanvasWrite,');
-        // Reuses the ONE place the suffix rule lives, rather than re-deriving it.
-        $this->assertInlineScriptContains($html, 'storedNode.attributes[resolveAttrKey(storedName, key)] = value;');
-        $this->assertInlineScriptContains($html, 'translatableKeys(storedName).forEach');
+        $this->assertInlineScriptContains($html, 'function foldTranslation(blocks, target)');
+        $this->assertInlineScriptContains($html, "storedNode.attributes[key + '_' + target] = value;");
+        $this->assertInlineScriptContains($html, 'translateInto: function (target, blocks) { return foldTranslation(blocks, target); },');
+        $this->assertInlineScriptContains($html, 'if (target === homeLocale) {');
+        $this->assertStringNotContainsString('storedNode.attributes[resolveAttrKey(storedName, key)] = value;', $html);
     }
 
-    public function test_fold_translation_mirrors_the_server_side_mismatch_wording_exactly(): void
+    /**
+     * A rebuild from code (code view, write_canvas replace) keeps the translations of text that
+     * survived it — code never carries `_<locale>` variants, and dropping them is how translations
+     * used to vanish.
+     */
+    public function test_a_rebuild_from_code_carries_translations_over(): void
     {
         $html = $this->get('/editor')->assertOk()->getContent();
 
-        // Same path-naming scheme as McpToolRegistry::foldNodes()/foldNode() ("blocks[N]" top
-        // level, ">N" per innerBlocks depth) and the SAME two mismatch messages
-        // TranslationToolsTest pins server-side ("block count differs", "block name mismatch").
-        $this->assertInlineScriptContains($html, "mismatches.push(path + ': block count differs (post has ' + storedNodes.length + ', translated code has ' + translatedNodes.length + ')');");
-        $this->assertInlineScriptContains($html, "mismatches.push(path + \": block name mismatch ('\"");
+        $this->assertInlineScriptContains($html, 'function carryTranslations(oldBlocks, newBlocks)');
+        $this->assertInlineScriptContains($html, 'replaceDoc(append ? doc.blocks.concat(incoming) : carryTranslations(doc.blocks, incoming));');
         $this->assertInlineScriptContains($html, "mismatches.push(path + ': innerBlocks count differs (post has ' + storedInner.length + ', translated code has ' + translatedInner.length + ')');");
-        $this->assertInlineScriptContains($html, "path + '[' + index + ']'");
-        $this->assertInlineScriptContains($html, "path + '>' + index");
     }
 
     public function test_fold_translation_never_partially_applies_on_a_mismatch(): void

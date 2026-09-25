@@ -12,6 +12,7 @@ use Heisenberg\Services\BlockRegistryService;
 use Heisenberg\Services\BlockRenderer;
 use Heisenberg\Services\FontCatalogService;
 use Heisenberg\Services\ThemeRepository;
+use Heisenberg\Services\TocService;
 use Heisenberg\Services\TranslationStatusService;
 use Heisenberg\Support\BlockViewData;
 use Heisenberg\Support\LocaleConfig;
@@ -108,10 +109,8 @@ class PostPublicController
             'seo' => $this->seoPayload($model, $activeLocale),
             'featured' => $this->featuredPayload($model->featuredImage, $activeLocale),
             'alternates' => $this->alternatesPayload($model),
-            'toc' => $model->tocEntries->map(fn ($entry) => [
-                'label' => $entry->label,
-                'anchor' => $entry->anchor,
-            ])->values()->all(),
+            // Each label in the visitor's locale, falling back to the home label.
+            'toc' => app(TocService::class)->visitorPayload($model, $activeLocale),
             'comments' => $model->allow_comments === false ? null : $this->commentsPayload($request, $model),
         ]);
     }

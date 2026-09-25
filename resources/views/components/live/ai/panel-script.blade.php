@@ -636,7 +636,22 @@
                     if (title) base.title = (title.value || title.textContent || '').trim();
                     if (window.hbEditor && window.hbEditor.getEditingLocale) base.editingLocale = window.hbEditor.getEditingLocale();
                     if (window.hbEditor && window.hbEditor.getHomeLocale) base.homeLocale = window.hbEditor.getHomeLocale();
+                    // Off the home locale, `document` shows the locale on screen; a translation must be
+                    // made from the SOURCE text, so that goes along as well.
+                    if (base.editingLocale && base.homeLocale && base.editingLocale !== base.homeLocale && window.hbCodeView && window.hbCodeView.serialize) {
+                        try { base.sourceDocument = window.hbCodeView.serialize({ source: true }); } catch (e) { }
+                    }
                     base.documentType = root.dataset.documentType || document.querySelector('[data-hb-canvas]')?.dataset.documentType || 'post';
+                    // The saved table of contents lives outside the canvas document, so a translation
+                    // would miss it; EditorPrompt::tocContext() turns these into instructions.
+                    if (postId()) base.postId = postId();
+                    const tocOpener = document.querySelector('[data-hb-toc-open]');
+                    if (tocOpener) {
+                        try {
+                            const toc = JSON.parse(tocOpener.dataset.hbTocEntries || '[]');
+                            if (Array.isArray(toc) && toc.length) base.toc = toc;
+                        } catch (e) { }
+                    }
                     return base;
                 };
 
@@ -736,6 +751,65 @@
                         appliedLines.push(line);
                         appliedItem(reply, line);
                         if (stick) scrollToEnd();
+                    };
+
+                    // translate_page (docs/content-translation.md §0): the target locale is explicit, so
+                    // the page text, the title and the TOC labels all land in THAT locale's slots —
+                    // never in the home text, never in whichever locale happens to be on screen.
+                    const applyTranslateTool = (data) => {
+                        if (data.ok === false || !window.hbEditor) return;
+                        const args = data.arguments || {};
+                        const target = String(args.target_locale || '');
+                        const label = target.toUpperCase();
+                        const note = (line) => { appliedLines.push(line); appliedItem(reply, line); };
+                        if (target === window.hbEditor.getHomeLocale()) {
+                            lastRun.applied = false;
+                            addNote(msg('msgTranslateHome').replace(':locale', label), true);
+                            return;
+                        }
+                        const code = String(args.code || '').trim();
+                        if (code && window.hbCodeView) {
+                            const parsed = window.hbCodeView.parse(code);
+                            const result = parsed && parsed.blocks.length
+                                ? window.hbEditor.translateInto(target, parsed.blocks)
+                                : { ok: false, error: msg('msgTranslateMismatch') };
+                            if (!result.ok) {
+                                lastRun.applied = false;
+                                addNote(result.error || msg('msgTranslateMismatch'), true);
+                                return; // a refused page translation applies nothing else either
+                            }
+                            toolBuilt = true;
+                            lastRun.applied = true;
+                            note(msg('msgTranslatedInto').replace(':count', String(result.blocks)).replace(':locale', label));
+                        }
+                        const title = String(args.title || '').trim();
+                        if (title && window.hbTopbarState && window.hbTopbarState.setTitleFor(target, title)) {
+                            lastRun.applied = true;
+                            note(msg('msgTranslatedTitleInto').replace(':locale', label).replace(':title', title));
+                        }
+                        if (Array.isArray(args.toc) && args.toc.length) applyTocTranslation(target, args.toc, label, note);
+                        if (stick) scrollToEnd();
+                    };
+
+                    // TOC labels are stored apart from the document, per locale, by the TOC endpoint —
+                    // the same one the TOC dialog saves through, with the target locale named.
+                    const applyTocTranslation = (target, toc, label, note) => {
+                        const opener = document.querySelector('[data-hb-toc-open]');
+                        const post = postId();
+                        const template = opener ? opener.dataset.hbTocUrlTemplate || '' : '';
+                        if (!opener || !post || !template) return;
+                        const entries = toc
+                            .map((e) => ({ anchor: String((e && e.anchor) || '').trim(), label: String((e && e.label) || '').trim() }))
+                            .filter((e) => e.anchor && e.label);
+                        if (!entries.length) return;
+                        api(template.replace('__ID__', encodeURIComponent(post)), { method: 'PUT', body: JSON.stringify({ locale: target, entries: entries }) })
+                            .then((r) => r.json().then((body) => ({ ok: r.ok, body: body })))
+                            .then(({ ok, body }) => {
+                                if (!ok) { addNote((body && body.message) || msg('msgTranslateMismatch'), true); return; }
+                                if (Array.isArray(body.entries)) opener.dataset.hbTocEntries = JSON.stringify(body.entries);
+                                note(msg('msgTranslatedTocInto').replace(':count', String(entries.length)).replace(':locale', label));
+                            })
+                            .catch(() => addNote(msg('msgNetwork'), true));
                     };
 
                     const liveApply = (final) => {
@@ -870,6 +944,9 @@
                                     } else if (String(data.name || '') === 'heisenberg__set_page_title') {
                                         closeThinkSegment(reply);
                                         applyTitleTool(data);
+                                    } else if (String(data.name || '') === 'heisenberg__translate_page') {
+                                        closeThinkSegment(reply);
+                                        applyTranslateTool(data);
                                     } else {
                                         const tool = String(data.name || '').replace(/^heisenberg__/, '').replace(/_/g, ' ');
                                         const line2 = msg('msgWorking').replace(':tool', tool || '…');
