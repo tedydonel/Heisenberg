@@ -17,6 +17,7 @@ use Heisenberg\Ai\ReasoningFilter;
 use Heisenberg\Contracts\AiCredentialStore;
 use Heisenberg\Contracts\AiProvider;
 use Heisenberg\Contracts\RoleGate;
+use Heisenberg\Services\AiConversationMemory;
 use Heisenberg\Services\AiProviderRegistry;
 use Heisenberg\Services\AiSettingsRepository;
 use Heisenberg\Services\AiToolRunner;
@@ -46,6 +47,7 @@ class AiController
         private AiSettingsRepository $settings,
         private AiProviderRegistry $providers,
         private AiCredentialStore $credentials,
+        private AiConversationMemory $memory,
     ) {
     }
 
@@ -151,7 +153,7 @@ class AiController
         $aiRequest = $this->buildRequest(
             $prompt,
             $text,
-            (array) $request->input('context', []),
+            $this->withMemory($request, (array) $request->input('context', [])),
             (array) $request->input('history', []),
             $request->input('model'),
         );
@@ -410,6 +412,7 @@ class AiController
         $denied = $this->denyUnlessAuthor($request);
         $text = trim((string) $request->input('prompt', ''));
         $context = (array) $request->input('context', []);
+        $context = $denied !== null ? ['pastConversations' => ''] + $context : $this->withMemory($request, $context);
 
         $provider = $this->providerForKey($request->input('model'));
         $aiRequest = $this->buildRequest(
@@ -500,6 +503,26 @@ class AiController
             'Content-Encoding' => 'none',
             'Connection' => 'keep-alive',
         ]);
+    }
+
+    /**
+     * The turn's context plus the assistant's memory of this author's OTHER conversations
+     * ({@see AiConversationMemory}). Always built here, never taken from the client (the key is
+     * overwritten), and scoped to the requesting author, so nobody is reminded of someone else's
+     * chats. `postId` only orders the digest (that post's conversations first).
+     *
+     * @param array<string, mixed> $context
+     * @return array<string, mixed>
+     */
+    private function withMemory(Request $request, array $context): array
+    {
+        $context['pastConversations'] = $this->memory->digest(
+            $request->user()?->getAuthIdentifier(),
+            $request->input('conversation_id'),
+            $context['postId'] ?? null,
+        );
+
+        return $context;
     }
 
     /**

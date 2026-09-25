@@ -158,14 +158,14 @@ class AiConversationController
         return response()->json(['deleted' => $deleted]);
     }
 
-    /** All queries start here — an author only ever sees their own threads. */
+    /**
+     * All queries start here — an author only ever sees their own threads.
+     *
+     * @return Builder<AiConversation>
+     */
     private function owned(Request $request): Builder
     {
-        $userId = $request->user()?->getAuthIdentifier();
-
-        return $userId === null
-            ? AiConversation::query()->whereNull('author_id')
-            : AiConversation::query()->where('author_id', $userId);
+        return AiConversation::query()->ownedBy($request->user()?->getAuthIdentifier());
     }
 
     private function denyUnlessAuthor(Request $request): ?JsonResponse

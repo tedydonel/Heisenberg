@@ -160,6 +160,14 @@ class EditorPrompt
             $parts[] = "The post title is: {$title}";
         }
 
+        // Built server-side by AiConversationMemory — never trusted from the client.
+        $past = trim((string) ($context['pastConversations'] ?? ''));
+        if ($past !== '') {
+            $parts[] = 'PAST CONVERSATIONS — your memory of earlier chats with this author, newest first '
+                . '("You" is you). You DO remember these: use them whenever the author refers to something '
+                . "discussed before, and never claim you have no memory of past sessions.\n{$past}";
+        }
+
         return implode("\n\n", $parts);
     }
 

@@ -13,6 +13,11 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
  * tools used, blocks built). Named AiChatMessage because `Heisenberg\Ai\AiMessage`
  * already exists as the in-memory wire DTO — this is the persisted transcript
  * row, a different thing.
+ *
+ * @property int $conversation_id
+ * @property string $role
+ * @property string $content
+ * @property array<string, mixed>|null $meta
  */
 class AiChatMessage extends Model
 {
