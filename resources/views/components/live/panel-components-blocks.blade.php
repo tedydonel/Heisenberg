@@ -7,12 +7,17 @@
     .hb-panel-cb__scroll { flex: 1 1 auto; min-height: 0; overflow: hidden; padding: var(--hb-space-3, 12px); }
     .hb-panel-cb__blocks-scroll { display: flex; flex-direction: column; }
     .hb-panel-cb__grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
-    .hb-panel-cb__blocks-grid { flex: 1 1 auto; min-height: 100%; }
+    /* Rows pack at the top at their content's height. The grid is at least the panel's height (so
+       the empty state can centre in it), and a grid STRETCHES its rows to fill that by default:
+       two rows of cards each took half the panel, stranding the third card mid-way down. */
+    .hb-panel-cb__blocks-grid { flex: 1 1 auto; min-height: 100%; align-content: start; }
+    .hb-panel-cb__blocks-grid:has(> .hb-panel-cb__empty) { align-content: stretch; }
     .hb-panel-cb__blocks-grid .hb-panel-cb__empty { grid-column: 1 / -1; display: flex; align-items: center; justify-content: center; min-height: 100%; padding: 0 12px; }
-    /* Hug the card: as a stretched grid item the wrapper ran the full height of the scroll area,
-       so its delete button floated away from the card and a click far below one still inserted
-       that pattern. */
-    .hb-panel-cb__card { position: relative; align-self: start; }
+    /* Cards in one row share its height (a two-line name no longer leaves its neighbour short).
+       Safe now that rows are content-sized: the wrapper used to be pinned to `align-self: start`
+       because a stretched row ran the full scroll height, floating the delete button away. */
+    .hb-panel-cb__card { position: relative; display: flex; }
+    .hb-panel-cb__card > .hb-toolcard { flex: 1 1 auto; }
     .hb-panel-cb__card-del { position: absolute; top: 4px; right: 4px; width: 22px; height: 22px;
         display: none; align-items: center; justify-content: center;
         background: var(--hb-surface); border: 1px solid var(--hb-border);
@@ -52,12 +57,18 @@
                 .then((data) => {
                     if (!data || !Array.isArray(data.patterns)) return;
                     const emptyLabel = grid.getAttribute('data-empty-label') || '';
+                    // The scroll area's own box never changes size when cards come and go, so its
+                    // ResizeObserver never fires: re-measure the bar by hand after every redraw.
+                    const refreshBar = () => scroll.parentElement?.querySelectorAll('[data-hb-custom-scrollbar]')
+                        .forEach((b) => b.__hbScrollbar && b.__hbScrollbar.refresh());
                     grid.innerHTML = '';
                     if (!data.patterns.length) {
                         const empty = document.createElement('div');
                         empty.className = 'hb-panel-cb__empty';
+                        empty.setAttribute('data-hb-patterns-empty', '');
                         empty.textContent = emptyLabel;
                         grid.appendChild(empty);
+                        refreshBar();
                         return;
                     }
                     const template = root.querySelector('[data-hb-pattern-card-template]');
@@ -75,6 +86,7 @@
                         frag.appendChild(card);
                     });
                     grid.appendChild(frag);
+                    refreshBar();
                 })
                 .catch(() => {});
         };

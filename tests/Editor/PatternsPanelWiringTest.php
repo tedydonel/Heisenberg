@@ -120,4 +120,28 @@ class PatternsPanelWiringTest extends TestCase
         $this->assertInlineScriptContains($html, 'openSaveBlockDialog(tb, ctx, closeAll);');
         $this->assertInlineScriptContains($html, "if (typeof closeAll === 'function') closeAll();");
     }
+
+    /**
+     * The grid is at least the panel's height, and a grid stretches its rows to fill that by
+     * default: two rows of cards each took half the panel, stranding the third card mid-way down.
+     * Rows pack at the top; only the empty state still stretches, to centre its message.
+     */
+    public function test_pattern_rows_pack_at_the_top_instead_of_splitting_the_panel(): void
+    {
+        $html = $this->editorHtml();
+
+        $this->assertStringContainsString('.hb-panel-cb__blocks-grid { flex: 1 1 auto; min-height: 100%; align-content: start; }', $html);
+        $this->assertStringContainsString('.hb-panel-cb__blocks-grid:has(> .hb-panel-cb__empty) { align-content: stretch; }', $html);
+        $this->assertStringNotContainsString('.hb-panel-cb__card { position: relative; align-self: start; }', $html);
+    }
+
+    /** The scroll box never resizes when cards change, so the bar is re-measured after a redraw. */
+    public function test_a_redrawn_grid_re_measures_its_custom_scrollbar(): void
+    {
+        $html = $this->editorHtml();
+
+        $this->assertNotNull($this->hbAttr($html, '[data-hb-panel-cb-blocks] [data-hb-custom-scrollbar]', 'data-hb-custom-scrollbar'));
+        $this->assertInlineScriptContains($html, 'b.__hbScrollbar && b.__hbScrollbar.refresh()');
+        $this->assertInlineScriptContains($html, "empty.setAttribute('data-hb-patterns-empty', '');");
+    }
 }
