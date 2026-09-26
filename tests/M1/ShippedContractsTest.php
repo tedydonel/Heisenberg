@@ -98,7 +98,7 @@ class ShippedContractsTest extends TestCase
             ['fontFamily' => true, 'fontWeight' => true, 'fontSize' => true, 'textAlign' => true, 'textAlignVertical' => true, 'letterSpacing' => true],
             $paragraph['supports']['typography'],
         );
-        $this->assertSame(['position', 'appearance', 'typography', 'size', 'color', 'margin', 'padding', 'effects'], array_column($paragraph['panels'], 'key')); // no align (text contracts), no border/radius
+        $this->assertSame(['position', 'appearance', 'typography', 'size', 'color', 'margin', 'padding', 'radius', 'effects'], array_column($paragraph['panels'], 'key')); // no align (text contracts); corners but no stroke
 
         $dropCap = collect($paragraph['controls'])->firstWhere('attribute', 'dropCap');
         $this->assertSame('toggle', $dropCap['type'] ?? null);
@@ -122,7 +122,7 @@ class ShippedContractsTest extends TestCase
             ['fontFamily' => true, 'fontWeight' => true, 'fontSize' => true, 'lineHeight' => true, 'textAlign' => true, 'textAlignVertical' => true, 'letterSpacing' => true],
             $heading['supports']['typography'],
         );
-        $this->assertSame(['position', 'appearance', 'typography', 'size', 'color', 'margin', 'padding', 'effects'], array_column($heading['panels'], 'key')); // no align (text contracts), no border/radius
+        $this->assertSame(['position', 'appearance', 'typography', 'size', 'color', 'margin', 'padding', 'radius', 'effects'], array_column($heading['panels'], 'key')); // no align (text contracts); corners but no stroke
 
         $level = collect($heading['controls'])->firstWhere('attribute', 'level');
         $this->assertSame('select', $level['type'] ?? null);

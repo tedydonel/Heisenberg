@@ -224,6 +224,7 @@
         document.addEventListener('hb:refresh', boot);
     })();
 </script>
+@include('heisenberg::components.live.ai.panel-text-script')
 @include('heisenberg::components.live.ai.panel-script')
 @endonce
 

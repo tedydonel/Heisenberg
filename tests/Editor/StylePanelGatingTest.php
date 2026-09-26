@@ -160,20 +160,23 @@ class StylePanelGatingTest extends TestCase
         $this->assertSame($this->declaring('size', 'width'), $this->controlCount($html, 'size.width'));
     }
 
-    public function test_stroke_and_the_corner_fields_follow_border_which_text_blocks_still_never_declare(): void
+    public function test_stroke_follows_border_width_and_the_corner_fields_follow_border_radius(): void
     {
         $html = $this->editorHtml();
 
-        // TODO 7.2: text blocks do not support borders or corner radius. Both contracts had
-        // `border` removed 2026-08-05 along with their seven border-sourced style variables.
-        // That half is unchanged and still asserted the same way.
+        // Text blocks round their corners but take no stroke: since 0.0.11 they declare
+        // `border.radius` (Appearance is complete on every block) and still no `border.width`,
+        // so every border-sourced variable they carry is a corner.
         foreach (['heisenberg/heading', 'heisenberg/paragraph'] as $name) {
             $contract = app(BlockRegistryService::class)->getBlock($name);
-            $this->assertArrayNotHasKey('border', $contract['supports'] ?? []);
+            $this->assertArrayHasKey('radius', $contract['supports']['border'] ?? []);
+            $this->assertArrayNotHasKey('width', $contract['supports']['border'] ?? []);
 
             $sources = array_column($contract['style']['variables'] ?? [], 'source');
             foreach ($sources as $source) {
-                $this->assertStringStartsNotWith('supports.border', $source);
+                if (str_starts_with($source, 'supports.border')) {
+                    $this->assertStringStartsWith('supports.border.radius.', $source);
+                }
             }
         }
 
@@ -184,8 +187,8 @@ class StylePanelGatingTest extends TestCase
         // for THOSE panels only. Counting per declaring contract keeps the real claim (a section
         // renders exactly where its support is declared) and would still catch the original bug:
         // a leak onto a text block's panel makes the count exceed declaring('border').
-        $declarers = $this->declaring('border');
-        $this->assertGreaterThan(0, $declarers, 'the container contracts declare border now');
+        $declarers = $this->declaring('border', 'width');
+        $this->assertGreaterThan(0, $declarers, 'the container contracts declare a stroke');
         $this->assertSame($declarers, $this->hbCount($html, $this->sectionTitle('Stroke')));
 
         // Appearance is NOT gated on border alone — TODO 7.1 declared `appearance.opacity`, so it
@@ -195,9 +198,9 @@ class StylePanelGatingTest extends TestCase
 
         // Per-side/per-corner paths are the ones the fields actually write, and the contracts map
         // each to the --hb-border-* variable SupportsStyle consumes.
-        foreach (['border.width.top', 'border.radius.topLeft'] as $path) {
-            $this->assertSame($declarers, $this->controlCount($html, $path), "{$path} renders once per declaring contract");
-        }
+        $this->assertSame($declarers, $this->controlCount($html, 'border.width.top'), 'a side width renders once per stroke contract');
+        $this->assertSame($this->declaring('border', 'radius'), $this->controlCount($html, 'border.radius.topLeft'), 'a corner renders once per radius contract');
+        $this->assertGreaterThan($declarers, $this->declaring('border', 'radius'), 'text blocks have corners without a stroke');
 
         // Paths with NO control by design, all of which must stay at zero:
         //  - `border.width`/`border.color` are scalar aggregates — the Weight "all" field fans
@@ -894,9 +897,7 @@ class StylePanelGatingTest extends TestCase
         // "all corners" field hold no model path of their own and commit through their group
         // (§4.3). What must not appear is a control that looks editable and writes nothing.
         //
-        // These are the known inert ones. They live in sections gated off for text blocks —
-        // Stroke and Appearance's corners need `border` (7.2); the Flex Layout grid needs a
-        // container (7.1) — so none of them should reach the page.
+        // No known inert control is left; the history below is how the list emptied.
         //
         // Structural DOM queries only ever match REAL elements/attributes/classes — unlike a raw
         // substring search, they cannot be fooled by the same marker appearing as a selector
@@ -908,19 +909,9 @@ class StylePanelGatingTest extends TestCase
         // layout.justify×align, the radios layout.justify); stroke-sides and
         // appearance-corners left it 2026-08-07 (their per-side/corner fields carry
         // border.width.*/border.radius.* hooks and the "all" field fans out to them).
-        // Stroke's Position/Join selects stay listed: they are vector-editor concepts with
-        // no CSS border equivalent, so they render only behind the `vectorControls` flag.
-        $inert = [
-            'hb-style-stroke__position' => 'Stroke position select',
-        ];
-
-        foreach ($inert as $marker => $what) {
-            $this->assertElementMissing(
-                $html,
-                '.' . $marker,
-                "{$what} renders but writes nothing — it should be gated off or wired",
-            );
-        }
+        // Stroke's Position select left it in 0.0.11: it writes `border.position` (box-sizing,
+        // Inside/Outside) and renders only where that support is declared.
+        $this->assertSame($this->declaring('border', 'position'), $this->controlCount($html, 'border.position'));
 
         // Guard the guard: the panel itself and a real section must still be present, or this
         // passes vacuously.
