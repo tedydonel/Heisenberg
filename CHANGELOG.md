@@ -4,6 +4,78 @@ All notable changes to this project are documented here. The format is based on
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project follows
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html) for tagged releases.
 
+## [0.0.11] - 2026-09-26
+
+See [`UPGRADING.md`](UPGRADING.md) for what these mean for an existing install. One migration runs
+on its own (table-of-contents labels per locale, backfilled); **email HTML changed** (re-record any
+`EmailRenderer` snapshot); and **the AI's turn now carries excerpts of the author's earlier
+conversations** to whichever provider is configured.
+
+**Highlights.** Translation is rebuilt around one explicit path: a translation names its target
+language, lands only there, survives later edits, covers the table of contents, and is sent as
+text rather than re-typed markup — a 46-block post went from over five minutes to one short call.
+The in-app assistant remembers its earlier conversations, across models and providers. The style
+panel's Appearance, Stroke and Effects sections are complete and actually work. Sent emails keep
+the theme font and centred icons.
+
+### Added
+
+- **A translatable table of contents.** Entries gain a label per locale (existing labels are
+  backfilled into the post's home locale; the bare `label` keeps mirroring it). The list belongs to
+  the home locale; another locale only relabels it, partially if need be. The TOC dialog becomes a
+  translation view off the home locale, readers show each visitor's language with a home-label
+  fallback, translation completeness counts TOC labels, `get_post` returns them,
+  `create_translation` takes `toc`, and the translation merge folds a sibling's labels by anchor.
+- **The assistant remembers earlier conversations.** Each turn carries a digest of the author's
+  other recent conversations — up to six, the post being edited first, excerpted and size-capped —
+  built server-side and scoped by the same ownership rule as the history list, so nobody is
+  reminded of someone else's chats. It lives in Heisenberg's database, so it carries across models
+  and providers; if those tables cannot be read, the assistant still answers without recall.
+- **Stroke position.** Inside or Outside beside Weight, through a new `border.position` support
+  (`box-sizing`, sanitized in PHP and JS). It applies only to a block that sets it.
+- **Real effects.** Effects is an ordered list of Drop Shadow, Layer Blur and Background Blur layers,
+  each editable, hideable and removable, through `effects.shadow`, `effects.filter` and
+  `effects.backdrop` on every block. The `filter` sanitizer accepts only `blur(Npx)`.
+
+### Changed
+
+- **One way to translate in the editor.** `translation_source` hands the model the page's text by id
+  (plus title and TOC), and `translate_page(target_locale, segments, title, toc)` brings it back in
+  one call. The target is always explicit, the home locale is refused, and the source is never
+  touched. `write_canvas` and `set_page_title` only write the locale on screen;
+  `create_translation` is external-only.
+- **Translation is text, not markup.** `translate_page` used to take the whole translated document
+  as shortcode, so the model re-typed every tag and style to change its words — about three minutes
+  a call on a 46-block post, and it often called twice.
+- **Appearance is complete on every block**: columns gained opacity; paragraph, heading, list,
+  separator and embed gained corner radius. Stroke and corners are separate, so a text block can
+  round its corners without growing a Stroke section.
+- **The Stroke section shows only its + until a stroke exists**, and adding one writes the 1px
+  weight the field shows, so it is visible at once. Empty Fill/Stroke/Effects sections no longer
+  keep a gap under their title.
+- **A tidier email Summary**: no "Email address" row, a one-line subject ending in an ellipsis, and
+  "Not included" / "Renders differently" rows that show a count with the full sentence on hover.
+- The anchor field's hint ("Links and the table of contents jump to this anchor.") is gone.
+
+### Fixed
+
+- **Translations landed in the wrong language.** A translation was written into whichever locale
+  was on screen, so asking for English while French was showing wrote English into the French
+  slots.
+- **Translations vanished after a rebuild.** Shortcode never carries `_<locale>` variants, so every
+  rebuild from code (code view, `write_canvas` replace, MCP `update_post`) dropped them. Each
+  translation is now carried to the block that still has the same source text, in the editor and on
+  the server alike; a translation of rewritten text is dropped so that spot reads as untranslated.
+- **Unstyled email text shipped Arial.** Every email block template hard-coded an Arial fallback
+  that overrode the shell's theme font. Templates now fall back to the theme's first font, whatever
+  its token is named, so a site with several themes gets the right one.
+- **A centred icon drifted to the left of a sent email.** The icon template forced `align="left"`
+  and spanned 100%; it now hugs its glyph and follows its column's alignment.
+- **Pattern cards stretched down the panel**, stranding a third card mid-way; rows now pack at the
+  top, cards in a row share its height, and a redrawn grid re-measures its custom scrollbar.
+- **Effects' remove and visibility buttons did nothing**, and a Drop Shadow row showed on blocks
+  without one.
+
 ## [0.0.10] - 2026-09-23
 
 A maintenance release: **no behaviour change from 0.0.9**. The 0.0.9 tree failed CI on static
@@ -264,7 +336,11 @@ several open endpoints.
 First public release: block editor, media library, taxonomy, post templates, canonical role gates,
 AI writing assistant, MCP integration, revisions, autosave, and host-owned rendering seams.
 
-[Unreleased]: https://github.com/tedydonel/Heisenberg/compare/v0.0.7...HEAD
+[Unreleased]: https://github.com/tedydonel/Heisenberg/compare/v0.0.11...HEAD
+[0.0.11]: https://github.com/tedydonel/Heisenberg/compare/v0.0.10...v0.0.11
+[0.0.10]: https://github.com/tedydonel/Heisenberg/compare/v0.0.9...v0.0.10
+[0.0.9]: https://github.com/tedydonel/Heisenberg/compare/v0.0.8...v0.0.9
+[0.0.8]: https://github.com/tedydonel/Heisenberg/compare/v0.0.7...v0.0.8
 [0.0.7]: https://github.com/tedydonel/Heisenberg/compare/v0.0.6...v0.0.7
 [0.0.6]: https://github.com/tedydonel/Heisenberg/compare/v0.0.5...v0.0.6
 [0.0.5]: https://github.com/tedydonel/Heisenberg/compare/v0.0.4...v0.0.5

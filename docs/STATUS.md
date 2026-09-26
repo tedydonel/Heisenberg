@@ -1,6 +1,6 @@
 # Status
 
-**As of 2026-09-23 · v0.0.10 · ~6 weeks old, 239 commits, solo maintainer.**
+**As of 2026-09-26 · v0.0.11 · ~6 weeks old, 251 commits, solo maintainer.**
 
 This is the living "what's actually true right now" document. When `TODO.md`, `CODE_REVIEW.md`,
 and `docs/ROADMAP.md` went stale (frozen 2026-08-06, archived to `docs/archive/`), nothing

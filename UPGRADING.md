@@ -16,6 +16,32 @@ a key that exists on **both** sides, where the package changed a *list's content
 added a sibling key), does not: your old list wins verbatim, silently. `config-diff`'s `differs`
 section is where that shows up; a config-diff run is the only way to catch it.
 
+## 0.0.11 (2026-09-26)
+
+**One migration, applied by `php artisan migrate`.** `heisenberg_post_toc_entries` gains
+`label_en` and `label_fr`, and existing labels are backfilled into each post's home locale. The
+bare `label` column stays and keeps mirroring the home label, so anything reading it is
+unaffected.
+
+**Email HTML changed; a snapshot test will notice.** Block templates now fall back to
+`var(--hb-t-font-base, Arial, Helvetica, sans-serif)` rather than a bare Arial stack, the shell
+reads the theme's first font whatever its token is named, and the icon cell no longer carries
+`align="left"` or a 100% width. Re-record any `EmailRenderer` snapshot.
+
+**The AI's turn carries excerpts of earlier conversations.** To remember across chats, each turn
+now includes a short digest of the same author's other recent conversations (at most six, about
+6,000 characters). It goes to whichever AI provider you configured, like the rest of the turn.
+Nothing is required, but a host with rules about what reaches that provider should know.
+
+**MCP tools changed shape.** On the editor surface, `translate_page` now takes
+`(target_locale, segments, title, toc)` instead of `code`, and a new `translation_source` tool
+comes before it. `get_post` returns the post's `toc`, and `create_translation` accepts `toc` and is
+external-only. An external client calling `get_post` or `create_translation` needs no change.
+
+**Generated CSS gained rules.** Blocks that set a stroke position get `box-sizing`, and every block
+accepts `filter` / `backdrop-filter` (blur only) at zero specificity with a `none` default. A host
+that snapshots the published CSS should re-record.
+
 ## 0.0.10 (2026-09-23)
 
 Nothing to do. Static-analysis and formatting fixes only — the 0.0.9 tree failed CI, and this is
